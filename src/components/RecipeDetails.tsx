@@ -160,7 +160,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                 <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-4">
                   <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">{t.recipe.nutritionFacts}</h3>
                   <div className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
-                    <div>{t.profile.nutritionGoalsnames.calories}: {recipe.nutritionFacts.calories}</div>
+                    <div>{t.profile.nutritionGoalsnames.calories}: {recipe.nutritionFacts.calories}g</div>
                     <div>{t.profile.nutritionGoalsnames.protein}: {recipe.nutritionFacts.protein}g</div>
                     <div>{t.profile.nutritionGoalsnames.carbs}: {recipe.nutritionFacts.carbs}g</div>
                     <div>{t.profile.nutritionGoalsnames.fat}: {recipe.nutritionFacts.fat}g</div>
