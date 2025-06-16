@@ -25,6 +25,8 @@ export interface Recipe {
     date: string;
   }[];
   authorId: string;
+  authorName?: string;
+  authorType?: 'Nutritionist' | 'Client';
   createdAt: string;
   updatedAt: string;
 }

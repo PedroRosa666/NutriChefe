@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { checkEmailExists, sendPasswordResetEmail } from '../../services/database';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 
@@ -28,13 +28,9 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
 
     try {
       // Verificar se o email existe no banco de dados
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', email)
-        .single();
+      const emailExists = await checkEmailExists(email);
 
-      if (profileError || !profiles) {
+      if (!emailExists) {
         setError('Email não encontrado. Verifique se o email está correto ou crie uma conta.');
         setStep('error');
         setLoading(false);
@@ -42,27 +38,22 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
       }
 
       // Enviar email de recuperação
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (resetError) {
-        console.error('Reset password error:', resetError);
-        
-        if (resetError.message.includes('Email rate limit exceeded')) {
-          setError('Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.');
-        } else if (resetError.message.includes('For security purposes')) {
-          setError('Por motivos de segurança, aguarde alguns minutos antes de solicitar outro email.');
-        } else {
-          setError('Erro ao enviar email de recuperação. Tente novamente em alguns minutos.');
-        }
-        setStep('error');
-      } else {
-        setStep('sent');
-      }
-    } catch (err) {
+      await sendPasswordResetEmail(email);
+      setStep('sent');
+    } catch (err: any) {
       console.error('Password reset error:', err);
-      setError('Erro inesperado. Tente novamente mais tarde.');
+      
+      let friendlyMessage = 'Erro ao enviar email de recuperação. Tente novamente em alguns minutos.';
+      
+      if (err.message?.includes('Email rate limit exceeded')) {
+        friendlyMessage = 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.';
+      } else if (err.message?.includes('For security purposes')) {
+        friendlyMessage = 'Por motivos de segurança, aguarde alguns minutos antes de solicitar outro email.';
+      } else if (err.message?.includes('Invalid email')) {
+        friendlyMessage = 'Email inválido. Verifique o formato do email.';
+      }
+      
+      setError(friendlyMessage);
       setStep('error');
     } finally {
       setLoading(false);

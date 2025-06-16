@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Shield } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuthStore } from '../../store/auth';
 import { cn } from '../../lib/utils';
 
 export function ResetPasswordPage() {
@@ -14,7 +13,6 @@ export function ResetPasswordPage() {
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
   const [validToken, setValidToken] = useState(false);
-  const { signIn } = useAuthStore();
 
   useEffect(() => {
     // Verificar se há um token de recuperação válido na URL

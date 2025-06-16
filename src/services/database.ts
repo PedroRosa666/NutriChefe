@@ -26,6 +26,7 @@ export interface DatabaseRecipe {
   updated_at: string;
   profiles?: {
     full_name: string;
+    user_type: string;
   };
   reviews?: Array<{
     id: string;
@@ -86,6 +87,8 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
       date: new Date(review.created_at).toISOString().split('T')[0]
     })),
     authorId: dbRecipe.author_id,
+    authorName: dbRecipe.profiles?.full_name,
+    authorType: dbRecipe.profiles?.user_type as 'Nutritionist' | 'Client',
     createdAt: dbRecipe.created_at,
     updatedAt: dbRecipe.updated_at
   };
@@ -176,7 +179,7 @@ export async function createRecipe(recipe: Omit<Recipe, 'id' | 'rating' | 'revie
     }])
     .select(`
       *,
-      profiles!recipes_author_id_fkey(full_name),
+      profiles!recipes_author_id_fkey(full_name, user_type),
       reviews(
         id,
         rating,
@@ -224,7 +227,7 @@ export async function updateRecipe(recipeId: number, updates: Partial<Recipe>) {
     .eq('id', uuid)
     .select(`
       *,
-      profiles!recipes_author_id_fkey(full_name),
+      profiles!recipes_author_id_fkey(full_name, user_type),
       reviews(
         id,
         rating,
@@ -263,7 +266,7 @@ export async function getRecipes() {
     .from('recipes')
     .select(`
       *,
-      profiles!recipes_author_id_fkey(full_name),
+      profiles!recipes_author_id_fkey(full_name, user_type),
       reviews(
         id,
         rating,
@@ -300,7 +303,7 @@ export async function getRecipeById(recipeId: number) {
     .from('recipes')
     .select(`
       *,
-      profiles!recipes_author_id_fkey(full_name),
+      profiles!recipes_author_id_fkey(full_name, user_type),
       reviews(
         id,
         rating,
@@ -427,6 +430,48 @@ export async function checkEmailExists(email: string): Promise<boolean> {
     return !!data;
   } catch (error) {
     console.error('Error checking email existence:', error);
+    return false;
+  }
+}
+
+// Funções para recuperação de senha
+export async function sendPasswordResetEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+
+  if (error) {
+    console.error('Error sending password reset email:', error);
+    throw error;
+  }
+}
+
+export async function updatePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword
+  });
+
+  if (error) {
+    console.error('Error updating password:', error);
+    throw error;
+  }
+}
+
+export async function verifyPasswordResetToken(): Promise<boolean> {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error || !session) {
+      return false;
+    }
+
+    // Verificar se é uma sessão de recuperação de senha
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+    
+    return type === 'recovery';
+  } catch (error) {
+    console.error('Error verifying password reset token:', error);
     return false;
   }
 }

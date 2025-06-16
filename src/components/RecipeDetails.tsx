@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, Clock, ChefHat, Heart, Edit, Trash2 } from 'lucide-react';
+import { Star, Clock, ChefHat, Heart, Edit, Trash2, User, Calendar } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useRecipesStore } from '../store/recipes';
 import { EditRecipeForm } from './recipe/EditRecipeForm';
@@ -77,6 +77,16 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
   // Função para formatar valores nutricionais com decimais
   const formatNutritionValue = (value: number) => {
     return Number(value).toFixed(1);
+  };
+
+  // Função para formatar data
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   return (
@@ -171,6 +181,31 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     <div>{t.profile.nutritionGoalsnames.fat}: {formatNutritionValue(recipe.nutritionFacts.fat)} g</div>
                     <div>{t.profile.nutritionGoalsnames.fiber}: {formatNutritionValue(recipe.nutritionFacts.fiber)} g</div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Informações do Autor */}
+            <div className="mt-6 mb-6 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+              <h3 className="font-semibold mb-3 text-gray-900 dark:text-white flex items-center gap-2">
+                <User className="w-5 h-5 text-green-600 dark:text-green-400" />
+                Informações do Autor
+              </h3>
+              <div className="grid md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600 dark:text-gray-400">Nome:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{recipe.authorName || 'Usuário'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {recipe.authorType === 'Nutritionist' ? 'Nutricionista' : 'Cliente'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-600 dark:text-gray-400">Postado em:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{formatDate(recipe.createdAt)}</span>
                 </div>
               </div>
             </div>
