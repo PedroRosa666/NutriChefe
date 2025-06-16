@@ -166,10 +166,10 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">{t.recipe.nutritionFacts}</h3>
                   <div className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <div>{t.profile.nutritionGoalsnames.calories}: {formatNutritionValue(recipe.nutritionFacts.calories)} kcal</div>
-                    <div>{t.profile.nutritionGoalsnames.protein}: {formatNutritionValue(recipe.nutritionFacts.protein)}g</div>
-                    <div>{t.profile.nutritionGoalsnames.carbs}: {formatNutritionValue(recipe.nutritionFacts.carbs)}g</div>
-                    <div>{t.profile.nutritionGoalsnames.fat}: {formatNutritionValue(recipe.nutritionFacts.fat)}g</div>
-                    <div>{t.profile.nutritionGoalsnames.fiber}: {formatNutritionValue(recipe.nutritionFacts.fiber)}g</div>
+                    <div>{t.profile.nutritionGoalsnames.protein}: {formatNutritionValue(recipe.nutritionFacts.protein)} g</div>
+                    <div>{t.profile.nutritionGoalsnames.carbs}: {formatNutritionValue(recipe.nutritionFacts.carbs)} g</div>
+                    <div>{t.profile.nutritionGoalsnames.fat}: {formatNutritionValue(recipe.nutritionFacts.fat)} g</div>
+                    <div>{t.profile.nutritionGoalsnames.fiber}: {formatNutritionValue(recipe.nutritionFacts.fiber)} g</div>
                   </div>
                 </div>
               </div>
