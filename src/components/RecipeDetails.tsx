@@ -74,6 +74,11 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
     }
   };
 
+  // Função para formatar valores nutricionais com decimais
+  const formatNutritionValue = (value: number) => {
+    return Number(value).toFixed(1);
+  };
+
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto z-50">
@@ -156,15 +161,15 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
                 <p className="text-gray-600 mb-4 dark:text-gray-300">{recipe.description}</p>
 
-                {/* Seção de fatos nutricionais */}
+                {/* Seção de fatos nutricionais com valores decimais formatados */}
                 <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-4">
                   <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">{t.recipe.nutritionFacts}</h3>
                   <div className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
-                    <div>{t.profile.nutritionGoalsnames.calories}: {recipe.nutritionFacts.calories}g</div>
-                    <div>{t.profile.nutritionGoalsnames.protein}: {recipe.nutritionFacts.protein}g</div>
-                    <div>{t.profile.nutritionGoalsnames.carbs}: {recipe.nutritionFacts.carbs}g</div>
-                    <div>{t.profile.nutritionGoalsnames.fat}: {recipe.nutritionFacts.fat}g</div>
-                    <div>{t.profile.nutritionGoalsnames.fiber}: {recipe.nutritionFacts.fiber}g</div>
+                    <div>{t.profile.nutritionGoalsnames.calories}: {formatNutritionValue(recipe.nutritionFacts.calories)} kcal</div>
+                    <div>{t.profile.nutritionGoalsnames.protein}: {formatNutritionValue(recipe.nutritionFacts.protein)}g</div>
+                    <div>{t.profile.nutritionGoalsnames.carbs}: {formatNutritionValue(recipe.nutritionFacts.carbs)}g</div>
+                    <div>{t.profile.nutritionGoalsnames.fat}: {formatNutritionValue(recipe.nutritionFacts.fat)}g</div>
+                    <div>{t.profile.nutritionGoalsnames.fiber}: {formatNutritionValue(recipe.nutritionFacts.fiber)}g</div>
                   </div>
                 </div>
               </div>

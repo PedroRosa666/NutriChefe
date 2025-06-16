@@ -59,6 +59,18 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
     }));
   };
 
+  // Função para lidar com valores nutricionais decimais
+  const handleNutritionChange = (key: string, value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    setEditedRecipe(prev => ({
+      ...prev,
+      nutritionFacts: {
+        ...prev.nutritionFacts,
+        [key]: numericValue
+      }
+    }));
+  };
+
   // Traduções
   const editRecipe = translations.recipe.edit || 'Editar Receita';
   const title = translations.recipe.recipeTitle;
@@ -261,16 +273,12 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                     </label>
                     <input
                       type="number"
-                      value={value}
-                      onChange={(e) => setEditedRecipe(prev => ({
-                        ...prev,
-                        nutritionFacts: {
-                          ...prev.nutritionFacts,
-                          [key]: Number(e.target.value)
-                        }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
+                      step="0.01"
                       min="0"
+                      value={value}
+                      onChange={(e) => handleNutritionChange(key, e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
+                      placeholder="0.00"
                       required
                     />
                   </div>

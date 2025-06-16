@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Shield } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/auth';
 import { cn } from '../../lib/utils';
@@ -13,23 +13,55 @@ export function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
+  const [validToken, setValidToken] = useState(false);
   const { signIn } = useAuthStore();
 
   useEffect(() => {
-    // Verificar se há um token de recuperação na URL
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const type = hashParams.get('type');
+    // Verificar se há um token de recuperação válido na URL
+    const checkToken = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const type = hashParams.get('type');
 
-    if (!accessToken || type !== 'recovery') {
-      setStatus('error');
-      setError('Link de recuperação inválido ou expirado.');
-    }
+      if (!accessToken || type !== 'recovery') {
+        setStatus('error');
+        setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
+        return;
+      }
+
+      try {
+        // Verificar se o token é válido
+        const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+        
+        if (error || !user) {
+          setStatus('error');
+          setError('Link de recuperação expirado. Solicite um novo link.');
+          return;
+        }
+
+        setValidToken(true);
+      } catch (err) {
+        console.error('Token validation error:', err);
+        setStatus('error');
+        setError('Erro ao validar link de recuperação. Tente novamente.');
+      }
+    };
+
+    checkToken();
   }, []);
 
   const validatePassword = (pwd: string) => {
     if (pwd.length < 6) {
       return 'A senha deve ter pelo menos 6 caracteres';
+    }
+    if (!/(?=.*[a-z])/.test(pwd)) {
+      return 'A senha deve conter pelo menos uma letra minúscula';
+    }
+    if (!/(?=.*[A-Z])/.test(pwd)) {
+      return 'A senha deve conter pelo menos uma letra maiúscula';
+    }
+    if (!/(?=.*\d)/.test(pwd)) {
+      return 'A senha deve conter pelo menos um número';
     }
     return null;
   };
@@ -54,19 +86,28 @@ export function ResetPasswordPage() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      // Atualizar a senha
+      const { error: updateError } = await supabase.auth.updateUser({
         password: password
       });
 
-      if (error) {
-        if (error.message.includes('session_not_found')) {
+      if (updateError) {
+        console.error('Password update error:', updateError);
+        
+        if (updateError.message.includes('session_not_found')) {
           setError('Sessão expirada. Solicite um novo link de recuperação.');
+        } else if (updateError.message.includes('same_password')) {
+          setError('A nova senha deve ser diferente da senha atual.');
         } else {
           setError('Erro ao redefinir senha. Tente novamente.');
         }
         setStatus('error');
       } else {
         setStatus('success');
+        
+        // Fazer logout para limpar a sessão de recuperação
+        await supabase.auth.signOut();
+        
         // Redirecionar para login após 3 segundos
         setTimeout(() => {
           window.location.href = '/';
@@ -112,7 +153,7 @@ export function ResetPasswordPage() {
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Sua senha foi alterada com sucesso. Você será redirecionado para a página de login em alguns segundos.
           </p>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
             <motion.div
               className="bg-green-600 h-2 rounded-full"
               initial={{ width: 0 }}
@@ -120,12 +161,18 @@ export function ResetPasswordPage() {
               transition={{ duration: 3 }}
             />
           </div>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+          >
+            Ir para login agora
+          </button>
         </motion.div>
       </div>
     );
   }
 
-  if (status === 'error' && error.includes('inválido')) {
+  if (status === 'error' || !validToken) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
         <motion.div
@@ -137,10 +184,10 @@ export function ResetPasswordPage() {
             <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Link inválido
+            Link inválido ou expirado
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Este link de recuperação é inválido ou expirou. Solicite um novo link de recuperação.
+            {error || 'Este link de recuperação é inválido ou expirou. Solicite um novo link de recuperação.'}
           </p>
           <button
             onClick={() => window.location.href = '/'}
@@ -169,8 +216,26 @@ export function ResetPasswordPage() {
               Nova senha
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Digite sua nova senha
+              Digite sua nova senha segura
             </p>
+          </div>
+        </div>
+
+        {/* Dicas de segurança */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+          <div className="flex items-start gap-2">
+            <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                Dicas para uma senha segura:
+              </h3>
+              <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                <li>• Pelo menos 6 caracteres</li>
+                <li>• Combine letras maiúsculas e minúsculas</li>
+                <li>• Inclua números e símbolos</li>
+                <li>• Evite informações pessoais</li>
+              </ul>
+            </div>
           </div>
         </div>
 
@@ -256,10 +321,10 @@ export function ResetPasswordPage() {
 
           <button
             type="submit"
-            disabled={loading || password !== confirmPassword || passwordStrength < 2}
+            disabled={loading || password !== confirmPassword || passwordStrength < 3}
             className={cn(
               "w-full py-2.5 rounded-lg text-white font-medium transition-colors",
-              loading || password !== confirmPassword || passwordStrength < 2
+              loading || password !== confirmPassword || passwordStrength < 3
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-green-600 hover:bg-green-700"
             )}

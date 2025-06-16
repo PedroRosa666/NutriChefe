@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { X, Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
@@ -27,17 +27,34 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
     setError('');
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      // Verificar se o email existe no banco de dados
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .single();
+
+      if (profileError || !profiles) {
+        setError('Email não encontrado. Verifique se o email está correto ou crie uma conta.');
+        setStep('error');
+        setLoading(false);
+        return;
+      }
+
+      // Enviar email de recuperação
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
-      if (error) {
-        if (error.message.includes('User not found')) {
-          setError('Email não encontrado. Verifique se o email está correto.');
-        } else if (error.message.includes('Email rate limit exceeded')) {
-          setError('Muitas tentativas. Tente novamente em alguns minutos.');
+      if (resetError) {
+        console.error('Reset password error:', resetError);
+        
+        if (resetError.message.includes('Email rate limit exceeded')) {
+          setError('Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.');
+        } else if (resetError.message.includes('For security purposes')) {
+          setError('Por motivos de segurança, aguarde alguns minutos antes de solicitar outro email.');
         } else {
-          setError('Erro ao enviar email de recuperação. Tente novamente.');
+          setError('Erro ao enviar email de recuperação. Tente novamente em alguns minutos.');
         }
         setStep('error');
       } else {
@@ -121,7 +138,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
                     : "bg-green-600 hover:bg-green-700"
                 )}
               >
-                {loading ? 'Enviando...' : 'Enviar link de recuperação'}
+                {loading ? 'Verificando...' : 'Enviar link de recuperação'}
               </button>
             </form>
           </div>
@@ -139,6 +156,12 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
               Enviamos um link de recuperação para <strong>{email}</strong>. 
               Verifique sua caixa de entrada e spam.
             </p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Importante:</strong> O link expira em 1 hora. Se não receber o email em alguns minutos, 
+                verifique sua pasta de spam ou tente novamente.
+              </p>
+            </div>
             <button
               onClick={handleClose}
               className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
@@ -151,7 +174,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
         {step === 'error' && (
           <div className="text-center">
             <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
-              <X className="w-8 h-8 text-red-600 dark:text-red-400" />
+              <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
               Erro ao enviar

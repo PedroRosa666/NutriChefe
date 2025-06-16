@@ -70,7 +70,13 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
     category: dbRecipe.category,
     ingredients: dbRecipe.ingredients,
     instructions: dbRecipe.instructions,
-    nutritionFacts: dbRecipe.nutrition_facts,
+    nutritionFacts: {
+      calories: Number(dbRecipe.nutrition_facts.calories),
+      protein: Number(dbRecipe.nutrition_facts.protein),
+      carbs: Number(dbRecipe.nutrition_facts.carbs),
+      fat: Number(dbRecipe.nutrition_facts.fat),
+      fiber: Number(dbRecipe.nutrition_facts.fiber),
+    },
     reviews: reviews.map(review => ({
       id: parseInt(review.id.replace(/-/g, '').substring(0, 8), 16),
       userId: review.id,
@@ -159,7 +165,13 @@ export async function createRecipe(recipe: Omit<Recipe, 'id' | 'rating' | 'revie
       category: recipe.category,
       ingredients: recipe.ingredients,
       instructions: recipe.instructions,
-      nutrition_facts: recipe.nutritionFacts,
+      nutrition_facts: {
+        calories: Number(recipe.nutritionFacts.calories),
+        protein: Number(recipe.nutritionFacts.protein),
+        carbs: Number(recipe.nutritionFacts.carbs),
+        fat: Number(recipe.nutritionFacts.fat),
+        fiber: Number(recipe.nutritionFacts.fiber),
+      },
       author_id: recipe.authorId
     }])
     .select(`
@@ -201,7 +213,13 @@ export async function updateRecipe(recipeId: number, updates: Partial<Recipe>) {
       category: updates.category,
       ingredients: updates.ingredients,
       instructions: updates.instructions,
-      nutrition_facts: updates.nutritionFacts
+      nutrition_facts: updates.nutritionFacts ? {
+        calories: Number(updates.nutritionFacts.calories),
+        protein: Number(updates.nutritionFacts.protein),
+        carbs: Number(updates.nutritionFacts.carbs),
+        fat: Number(updates.nutritionFacts.fat),
+        fiber: Number(updates.nutritionFacts.fiber),
+      } : undefined
     })
     .eq('id', uuid)
     .select(`
@@ -390,4 +408,25 @@ export async function getFavorites(userId: string) {
   
   console.log('Converted favorite IDs:', favoriteIds);
   return favoriteIds;
+}
+
+// Função para verificar se email existe (para recuperação de senha)
+export async function checkEmailExists(email: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('email', email)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error checking email:', error);
+      return false;
+    }
+
+    return !!data;
+  } catch (error) {
+    console.error('Error checking email existence:', error);
+    return false;
+  }
 }

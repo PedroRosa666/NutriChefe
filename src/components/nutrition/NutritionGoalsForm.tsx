@@ -17,6 +17,14 @@ export function NutritionGoalsForm() {
     setGoals(formData);
   };
 
+  // Função para lidar com valores decimais
+  const handleInputChange = (key: string, value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    setFormData(prev => ({
+      ...prev,
+      [key]: numericValue
+    }));
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -30,13 +38,12 @@ export function NutritionGoalsForm() {
 
           <input
             type="number"
-            value={value}
-            onChange={(e) => setFormData(prev => ({
-              ...prev,
-              [key]: Number(e.target.value)
-            }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
+            step="0.1"
             min="0"
+            value={value}
+            onChange={(e) => handleInputChange(key, e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
+            placeholder="0.0"
             required
           />
         </div>

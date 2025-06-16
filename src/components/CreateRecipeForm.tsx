@@ -113,6 +113,18 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
     }));
   };
 
+  // Função para lidar com valores nutricionais decimais
+  const handleNutritionChange = (key: string, value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    setRecipe((prev) => ({
+      ...prev,
+      nutritionFacts: {
+        ...prev.nutritionFacts,
+        [key]: numericValue,
+      },
+    }));
+  };
+
   // Mapeia as categorias traduzidas para o formato { valor: 'original', label: 'traduzido' }
   const translatedCategories = (Object.keys(translations.categories) as CategoryKey[])
     .filter(key => key !== 'all') // Remove 'all' das opções
@@ -313,26 +325,12 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
                     </label>
                     <input
                       type="number"
-                      value={value}
-                      onChange={(e) =>
-                        setRecipe((prev) => {
-                          const updatedNutritionFacts = {
-                            calories: prev.nutritionFacts?.calories || 0,
-                            protein: prev.nutritionFacts?.protein || 0,
-                            carbs: prev.nutritionFacts?.carbs || 0,
-                            fat: prev.nutritionFacts?.fat || 0,
-                            fiber: prev.nutritionFacts?.fiber || 0,
-                            [key]: Number(e.target.value) || 0,
-                          };
-
-                          return {
-                            ...prev,
-                            nutritionFacts: updatedNutritionFacts,
-                          };
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
+                      step="0.01"
                       min="0"
+                      value={value}
+                      onChange={(e) => handleNutritionChange(key, e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
+                      placeholder="0.00"
                       required
                     />
                   </div>

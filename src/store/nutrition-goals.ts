@@ -15,11 +15,11 @@ interface NutritionGoalsState {
 }
 
 const DEFAULT_GOALS: NutritionGoals = {
-  calories: 2000,
-  protein: 50,
-  carbs: 250,
-  fat: 70,
-  fiber: 25
+  calories: 2000.0,
+  protein: 50.0,
+  carbs: 250.0,
+  fat: 70.0,
+  fiber: 25.0
 };
 
 export const useNutritionGoalsStore = create<NutritionGoalsState>()(
@@ -28,7 +28,12 @@ export const useNutritionGoalsStore = create<NutritionGoalsState>()(
       goals: DEFAULT_GOALS,
       setGoals: (newGoals) =>
         set((state) => ({
-          goals: { ...state.goals, ...newGoals }
+          goals: { 
+            ...state.goals, 
+            ...Object.fromEntries(
+              Object.entries(newGoals).map(([key, value]) => [key, Number(value)])
+            )
+          }
         }))
     }),
     {
