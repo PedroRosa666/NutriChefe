@@ -102,11 +102,40 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
             </button>
 
             <div className="grid md:grid-cols-2 gap-6">
-              <img
-                src={recipe.image}
-                alt={recipe.title}
-                className="w-full h-64 object-cover rounded-lg"
-              />
+              <div className="space-y-4">
+                <img
+                  src={recipe.image}
+                  alt={recipe.title}
+                  className="w-full h-64 object-cover rounded-lg"
+                />
+
+                {/* Informações do Autor - Posicionadas logo após a imagem */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <h4 className="font-medium mb-2 text-gray-900 dark:text-white flex items-center gap-2 text-sm">
+                    <User className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    Informações do Autor
+                  </h4>
+                  <div className="grid grid-cols-1 gap-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Nome:</span>
+                      <span className="font-medium text-gray-900 dark:text-white">{recipe.authorName || 'Usuário'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {recipe.authorType === 'Nutritionist' ? 'Nutricionista' : 'Cliente'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        Postado em:
+                      </span>
+                      <span className="font-medium text-gray-900 dark:text-white">{formatDate(recipe.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <div>
                 <div className="flex justify-between items-start">
@@ -181,31 +210,6 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     <div>{t.profile.nutritionGoalsnames.fat}: {formatNutritionValue(recipe.nutritionFacts.fat)} g</div>
                     <div>{t.profile.nutritionGoalsnames.fiber}: {formatNutritionValue(recipe.nutritionFacts.fiber)} g</div>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Informações do Autor */}
-            <div className="mt-6 mb-6 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-              <h3 className="font-semibold mb-3 text-gray-900 dark:text-white flex items-center gap-2">
-                <User className="w-5 h-5 text-green-600 dark:text-green-400" />
-                Informações do Autor
-              </h3>
-              <div className="grid md:grid-cols-3 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-600 dark:text-gray-400">Nome:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{recipe.authorName || 'Usuário'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    {recipe.authorType === 'Nutritionist' ? 'Nutricionista' : 'Cliente'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-600 dark:text-gray-400">Postado em:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{formatDate(recipe.createdAt)}</span>
                 </div>
               </div>
             </div>
