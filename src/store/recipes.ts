@@ -12,6 +12,8 @@ interface RecipesState {
   addToFavorites: (recipeId: number) => Promise<void>;
   removeFromFavorites: (recipeId: number) => Promise<void>;
   addReview: (recipeId: number, review: { userId: string; userName: string; rating: number; comment: string; date: string; }) => Promise<void>;
+  updateReview: (reviewId: string, updates: { rating: number; comment: string; }) => Promise<void>;
+  deleteReview: (reviewId: string) => Promise<void>;
   createRecipe: (recipe: Omit<Recipe, 'id' | 'rating' | 'reviews' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateRecipe: (recipe: Recipe) => Promise<void>;
   deleteRecipe: (recipeId: number) => Promise<void>;
@@ -130,6 +132,38 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
     } catch (error) {
       console.error('Failed to add review:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro ao adicionar avaliação';
+      useToastStore.getState().showToast(errorMessage, 'error');
+      throw error;
+    }
+  },
+
+  updateReview: async (reviewId: string, updates) => {
+    try {
+      console.log('Updating review:', { reviewId, updates });
+      await db.updateReview(reviewId, updates);
+      
+      // Atualizar receitas para obter avaliações atualizadas
+      await get().fetchRecipes();
+      useToastStore.getState().showToast('Avaliação atualizada com sucesso!', 'success');
+    } catch (error) {
+      console.error('Failed to update review:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao atualizar avaliação';
+      useToastStore.getState().showToast(errorMessage, 'error');
+      throw error;
+    }
+  },
+
+  deleteReview: async (reviewId: string) => {
+    try {
+      console.log('Deleting review:', reviewId);
+      await db.deleteReview(reviewId);
+      
+      // Atualizar receitas para obter avaliações atualizadas
+      await get().fetchRecipes();
+      useToastStore.getState().showToast('Avaliação excluída com sucesso!', 'success');
+    } catch (error) {
+      console.error('Failed to delete review:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao excluir avaliação';
       useToastStore.getState().showToast(errorMessage, 'error');
       throw error;
     }

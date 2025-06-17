@@ -33,6 +33,7 @@ export interface DatabaseRecipe {
     rating: number;
     comment: string;
     created_at: string;
+    user_id: string;
     profiles: {
       full_name: string;
     };
@@ -80,7 +81,7 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
     },
     reviews: reviews.map(review => ({
       id: parseInt(review.id.replace(/-/g, '').substring(0, 8), 16),
-      userId: review.id,
+      userId: review.user_id,
       userName: review.profiles.full_name,
       rating: review.rating,
       comment: review.comment || '',
@@ -185,6 +186,7 @@ export async function createRecipe(recipe: Omit<Recipe, 'id' | 'rating' | 'revie
         rating,
         comment,
         created_at,
+        user_id,
         profiles!reviews_user_id_fkey(full_name)
       )
     `)
@@ -233,6 +235,7 @@ export async function updateRecipe(recipeId: number, updates: Partial<Recipe>) {
         rating,
         comment,
         created_at,
+        user_id,
         profiles!reviews_user_id_fkey(full_name)
       )
     `)
@@ -272,6 +275,7 @@ export async function getRecipes() {
         rating,
         comment,
         created_at,
+        user_id,
         profiles!reviews_user_id_fkey(full_name)
       )
     `)
@@ -309,6 +313,7 @@ export async function getRecipeById(recipeId: number) {
         rating,
         comment,
         created_at,
+        user_id,
         profiles!reviews_user_id_fkey(full_name)
       )
     `)
@@ -346,6 +351,42 @@ export async function addReview(recipeId: number, review: {
 
   if (error) throw error;
   return data;
+}
+
+export async function updateReview(reviewId: string, updates: {
+  rating: number;
+  comment: string;
+}) {
+  const { data, error } = await supabase
+    .from('reviews')
+    .update({
+      rating: updates.rating,
+      comment: updates.comment
+    })
+    .eq('id', reviewId)
+    .select(`
+      *,
+      profiles!reviews_user_id_fkey(full_name)
+    `)
+    .single();
+
+  if (error) {
+    console.error('Error updating review:', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function deleteReview(reviewId: string) {
+  const { error } = await supabase
+    .from('reviews')
+    .delete()
+    .eq('id', reviewId);
+
+  if (error) {
+    console.error('Error deleting review:', error);
+    throw error;
+  }
 }
 
 // Funções de favoritos

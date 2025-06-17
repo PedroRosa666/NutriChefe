@@ -130,18 +130,14 @@ export function AdvancedFilters() {
             transition={{ duration: 0.2 }}
             className={cn(
               "absolute top-full mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 z-50 max-h-[80vh] overflow-y-auto",
-              // Posicionamento responsivo - sempre à esquerda no mobile
-              "right-0 sm:right-0",
+              // Posicionamento - sempre à direita no desktop, sempre à esquerda no mobile
+              "right-0",
+              // No desktop, usar a posição calculada
               dropdownPosition === 'left' && "sm:right-0 sm:left-auto",
               dropdownPosition === 'right' && "sm:left-0 sm:right-auto",
               // Largura responsiva
-              "w-80 sm:w-80"
+              "w-72 sm:w-80"
             )}
-            style={{
-              // Garantir que não vaze da tela no mobile
-              maxWidth: 'calc(100vw - 2rem)',
-              minWidth: '280px'
-            }}
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
