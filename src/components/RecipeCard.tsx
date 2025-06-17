@@ -70,6 +70,14 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
     }
   };
 
+  // Função para exibir rating ou "Sem avaliações"
+  const displayRating = () => {
+    if (recipe.rating === 0 || !recipe.rating) {
+      return 'Sem avaliações';
+    }
+    return recipe.rating.toFixed(1);
+  };
+
   return (
     <div
       onClick={onClick}
@@ -129,7 +137,7 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
           </div>
           <div className="flex items-center gap-1">
             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 flex-shrink-0" />
-            <span className="whitespace-nowrap">{recipe.rating.toFixed(1)}</span>
+            <span className="whitespace-nowrap text-xs">{displayRating()}</span>
           </div>
         </div>
       </div>

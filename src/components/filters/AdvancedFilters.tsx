@@ -129,21 +129,18 @@ export function AdvancedFilters() {
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              "absolute top-full mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 z-50 max-h-[80vh] overflow-y-auto",
-              // Posicionamento responsivo
-              dropdownPosition === 'right' ? "left-0" : "right-0",
-              // Em mobile, sempre centralizar e ajustar largura
-              "sm:w-80 w-[calc(100vw-2rem)] max-w-sm"
+              "absolute top-full mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 z-50 max-h-[80vh] overflow-y-auto",
+              // Posicionamento responsivo - sempre à esquerda no mobile
+              "right-0 sm:right-0",
+              dropdownPosition === 'left' && "sm:right-0 sm:left-auto",
+              dropdownPosition === 'right' && "sm:left-0 sm:right-auto",
+              // Largura responsiva
+              "w-80 sm:w-80"
             )}
             style={{
-              // Em mobile, centralizar o dropdown
-              ...(window.innerWidth < 640 && {
-                left: '50%',
-                right: 'auto',
-                transform: 'translateX(-50%)',
-                width: 'calc(100vw - 2rem)',
-                maxWidth: '20rem'
-              })
+              // Garantir que não vaze da tela no mobile
+              maxWidth: 'calc(100vw - 2rem)',
+              minWidth: '280px'
             }}
           >
             <div className="flex items-center justify-between mb-4">

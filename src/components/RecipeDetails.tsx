@@ -89,6 +89,14 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
     });
   };
 
+  // Função para exibir rating ou "Sem avaliações"
+  const displayRating = () => {
+    if (recipe.rating === 0 || !recipe.rating) {
+      return 'Sem avaliações';
+    }
+    return `${recipe.rating.toFixed(1)} (${recipe.reviews.length} ${recipe.reviews.length === 1 ? 'avaliação' : 'avaliações'})`;
+  };
+
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto z-50">
@@ -194,7 +202,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
                   <div className="flex items-center gap-1">
                     <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    <span>{recipe.rating.toFixed(1)} ({recipe.reviews.length} {recipe.reviews.length === 1 ? 'avaliação' : 'avaliações'})</span>
+                    <span>{displayRating()}</span>
                   </div>
                 </div>
 
