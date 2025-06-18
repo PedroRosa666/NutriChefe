@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Mail, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { checkEmailExists, sendPasswordResetEmail } from '../../services/database';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
@@ -21,36 +21,57 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
 
   if (!isOpen) return null;
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const trimmedEmail = email.toLowerCase().trim();
+    
+    // Validações básicas
+    if (!trimmedEmail) {
+      setError('Por favor, digite seu email.');
+      return;
+    }
+
+    if (!validateEmail(trimmedEmail)) {
+      setError('Por favor, digite um email válido.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
+      console.log('Starting password reset process for:', trimmedEmail);
+      
       // Verificar se o email existe no banco de dados
-      const emailExists = await checkEmailExists(email);
+      const emailExists = await checkEmailExists(trimmedEmail);
 
       if (!emailExists) {
         setError('Email não encontrado. Verifique se o email está correto ou crie uma conta.');
         setStep('error');
-        setLoading(false);
         return;
       }
 
+      console.log('Email exists, sending reset email...');
+      
       // Enviar email de recuperação
-      await sendPasswordResetEmail(email);
+      await sendPasswordResetEmail(trimmedEmail);
+      
+      console.log('Reset email sent successfully');
       setStep('sent');
+      
     } catch (err: any) {
       console.error('Password reset error:', err);
       
       let friendlyMessage = 'Erro ao enviar email de recuperação. Tente novamente em alguns minutos.';
       
-      if (err.message?.includes('Email rate limit exceeded')) {
-        friendlyMessage = 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.';
-      } else if (err.message?.includes('For security purposes')) {
-        friendlyMessage = 'Por motivos de segurança, aguarde alguns minutos antes de solicitar outro email.';
-      } else if (err.message?.includes('Invalid email')) {
-        friendlyMessage = 'Email inválido. Verifique o formato do email.';
+      if (err.message) {
+        friendlyMessage = err.message;
       }
       
       setError(friendlyMessage);
@@ -64,12 +85,14 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
     setEmail('');
     setStep('email');
     setError('');
+    setLoading(false);
     onClose();
   };
 
   const handleRetry = () => {
     setStep('email');
     setError('');
+    setLoading(false);
   };
 
   return (
@@ -83,6 +106,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
         <button
           onClick={handleClose}
           className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          disabled={loading}
         >
           <X className="w-6 h-6" />
         </button>
@@ -116,22 +140,37 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
                   placeholder="seu@email.com"
                   required
+                  disabled={loading}
+                  autoComplete="email"
                 />
               </div>
 
+              {error && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !email.trim()}
                 className={cn(
-                  "w-full py-2.5 rounded-lg text-white font-medium transition-colors",
-                  loading
+                  "w-full py-2.5 rounded-lg text-white font-medium transition-colors flex items-center justify-center gap-2",
+                  loading || !email.trim()
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-green-600 hover:bg-green-700"
                 )}
               >
+                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 {loading ? 'Verificando...' : 'Enviar link de recuperação'}
               </button>
             </form>
+
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-xs text-blue-800 dark:text-blue-200">
+                <strong>Dica:</strong> Verifique sua pasta de spam caso não receba o email em alguns minutos.
+              </p>
+            </div>
           </div>
         )}
 
@@ -145,7 +184,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               Enviamos um link de recuperação para <strong>{email}</strong>. 
-              Verifique sua caixa de entrada e spam.
+              Verifique sua caixa de entrada e pasta de spam.
             </p>
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
               <p className="text-sm text-blue-800 dark:text-blue-200">
@@ -153,12 +192,20 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
                 verifique sua pasta de spam ou tente novamente.
               </p>
             </div>
-            <button
-              onClick={handleClose}
-              className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-            >
-              Fechar
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={handleClose}
+                className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+              >
+                Fechar
+              </button>
+              <button
+                onClick={handleRetry}
+                className="w-full py-2.5 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors font-medium"
+              >
+                Enviar novamente
+              </button>
+            </div>
           </div>
         )}
 

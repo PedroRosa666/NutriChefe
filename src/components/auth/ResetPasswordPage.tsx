@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Shield } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Shield, Loader2 } from 'lucide-react';
+import { validateRecoveryToken, updatePassword } from '../../services/database';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 
@@ -10,6 +11,7 @@ export function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
   const [validToken, setValidToken] = useState(false);
@@ -17,31 +19,25 @@ export function ResetPasswordPage() {
   useEffect(() => {
     // Verificar se há um token de recuperação válido na URL
     const checkToken = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const type = hashParams.get('type');
-
-      if (!accessToken || type !== 'recovery') {
-        setStatus('error');
-        setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
-        return;
-      }
-
       try {
-        // Verificar se o token é válido
-        const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+        console.log('Checking recovery token...');
+        const result = await validateRecoveryToken();
         
-        if (error || !user) {
+        if (!result.valid) {
           setStatus('error');
-          setError('Link de recuperação expirado. Solicite um novo link.');
-          return;
+          setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
+          setValidToken(false);
+        } else {
+          console.log('Valid recovery token found');
+          setValidToken(true);
         }
-
-        setValidToken(true);
       } catch (err) {
         console.error('Token validation error:', err);
         setStatus('error');
         setError('Erro ao validar link de recuperação. Tente novamente.');
+        setValidToken(false);
+      } finally {
+        setInitialLoading(false);
       }
     };
 
@@ -49,19 +45,22 @@ export function ResetPasswordPage() {
   }, []);
 
   const validatePassword = (pwd: string) => {
+    const errors = [];
+    
     if (pwd.length < 6) {
-      return 'A senha deve ter pelo menos 6 caracteres';
+      errors.push('A senha deve ter pelo menos 6 caracteres');
     }
     if (!/(?=.*[a-z])/.test(pwd)) {
-      return 'A senha deve conter pelo menos uma letra minúscula';
+      errors.push('A senha deve conter pelo menos uma letra minúscula');
     }
     if (!/(?=.*[A-Z])/.test(pwd)) {
-      return 'A senha deve conter pelo menos uma letra maiúscula';
+      errors.push('A senha deve conter pelo menos uma letra maiúscula');
     }
     if (!/(?=.*\d)/.test(pwd)) {
-      return 'A senha deve conter pelo menos um número';
+      errors.push('A senha deve conter pelo menos um número');
     }
-    return null;
+    
+    return errors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,9 +69,9 @@ export function ResetPasswordPage() {
     setError('');
 
     // Validações
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      setError(passwordError);
+    const passwordErrors = validatePassword(password);
+    if (passwordErrors.length > 0) {
+      setError(passwordErrors[0]);
       setLoading(false);
       return;
     }
@@ -84,36 +83,26 @@ export function ResetPasswordPage() {
     }
 
     try {
+      console.log('Updating password...');
+      
       // Atualizar a senha
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password
-      });
-
-      if (updateError) {
-        console.error('Password update error:', updateError);
-        
-        if (updateError.message.includes('session_not_found')) {
-          setError('Sessão expirada. Solicite um novo link de recuperação.');
-        } else if (updateError.message.includes('same_password')) {
-          setError('A nova senha deve ser diferente da senha atual.');
-        } else {
-          setError('Erro ao redefinir senha. Tente novamente.');
-        }
-        setStatus('error');
-      } else {
-        setStatus('success');
-        
-        // Fazer logout para limpar a sessão de recuperação
+      await updatePassword(password);
+      
+      console.log('Password updated successfully');
+      setStatus('success');
+      
+      // Fazer logout para limpar a sessão de recuperação após um delay
+      setTimeout(async () => {
         await supabase.auth.signOut();
-        
         // Redirecionar para login após 3 segundos
         setTimeout(() => {
           window.location.href = '/';
         }, 3000);
-      }
-    } catch (err) {
+      }, 1000);
+      
+    } catch (err: any) {
       console.error('Password reset error:', err);
-      setError('Erro inesperado. Tente novamente.');
+      setError(err.message || 'Erro inesperado. Tente novamente.');
       setStatus('error');
     } finally {
       setLoading(false);
@@ -133,6 +122,27 @@ export function ResetPasswordPage() {
   const passwordStrength = getPasswordStrength(password);
   const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500'];
   const strengthLabels = ['Muito fraca', 'Fraca', 'Regular', 'Boa', 'Forte'];
+
+  // Loading inicial
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-8 text-center"
+        >
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-green-600" />
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            Verificando link de recuperação...
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Aguarde enquanto validamos seu link de recuperação.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (status === 'success') {
     return (
@@ -251,11 +261,13 @@ export function ResetPasswordPage() {
                 className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Digite sua nova senha"
                 required
+                disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                disabled={loading}
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -294,11 +306,13 @@ export function ResetPasswordPage() {
                 className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Confirme sua nova senha"
                 required
+                disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                disabled={loading}
               >
                 {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -321,12 +335,13 @@ export function ResetPasswordPage() {
             type="submit"
             disabled={loading || password !== confirmPassword || passwordStrength < 3}
             className={cn(
-              "w-full py-2.5 rounded-lg text-white font-medium transition-colors",
+              "w-full py-2.5 rounded-lg text-white font-medium transition-colors flex items-center justify-center gap-2",
               loading || password !== confirmPassword || passwordStrength < 3
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-green-600 hover:bg-green-700"
             )}
           >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Redefinindo...' : 'Redefinir senha'}
           </button>
         </form>
@@ -335,6 +350,7 @@ export function ResetPasswordPage() {
           <button
             onClick={() => window.location.href = '/'}
             className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+            disabled={loading}
           >
             Voltar ao login
           </button>
