@@ -211,7 +211,7 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 
 ## 👨‍💻 Autor
 
-**Desenvolvido por [Seu Nome]**
+**Desenvolvido por [Pedro Henrique Rosa]**
 
 - 📧 Email: seu.email@exemplo.com
 - 💼 LinkedIn: [linkedin.com/in/seu-perfil](https://linkedin.com/in/seu-perfil)
