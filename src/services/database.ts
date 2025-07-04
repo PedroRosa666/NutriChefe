@@ -80,7 +80,7 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
       fiber: Number(dbRecipe.nutrition_facts.fiber),
     },
     reviews: reviews.map(review => ({
-      id: parseInt(review.id.replace(/-/g, '').substring(0, 8), 16),
+      id: review.id, // Manter UUID original para operações de edição/exclusão
       userId: review.user_id,
       userName: review.profiles.full_name,
       rating: review.rating,
@@ -335,6 +335,8 @@ export async function addReview(recipeId: number, review: {
     throw new Error('Receita não encontrada');
   }
 
+  console.log('Adding review to recipe:', { recipeId, uuid, review });
+
   const { data, error } = await supabase
     .from('reviews')
     .insert([{
@@ -349,7 +351,12 @@ export async function addReview(recipeId: number, review: {
     `)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error adding review:', error);
+    throw error;
+  }
+  
+  console.log('Review added successfully:', data);
   return data;
 }
 
@@ -357,6 +364,8 @@ export async function updateReview(reviewId: string, updates: {
   rating: number;
   comment: string;
 }) {
+  console.log('Updating review:', { reviewId, updates });
+
   const { data, error } = await supabase
     .from('reviews')
     .update({
@@ -374,10 +383,14 @@ export async function updateReview(reviewId: string, updates: {
     console.error('Error updating review:', error);
     throw error;
   }
+  
+  console.log('Review updated successfully:', data);
   return data;
 }
 
 export async function deleteReview(reviewId: string) {
+  console.log('Deleting review:', reviewId);
+
   const { error } = await supabase
     .from('reviews')
     .delete()
@@ -387,6 +400,8 @@ export async function deleteReview(reviewId: string) {
     console.error('Error deleting review:', error);
     throw error;
   }
+  
+  console.log('Review deleted successfully');
 }
 
 // Funções de favoritos

@@ -17,7 +17,7 @@ export interface Recipe {
     fiber: number;
   };
   reviews: {
-    id: number;
+    id: string; // Mudado para string para manter UUID original
     userId: string;
     userName: string;
     rating: number;

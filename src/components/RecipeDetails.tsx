@@ -405,7 +405,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                               <div className="flex gap-1">
                                 <button
                                   onClick={() => setEditingReview({
-                                    id: review.id.toString(),
+                                    id: review.id,
                                     rating: review.rating,
                                     comment: review.comment
                                   })}
@@ -415,7 +415,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                   <Edit2 className="w-3 h-3" />
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteReview(review.id.toString())}
+                                  onClick={() => handleDeleteReview(review.id)}
                                   className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                                   title="Excluir avaliação"
                                 >
