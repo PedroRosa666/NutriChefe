@@ -186,17 +186,6 @@ npm run preview      # Preview do build
 npm run lint         # Verificação de código
 ```
 
-## 📸 Screenshots
-
-### Página Principal
-![Home](https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=400&fit=crop)
-
-### Dashboard do Nutricionista
-![Dashboard](https://images.unsplash.com/photo-1551218808-94e220e084d2?w=800&h=400&fit=crop)
-
-### Detalhes da Receita
-![Recipe Details](https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=400&fit=crop)
-
 ## 🤝 Contribuição
 
 1. Faça um fork do projeto
@@ -213,8 +202,8 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 
 **Desenvolvido por [Pedro Henrique Rosa]**
 
-- 📧 Email: seu.email@exemplo.com
-- 💼 LinkedIn: [linkedin.com/in/seu-perfil](https://linkedin.com/in/seu-perfil)
+- 📧 Email: pehenriqueoliveirarosa@gmail.com
+- 💼 LinkedIn: https://www.linkedin.com/in/pedro-henrique-oliveira-rosa-232383274/
 - 🐱 GitHub: [github.com/seu-usuario](https://github.com/seu-usuario)
 
 ---
