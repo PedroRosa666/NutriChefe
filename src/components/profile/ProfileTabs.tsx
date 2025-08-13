@@ -3,6 +3,7 @@ import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { RecipeCard } from '../RecipeCard';
 import { NutritionGoalsForm } from '../nutrition/NutritionGoalsForm';
+import { GoalsManager } from '../goals/GoalsManager';
 import { useTranslation } from '../../hooks/useTranslation';
 
 interface TabProps {
@@ -26,7 +27,7 @@ function Tab({ active, onClick, children }: TabProps) {
 }
 
 export function ProfileTabs() {
-  const [activeTab, setActiveTab] = React.useState<'recipes' | 'favorites' | 'nutrition'>('recipes');
+  const [activeTab, setActiveTab] = React.useState<'recipes' | 'favorites' | 'nutrition' | 'goals'>('recipes');
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
 
@@ -48,6 +49,12 @@ export function ProfileTabs() {
             onClick={() => setActiveTab('recipes')}
           >
             {MyRecipes}
+          </Tab>
+          <Tab
+            active={activeTab === 'goals'}
+            onClick={() => setActiveTab('goals')}
+          >
+            Metas Pessoais
           </Tab>
         )}
         <Tab
@@ -95,6 +102,10 @@ export function ProfileTabs() {
           <div className="max-w-md mx-auto">
             <NutritionGoalsForm />
           </div>
+        )}
+
+        {activeTab === 'goals' && (
+          <GoalsManager />
         )}
       </div>
     </div>

@@ -7,6 +7,7 @@ import { RecipeDetails } from './components/RecipeDetails';
 import { CreateRecipeForm } from './components/CreateRecipeForm';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
+import { MentoringDashboard } from './components/mentoring/MentoringDashboard';
 import { useFiltersStore } from './store/filters';
 import { useRecipesStore } from './store/recipes';
 import { useAuthStore } from './store/auth';
@@ -20,6 +21,7 @@ function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showMentoring, setShowMentoring] = useState(false);
   const [initialized, setInitialized] = useState(false);
   
   const { 
@@ -129,10 +131,15 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <Header onProfileClick={() => setShowProfile(true)} />
+      <Header 
+        onProfileClick={() => setShowProfile(true)}
+        onMentoringClick={() => setShowMentoring(true)}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {showProfile ? (
+        {showMentoring ? (
+          <MentoringDashboard onBack={() => setShowMentoring(false)} />
+        ) : showProfile ? (
           <ProfilePage onBackToRecipes={() => setShowProfile(false)} />
         ) : (
           <>

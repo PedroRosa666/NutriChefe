@@ -10,13 +10,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeaderProps {
   onProfileClick: () => void;
+  onMentoringClick?: () => void;
 }
 
-export function Header({ onProfileClick }: HeaderProps) {
+export function Header({ onProfileClick, onMentoringClick }: HeaderProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, signOut } = useAuthStore();
+  const { user, isAuthenticated, signOut, isNutritionist } = useAuthStore();
   const { searchQuery, setSearchQuery } = useFiltersStore();
   const t = useTranslation();
 
@@ -73,6 +74,14 @@ export function Header({ onProfileClick }: HeaderProps) {
                     <User className="w-4 h-4" />
                     <span>{user?.name}</span>
                   </button>
+                  {isNutritionist() && onMentoringClick && (
+                    <button
+                      onClick={onMentoringClick}
+                      className="flex items-center space-x-2 px-4 py-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                    >
+                      <span>Mentoria</span>
+                    </button>
+                  )}
                   <button
                     onClick={signOut}
                     className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -148,6 +157,17 @@ export function Header({ onProfileClick }: HeaderProps) {
                       <User className="w-4 h-4" />
                       <span>{t.common.profile}</span>
                     </button>
+                    {isNutritionist() && onMentoringClick && (
+                      <button
+                        onClick={() => {
+                          onMentoringClick();
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                      >
+                        <span>Mentoria</span>
+                      </button>
+                    )}
                     <button
                       onClick={signOut}
                       className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
