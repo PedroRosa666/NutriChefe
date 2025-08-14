@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Paperclip, Smile, MoreVertical, Phone, Video, ArrowLeft } from 'lucide-react';
+import { Send, Paperclip, Smile, MoreVertical, Phone, Video, ArrowLeft, Image, FileText, Mic } from 'lucide-react';
 import { useChatStore } from '../../store/chat';
 import { useAuthStore } from '../../store/auth';
 import { subscribeToMessages } from '../../services/chat';
@@ -16,6 +16,7 @@ interface ChatInterfaceProps {
 export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuthStore();
   const { messages, sendMessage, addMessage, loading } = useChatStore();
@@ -177,10 +178,29 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
             />
             <button
               type="button"
+              onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-full transition-colors"
             >
               <Smile className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </button>
+            
+            {/* Menu de anexos */}
+            {showAttachmentMenu && (
+              <div className="absolute bottom-12 left-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2">
+                <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                  <Image className="w-4 h-4" />
+                  Imagem
+                </button>
+                <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                  <FileText className="w-4 h-4" />
+                  Documento
+                </button>
+                <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                  <Mic className="w-4 h-4" />
+                  Áudio
+                </button>
+              </div>
+            )}
           </div>
 
           <button
