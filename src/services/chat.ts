@@ -65,8 +65,6 @@ export async function getConversations(userId: string): Promise<Conversation[]> 
         client:profiles!mentoring_relationships_client_id_fkey(id, full_name, avatar_url)
       )
     `)
-    .eq('mentoring_relationships.nutritionist_id', userId)
-    .or(`mentoring_relationships.client_id.eq.${userId}`)
     .order('last_message_at', { ascending: false });
 
   if (error) throw error;
