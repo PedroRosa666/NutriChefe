@@ -44,6 +44,7 @@ export function ProfileTabs() {
     <div className="mt-8">
       <div className="flex gap-2 mb-6">
         {user?.type === 'Nutritionist' && (
+          <>
           <Tab
             active={activeTab === 'recipes'}
             onClick={() => setActiveTab('recipes')}
@@ -56,6 +57,7 @@ export function ProfileTabs() {
           >
             Metas Pessoais
           </Tab>
+          </>
         )}
         <Tab
           active={activeTab === 'favorites'}
