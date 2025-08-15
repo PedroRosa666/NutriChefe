@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Plus, Search } from 'lucide-react';
+import { MessageCircle, Plus, Search, Bell } from 'lucide-react';
 import { useChatStore } from '../../store/chat';
 import { useAuthStore } from '../../store/auth';
 import { formatDistanceToNow } from 'date-fns';
@@ -18,6 +18,7 @@ export function ConversationsList({
   onCreateConversation, 
   selectedConversation 
 }: ConversationsListProps) {
+  const [searchQuery, setSearchQuery] = useState('');
   const { user } = useAuthStore();
   const { conversations, fetchConversations, loading } = useChatStore();
 
@@ -39,6 +40,22 @@ export function ConversationsList({
     });
   };
 
+  const getLastMessagePreview = (conversation: Conversation) => {
+    // Em uma implementação real, isso viria do banco de dados
+    return conversation.last_message?.content || 'Nenhuma mensagem ainda';
+  };
+
+  const getUnreadCount = (conversation: Conversation) => {
+    // Em uma implementação real, isso seria calculado baseado nas mensagens não lidas
+    return Math.floor(Math.random() * 3); // Simulado por enquanto
+  };
+
+  const filteredConversations = conversations.filter(conversation => {
+    const otherParticipant = getOtherParticipant(conversation);
+    return otherParticipant?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           conversation.title?.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
   if (loading.conversations) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -50,15 +67,17 @@ export function ConversationsList({
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-900">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Conversas</h2>
-          <button
-            onClick={onCreateConversation}
-            className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
+          {user?.type === 'Nutritionist' && (
+            <button
+              onClick={onCreateConversation}
+              className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Barra de pesquisa */}
@@ -66,6 +85,8 @@ export function ConversationsList({
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar conversas..."
             className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-white"
           />
@@ -73,30 +94,39 @@ export function ConversationsList({
       </div>
 
       {/* Lista de conversas */}
-      <div className="flex-1 overflow-y-auto">
-        {conversations.length === 0 ? (
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
             <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
               <MessageCircle className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Nenhuma conversa ainda
+              {searchQuery ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
             </h3>
             <p className="text-gray-500 dark:text-gray-400 mb-4">
-              Inicie uma nova conversa para começar a mentoria
+              {searchQuery 
+                ? 'Tente buscar por outro termo'
+                : user?.type === 'Nutritionist' 
+                  ? 'Inicie uma nova conversa para começar a mentoria'
+                  : 'Encontre um nutricionista para iniciar sua jornada'
+              }
             </p>
-            <button
-              onClick={onCreateConversation}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Nova Conversa
-            </button>
+            {user?.type === 'Nutritionist' && !searchQuery && (
+              <button
+                onClick={onCreateConversation}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Nova Conversa
+              </button>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {conversations.map((conversation) => {
+            {filteredConversations.map((conversation) => {
               const otherParticipant = getOtherParticipant(conversation);
               const isSelected = selectedConversation?.id === conversation.id;
+              const unreadCount = getUnreadCount(conversation);
+              const lastMessagePreview = getLastMessagePreview(conversation);
 
               return (
                 <motion.button
@@ -108,24 +138,50 @@ export function ConversationsList({
                   whileHover={{ x: 4 }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-green-600 dark:text-green-400 font-semibold">
-                        {otherParticipant?.full_name?.charAt(0) || '?'}
-                      </span>
+                    <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center flex-shrink-0 relative">
+                      {otherParticipant?.avatar_url ? (
+                        <img
+                          src={otherParticipant.avatar_url}
+                          alt={otherParticipant.full_name}
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-green-600 dark:text-green-400 font-semibold">
+                          {otherParticipant?.full_name?.charAt(0) || '?'}
+                        </span>
+                      )}
+                      
+                      {/* Indicador de mensagens não lidas */}
+                      {unreadCount > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {unreadCount}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                        <h3 className={`font-semibold truncate ${
+                          unreadCount > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'
+                        }`}>
                           {otherParticipant?.full_name || 'Usuário'}
                         </h3>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                          {formatLastMessageTime(conversation.last_message_at)}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          {unreadCount > 0 && (
+                            <Bell className="w-3 h-3 text-red-500" />
+                          )}
+                          <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                            {formatLastMessageTime(conversation.last_message_at)}
+                          </span>
+                        </div>
                       </div>
                       
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {conversation.title || 'Mentoria nutricional'}
+                      <p className={`text-sm truncate ${
+                        unreadCount > 0 
+                          ? 'text-gray-900 dark:text-white font-medium' 
+                          : 'text-gray-600 dark:text-gray-400'
+                      }`}>
+                        {lastMessagePreview}
                       </p>
                       
                       {/* Status do relacionamento */}

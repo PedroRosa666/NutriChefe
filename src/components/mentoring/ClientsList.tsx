@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Target, TrendingUp, Calendar, Search, Filter, User, Clock } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { MessageCircle, Target, TrendingUp, Calendar, Search, Filter, User, Clock, Bell } from 'lucide-react';
+import { getNutritionistClients } from '../../services/nutritionist';
 import { useAuthStore } from '../../store/auth';
 import { useChatStore } from '../../store/chat';
 import { format } from 'date-fns';
@@ -14,14 +14,14 @@ interface Client {
   avatar_url?: string;
   bio?: string;
   created_at: string;
+  last_seen?: string;
+  relationship_id: string;
   active_goals: number;
   completed_goals: number;
-  last_activity: string;
+  progress_percentage: number;
   unread_messages: number;
   next_session?: string;
-  progress_percentage: number;
-  dietary_preferences?: string[];
-  health_conditions?: string[];
+  last_activity: string;
 }
 
 interface ClientsListProps {
@@ -40,69 +40,23 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
   const [showFilters, setShowFilters] = useState(false);
 
   const { user } = useAuthStore();
-  const { mentoringRelationships, fetchMentoringRelationships } = useChatStore();
 
   useEffect(() => {
-    fetchClients();
-    fetchMentoringRelationships();
-  }, []);
+    if (user?.type === 'Nutritionist') {
+      fetchClients();
+    }
+  }, [user]);
 
   useEffect(() => {
     filterAndSortClients();
   }, [clients, searchQuery, statusFilter, sortBy]);
 
   const fetchClients = async () => {
+    if (!user) return;
+
     try {
-      // Buscar clientes que têm relacionamento de mentoria com o nutricionista atual
-      const { data: relationships, error: relError } = await supabase
-        .from('mentoring_relationships')
-        .select(`
-          client_id,
-          status,
-          created_at,
-          client:profiles!mentoring_relationships_client_id_fkey(
-            id,
-            full_name,
-            email,
-            avatar_url,
-            bio,
-            created_at
-          )
-        `)
-        .eq('nutritionist_id', user?.id)
-        .eq('status', 'active');
-
-      if (relError) throw relError;
-
-      // Buscar metas dos clientes
-      const clientIds = relationships?.map(rel => rel.client_id) || [];
-      
-      const { data: goals, error: goalsError } = await supabase
-        .from('client_goals')
-        .select('client_id, status')
-        .in('client_id', clientIds);
-
-      if (goalsError) throw goalsError;
-
-      // Enriquecer dados dos clientes
-      const enrichedClients = relationships?.map(rel => {
-        const clientGoals = goals?.filter(goal => goal.client_id === rel.client_id) || [];
-        const activeGoals = clientGoals.filter(goal => goal.status === 'active').length;
-        const completedGoals = clientGoals.filter(goal => goal.status === 'completed').length;
-
-        return {
-          ...rel.client,
-          active_goals: activeGoals,
-          completed_goals: completedGoals,
-          last_activity: rel.created_at,
-          unread_messages: Math.floor(Math.random() * 5), // Simulado
-          progress_percentage: completedGoals > 0 ? (completedGoals / (activeGoals + completedGoals)) * 100 : 0,
-          dietary_preferences: ['Vegetariano', 'Sem Lactose'], // Simulado
-          health_conditions: ['Diabetes Tipo 2'] // Simulado
-        };
-      }) || [];
-
-      setClients(enrichedClients);
+      const clientsData = await getNutritionistClients(user.id);
+      setClients(clientsData);
     } catch (error) {
       console.error('Error fetching clients:', error);
     } finally {
@@ -118,7 +72,8 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
       const matchesStatus = statusFilter === 'all' || 
         (statusFilter === 'active' && client.active_goals > 0) ||
         (statusFilter === 'inactive' && client.active_goals === 0) ||
-        (statusFilter === 'messages' && client.unread_messages > 0);
+        (statusFilter === 'messages' && client.unread_messages > 0) ||
+        (statusFilter === 'sessions' && client.next_session);
 
       return matchesSearch && matchesStatus;
     });
@@ -136,12 +91,27 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
           return b.unread_messages - a.unread_messages;
         case 'name':
           return a.full_name.localeCompare(b.full_name);
+        case 'joined':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         default:
           return 0;
       }
     });
 
     setFilteredClients(filtered);
+  };
+
+  const formatLastSeen = (lastSeen?: string) => {
+    if (!lastSeen) return 'Nunca visto';
+    
+    const now = new Date();
+    const lastSeenDate = new Date(lastSeen);
+    const diffMinutes = Math.floor((now.getTime() - lastSeenDate.getTime()) / (1000 * 60));
+    
+    if (diffMinutes < 5) return 'Online agora';
+    if (diffMinutes < 60) return `Visto há ${diffMinutes}min`;
+    if (diffMinutes < 1440) return `Visto há ${Math.floor(diffMinutes / 60)}h`;
+    return `Visto há ${Math.floor(diffMinutes / 1440)}d`;
   };
 
   if (loading) {
@@ -211,7 +181,8 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
                   <option value="all">Todos os clientes</option>
                   <option value="active">Com metas ativas</option>
                   <option value="inactive">Sem metas ativas</option>
-                  <option value="messages">Com mensagens</option>
+                  <option value="messages">Com mensagens pendentes</option>
+                  <option value="sessions">Com sessões agendadas</option>
                 </select>
               </div>
 
@@ -229,6 +200,7 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
                   <option value="goals">Metas ativas</option>
                   <option value="messages">Mensagens pendentes</option>
                   <option value="name">Nome</option>
+                  <option value="joined">Data de entrada</option>
                 </select>
               </div>
             </div>
@@ -247,7 +219,7 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
           >
             {/* Header do card */}
             <div className="flex items-start gap-4 mb-4">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center flex-shrink-0 relative">
                 {client.avatar_url ? (
                   <img
                     src={client.avatar_url}
@@ -259,6 +231,11 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
                     {client.full_name.charAt(0)}
                   </span>
                 )}
+                
+                {/* Indicador de status online */}
+                <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 ${
+                  formatLastSeen(client.last_seen) === 'Online agora' ? 'bg-green-500' : 'bg-gray-400'
+                }`} />
               </div>
 
               <div className="flex-1 min-w-0">
@@ -267,9 +244,12 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
                     {client.full_name}
                   </h3>
                   {client.unread_messages > 0 && (
-                    <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                      {client.unread_messages}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <Bell className="w-4 h-4 text-red-500" />
+                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                        {client.unread_messages}
+                      </span>
+                    </div>
                   )}
                 </div>
                 
@@ -280,10 +260,17 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
                 <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                   <span>Cliente desde {format(new Date(client.created_at), 'MMM yyyy', { locale: ptBR })}</span>
                   <span>•</span>
-                  <span>Última atividade: {format(new Date(client.last_activity), 'dd/MM', { locale: ptBR })}</span>
+                  <span>{formatLastSeen(client.last_seen)}</span>
                 </div>
               </div>
             </div>
+
+            {/* Bio do cliente */}
+            {client.bio && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                {client.bio}
+              </p>
+            )}
 
             {/* Estatísticas */}
             <div className="grid grid-cols-3 gap-4 mb-4">
@@ -319,40 +306,17 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
               </div>
             </div>
 
-            {/* Preferências e condições */}
-            <div className="mb-4 space-y-2">
-              {client.dietary_preferences && client.dietary_preferences.length > 0 && (
-                <div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Preferências: </span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {client.dietary_preferences.map((pref, index) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs rounded-full"
-                      >
-                        {pref}
-                      </span>
-                    ))}
-                  </div>
+            {/* Próxima sessão */}
+            {client.next_session && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                    Próxima sessão: {format(new Date(client.next_session), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                  </span>
                 </div>
-              )}
-
-              {client.health_conditions && client.health_conditions.length > 0 && (
-                <div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Condições: </span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {client.health_conditions.map((condition, index) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs rounded-full"
-                      >
-                        {condition}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Ações */}
             <div className="flex gap-2">
@@ -362,6 +326,11 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
               >
                 <MessageCircle className="w-4 h-4" />
                 Chat
+                {client.unread_messages > 0 && (
+                  <span className="bg-green-800 text-white text-xs px-1.5 py-0.5 rounded-full">
+                    {client.unread_messages}
+                  </span>
+                )}
               </button>
               
               <button
@@ -369,7 +338,7 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-sm"
               >
                 <Target className="w-4 h-4" />
-                Metas
+                Metas ({client.active_goals})
               </button>
 
               <button
@@ -389,10 +358,13 @@ export function ClientsList({ onSelectClient, onStartChat, onViewGoals }: Client
             <User className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Nenhum cliente encontrado
+            {searchQuery || statusFilter !== 'all' ? 'Nenhum cliente encontrado' : 'Nenhum cliente ainda'}
           </h3>
           <p className="text-gray-500 dark:text-gray-400">
-            {searchQuery ? 'Tente ajustar os filtros de busca' : 'Você ainda não tem clientes em acompanhamento'}
+            {searchQuery || statusFilter !== 'all' 
+              ? 'Tente ajustar os filtros de busca' 
+              : 'Quando clientes iniciarem mentoria com você, eles aparecerão aqui'
+            }
           </p>
         </div>
       )}

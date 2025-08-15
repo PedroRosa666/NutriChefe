@@ -1,21 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, MessageCircle, Target, Calendar, TrendingUp, DollarSign, Clock, Award } from 'lucide-react';
+import { Users, MessageCircle, Target, Calendar, TrendingUp, DollarSign, Clock, Award, Settings } from 'lucide-react';
 import { useChatStore } from '../../store/chat';
 import { useAuthStore } from '../../store/auth';
 import { ClientsList } from './ClientsList';
 import { ChatPage } from '../chat/ChatPage';
 import { GoalsManager } from '../goals/GoalsManager';
+import { NutritionistServiceConfig } from './NutritionistServiceConfig';
+import { getNutritionistStats } from '../../services/nutritionist';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatDistanceToNow } from 'date-fns';
 
 interface NutritionistDashboardProps {
   onBack: () => void;
 }
 
 export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'chat' | 'goals' | 'sessions' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'chat' | 'goals' | 'sessions' | 'analytics' | 'config'>('overview');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    total_clients: 0,
+    active_clients: 0,
+    total_reviews: 0,
+    average_rating: 0,
+    total_sessions: 0,
+    completed_goals: 0
+  });
   
   const { user } = useAuthStore();
   const { 
@@ -29,46 +40,25 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
     fetchMentoringSessions
   } = useChatStore();
 
-  // Estatísticas do nutricionista
-  const [stats, setStats] = useState({
-    activeClients: 0,
-    totalGoals: 0,
-    completedGoals: 0,
-    upcomingSessions: 0,
-    totalSessions: 0,
-    monthlyRevenue: 0,
-    averageRating: 4.8,
-    responseTime: '2h',
-    engagementRate: 85
-  });
-
   useEffect(() => {
     if (user?.type === 'Nutritionist') {
       fetchMentoringRelationships();
       fetchConversations();
       fetchClientGoals();
+      loadStats();
     }
-  }, [user]);
+  }, [user, fetchMentoringRelationships, fetchConversations, fetchClientGoals]);
 
-  useEffect(() => {
-    // Calcular estatísticas
-    const activeClients = mentoringRelationships.filter(rel => rel.status === 'active').length;
-    const totalGoals = clientGoals.length;
-    const completedGoals = clientGoals.filter(goal => goal.status === 'completed').length;
-    const upcomingSessions = mentoringSessions.filter(session => 
-      session.status === 'scheduled' && new Date(session.scheduled_at) > new Date()
-    ).length;
-
-    setStats(prev => ({
-      ...prev,
-      activeClients,
-      totalGoals,
-      completedGoals,
-      upcomingSessions,
-      totalSessions: mentoringSessions.length,
-      monthlyRevenue: activeClients * 320, // Simulado
-    }));
-  }, [mentoringRelationships, clientGoals, mentoringSessions]);
+  const loadStats = async () => {
+    if (!user) return;
+    
+    try {
+      const nutritionistStats = await getNutritionistStats(user.id);
+      setStats(nutritionistStats);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  };
 
   const handleSelectClient = (client: any) => {
     setSelectedClientId(client.id);
@@ -83,6 +73,11 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
     setSelectedClientId(clientId);
     setActiveTab('goals');
   };
+
+  // Calcular métricas adicionais
+  const monthlyRevenue = stats.active_clients * 320; // Baseado no número real de clientes
+  const engagementRate = stats.total_clients > 0 ? (stats.active_clients / stats.total_clients) * 100 : 0;
+  const goalCompletionRate = clientGoals.length > 0 ? (stats.completed_goals / clientGoals.length) * 100 : 0;
 
   if (activeTab === 'chat') {
     return <ChatPage onBack={() => setActiveTab('overview')} />;
@@ -107,6 +102,20 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
     );
   }
 
+  if (activeTab === 'config') {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className="flex items-center gap-2 text-green-600 hover:text-green-700 mb-6"
+        >
+          ← Voltar ao Dashboard
+        </button>
+        <NutritionistServiceConfig />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -125,6 +134,14 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
             Gerencie seus clientes e acompanhe o crescimento da sua prática
           </p>
         </div>
+
+        <button
+          onClick={() => setActiveTab('config')}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+        >
+          <Settings className="w-4 h-4" />
+          Configurar Serviço
+        </button>
       </div>
 
       {/* Tabs */}
@@ -161,9 +178,9 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
                 <Users className="w-5 h-5 text-blue-600" />
                 <h3 className="font-semibold text-gray-900 dark:text-white">Clientes Ativos</h3>
               </div>
-              <p className="text-3xl font-bold text-blue-600">{stats.activeClients}</p>
+              <p className="text-3xl font-bold text-blue-600">{stats.active_clients}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                +12% este mês
+                de {stats.total_clients} total
               </p>
             </div>
 
@@ -172,31 +189,31 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
                 <Target className="w-5 h-5 text-green-600" />
                 <h3 className="font-semibold text-gray-900 dark:text-white">Metas Concluídas</h3>
               </div>
-              <p className="text-3xl font-bold text-green-600">{stats.completedGoals}</p>
+              <p className="text-3xl font-bold text-green-600">{stats.completed_goals}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                de {stats.totalGoals} total
+                {goalCompletionRate.toFixed(1)}% de sucesso
               </p>
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <Calendar className="w-5 h-5 text-purple-600" />
-                <h3 className="font-semibold text-gray-900 dark:text-white">Sessões Este Mês</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Sessões Realizadas</h3>
               </div>
-              <p className="text-3xl font-bold text-purple-600">{stats.totalSessions}</p>
+              <p className="text-3xl font-bold text-purple-600">{stats.total_sessions}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {stats.upcomingSessions} agendadas
+                Este mês
               </p>
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <DollarSign className="w-5 h-5 text-green-600" />
-                <h3 className="font-semibold text-gray-900 dark:text-white">Receita Mensal</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Receita Estimada</h3>
               </div>
-              <p className="text-3xl font-bold text-green-600">R$ {stats.monthlyRevenue.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-green-600">R$ {monthlyRevenue.toLocaleString()}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                +8% vs mês anterior
+                Mensal
               </p>
             </div>
           </div>
@@ -212,27 +229,29 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
                   <span className="text-gray-600 dark:text-gray-400">Avaliação Média</span>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-gray-900 dark:text-white">
-                      {stats.averageRating}
+                      {stats.average_rating.toFixed(1)}
                     </span>
                     <div className="flex">
                       {[...Array(5)].map((_, i) => (
-                        <span key={i} className="text-yellow-400">★</span>
+                        <span key={i} className={`${i < Math.floor(stats.average_rating) ? 'text-yellow-400' : 'text-gray-300'}`}>
+                          ★
+                        </span>
                       ))}
                     </div>
                   </div>
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Tempo de Resposta</span>
+                  <span className="text-gray-600 dark:text-gray-400">Total de Avaliações</span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {stats.responseTime}
+                    {stats.total_reviews}
                   </span>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Taxa de Engajamento</span>
                   <span className="font-semibold text-gray-900 dark:text-white">
-                    {stats.engagementRate}%
+                    {engagementRate.toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -249,27 +268,25 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
                       Taxa de Conclusão
                     </span>
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {stats.totalGoals > 0 ? ((stats.completedGoals / stats.totalGoals) * 100).toFixed(1) : 0}%
+                      {goalCompletionRate.toFixed(1)}%
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div
                       className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                      style={{ 
-                        width: `${stats.totalGoals > 0 ? (stats.completedGoals / stats.totalGoals) * 100 : 0}%` 
-                      }}
+                      style={{ width: `${goalCompletionRate}%` }}
                     />
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{stats.completedGoals}</div>
+                    <div className="text-2xl font-bold text-green-600">{stats.completed_goals}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">Concluídas</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">
-                      {stats.totalGoals - stats.completedGoals}
+                      {clientGoals.filter(goal => goal.status === 'active').length}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">Em Andamento</div>
                   </div>
@@ -282,95 +299,93 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
                 Atividade Recente
               </h3>
               <div className="space-y-3">
-                <div className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <MessageCircle className="w-4 h-4 text-blue-600" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900 dark:text-white">
-                      Nova mensagem de Maria Silva
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      há 15 minutos
-                    </p>
-                  </div>
-                </div>
+                {conversations.slice(0, 3).map((conversation, index) => {
+                  const client = conversation.mentoring_relationship?.client;
+                  return (
+                    <div key={conversation.id} className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <MessageCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900 dark:text-white truncate">
+                          {client?.full_name || 'Cliente'}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {formatDistanceToNow(new Date(conversation.last_message_at), { 
+                            addSuffix: true, 
+                            locale: ptBR 
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
                 
-                <div className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <Target className="w-4 h-4 text-green-600" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900 dark:text-white">
-                      João concluiu meta de peso
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      há 2 horas
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <Calendar className="w-4 h-4 text-purple-600" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900 dark:text-white">
-                      Sessão agendada para amanhã
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      há 4 horas
-                    </p>
-                  </div>
-                </div>
+                {conversations.length === 0 && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                    Nenhuma atividade recente
+                  </p>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Próximas sessões */}
+          {/* Resumo de conversas recentes */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Próximas Sessões
+                Conversas Recentes
               </h3>
               <button
-                onClick={() => setActiveTab('sessions')}
+                onClick={() => setActiveTab('chat')}
                 className="text-green-600 hover:text-green-700 text-sm font-medium"
               >
-                Ver agenda completa
+                Ver todas
               </button>
             </div>
             
-            {stats.upcomingSessions > 0 ? (
+            {conversations.length > 0 ? (
               <div className="space-y-3">
-                {/* Simulação de sessões */}
-                {[1, 2, 3].slice(0, stats.upcomingSessions).map((_, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                        <span className="text-green-600 dark:text-green-400 font-semibold text-sm">
-                          {['MS', 'JP', 'AC'][index]}
-                        </span>
+                {conversations.slice(0, 5).map(conversation => {
+                  const client = conversation.mentoring_relationship?.client;
+                  return (
+                    <div key={conversation.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                          <span className="text-green-600 dark:text-green-400 font-semibold text-sm">
+                            {client?.full_name?.charAt(0) || '?'}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">
+                            {client?.full_name || 'Cliente'}
+                          </h4>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {conversation.title || 'Mentoria nutricional'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900 dark:text-white">
-                          {['Maria Silva', 'João Pedro', 'Ana Costa'][index]}
-                        </h4>
+                      <div className="text-right">
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Consulta de acompanhamento
+                          {formatDistanceToNow(new Date(conversation.last_message_at), { 
+                            addSuffix: true, 
+                            locale: ptBR 
+                          })}
                         </p>
+                        <button
+                          onClick={() => setActiveTab('chat')}
+                          className="text-xs text-green-600 hover:text-green-700 font-medium"
+                        >
+                          Abrir Chat
+                        </button>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {format(new Date(Date.now() + (index + 1) * 24 * 60 * 60 * 1000), 'dd/MM', { locale: ptBR })}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {['14:00', '15:30', '16:00'][index]}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">
-                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <MessageCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 dark:text-gray-400">
-                  Nenhuma sessão agendada para os próximos dias
+                  Nenhuma conversa ainda
                 </p>
               </div>
             )}
@@ -394,10 +409,13 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
           <div className="text-center py-12">
             <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Agenda em desenvolvimento
+              Sistema de agendamento
             </h3>
-            <p className="text-gray-500 dark:text-gray-400">
-              Em breve você poderá gerenciar sua agenda completa aqui
+            <p className="text-gray-500 dark:text-gray-400 mb-6">
+              Gerencie sua agenda e sessões com clientes
+            </p>
+            <p className="text-sm text-gray-400">
+              Funcionalidade em desenvolvimento
             </p>
           </div>
         </div>
@@ -406,17 +424,53 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
       {activeTab === 'analytics' && (
         <div className="space-y-6">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
               Análises Detalhadas
             </h3>
-            <div className="text-center py-12">
-              <TrendingUp className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Relatórios em desenvolvimento
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400">
-                Em breve você terá acesso a relatórios detalhados sobre sua prática
-              </p>
+            
+            {/* Gráficos de performance */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <h4 className="font-medium text-gray-900 dark:text-white mb-4">
+                  Crescimento de Clientes
+                </h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Este mês</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{stats.active_clients}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Total</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{stats.total_clients}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Taxa de retenção</span>
+                    <span className="font-medium text-green-600">{engagementRate.toFixed(1)}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <h4 className="font-medium text-gray-900 dark:text-white mb-4">
+                  Efetividade das Metas
+                </h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Metas concluídas</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{stats.completed_goals}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Em andamento</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {clientGoals.filter(goal => goal.status === 'active').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Taxa de sucesso</span>
+                    <span className="font-medium text-green-600">{goalCompletionRate.toFixed(1)}%</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

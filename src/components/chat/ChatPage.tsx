@@ -27,7 +27,7 @@ export function ChatPage({ onBack }: ChatPageProps) {
   };
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       {/* Header mobile */}
       <div className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center gap-3">
@@ -46,11 +46,11 @@ export function ChatPage({ onBack }: ChatPageProps) {
         </div>
       </div>
 
-      <div className="flex h-full md:h-screen">
+      <div className="flex flex-1 min-h-0">
         {/* Lista de conversas - Desktop sempre visível, Mobile apenas quando não há conversa selecionada */}
         <div className={`${
           selectedConversation ? 'hidden md:block' : 'block'
-        } w-full md:w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800`}>
+        } w-full md:w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col`}>
           <div className="hidden md:block p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -68,24 +68,26 @@ export function ChatPage({ onBack }: ChatPageProps) {
             </div>
           </div>
           
-          <ConversationsList
-            onSelectConversation={handleSelectConversation}
-            onCreateConversation={() => setIsCreateModalOpen(true)}
-            selectedConversation={selectedConversation}
-          />
+          <div className="flex-1 min-h-0">
+            <ConversationsList
+              onSelectConversation={handleSelectConversation}
+              onCreateConversation={() => setIsCreateModalOpen(true)}
+              selectedConversation={selectedConversation}
+            />
+          </div>
         </div>
 
         {/* Interface de chat - Desktop sempre visível, Mobile apenas quando há conversa selecionada */}
         <div className={`${
           selectedConversation ? 'block' : 'hidden md:block'
-        } flex-1 flex flex-col`}>
+        } flex-1 flex flex-col min-h-0`}>
           {selectedConversation ? (
             <ChatInterface
               conversation={selectedConversation}
               onBack={handleBackToList}
             />
           ) : (
-            <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900">
+            <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900 min-h-0">
               <div className="text-center">
                 <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                   <MessageCircle className="w-8 h-8 text-gray-400" />

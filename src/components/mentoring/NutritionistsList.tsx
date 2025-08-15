@@ -1,52 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Star, MessageCircle, Calendar, Filter, Search, MapPin, Award } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { Star, MessageCircle, Calendar, Filter, Search, MapPin, Award, DollarSign, Clock, Users } from 'lucide-react';
+import { getNutritionists } from '../../services/nutritionist';
 import { useAuthStore } from '../../store/auth';
 import { useChatStore } from '../../store/chat';
-
-interface Nutritionist {
-  id: string;
-  full_name: string;
-  email: string;
-  avatar_url?: string;
-  bio?: string;
-  specializations?: string[];
-  experience?: string;
-  rating: number;
-  total_reviews: number;
-  available_slots: number;
-  price_per_session?: number;
-  location?: string;
-}
+import { useToastStore } from '../../store/toast';
+import type { NutritionistProfile } from '../../services/nutritionist';
 
 interface NutritionistsListProps {
-  onSelectNutritionist: (nutritionist: Nutritionist) => void;
+  onSelectNutritionist: (nutritionist: NutritionistProfile) => void;
   onStartChat: (nutritionistId: string) => void;
 }
 
 export function NutritionistsList({ onSelectNutritionist, onStartChat }: NutritionistsListProps) {
-  const [nutritionists, setNutritionists] = useState<Nutritionist[]>([]);
-  const [filteredNutritionists, setFilteredNutritionists] = useState<Nutritionist[]>([]);
+  const [nutritionists, setNutritionists] = useState<NutritionistProfile[]>([]);
+  const [filteredNutritionists, setFilteredNutritionists] = useState<NutritionistProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('all');
+  const [priceRange, setPriceRange] = useState('all');
+  const [minRating, setMinRating] = useState(0);
   const [sortBy, setSortBy] = useState('rating');
   const [showFilters, setShowFilters] = useState(false);
 
   const { user } = useAuthStore();
   const { createMentoringRelationship, createConversation } = useChatStore();
+  const { showToast } = useToastStore();
 
-  const specialties = [
-    'all',
-    'Emagrecimento',
-    'Ganho de Massa',
-    'Nutrição Esportiva',
-    'Nutrição Clínica',
-    'Vegetarianismo',
-    'Nutrição Infantil',
-    'Terceira Idade'
-  ];
+  // Especialidades únicas extraídas dos dados reais
+  const [availableSpecialties, setAvailableSpecialties] = useState<string[]>([]);
 
   useEffect(() => {
     fetchNutritionists();
@@ -54,39 +36,23 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
 
   useEffect(() => {
     filterAndSortNutritionists();
-  }, [nutritionists, searchQuery, selectedSpecialty, sortBy]);
+  }, [nutritionists, searchQuery, selectedSpecialty, priceRange, minRating, sortBy]);
 
   const fetchNutritionists = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          full_name,
-          email,
-          avatar_url,
-          bio,
-          created_at
-        `)
-        .eq('user_type', 'Nutritionist');
-
-      if (error) throw error;
-
-      // Simular dados adicionais (em produção, viriam do banco)
-      const enrichedData = data?.map(nutritionist => ({
-        ...nutritionist,
-        specializations: ['Emagrecimento', 'Nutrição Clínica'],
-        experience: '5+ anos',
-        rating: 4.5 + Math.random() * 0.5,
-        total_reviews: Math.floor(Math.random() * 100) + 10,
-        available_slots: Math.floor(Math.random() * 10) + 1,
-        price_per_session: Math.floor(Math.random() * 100) + 80,
-        location: 'São Paulo, SP'
-      })) || [];
-
-      setNutritionists(enrichedData);
+      const data = await getNutritionists();
+      setNutritionists(data);
+      
+      // Extrair especialidades únicas
+      const specialties = new Set<string>();
+      data.forEach(nutritionist => {
+        nutritionist.service?.specializations?.forEach(spec => specialties.add(spec));
+      });
+      setAvailableSpecialties(Array.from(specialties));
+      
     } catch (error) {
       console.error('Error fetching nutritionists:', error);
+      showToast('Erro ao carregar nutricionistas', 'error');
     } finally {
       setLoading(false);
     }
@@ -94,28 +60,48 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
 
   const filterAndSortNutritionists = () => {
     let filtered = nutritionists.filter(nutritionist => {
+      // Filtro de busca
       const matchesSearch = nutritionist.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        nutritionist.specializations?.some(spec => spec.toLowerCase().includes(searchQuery.toLowerCase()));
+        nutritionist.service?.specializations?.some(spec => 
+          spec.toLowerCase().includes(searchQuery.toLowerCase())
+        ) ||
+        nutritionist.service?.description?.toLowerCase().includes(searchQuery.toLowerCase());
       
+      // Filtro de especialidade
       const matchesSpecialty = selectedSpecialty === 'all' || 
-        nutritionist.specializations?.includes(selectedSpecialty);
+        nutritionist.service?.specializations?.includes(selectedSpecialty);
 
-      return matchesSearch && matchesSpecialty;
+      // Filtro de preço
+      const price = nutritionist.service?.service_price || 0;
+      const matchesPrice = priceRange === 'all' ||
+        (priceRange === 'low' && price <= 80) ||
+        (priceRange === 'medium' && price > 80 && price <= 150) ||
+        (priceRange === 'high' && price > 150);
+
+      // Filtro de avaliação
+      const matchesRating = nutritionist.stats?.average_rating >= minRating;
+
+      // Apenas nutricionistas disponíveis
+      const isAvailable = nutritionist.service?.is_available !== false;
+
+      return matchesSearch && matchesSpecialty && matchesPrice && matchesRating && isAvailable;
     });
 
     // Ordenação
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'rating':
-          return b.rating - a.rating;
+          return (b.stats?.average_rating || 0) - (a.stats?.average_rating || 0);
         case 'reviews':
-          return b.total_reviews - a.total_reviews;
+          return (b.stats?.total_reviews || 0) - (a.stats?.total_reviews || 0);
         case 'price_low':
-          return (a.price_per_session || 0) - (b.price_per_session || 0);
+          return (a.service?.service_price || 0) - (b.service?.service_price || 0);
         case 'price_high':
-          return (b.price_per_session || 0) - (a.price_per_session || 0);
-        case 'availability':
-          return b.available_slots - a.available_slots;
+          return (b.service?.service_price || 0) - (a.service?.service_price || 0);
+        case 'clients':
+          return (b.stats?.active_clients || 0) - (a.stats?.active_clients || 0);
+        case 'experience':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         default:
           return 0;
       }
@@ -124,18 +110,44 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
     setFilteredNutritionists(filtered);
   };
 
-  const handleStartChat = async (nutritionist: Nutritionist) => {
+  const handleStartChat = async (nutritionist: NutritionistProfile) => {
     if (!user) return;
 
     try {
-      // Criar relacionamento de mentoria
-      await createMentoringRelationship(nutritionist.id, user.id);
+      // Verificar se já existe relacionamento
+      const existingRelationship = await checkExistingRelationship(nutritionist.id, user.id);
       
-      // Iniciar chat
+      if (existingRelationship) {
+        onStartChat(nutritionist.id);
+        return;
+      }
+
+      // Criar novo relacionamento de mentoria
+      await createMentoringRelationship(nutritionist.id, user.id);
+      showToast('Mentoria iniciada com sucesso!', 'success');
       onStartChat(nutritionist.id);
     } catch (error) {
       console.error('Error starting chat:', error);
+      showToast('Erro ao iniciar mentoria', 'error');
     }
+  };
+
+  const checkExistingRelationship = async (nutritionistId: string, clientId: string) => {
+    // Esta função seria implementada no serviço de chat
+    return false; // Por enquanto, sempre criar novo
+  };
+
+  const formatLastSeen = (lastSeen?: string) => {
+    if (!lastSeen) return 'Offline';
+    
+    const now = new Date();
+    const lastSeenDate = new Date(lastSeen);
+    const diffMinutes = Math.floor((now.getTime() - lastSeenDate.getTime()) / (1000 * 60));
+    
+    if (diffMinutes < 5) return 'Online';
+    if (diffMinutes < 60) return `${diffMinutes}min atrás`;
+    if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h atrás`;
+    return `${Math.floor(diffMinutes / 1440)}d atrás`;
   };
 
   if (loading) {
@@ -192,7 +204,7 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
             exit={{ opacity: 0, height: 0 }}
             className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
           >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Especialidade
@@ -202,11 +214,44 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
                   onChange={(e) => setSelectedSpecialty(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
                 >
-                  {specialties.map(specialty => (
+                  <option value="all">Todas as especialidades</option>
+                  {availableSpecialties.map(specialty => (
                     <option key={specialty} value={specialty}>
-                      {specialty === 'all' ? 'Todas as especialidades' : specialty}
+                      {specialty}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Faixa de Preço
+                </label>
+                <select
+                  value={priceRange}
+                  onChange={(e) => setPriceRange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="all">Todos os preços</option>
+                  <option value="low">Até R$ 80</option>
+                  <option value="medium">R$ 80 - R$ 150</option>
+                  <option value="high">Acima de R$ 150</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Avaliação Mínima
+                </label>
+                <select
+                  value={minRating}
+                  onChange={(e) => setMinRating(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value={0}>Qualquer avaliação</option>
+                  <option value={3}>3+ estrelas</option>
+                  <option value={4}>4+ estrelas</option>
+                  <option value={4.5}>4.5+ estrelas</option>
                 </select>
               </div>
 
@@ -223,7 +268,8 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
                   <option value="reviews">Mais avaliações</option>
                   <option value="price_low">Menor preço</option>
                   <option value="price_high">Maior preço</option>
-                  <option value="availability">Mais disponível</option>
+                  <option value="clients">Mais clientes</option>
+                  <option value="experience">Mais experiente</option>
                 </select>
               </div>
             </div>
@@ -242,7 +288,7 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
           >
             {/* Header do card */}
             <div className="flex items-start gap-4 mb-4">
-              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center flex-shrink-0 relative">
                 {nutritionist.avatar_url ? (
                   <img
                     src={nutritionist.avatar_url}
@@ -254,6 +300,11 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
                     {nutritionist.full_name.charAt(0)}
                   </span>
                 )}
+                
+                {/* Indicador de status online */}
+                <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 ${
+                  formatLastSeen(nutritionist.last_seen) === 'Online' ? 'bg-green-500' : 'bg-gray-400'
+                }`} />
               </div>
 
               <div className="flex-1 min-w-0">
@@ -265,27 +316,44 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
                   <div className="flex items-center gap-1">
                     <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {nutritionist.rating.toFixed(1)}
+                      {nutritionist.stats?.average_rating?.toFixed(1) || '0.0'}
                     </span>
                   </div>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    ({nutritionist.total_reviews} avaliações)
+                    ({nutritionist.stats?.total_reviews || 0} avaliações)
                   </span>
                 </div>
 
-                {nutritionist.location && (
-                  <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
-                    <MapPin className="w-3 h-3" />
-                    {nutritionist.location}
-                  </div>
-                )}
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-4 h-4 text-green-600" />
+                  <span className="text-lg font-bold text-green-600">
+                    R$ {nutritionist.service?.service_price?.toFixed(2) || '0.00'}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">por sessão</span>
+                </div>
+
+                <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+                  <Clock className="w-3 h-3" />
+                  <span>Responde em: {nutritionist.service?.response_time || 'N/A'}</span>
+                </div>
+
+                <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {formatLastSeen(nutritionist.last_seen)}
+                </div>
               </div>
             </div>
+
+            {/* Descrição */}
+            {nutritionist.service?.description && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                {nutritionist.service.description}
+              </p>
+            )}
 
             {/* Especialidades */}
             <div className="mb-4">
               <div className="flex flex-wrap gap-2">
-                {nutritionist.specializations?.slice(0, 2).map((spec, index) => (
+                {nutritionist.service?.specializations?.slice(0, 3).map((spec, index) => (
                   <span
                     key={index}
                     className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full"
@@ -293,33 +361,56 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
                     {spec}
                   </span>
                 ))}
-                {(nutritionist.specializations?.length || 0) > 2 && (
+                {(nutritionist.service?.specializations?.length || 0) > 3 && (
                   <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full">
-                    +{(nutritionist.specializations?.length || 0) - 2}
+                    +{(nutritionist.service?.specializations?.length || 0) - 3}
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Informações adicionais */}
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Experiência:</span>
-                <span className="font-medium text-gray-900 dark:text-white">{nutritionist.experience}</span>
+            {/* Estatísticas */}
+            <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+              <div className="text-center">
+                <div className="font-bold text-blue-600">{nutritionist.stats?.active_clients || 0}</div>
+                <div className="text-gray-500 dark:text-gray-400">Clientes Ativos</div>
               </div>
-              
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Horários disponíveis:</span>
-                <span className="font-medium text-gray-900 dark:text-white">{nutritionist.available_slots}</span>
-              </div>
-              
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Valor por sessão:</span>
-                <span className="font-medium text-green-600 dark:text-green-400">
-                  R$ {nutritionist.price_per_session}
-                </span>
+              <div className="text-center">
+                <div className="font-bold text-purple-600">{nutritionist.stats?.completed_goals || 0}</div>
+                <div className="text-gray-500 dark:text-gray-400">Metas Concluídas</div>
               </div>
             </div>
+
+            {/* Bio */}
+            {nutritionist.bio && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                {nutritionist.bio}
+              </p>
+            )}
+
+            {/* Requisitos */}
+            {nutritionist.service?.requirements && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                  Requisitos:
+                </h4>
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  {nutritionist.service.requirements}
+                </p>
+              </div>
+            )}
+
+            {/* Disponibilidade */}
+            {nutritionist.service?.availability_notes && (
+              <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <h4 className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                  Disponibilidade:
+                </h4>
+                <p className="text-xs text-green-700 dark:text-green-300">
+                  {nutritionist.service.availability_notes}
+                </p>
+              </div>
+            )}
 
             {/* Ações */}
             <div className="flex gap-2">
