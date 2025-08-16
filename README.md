@@ -204,7 +204,7 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 
 - 📧 Email: pehenriqueoliveirarosa@gmail.com
 - 💼 LinkedIn: https://www.linkedin.com/in/pedro-henrique-oliveira-rosa-232383274/
-- 🐱 GitHub: [github.com/seu-usuario](https://github.com/seu-usuario)
+- 🐱 GitHub: https://github.com/PedroRosa666
 
 ---
 
