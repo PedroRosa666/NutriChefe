@@ -56,6 +56,21 @@ export async function updateMentoringRelationship(id: string, updates: Partial<M
 
 // Conversas
 export async function getConversations(userId: string): Promise<Conversation[]> {
+  // First, get the mentoring relationship IDs where the user participates
+  const { data: relationships, error: relationshipsError } = await supabase
+    .from('mentoring_relationships')
+    .select('id')
+    .or(`nutritionist_id.eq.${userId},client_id.eq.${userId}`);
+
+  if (relationshipsError) throw relationshipsError;
+
+  if (!relationships || relationships.length === 0) {
+    return [];
+  }
+
+  const relationshipIds = relationships.map(rel => rel.id);
+
+  // Then get conversations for those relationships
   const { data, error } = await supabase
     .from('conversations')
     .select(`
@@ -73,8 +88,7 @@ export async function getConversations(userId: string): Promise<Conversation[]> 
         profiles!messages_sender_id_fkey(full_name)
       )
     `)
-    .eq('mentoring_relationship.nutritionist_id', userId)
-    .or(`mentoring_relationship.client_id.eq.${userId}`)
+    .in('mentoring_relationship_id', relationshipIds)
     .order('last_message_at', { ascending: false });
 
   if (error) throw error;
