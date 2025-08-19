@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Plus, Search, Bell } from 'lucide-react';
+import { MessageCircle, Plus, Search, Bell, User } from 'lucide-react';
 import { useChatStore } from '../../store/chat';
 import { useAuthStore } from '../../store/auth';
 import { formatDistanceToNow } from 'date-fns';
@@ -41,13 +41,16 @@ export function ConversationsList({
   };
 
   const getLastMessagePreview = (conversation: Conversation) => {
-    // Em uma implementação real, isso viria do banco de dados
-    return conversation.last_message?.content || 'Nenhuma mensagem ainda';
-  };
-
-  const getUnreadCount = (conversation: Conversation) => {
-    // Em uma implementação real, isso seria calculado baseado nas mensagens não lidas
-    return Math.floor(Math.random() * 3); // Simulado por enquanto
+    if (!conversation.last_message) return 'Nenhuma mensagem ainda';
+    
+    const content = conversation.last_message.content;
+    if (conversation.last_message.message_type === 'image') {
+      return '🖼️ Imagem';
+    } else if (conversation.last_message.message_type === 'file') {
+      return '📎 Arquivo';
+    }
+    
+    return content.length > 50 ? content.substring(0, 50) + '...' : content;
   };
 
   const filteredConversations = conversations.filter(conversation => {
@@ -65,7 +68,7 @@ export function ConversationsList({
   }
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 min-h-0">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
@@ -74,6 +77,7 @@ export function ConversationsList({
             <button
               onClick={onCreateConversation}
               className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
+              title="Nova conversa"
             >
               <Plus className="w-5 h-5" />
             </button>
@@ -88,7 +92,7 @@ export function ConversationsList({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar conversas..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-800 dark:text-white"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
           />
         </div>
       </div>
@@ -97,7 +101,7 @@ export function ConversationsList({
       <div className="flex-1 overflow-y-auto min-h-0">
         {filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
               <MessageCircle className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
@@ -125,14 +129,15 @@ export function ConversationsList({
             {filteredConversations.map((conversation) => {
               const otherParticipant = getOtherParticipant(conversation);
               const isSelected = selectedConversation?.id === conversation.id;
-              const unreadCount = getUnreadCount(conversation);
+              const unreadCount = conversation.unread_count || 0;
               const lastMessagePreview = getLastMessagePreview(conversation);
+              const isLastMessageFromOther = conversation.last_message?.sender_id !== user?.id;
 
               return (
                 <motion.button
                   key={conversation.id}
                   onClick={() => onSelectConversation(conversation)}
-                  className={`w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                  className={`w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
                     isSelected ? 'bg-green-50 dark:bg-green-900/20 border-r-2 border-green-600' : ''
                   }`}
                   whileHover={{ x: 4 }}
@@ -147,14 +152,14 @@ export function ConversationsList({
                         />
                       ) : (
                         <span className="text-green-600 dark:text-green-400 font-semibold">
-                          {otherParticipant?.full_name?.charAt(0) || '?'}
+                          {otherParticipant?.full_name?.charAt(0) || <User className="w-6 h-6" />}
                         </span>
                       )}
                       
                       {/* Indicador de mensagens não lidas */}
                       {unreadCount > 0 && (
                         <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {unreadCount}
+                          {unreadCount > 9 ? '9+' : unreadCount}
                         </div>
                       )}
                     </div>
@@ -177,10 +182,11 @@ export function ConversationsList({
                       </div>
                       
                       <p className={`text-sm truncate ${
-                        unreadCount > 0 
+                        unreadCount > 0 && isLastMessageFromOther
                           ? 'text-gray-900 dark:text-white font-medium' 
                           : 'text-gray-600 dark:text-gray-400'
                       }`}>
+                        {conversation.last_message?.sender_id === user?.id && '✓ '}
                         {lastMessagePreview}
                       </p>
                       

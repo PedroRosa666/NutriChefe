@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, MessageCircle, Target, Calendar, TrendingUp, DollarSign, Clock, Award, Settings } from 'lucide-react';
+import { Users, MessageCircle, Target, Calendar, TrendingUp, DollarSign, Clock, Award, Settings, ArrowLeft } from 'lucide-react';
 import { useChatStore } from '../../store/chat';
 import { useAuthStore } from '../../store/auth';
 import { ClientsList } from './ClientsList';
 import { ChatPage } from '../chat/ChatPage';
 import { GoalsManager } from '../goals/GoalsManager';
 import { NutritionistServiceConfig } from './NutritionistServiceConfig';
-import { getNutritionistStats } from '../../services/nutritionist';
+import { getNutritionistRealStats } from '../../services/chat';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatDistanceToNow } from 'date-fns';
@@ -42,21 +42,24 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
 
   useEffect(() => {
     if (user?.type === 'Nutritionist') {
-      fetchMentoringRelationships();
-      fetchConversations();
-      fetchClientGoals();
-      loadStats();
+      loadNutritionistData();
     }
-  }, [user, fetchMentoringRelationships, fetchConversations, fetchClientGoals]);
+  }, [user]);
 
-  const loadStats = async () => {
+  const loadNutritionistData = async () => {
     if (!user) return;
-    
+
     try {
-      const nutritionistStats = await getNutritionistStats(user.id);
+      // Carregar dados do store
+      await fetchMentoringRelationships();
+      await fetchConversations();
+      await fetchClientGoals();
+
+      // Carregar estatísticas reais
+      const nutritionistStats = await getNutritionistRealStats(user.id);
       setStats(nutritionistStats);
     } catch (error) {
-      console.error('Error loading stats:', error);
+      console.error('Error loading nutritionist data:', error);
     }
   };
 
@@ -74,7 +77,7 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
     setActiveTab('goals');
   };
 
-  // Calcular métricas adicionais
+  // Calcular métricas adicionais baseadas em dados reais
   const monthlyRevenue = stats.active_clients * 320; // Baseado no número real de clientes
   const engagementRate = stats.total_clients > 0 ? (stats.active_clients / stats.total_clients) * 100 : 0;
   const goalCompletionRate = clientGoals.length > 0 ? (stats.completed_goals / clientGoals.length) * 100 : 0;
@@ -86,18 +89,17 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
   if (activeTab === 'goals' && selectedClientId) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <button
+          onClick={() => {
+            setActiveTab('overview');
+            setSelectedClientId(null);
+          }}
+          className="flex items-center gap-2 text-green-600 hover:text-green-700 mb-6"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Voltar ao Dashboard
+        </button>
         <GoalsManager clientId={selectedClientId} />
-        <div className="mt-6">
-          <button
-            onClick={() => {
-              setActiveTab('overview');
-              setSelectedClientId(null);
-            }}
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-          >
-            Voltar ao Dashboard
-          </button>
-        </div>
       </div>
     );
   }
@@ -109,7 +111,8 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
           onClick={() => setActiveTab('overview')}
           className="flex items-center gap-2 text-green-600 hover:text-green-700 mb-6"
         >
-          ← Voltar ao Dashboard
+          <ArrowLeft className="w-5 h-5" />
+          Voltar ao Dashboard
         </button>
         <NutritionistServiceConfig />
       </div>
@@ -125,7 +128,8 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
             onClick={onBack}
             className="flex items-center gap-2 text-green-600 hover:text-green-700 mb-4"
           >
-            ← Voltar
+            <ArrowLeft className="w-5 h-5" />
+            Voltar
           </button>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Dashboard Profissional
@@ -299,7 +303,7 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
                 Atividade Recente
               </h3>
               <div className="space-y-3">
-                {conversations.slice(0, 3).map((conversation, index) => {
+                {conversations.slice(0, 3).map((conversation) => {
                   const client = conversation.mentoring_relationship?.client;
                   return (
                     <div key={conversation.id} className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">

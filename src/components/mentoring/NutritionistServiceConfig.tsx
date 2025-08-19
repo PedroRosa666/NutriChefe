@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, DollarSign, Clock, FileText, Users, Save, Plus, X } from 'lucide-react';
+import { Settings, DollarSign, Clock, FileText, Users, Save, Plus, X, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { getNutritionistService, createNutritionistService, updateNutritionistService } from '../../services/nutritionist';
 import { useToastStore } from '../../store/toast';
@@ -126,6 +126,9 @@ export function NutritionistServiceConfig() {
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
               placeholder="100.00"
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Valor cobrado por sessão de mentoria
+            </p>
           </div>
 
           {/* Descrição */}
@@ -139,7 +142,7 @@ export function NutritionistServiceConfig() {
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
               rows={4}
-              placeholder="Descreva detalhadamente como funciona sua mentoria..."
+              placeholder="Descreva detalhadamente como funciona sua mentoria, metodologia, benefícios..."
             />
           </div>
 
@@ -157,7 +160,7 @@ export function NutritionistServiceConfig() {
                 onChange={(e) => setNewSpecialization(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSpecialization())}
                 className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                placeholder="Ex: Emagrecimento, Nutrição Esportiva..."
+                placeholder="Ex: Emagrecimento, Nutrição Esportiva, Diabetes..."
               />
               <button
                 type="button"
@@ -217,7 +220,7 @@ export function NutritionistServiceConfig() {
               onChange={(e) => setFormData(prev => ({ ...prev, requirements: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
               rows={3}
-              placeholder="Ex: Disponibilidade para consultas semanais, compromisso com o plano alimentar..."
+              placeholder="Ex: Disponibilidade para consultas semanais, compromisso com o plano alimentar, exames recentes..."
             />
           </div>
 
@@ -231,12 +234,12 @@ export function NutritionistServiceConfig() {
               onChange={(e) => setFormData(prev => ({ ...prev, availability_notes: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
               rows={3}
-              placeholder="Ex: Segunda a sexta, das 8h às 18h. Finais de semana apenas emergências..."
+              placeholder="Ex: Segunda a sexta, das 8h às 18h. Finais de semana apenas emergências. Consultas online e presenciais..."
             />
           </div>
 
           {/* Status de disponibilidade */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <input
               type="checkbox"
               id="is_available"
@@ -247,6 +250,9 @@ export function NutritionistServiceConfig() {
             <label htmlFor="is_available" className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Aceitar novos clientes
             </label>
+            {formData.is_available && (
+              <CheckCircle className="w-4 h-4 text-green-600" />
+            )}
           </div>
 
           {/* Botão salvar */}
@@ -276,9 +282,17 @@ export function NutritionistServiceConfig() {
         <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
           <div className="flex items-start gap-4 mb-4">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-              <span className="text-green-600 dark:text-green-400 font-semibold text-lg">
-                {user?.name?.charAt(0) || 'N'}
-              </span>
+              {user?.profile?.avatar_url ? (
+                <img
+                  src={user.profile.avatar_url}
+                  alt={user.name}
+                  className="w-16 h-16 rounded-full object-cover"
+                />
+              ) : (
+                <span className="text-green-600 dark:text-green-400 font-semibold text-lg">
+                  {user?.name?.charAt(0) || 'N'}
+                </span>
+              )}
             </div>
             <div className="flex-1">
               <h4 className="font-semibold text-gray-900 dark:text-white text-lg">

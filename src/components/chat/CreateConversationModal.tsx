@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Search, UserPlus } from 'lucide-react';
+import { X, Search, UserPlus, User } from 'lucide-react';
 import { useChatStore } from '../../store/chat';
 import { useAuthStore } from '../../store/auth';
 import { getAvailableClients } from '../../services/chat';
@@ -77,9 +77,12 @@ export function CreateConversationModal({ isOpen, onClose }: CreateConversationM
       await fetchMentoringRelationships();
       
       // Buscar o relacionamento recém-criado
-      const newRelationship = mentoringRelationships.find(
-        rel => rel.client_id === selectedClient.id && rel.nutritionist_id === user.id
-      );
+      const { data: newRelationship } = await supabase
+        .from('mentoring_relationships')
+        .select('id')
+        .eq('nutritionist_id', user.id)
+        .eq('client_id', selectedClient.id)
+        .single();
       
       if (newRelationship) {
         // Criar conversa
@@ -162,9 +165,17 @@ export function CreateConversationModal({ isOpen, onClose }: CreateConversationM
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                          <span className="text-green-600 dark:text-green-400 font-semibold">
-                            {client.full_name.charAt(0)}
-                          </span>
+                          {client.avatar_url ? (
+                            <img
+                              src={client.avatar_url}
+                              alt={client.full_name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-green-600 dark:text-green-400 font-semibold">
+                              {client.full_name.charAt(0)}
+                            </span>
+                          )}
                         </div>
                         <div>
                           <h3 className="font-medium text-gray-900 dark:text-white">
@@ -216,6 +227,7 @@ export function CreateConversationModal({ isOpen, onClose }: CreateConversationM
           </>
         ) : (
           <div className="text-center py-8">
+            <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 dark:text-gray-400 mb-4">
               Apenas nutricionistas podem iniciar novas conversas de mentoria.
             </p>

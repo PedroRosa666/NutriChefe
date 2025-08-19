@@ -47,80 +47,42 @@ export async function getNutritionists(): Promise<NutritionistProfile[]> {
 
   if (error) throw error;
 
-  // Enriquecer com estatísticas reais
+  // Enriquecer com estatísticas reais usando a função SQL
   const enrichedData = await Promise.all((data || []).map(async (nutritionist) => {
-    const stats = await getNutritionistStats(nutritionist.id);
-    return {
-      ...nutritionist,
-      stats
-    };
+    try {
+      const { data: statsData } = await supabase
+        .rpc('get_nutritionist_stats', { nutritionist_uuid: nutritionist.id });
+      
+      const stats = statsData?.[0] || {
+        total_clients: 0,
+        active_clients: 0,
+        total_reviews: 0,
+        average_rating: 0,
+        total_sessions: 0,
+        completed_goals: 0
+      };
+
+      return {
+        ...nutritionist,
+        stats
+      };
+    } catch (error) {
+      console.error('Error fetching stats for nutritionist:', nutritionist.id, error);
+      return {
+        ...nutritionist,
+        stats: {
+          total_clients: 0,
+          active_clients: 0,
+          total_reviews: 0,
+          average_rating: 0,
+          total_sessions: 0,
+          completed_goals: 0
+        }
+      };
+    }
   }));
 
   return enrichedData;
-}
-
-// Buscar estatísticas reais do nutricionista
-export async function getNutritionistStats(nutritionistId: string) {
-  try {
-    // Buscar relacionamentos ativos
-    const { data: relationships } = await supabase
-      .from('mentoring_relationships')
-      .select('id, status, client_id')
-      .eq('nutritionist_id', nutritionistId);
-
-    const totalClients = relationships?.length || 0;
-    const activeClients = relationships?.filter(rel => rel.status === 'active').length || 0;
-
-    // Buscar sessões
-    const { data: sessions } = await supabase
-      .from('mentoring_sessions')
-      .select('id, status')
-      .in('mentoring_relationship_id', relationships?.map(rel => rel.id) || []);
-
-    const totalSessions = sessions?.length || 0;
-
-    // Buscar metas concluídas
-    const { data: goals } = await supabase
-      .from('client_goals')
-      .select('id, status')
-      .eq('nutritionist_id', nutritionistId);
-
-    const completedGoals = goals?.filter(goal => goal.status === 'completed').length || 0;
-
-    // Buscar avaliações das receitas do nutricionista
-    const { data: recipes } = await supabase
-      .from('recipes')
-      .select(`
-        id,
-        reviews(rating)
-      `)
-      .eq('author_id', nutritionistId);
-
-    const allReviews = recipes?.flatMap(recipe => recipe.reviews || []) || [];
-    const totalReviews = allReviews.length;
-    const averageRating = totalReviews > 0 
-      ? allReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews 
-      : 0;
-
-    return {
-      total_clients: totalClients,
-      active_clients: activeClients,
-      total_reviews: totalReviews,
-      average_rating: Number(averageRating.toFixed(1)),
-      total_sessions: totalSessions,
-      completed_goals: completedGoals
-    };
-  } catch (error) {
-    console.error('Error fetching nutritionist stats:', error);
-    return {
-      total_clients: 0,
-      active_clients: 0,
-      total_reviews: 0,
-      average_rating: 0,
-      total_sessions: 0,
-      completed_goals: 0
-    };
-  }
 }
 
 // Buscar ou criar serviço do nutricionista
@@ -144,12 +106,12 @@ export async function createNutritionistService(nutritionistId: string): Promise
     .from('nutritionist_services')
     .insert([{
       nutritionist_id: nutritionistId,
-      service_price: 100.00,
-      description: 'Mentoria nutricional personalizada com acompanhamento completo',
-      specializations: ['Emagrecimento', 'Nutrição Clínica'],
+      service_price: 120.00,
+      description: 'Mentoria nutricional personalizada com acompanhamento completo e orientação profissional para alcançar seus objetivos de saúde.',
+      specializations: ['Emagrecimento', 'Nutrição Clínica', 'Nutrição Esportiva'],
       response_time: '24 horas',
-      requirements: 'Disponibilidade para consultas semanais',
-      availability_notes: 'Disponível de segunda a sexta, das 8h às 18h',
+      requirements: 'Disponibilidade para consultas semanais e compromisso com o plano alimentar proposto.',
+      availability_notes: 'Disponível de segunda a sexta, das 8h às 18h. Atendimento de emergência aos finais de semana.',
       is_available: true
     }])
     .select()
@@ -216,7 +178,7 @@ export async function getNutritionistClients(nutritionistId: string) {
     // Buscar metas do cliente
     const { data: goals } = await supabase
       .from('client_goals')
-      .select('id, status, progress_percentage:current_value, target_value')
+      .select('id, status, current_value, target_value')
       .eq('client_id', clientId);
 
     const activeGoals = goals?.filter(goal => goal.status === 'active').length || 0;

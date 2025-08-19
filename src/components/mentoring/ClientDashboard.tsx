@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Target, MessageCircle, Calendar, TrendingUp, Award, Clock, User, Star } from 'lucide-react';
+import { Target, MessageCircle, Calendar, TrendingUp, Award, Clock, User, Star, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useChatStore } from '../../store/chat';
+import { getClientRealStats } from '../../services/chat';
 import { NutritionistsList } from './NutritionistsList';
 import { ChatPage } from '../chat/ChatPage';
 import { GoalsManager } from '../goals/GoalsManager';
@@ -14,6 +15,14 @@ interface ClientDashboardProps {
 export function ClientDashboard({ onBack }: ClientDashboardProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'nutritionists' | 'chat' | 'goals' | 'sessions'>('overview');
   const [selectedNutritionistId, setSelectedNutritionistId] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    activeGoals: 0,
+    completedGoals: 0,
+    upcomingSessions: 0,
+    unreadMessages: 0,
+    progressPercentage: 0,
+    totalGoals: 0
+  });
   
   const { user } = useAuthStore();
   const { 
@@ -27,42 +36,28 @@ export function ClientDashboard({ onBack }: ClientDashboardProps) {
     fetchMentoringSessions
   } = useChatStore();
 
-  // Estatísticas do cliente
-  const [stats, setStats] = useState({
-    activeGoals: 0,
-    completedGoals: 0,
-    upcomingSessions: 0,
-    unreadMessages: 0,
-    currentNutritionist: null as any,
-    progressPercentage: 0
-  });
-
   useEffect(() => {
     if (user?.type === 'Client') {
-      fetchMentoringRelationships();
-      fetchConversations();
-      fetchClientGoals();
+      loadClientData();
     }
   }, [user]);
 
-  useEffect(() => {
-    // Calcular estatísticas
-    const activeGoals = clientGoals.filter(goal => goal.status === 'active').length;
-    const completedGoals = clientGoals.filter(goal => goal.status === 'completed').length;
-    const currentNutritionist = mentoringRelationships.find(rel => rel.status === 'active')?.nutritionist;
-    const progressPercentage = completedGoals > 0 ? (completedGoals / (activeGoals + completedGoals)) * 100 : 0;
+  const loadClientData = async () => {
+    if (!user) return;
 
-    setStats({
-      activeGoals,
-      completedGoals,
-      upcomingSessions: mentoringSessions.filter(session => 
-        session.status === 'scheduled' && new Date(session.scheduled_at) > new Date()
-      ).length,
-      unreadMessages: Math.floor(Math.random() * 5), // Simulado
-      currentNutritionist,
-      progressPercentage
-    });
-  }, [clientGoals, mentoringRelationships, mentoringSessions]);
+    try {
+      // Carregar dados do store
+      await fetchMentoringRelationships();
+      await fetchConversations();
+      await fetchClientGoals();
+
+      // Carregar estatísticas reais
+      const clientStats = await getClientRealStats(user.id);
+      setStats(clientStats);
+    } catch (error) {
+      console.error('Error loading client data:', error);
+    }
+  };
 
   const handleSelectNutritionist = (nutritionist: any) => {
     setSelectedNutritionistId(nutritionist.id);
@@ -74,6 +69,10 @@ export function ClientDashboard({ onBack }: ClientDashboardProps) {
     setActiveTab('chat');
   };
 
+  // Encontrar nutricionista atual
+  const currentNutritionist = mentoringRelationships
+    .find(rel => rel.status === 'active')?.nutritionist;
+
   if (activeTab === 'chat') {
     return <ChatPage onBack={() => setActiveTab('overview')} />;
   }
@@ -81,15 +80,32 @@ export function ClientDashboard({ onBack }: ClientDashboardProps) {
   if (activeTab === 'goals') {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className="flex items-center gap-2 text-green-600 hover:text-green-700 mb-6"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Voltar ao Dashboard
+        </button>
         <GoalsManager />
-        <div className="mt-6">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-          >
-            Voltar ao Dashboard
-          </button>
-        </div>
+      </div>
+    );
+  }
+
+  if (activeTab === 'nutritionists') {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className="flex items-center gap-2 text-green-600 hover:text-green-700 mb-6"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Voltar ao Dashboard
+        </button>
+        <NutritionistsList
+          onSelectNutritionist={handleSelectNutritionist}
+          onStartChat={handleStartChat}
+        />
       </div>
     );
   }
@@ -103,7 +119,8 @@ export function ClientDashboard({ onBack }: ClientDashboardProps) {
             onClick={onBack}
             className="flex items-center gap-2 text-green-600 hover:text-green-700 mb-4"
           >
-            ← Voltar
+            <ArrowLeft className="w-5 h-5" />
+            Voltar
           </button>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Minha Jornada Nutricional
@@ -115,7 +132,7 @@ export function ClientDashboard({ onBack }: ClientDashboardProps) {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-8 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex gap-2 mb-8 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
         {[
           { id: 'overview', label: 'Visão Geral', icon: TrendingUp },
           { id: 'nutritionists', label: 'Nutricionistas', icon: User },
@@ -126,7 +143,7 @@ export function ClientDashboard({ onBack }: ClientDashboardProps) {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === tab.id
                 ? 'border-green-600 text-green-600'
                 : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -203,27 +220,35 @@ export function ClientDashboard({ onBack }: ClientDashboardProps) {
                   {stats.completedGoals}
                 </div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  de {stats.activeGoals + stats.completedGoals}
+                  de {stats.totalGoals}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Nutricionista atual */}
-          {stats.currentNutritionist && (
+          {currentNutritionist && (
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Meu Nutricionista
               </h3>
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                  <span className="text-green-600 dark:text-green-400 font-semibold text-lg">
-                    {stats.currentNutritionist.full_name?.charAt(0)}
-                  </span>
+                  {currentNutritionist.avatar_url ? (
+                    <img
+                      src={currentNutritionist.avatar_url}
+                      alt={currentNutritionist.full_name}
+                      className="w-16 h-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-green-600 dark:text-green-400 font-semibold text-lg">
+                      {currentNutritionist.full_name?.charAt(0)}
+                    </span>
+                  )}
                 </div>
                 <div className="flex-1">
                   <h4 className="font-semibold text-gray-900 dark:text-white">
-                    {stats.currentNutritionist.full_name}
+                    {currentNutritionist.full_name}
                   </h4>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Nutricionista especializada
@@ -234,7 +259,7 @@ export function ClientDashboard({ onBack }: ClientDashboardProps) {
                       <span className="text-sm font-medium">4.8</span>
                     </div>
                     <span className="text-sm text-gray-500 dark:text-gray-400">
-                      (127 avaliações)
+                      Mentoria ativa
                     </span>
                   </div>
                 </div>
@@ -313,14 +338,28 @@ export function ClientDashboard({ onBack }: ClientDashboardProps) {
               </div>
             )}
           </div>
-        </div>
-      )}
 
-      {activeTab === 'nutritionists' && (
-        <NutritionistsList
-          onSelectNutritionist={handleSelectNutritionist}
-          onStartChat={handleStartChat}
-        />
+          {/* Estado sem nutricionista */}
+          {!currentNutritionist && (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+              <div className="text-center py-8">
+                <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Encontre seu Nutricionista
+                </h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-6">
+                  Conecte-se com um profissional para iniciar sua jornada nutricional
+                </p>
+                <button
+                  onClick={() => setActiveTab('nutritionists')}
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Explorar Nutricionistas
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {activeTab === 'sessions' && (

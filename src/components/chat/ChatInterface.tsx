@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Paperclip, MoreVertical, Phone, Video, ArrowLeft, Image, FileText, Mic, Download } from 'lucide-react';
+import { Send, Paperclip, MoreVertical, Phone, Video, ArrowLeft, Image, FileText, Mic, Download, User } from 'lucide-react';
 import { useChatStore } from '../../store/chat';
 import { useAuthStore } from '../../store/auth';
-import { subscribeToMessages } from '../../services/chat';
+import { subscribeToMessages, markConversationAsRead } from '../../services/chat';
 import { updateLastSeen } from '../../services/nutritionist';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -24,30 +24,36 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { user } = useAuthStore();
-  const { messages, sendMessage, addMessage, loading } = useChatStore();
+  const { messages, sendMessage, addMessage, fetchMessages, loading } = useChatStore();
 
   // Determinar o outro participante da conversa
   const otherParticipant = conversation.mentoring_relationship?.nutritionist_id === user?.id
     ? conversation.mentoring_relationship.client
     : conversation.mentoring_relationship?.nutritionist;
 
-  // Atualizar última visualização
+  // Atualizar última visualização e marcar mensagens como lidas
   useEffect(() => {
     if (user) {
       updateLastSeen(user.id);
+      markConversationAsRead(conversation.id, user.id);
     }
-  }, [user]);
+  }, [user, conversation.id]);
 
   useEffect(() => {
     // Subscrever a mensagens em tempo real
     const subscription = subscribeToMessages(conversation.id, (message: Message) => {
       addMessage(message);
+      
+      // Marcar como lida se não for minha mensagem
+      if (message.sender_id !== user?.id) {
+        markConversationAsRead(conversation.id, user?.id || '');
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [conversation.id, addMessage]);
+  }, [conversation.id, addMessage, user?.id]);
 
   useEffect(() => {
     // Scroll para a última mensagem apenas quando novas mensagens chegam
@@ -72,21 +78,18 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
   };
 
   const handleFileUpload = async (file: File) => {
-    // Implementar upload de arquivo
-    console.log('File upload:', file);
-    // Por enquanto, simular envio de mensagem com nome do arquivo
     try {
       await sendMessage(`📎 Arquivo enviado: ${file.name}`, 'file');
+      setShowAttachmentMenu(false);
     } catch (error) {
       console.error('Error sending file:', error);
     }
   };
 
   const handleImageUpload = async (file: File) => {
-    // Implementar upload de imagem
-    console.log('Image upload:', file);
     try {
       await sendMessage(`🖼️ Imagem enviada: ${file.name}`, 'image');
+      setShowAttachmentMenu(false);
     } catch (error) {
       console.error('Error sending image:', error);
     }
@@ -107,7 +110,6 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
         return (
           <div className="space-y-2">
             <p className="text-sm">{message.content}</p>
-            {/* Aqui seria renderizada a imagem real */}
             <div className="w-48 h-32 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
               <Image className="w-8 h-8 text-gray-400" />
             </div>
@@ -124,7 +126,7 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
           </div>
         );
       default:
-        return <p className="text-sm">{message.content}</p>;
+        return <p className="text-sm whitespace-pre-wrap">{message.content}</p>;
     }
   };
 
@@ -141,7 +143,7 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900 min-h-0">
       {/* Header da conversa */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -183,10 +185,16 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+          <button 
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            title="Ligar"
+          >
             <Phone className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
-          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+          <button 
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            title="Videochamada"
+          >
             <Video className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
           <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
@@ -199,6 +207,7 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
       <div 
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0"
+        style={{ maxHeight: 'calc(100vh - 200px)' }}
       >
         {loading.messages ? (
           <div className="flex justify-center items-center h-32">
@@ -267,20 +276,29 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
             {showAttachmentMenu && (
               <div className="absolute bottom-12 left-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 z-10">
                 <button 
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                    setShowAttachmentMenu(false);
+                  }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                 >
                   <Image className="w-4 h-4" />
                   Imagem
                 </button>
                 <button 
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                    setShowAttachmentMenu(false);
+                  }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                 >
                   <FileText className="w-4 h-4" />
                   Documento
                 </button>
-                <button className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                <button 
+                  onClick={() => setShowAttachmentMenu(false)}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                >
                   <Mic className="w-4 h-4" />
                   Áudio
                 </button>
@@ -295,12 +313,13 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Digite sua mensagem..."
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
+              disabled={loading.messages}
             />
           </div>
 
           <button
             type="submit"
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() || loading.messages}
             className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="w-5 h-5" />
@@ -321,7 +340,6 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
               } else {
                 handleFileUpload(file);
               }
-              setShowAttachmentMenu(false);
             }
           }}
         />

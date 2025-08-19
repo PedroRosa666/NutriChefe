@@ -27,9 +27,9 @@ export function ChatPage({ onBack }: ChatPageProps) {
   };
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col min-h-0">
       {/* Header mobile */}
-      <div className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+      <div className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -50,8 +50,8 @@ export function ChatPage({ onBack }: ChatPageProps) {
         {/* Lista de conversas - Desktop sempre visível, Mobile apenas quando não há conversa selecionada */}
         <div className={`${
           selectedConversation ? 'hidden md:block' : 'block'
-        } w-full md:w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col`}>
-          <div className="hidden md:block p-4 border-b border-gray-200 dark:border-gray-700">
+        } w-full md:w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col min-h-0`}>
+          <div className="hidden md:block p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <button

@@ -24,7 +24,7 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
   const [showFilters, setShowFilters] = useState(false);
 
   const { user } = useAuthStore();
-  const { createMentoringRelationship, createConversation } = useChatStore();
+  const { createMentoringRelationship, createConversation, mentoringRelationships } = useChatStore();
   const { showToast } = useToastStore();
 
   // Especialidades únicas extraídas dos dados reais
@@ -79,7 +79,7 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
         (priceRange === 'high' && price > 150);
 
       // Filtro de avaliação
-      const matchesRating = nutritionist.stats?.average_rating >= minRating;
+      const matchesRating = (nutritionist.stats?.average_rating || 0) >= minRating;
 
       // Apenas nutricionistas disponíveis
       const isAvailable = nutritionist.service?.is_available !== false;
@@ -115,26 +115,38 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
 
     try {
       // Verificar se já existe relacionamento
-      const existingRelationship = await checkExistingRelationship(nutritionist.id, user.id);
+      const existingRelationship = mentoringRelationships.find(
+        rel => rel.nutritionist_id === nutritionist.id && rel.client_id === user.id
+      );
       
       if (existingRelationship) {
+        // Se já existe, apenas iniciar chat
         onStartChat(nutritionist.id);
         return;
       }
 
       // Criar novo relacionamento de mentoria
-      await createMentoringRelationship(nutritionist.id, user.id);
+      await createMentoringRelationship(nutritionist.id);
+      
+      // Buscar o relacionamento recém-criado
+      const { data: newRelationship } = await supabase
+        .from('mentoring_relationships')
+        .select('id')
+        .eq('nutritionist_id', nutritionist.id)
+        .eq('client_id', user.id)
+        .single();
+
+      if (newRelationship) {
+        // Criar conversa
+        await createConversation(newRelationship.id, `Mentoria - ${nutritionist.full_name}`);
+      }
+
       showToast('Mentoria iniciada com sucesso!', 'success');
       onStartChat(nutritionist.id);
     } catch (error) {
       console.error('Error starting chat:', error);
       showToast('Erro ao iniciar mentoria', 'error');
     }
-  };
-
-  const checkExistingRelationship = async (nutritionistId: string, clientId: string) => {
-    // Esta função seria implementada no serviço de chat
-    return false; // Por enquanto, sempre criar novo
   };
 
   const formatLastSeen = (lastSeen?: string) => {

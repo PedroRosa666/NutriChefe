@@ -9,7 +9,8 @@ export async function createMentoringRelationship(nutritionistId: string, client
       nutritionist_id: nutritionistId,
       client_id: clientId,
       notes,
-      status: 'pending'
+      status: 'active', // Ativar imediatamente
+      started_at: new Date().toISOString()
     }])
     .select(`
       *,
@@ -63,12 +64,38 @@ export async function getConversations(userId: string): Promise<Conversation[]> 
         *,
         nutritionist:profiles!mentoring_relationships_nutritionist_id_fkey(id, full_name, avatar_url),
         client:profiles!mentoring_relationships_client_id_fkey(id, full_name, avatar_url)
-      )
+      ),
+      last_message:messages(content, message_type, sender_id, created_at)
     `)
     .order('last_message_at', { ascending: false });
 
   if (error) throw error;
-  return data || [];
+
+  // Filtrar conversas onde o usuário participa
+  const userConversations = (data || []).filter(conversation => {
+    const relationship = conversation.mentoring_relationship;
+    return relationship?.nutritionist_id === userId || relationship?.client_id === userId;
+  });
+
+  // Enriquecer com contagem de mensagens não lidas
+  const enrichedConversations = await Promise.all(
+    userConversations.map(async (conversation) => {
+      const { data: unreadCount } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact' })
+        .eq('conversation_id', conversation.id)
+        .neq('sender_id', userId)
+        .is('read_at', null);
+
+      return {
+        ...conversation,
+        unread_count: unreadCount || 0,
+        last_message: conversation.last_message?.[0] || null
+      };
+    })
+  );
+
+  return enrichedConversations;
 }
 
 export async function createConversation(mentoringRelationshipId: string, title?: string): Promise<Conversation> {
@@ -76,7 +103,7 @@ export async function createConversation(mentoringRelationshipId: string, title?
     .from('conversations')
     .insert([{
       mentoring_relationship_id: mentoringRelationshipId,
-      title
+      title: title || 'Mentoria Nutricional'
     }])
     .select(`
       *,
@@ -93,16 +120,17 @@ export async function createConversation(mentoringRelationshipId: string, title?
 }
 
 // Mensagens
-export async function getMessages(conversationId: string, limit = 50): Promise<Message[]> {
+export async function getMessages(conversationId: string, limit = 50, offset = 0): Promise<Message[]> {
   const { data, error } = await supabase
     .from('messages')
     .select(`
       *,
-      sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url)
+      sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url),
+      attachments:message_attachments(*)
     `)
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (error) throw error;
   return (data || []).reverse();
@@ -119,7 +147,8 @@ export async function sendMessage(conversationId: string, senderId: string, cont
     }])
     .select(`
       *,
-      sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url)
+      sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url),
+      attachments:message_attachments(*)
     `)
     .single();
 
@@ -132,6 +161,17 @@ export async function markMessageAsRead(messageId: string): Promise<void> {
     .from('messages')
     .update({ read_at: new Date().toISOString() })
     .eq('id', messageId);
+
+  if (error) throw error;
+}
+
+export async function markConversationAsRead(conversationId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('conversation_id', conversationId)
+    .neq('sender_id', userId)
+    .is('read_at', null);
 
   if (error) throw error;
 }
@@ -171,11 +211,21 @@ export async function createClientGoal(goalData: Omit<ClientGoal, 'id' | 'create
       ...goalData,
       current_value: 0
     }])
-    .select()
+    .select(`
+      *,
+      recent_progress:goal_progress(
+        *,
+        recorder:profiles!goal_progress_recorded_by_fkey(id, full_name)
+      )
+    `)
     .single();
 
   if (error) throw error;
-  return data;
+  return {
+    ...data,
+    progress_percentage: 0,
+    recent_progress: []
+  };
 }
 
 export async function updateClientGoal(id: string, updates: Partial<ClientGoal>): Promise<ClientGoal> {
@@ -183,11 +233,21 @@ export async function updateClientGoal(id: string, updates: Partial<ClientGoal>)
     .from('client_goals')
     .update(updates)
     .eq('id', id)
-    .select()
+    .select(`
+      *,
+      recent_progress:goal_progress(
+        *,
+        recorder:profiles!goal_progress_recorded_by_fkey(id, full_name)
+      )
+    `)
     .single();
 
   if (error) throw error;
-  return data;
+  return {
+    ...data,
+    progress_percentage: data.target_value ? Math.min(100, (data.current_value / data.target_value) * 100) : 0,
+    recent_progress: (data.recent_progress || []).slice(0, 10)
+  };
 }
 
 // Progresso das Metas
@@ -289,7 +349,8 @@ export function subscribeToMessages(conversationId: string, callback: (message: 
           .from('messages')
           .select(`
             *,
-            sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url)
+            sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url),
+            attachments:message_attachments(*)
           `)
           .eq('id', payload.new.id)
           .single();
@@ -336,4 +397,131 @@ export function subscribeToConversations(userId: string, callback: (conversation
       }
     )
     .subscribe();
+}
+
+// Buscar estatísticas reais do nutricionista
+export async function getNutritionistRealStats(nutritionistId: string) {
+  try {
+    // Usar a função SQL para obter estatísticas
+    const { data, error } = await supabase
+      .rpc('get_nutritionist_stats', { nutritionist_uuid: nutritionistId });
+
+    if (error) throw error;
+
+    return data?.[0] || {
+      total_clients: 0,
+      active_clients: 0,
+      total_reviews: 0,
+      average_rating: 0,
+      total_sessions: 0,
+      completed_goals: 0
+    };
+  } catch (error) {
+    console.error('Error fetching nutritionist stats:', error);
+    return {
+      total_clients: 0,
+      active_clients: 0,
+      total_reviews: 0,
+      average_rating: 0,
+      total_sessions: 0,
+      completed_goals: 0
+    };
+  }
+}
+
+// Buscar dados reais do cliente para o dashboard
+export async function getClientRealStats(clientId: string) {
+  try {
+    // Buscar metas do cliente
+    const { data: goals } = await supabase
+      .from('client_goals')
+      .select('id, status, current_value, target_value')
+      .eq('client_id', clientId);
+
+    // Buscar sessões do cliente
+    const { data: sessions } = await supabase
+      .from('mentoring_sessions')
+      .select('id, status, scheduled_at')
+      .in('mentoring_relationship_id', 
+        await supabase
+          .from('mentoring_relationships')
+          .select('id')
+          .eq('client_id', clientId)
+          .then(({ data }) => data?.map(rel => rel.id) || [])
+      );
+
+    // Buscar mensagens não lidas
+    const { data: conversations } = await supabase
+      .from('conversations')
+      .select(`
+        id,
+        mentoring_relationship:mentoring_relationships!inner(client_id)
+      `)
+      .eq('mentoring_relationship.client_id', clientId);
+
+    let unreadMessages = 0;
+    if (conversations) {
+      for (const conv of conversations) {
+        const { count } = await supabase
+          .from('messages')
+          .select('id', { count: 'exact' })
+          .eq('conversation_id', conv.id)
+          .neq('sender_id', clientId)
+          .is('read_at', null);
+        
+        unreadMessages += count || 0;
+      }
+    }
+
+    const activeGoals = goals?.filter(goal => goal.status === 'active').length || 0;
+    const completedGoals = goals?.filter(goal => goal.status === 'completed').length || 0;
+    const upcomingSessions = sessions?.filter(session => 
+      session.status === 'scheduled' && new Date(session.scheduled_at) > new Date()
+    ).length || 0;
+
+    const progressPercentage = goals && goals.length > 0 
+      ? (completedGoals / goals.length) * 100 
+      : 0;
+
+    return {
+      activeGoals,
+      completedGoals,
+      upcomingSessions,
+      unreadMessages,
+      progressPercentage,
+      totalGoals: goals?.length || 0
+    };
+  } catch (error) {
+    console.error('Error fetching client stats:', error);
+    return {
+      activeGoals: 0,
+      completedGoals: 0,
+      upcomingSessions: 0,
+      unreadMessages: 0,
+      progressPercentage: 0,
+      totalGoals: 0
+    };
+  }
+}
+
+// Upload de anexos (simulado - seria implementado com Supabase Storage)
+export async function uploadMessageAttachment(file: File, messageId: string): Promise<string> {
+  // Por enquanto, simular upload retornando URL fictícia
+  // Em produção, usar Supabase Storage
+  const fileName = `${Date.now()}_${file.name}`;
+  const fileUrl = `https://example.com/uploads/${fileName}`;
+  
+  // Salvar referência no banco
+  const { error } = await supabase
+    .from('message_attachments')
+    .insert([{
+      message_id: messageId,
+      file_name: file.name,
+      file_type: file.type,
+      file_size: file.size,
+      file_url: fileUrl
+    }]);
+
+  if (error) throw error;
+  return fileUrl;
 }
