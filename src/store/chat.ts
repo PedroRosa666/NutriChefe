@@ -148,6 +148,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         conversations: [conversation, ...state.conversations],
         activeConversation: conversation
       }));
+      
+      // Recarregar conversas para garantir dados atualizados
+      await get().fetchConversations();
     } catch (error) {
       console.error('Error creating conversation:', error);
       useToastStore.getState().showToast('Erro ao criar conversa', 'error');

@@ -65,21 +65,23 @@ export async function getConversations(userId: string): Promise<Conversation[]> 
         nutritionist:profiles!mentoring_relationships_nutritionist_id_fkey(id, full_name, avatar_url),
         client:profiles!mentoring_relationships_client_id_fkey(id, full_name, avatar_url)
       ),
-      last_message:messages(content, message_type, sender_id, created_at)
+      last_message:messages(
+        content, 
+        message_type, 
+        sender_id, 
+        created_at,
+        profiles!messages_sender_id_fkey(full_name)
+      )
     `)
+    .eq('mentoring_relationship.nutritionist_id', userId)
+    .or(`mentoring_relationship.client_id.eq.${userId}`)
     .order('last_message_at', { ascending: false });
 
   if (error) throw error;
 
-  // Filtrar conversas onde o usuário participa
-  const userConversations = (data || []).filter(conversation => {
-    const relationship = conversation.mentoring_relationship;
-    return relationship?.nutritionist_id === userId || relationship?.client_id === userId;
-  });
-
   // Enriquecer com contagem de mensagens não lidas
   const enrichedConversations = await Promise.all(
-    userConversations.map(async (conversation) => {
+    (data || []).map(async (conversation) => {
       const { data: unreadCount } = await supabase
         .from('messages')
         .select('id', { count: 'exact' })
@@ -89,7 +91,7 @@ export async function getConversations(userId: string): Promise<Conversation[]> 
 
       return {
         ...conversation,
-        unread_count: unreadCount || 0,
+        unread_count: unreadCount?.length || 0,
         last_message: conversation.last_message?.[0] || null
       };
     })

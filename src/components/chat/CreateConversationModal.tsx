@@ -87,6 +87,10 @@ export function CreateConversationModal({ isOpen, onClose }: CreateConversationM
       if (newRelationship) {
         // Criar conversa
         await createConversation(newRelationship.id, `Mentoria - ${selectedClient.full_name}`);
+        
+        // Recarregar conversas para mostrar a nova
+        const { useChatStore } = await import('../../store/chat');
+        await useChatStore.getState().fetchConversations();
       }
       
       onClose();

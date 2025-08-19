@@ -23,7 +23,9 @@ export function ConversationsList({
   const { conversations, fetchConversations, loading } = useChatStore();
 
   useEffect(() => {
-    fetchConversations();
+    if (user) {
+      fetchConversations();
+    }
   }, [fetchConversations]);
 
   const getOtherParticipant = (conversation: Conversation) => {
@@ -55,8 +57,14 @@ export function ConversationsList({
 
   const filteredConversations = conversations.filter(conversation => {
     const otherParticipant = getOtherParticipant(conversation);
-    return otherParticipant?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           conversation.title?.toLowerCase().includes(searchQuery.toLowerCase());
+    const hasParticipant = otherParticipant && otherParticipant.full_name;
+    
+    if (!hasParticipant) return false;
+    
+    if (!searchQuery) return true;
+    
+    return otherParticipant.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           (conversation.title && conversation.title.toLowerCase().includes(searchQuery.toLowerCase()));
   });
 
   if (loading.conversations) {

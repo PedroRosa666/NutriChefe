@@ -120,26 +120,24 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
       );
       
       if (existingRelationship) {
-        // Se já existe, apenas iniciar chat
+        // Se já existe, buscar ou criar conversa
+        const existingConversation = conversations.find(
+          conv => conv.mentoring_relationship_id === existingRelationship.id
+        );
+        
+        if (!existingConversation) {
+          await createConversation(existingRelationship.id, `Mentoria - ${nutritionist.full_name}`);
+        }
+        
         onStartChat(nutritionist.id);
         return;
       }
 
       // Criar novo relacionamento de mentoria
-      await createMentoringRelationship(nutritionist.id);
+      const newRelationship = await createMentoringRelationship(nutritionist.id);
       
-      // Buscar o relacionamento recém-criado
-      const { data: newRelationship } = await supabase
-        .from('mentoring_relationships')
-        .select('id')
-        .eq('nutritionist_id', nutritionist.id)
-        .eq('client_id', user.id)
-        .single();
-
-      if (newRelationship) {
-        // Criar conversa
-        await createConversation(newRelationship.id, `Mentoria - ${nutritionist.full_name}`);
-      }
+      // Criar conversa
+      await createConversation(newRelationship.id, `Mentoria - ${nutritionist.full_name}`);
 
       showToast('Mentoria iniciada com sucesso!', 'success');
       onStartChat(nutritionist.id);

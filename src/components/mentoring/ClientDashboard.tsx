@@ -49,11 +49,23 @@ export function ClientDashboard({ onBack }: ClientDashboardProps) {
       // Carregar dados do store
       await fetchMentoringRelationships();
       await fetchConversations();
-      await fetchClientGoals();
 
       // Carregar estatísticas reais
-      const clientStats = await getClientRealStats(user.id);
-      setStats(clientStats);
+      try {
+        const clientStats = await getClientRealStats(user.id);
+        setStats(clientStats);
+      } catch (statsError) {
+        console.error('Error loading client stats:', statsError);
+        // Usar valores padrão se não conseguir carregar estatísticas
+        setStats({
+          activeGoals: clientGoals.filter(goal => goal.status === 'active').length,
+          completedGoals: clientGoals.filter(goal => goal.status === 'completed').length,
+          upcomingSessions: 0,
+          unreadMessages: 0,
+          progressPercentage: 0,
+          totalGoals: clientGoals.length
+        });
+      }
     } catch (error) {
       console.error('Error loading client data:', error);
     }

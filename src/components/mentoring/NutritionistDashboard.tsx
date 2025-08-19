@@ -53,11 +53,23 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
       // Carregar dados do store
       await fetchMentoringRelationships();
       await fetchConversations();
-      await fetchClientGoals();
 
       // Carregar estatísticas reais
-      const nutritionistStats = await getNutritionistRealStats(user.id);
-      setStats(nutritionistStats);
+      try {
+        const nutritionistStats = await getNutritionistRealStats(user.id);
+        setStats(nutritionistStats);
+      } catch (statsError) {
+        console.error('Error loading stats:', statsError);
+        // Usar valores padrão se não conseguir carregar estatísticas
+        setStats({
+          total_clients: mentoringRelationships.length,
+          active_clients: mentoringRelationships.filter(rel => rel.status === 'active').length,
+          total_reviews: 0,
+          average_rating: 0,
+          total_sessions: 0,
+          completed_goals: 0
+        });
+      }
     } catch (error) {
       console.error('Error loading nutritionist data:', error);
     }
