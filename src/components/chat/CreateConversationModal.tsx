@@ -76,21 +76,20 @@ export function CreateConversationModal({ isOpen, onClose }: CreateConversationM
       // Recarregar relacionamentos para obter o novo
       await fetchMentoringRelationships();
       
-      // Buscar o relacionamento recém-criado
-      const { data: newRelationship } = await supabase
-        .from('mentoring_relationships')
-        .select('id')
-        .eq('nutritionist_id', user.id)
-        .eq('client_id', selectedClient.id)
-        .single();
+      // Buscar o relacionamento recém-criado nos dados do store
+      const { mentoringRelationships } = useChatStore.getState();
+      const newRelationship = mentoringRelationships.find(
+        rel => rel.nutritionist_id === user.id && rel.client_id === selectedClient.id
+      );
       
       if (newRelationship) {
         // Criar conversa
-        await createConversation(newRelationship.id, `Mentoria - ${selectedClient.full_name}`);
+        await createConversation(newRelationship.id, `Mentoria com ${selectedClient.full_name}`);
         
-        // Recarregar conversas para mostrar a nova
-        const { useChatStore } = await import('../../store/chat');
-        await useChatStore.getState().fetchConversations();
+        // Aguardar um pouco e recarregar conversas
+        setTimeout(async () => {
+          await useChatStore.getState().fetchConversations();
+        }, 500);
       }
       
       onClose();

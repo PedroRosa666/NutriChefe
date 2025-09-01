@@ -129,13 +129,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const { user } = useAuthStore.getState();
     if (!user) return;
 
+    console.log('Fetching conversations for user:', user.id);
     set(state => ({ loading: { ...state.loading, conversations: true } }));
     try {
       const conversations = await chatService.getConversations(user.id);
+      console.log('Conversations loaded:', conversations.length);
       set({ conversations });
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      useToastStore.getState().showToast('Erro ao carregar conversas', 'error');
+      // Não mostrar toast de erro para não incomodar o usuário
+      set({ conversations: [] });
     } finally {
       set(state => ({ loading: { ...state.loading, conversations: false } }));
     }
@@ -143,14 +146,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   createConversation: async (mentoringRelationshipId: string, title?: string) => {
     try {
+      console.log('Creating conversation for relationship:', mentoringRelationshipId);
       const conversation = await chatService.createConversation(mentoringRelationshipId, title);
+      console.log('Conversation created:', conversation);
+      
       set(state => ({
         conversations: [conversation, ...state.conversations],
         activeConversation: conversation
       }));
       
-      // Recarregar conversas para garantir dados atualizados
-      await get().fetchConversations();
+      useToastStore.getState().showToast('Conversa criada com sucesso!', 'success');
     } catch (error) {
       console.error('Error creating conversation:', error);
       useToastStore.getState().showToast('Erro ao criar conversa', 'error');

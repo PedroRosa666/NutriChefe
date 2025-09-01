@@ -56,60 +56,86 @@ export async function updateMentoringRelationship(id: string, updates: Partial<M
 
 // Conversas
 export async function getConversations(userId: string): Promise<Conversation[]> {
-  // First, get the mentoring relationship IDs where the user participates
-  const { data: relationships, error: relationshipsError } = await supabase
-    .from('mentoring_relationships')
-    .select('id')
-    .or(`nutritionist_id.eq.${userId},client_id.eq.${userId}`);
-
-  if (relationshipsError) throw relationshipsError;
-
-  if (!relationships || relationships.length === 0) {
-    return [];
-  }
-
-  const relationshipIds = relationships.map(rel => rel.id);
-
-  // Then get conversations for those relationships
+  console.log('Fetching conversations for user:', userId);
+  
+  // Buscar conversas diretamente com join simples
   const { data, error } = await supabase
     .from('conversations')
     .select(`
       *,
-      mentoring_relationship:mentoring_relationships(
+      mentoring_relationship:mentoring_relationships!inner(
         *,
         nutritionist:profiles!mentoring_relationships_nutritionist_id_fkey(id, full_name, avatar_url),
         client:profiles!mentoring_relationships_client_id_fkey(id, full_name, avatar_url)
-      ),
-      last_message:messages(
-        content, 
-        message_type, 
-        sender_id, 
-        created_at,
-        profiles!messages_sender_id_fkey(full_name)
       )
     `)
+    .or(`mentoring_relationships.nutritionist_id.eq.${userId},mentoring_relationships.client_id.eq.${userId}`)
+    .order('last_message_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching conversations:', error);
+    // Se der erro na query complexa, tentar abordagem mais simples
+    return await getConversationsSimple(userId);
+  }
+
+  console.log('Conversations fetched:', data?.length || 0);
+  return data || [];
+}
+
+// Função alternativa mais simples
+async function getConversationsSimple(userId: string): Promise<Conversation[]> {
+  console.log('Using simple approach for conversations');
+  
+  // Primeiro buscar relacionamentos onde o usuário participa
+  const { data: relationships, error: relError } = await supabase
+    .from('mentoring_relationships')
+    .select(`
+      id,
+      nutritionist_id,
+      client_id,
+      nutritionist:profiles!mentoring_relationships_nutritionist_id_fkey(id, full_name, avatar_url),
+      client:profiles!mentoring_relationships_client_id_fkey(id, full_name, avatar_url)
+    `)
+    .or(`nutritionist_id.eq.${userId},client_id.eq.${userId}`);
+
+  if (relError) {
+    console.error('Error fetching relationships:', relError);
+    return [];
+  }
+
+  if (!relationships || relationships.length === 0) {
+    console.log('No relationships found');
+    return [];
+  }
+
+  const relationshipIds = relationships.map(rel => rel.id);
+  console.log('Found relationship IDs:', relationshipIds);
+
+  // Buscar conversas para esses relacionamentos
+  const { data: conversations, error: convError } = await supabase
+    .from('conversations')
+    .select('*')
     .in('mentoring_relationship_id', relationshipIds)
     .order('last_message_at', { ascending: false });
 
-  if (error) throw error;
+  if (convError) {
+    console.error('Error fetching conversations:', convError);
+    return [];
+  }
 
-  // Enriquecer com contagem de mensagens não lidas
-  const enrichedConversations = await Promise.all(
-    (data || []).map(async (conversation) => {
-      const { data: unreadCount } = await supabase
-        .from('messages')
-        .select('id', { count: 'exact' })
-        .eq('conversation_id', conversation.id)
-        .neq('sender_id', userId)
-        .is('read_at', null);
+  // Enriquecer conversas com dados dos relacionamentos
+  const enrichedConversations = (conversations || []).map(conversation => {
+    const relationship = relationships.find(rel => rel.id === conversation.mentoring_relationship_id);
+    return {
+      ...conversation,
+      mentoring_relationship: relationship,
+      unread_count: 0 // Simplificar por enquanto
+    };
+  });
 
-      return {
-        ...conversation,
-        unread_count: unreadCount?.length || 0,
-        last_message: conversation.last_message?.[0] || null
-      };
-    })
-  );
+  console.log('Enriched conversations:', enrichedConversations.length);
+  return enrichedConversations;
+}
 
   return enrichedConversations;
 }

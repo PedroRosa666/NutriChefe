@@ -30,6 +30,8 @@ export function ConversationsList({
 
   const getOtherParticipant = (conversation: Conversation) => {
     const relationship = conversation.mentoring_relationship;
+    if (!relationship) return null;
+    
     return relationship?.nutritionist_id === user?.id
       ? relationship.client
       : relationship?.nutritionist;
@@ -43,7 +45,7 @@ export function ConversationsList({
   };
 
   const getLastMessagePreview = (conversation: Conversation) => {
-    if (!conversation.last_message) return 'Nenhuma mensagem ainda';
+    if (!conversation.last_message) return 'Conversa iniciada';
     
     const content = conversation.last_message.content;
     if (conversation.last_message.message_type === 'image') {
@@ -57,13 +59,14 @@ export function ConversationsList({
 
   const filteredConversations = conversations.filter(conversation => {
     const otherParticipant = getOtherParticipant(conversation);
-    const hasParticipant = otherParticipant && otherParticipant.full_name;
     
-    if (!hasParticipant) return false;
+    // Mostrar conversa se tem relacionamento válido
+    if (!conversation.mentoring_relationship) return false;
+    if (!otherParticipant) return false;
     
     if (!searchQuery) return true;
     
-    return otherParticipant.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    return otherParticipant.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
            (conversation.title && conversation.title.toLowerCase().includes(searchQuery.toLowerCase()));
   });
 
@@ -184,7 +187,7 @@ export function ConversationsList({
                             <Bell className="w-3 h-3 text-red-500" />
                           )}
                           <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                            {formatLastMessageTime(conversation.last_message_at)}
+                            {formatLastMessageTime(conversation.last_message_at || conversation.created_at)}
                           </span>
                         </div>
                       </div>

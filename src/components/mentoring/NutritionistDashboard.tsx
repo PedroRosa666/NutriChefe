@@ -60,10 +60,11 @@ export function NutritionistDashboard({ onBack }: NutritionistDashboardProps) {
         setStats(nutritionistStats);
       } catch (statsError) {
         console.error('Error loading stats:', statsError);
-        // Usar valores padrão se não conseguir carregar estatísticas
+        // Calcular estatísticas básicas dos dados disponíveis
+        const activeRelationships = mentoringRelationships.filter(rel => rel.status === 'active');
         setStats({
           total_clients: mentoringRelationships.length,
-          active_clients: mentoringRelationships.filter(rel => rel.status === 'active').length,
+          active_clients: activeRelationships.length,
           total_reviews: 0,
           average_rating: 0,
           total_sessions: 0,
