@@ -31,17 +31,22 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
     ? conversation.mentoring_relationship.client
     : conversation.mentoring_relationship?.nutritionist;
 
+  console.log('Chat interface - Other participant:', otherParticipant);
+  console.log('Chat interface - Conversation:', conversation.id);
+
   // Atualizar última visualização e marcar mensagens como lidas
   useEffect(() => {
-    if (user) {
+    if (user && conversation.id) {
       updateLastSeen(user.id);
       markConversationAsRead(conversation.id, user.id);
     }
   }, [user, conversation.id]);
 
   useEffect(() => {
+    console.log('Setting up message subscription for conversation:', conversation.id);
     // Subscrever a mensagens em tempo real
     const subscription = subscribeToMessages(conversation.id, (message: Message) => {
+      console.log('New message received:', message);
       addMessage(message);
       
       // Marcar como lida se não for minha mensagem
@@ -51,6 +56,7 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
     });
 
     return () => {
+      console.log('Unsubscribing from messages');
       subscription.unsubscribe();
     };
   }, [conversation.id, addMessage, user?.id]);
@@ -69,8 +75,11 @@ export function ChatInterface({ conversation, onBack }: ChatInterfaceProps) {
     const messageContent = newMessage.trim();
     setNewMessage('');
 
+    console.log('Sending message:', messageContent);
+    
     try {
       await sendMessage(messageContent);
+      console.log('Message sent successfully');
     } catch (error) {
       console.error('Error sending message:', error);
       setNewMessage(messageContent); // Restaurar mensagem em caso de erro

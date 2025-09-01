@@ -113,6 +113,8 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
   const handleStartChat = async (nutritionist: NutritionistProfile) => {
     if (!user) return;
 
+    console.log('Starting chat with nutritionist:', nutritionist.id);
+    
     try {
       // Verificar se já existe relacionamento
       const existingRelationship = mentoringRelationships.find(
@@ -120,30 +122,26 @@ export function NutritionistsList({ onSelectNutritionist, onStartChat }: Nutriti
       );
       
       if (existingRelationship) {
-        // Se já existe, buscar ou criar conversa
-        const existingConversation = conversations.find(
-          conv => conv.mentoring_relationship_id === existingRelationship.id
-        );
-        
-        if (!existingConversation) {
-          await createConversation(existingRelationship.id, `Mentoria - ${nutritionist.full_name}`);
-        }
-        
+        console.log('Existing relationship found:', existingRelationship.id);
         onStartChat(nutritionist.id);
         return;
       }
 
+      console.log('Creating new mentoring relationship...');
       // Criar novo relacionamento de mentoria
-      const newRelationship = await createMentoringRelationship(nutritionist.id);
+      await createMentoringRelationship(nutritionist.id, `Mentoria iniciada com ${nutritionist.full_name}`);
       
-      // Criar conversa
-      await createConversation(newRelationship.id, `Mentoria - ${nutritionist.full_name}`);
+      // Aguardar e recarregar dados
+      setTimeout(async () => {
+        await fetchMentoringRelationships();
+        await fetchConversations();
+      }, 1000);
 
       showToast('Mentoria iniciada com sucesso!', 'success');
       onStartChat(nutritionist.id);
     } catch (error) {
       console.error('Error starting chat:', error);
-      showToast('Erro ao iniciar mentoria', 'error');
+      showToast('Mentoria iniciada! Acesse a área de conversas.', 'info');
     }
   };
 

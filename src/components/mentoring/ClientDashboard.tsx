@@ -56,7 +56,7 @@ export function ClientDashboard({ onBack }: ClientDashboardProps) {
         setStats(clientStats);
       } catch (statsError) {
         console.error('Error loading client stats:', statsError);
-        // Usar valores padrão se não conseguir carregar estatísticas
+        // Calcular estatísticas básicas dos dados disponíveis
         setStats({
           activeGoals: clientGoals.filter(goal => goal.status === 'active').length,
           completedGoals: clientGoals.filter(goal => goal.status === 'completed').length,
