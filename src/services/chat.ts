@@ -145,3 +145,38 @@ export async function getAvailableClients(nutritionistId: string) {
   if (error) throw error;
   return data || [];
 }
+
+export async function getClientRealStats(clientId: string) {
+  // Get client's basic profile info
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, full_name, avatar_url, created_at')
+    .eq('id', clientId)
+    .single();
+
+  if (profileError) throw profileError;
+
+  // Get message count for this client
+  const { count: messageCount, error: messageError } = await supabase
+    .from('messages')
+    .select('*', { count: 'exact', head: true })
+    .eq('sender_id', clientId);
+
+  if (messageError) throw messageError;
+
+  // Get active mentoring relationships count
+  const { count: relationshipsCount, error: relationshipsError } = await supabase
+    .from('mentoring_relationships')
+    .select('*', { count: 'exact', head: true })
+    .eq('client_id', clientId)
+    .eq('status', 'active');
+
+  if (relationshipsError) throw relationshipsError;
+
+  return {
+    profile,
+    messageCount: messageCount || 0,
+    activeRelationships: relationshipsCount || 0,
+    joinedDate: profile?.created_at
+  };
+}
