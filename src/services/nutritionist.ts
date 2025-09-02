@@ -231,3 +231,20 @@ export async function getNutritionistClients(nutritionistId: string) {
 
   return enrichedClients;
 }
+
+// Buscar estatísticas reais do nutricionista
+export async function getNutritionistRealStats(nutritionistId: string) {
+  const { data, error } = await supabase
+    .rpc('get_nutritionist_stats', { nutritionist_uuid: nutritionistId });
+
+  if (error) throw error;
+
+  return data?.[0] || {
+    total_clients: 0,
+    active_clients: 0,
+    total_reviews: 0,
+    average_rating: 0,
+    total_sessions: 0,
+    completed_goals: 0
+  };
+}

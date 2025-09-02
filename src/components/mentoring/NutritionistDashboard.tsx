@@ -7,7 +7,7 @@ import { ClientsList } from './ClientsList';
 import { ChatPage } from '../chat/ChatPage';
 import { GoalsManager } from '../goals/GoalsManager';
 import { NutritionistServiceConfig } from './NutritionistServiceConfig';
-import { getNutritionistRealStats } from '../../services/chat';
+import { getNutritionistRealStats } from '../../services/nutritionist';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatDistanceToNow } from 'date-fns';
