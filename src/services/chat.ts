@@ -134,3 +134,14 @@ export async function getUnreadMessageCount(userId: string): Promise<number> {
   if (error) throw error;
   return count || 0;
 }
+
+export async function getAvailableClients(nutritionistId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, avatar_url')
+    .eq('user_type', 'Client')
+    .neq('id', nutritionistId);
+
+  if (error) throw error;
+  return data || [];
+}
