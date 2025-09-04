@@ -7,19 +7,16 @@ import { ThemeSwitch } from './common/ThemeSwitch';
 import { LanguageSwitch } from './common/LanguageSwitch';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users } from 'lucide-react';
 
 interface HeaderProps {
   onProfileClick: () => void;
-  onMentoringClick?: () => void;
-  onMentoringHubClick?: () => void;
 }
 
-export function Header({ onProfileClick, onMentoringClick, onMentoringHubClick }: HeaderProps) {
+export function Header({ onProfileClick }: HeaderProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, signOut, isNutritionist } = useAuthStore();
+  const { user, isAuthenticated, signOut } = useAuthStore();
   const { searchQuery, setSearchQuery } = useFiltersStore();
   const t = useTranslation();
 
@@ -76,18 +73,6 @@ export function Header({ onProfileClick, onMentoringClick, onMentoringHubClick }
                     <User className="w-4 h-4" />
                     <span>{user?.name}</span>
                   </button>
-                  
-                  {/* Botão Mentoria para todos os usuários autenticados */}
-                  {onMentoringHubClick && (
-                    <button
-                      onClick={onMentoringHubClick}
-                      className="flex items-center space-x-2 px-4 py-2 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-                    >
-                      <Users className="w-4 h-4" />
-                      <span>Mentorias</span>
-                    </button>
-                  )}
-                  
                   <button
                     onClick={signOut}
                     className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -163,21 +148,6 @@ export function Header({ onProfileClick, onMentoringClick, onMentoringHubClick }
                       <User className="w-4 h-4" />
                       <span>{t.common.profile}</span>
                     </button>
-                    
-                    {/* Botão Mentoria para mobile */}
-                    {onMentoringHubClick && (
-                      <button
-                        onClick={() => {
-                          onMentoringHubClick();
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-                      >
-                        <Users className="w-4 h-4" />
-                        <span>Mentorias</span>
-                      </button>
-                    )}
-                    
                     <button
                       onClick={signOut}
                       className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"

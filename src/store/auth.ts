@@ -36,15 +36,6 @@ export const useAuthStore = create<AuthState>()(
           
           if (error) {
             console.error('Error getting session:', error);
-            
-            // Handle invalid refresh token errors
-            if (error.message?.includes('Invalid Refresh Token') || 
-                error.message?.includes('Refresh Token Not Found') ||
-                error.message?.includes('refresh_token_not_found')) {
-              console.log('Invalid refresh token detected, clearing session...');
-              await supabase.auth.signOut();
-            }
-            
             set({ user: null, isAuthenticated: false, token: null });
             return;
           }
