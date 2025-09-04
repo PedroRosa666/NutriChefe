@@ -215,7 +215,7 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 
 - 📧 Email: seu.email@exemplo.com
 - 💼 LinkedIn: [linkedin.com/in/seu-perfil](https://linkedin.com/in/seu-perfil)
-- 🐱 GitHub: [github.com/seu-usuario](https://github.com/seu-usuario)
+- 🐱 GitHub: [https://github.com/PedroRosa666]
 
 ---
 
