@@ -214,7 +214,7 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 **Desenvolvido por [Pedro Henrique Rosa]**
 
 - 📧 Email: seu.email@exemplo.com
-- 💼 LinkedIn: [linkedin.com/in/pedro-henrique-oliveira-rosa-232383274)
+- 💼 LinkedIn: [linkedin.com/in/pedro-henrique-oliveira-rosa-232383274]
 - 🐱 GitHub: [https://github.com/PedroRosa666]
 
 ---
