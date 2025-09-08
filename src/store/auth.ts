@@ -60,6 +60,10 @@ export const useAuthStore = create<AuthState>()(
               // Inicializar favoritos após autenticação
               const { useRecipesStore } = await import('./recipes');
               useRecipesStore.getState().initializeAuth();
+              
+              // Inicializar assinatura
+              const { useSubscriptionStore } = await import('./subscription');
+              useSubscriptionStore.getState().fetchUserSubscription(session.user.id);
             } catch (profileError) {
               console.error('Error getting profile:', profileError);
               set({ user: null, isAuthenticated: false, token: null });
@@ -127,6 +131,10 @@ export const useAuthStore = create<AuthState>()(
           // Inicializar favoritos após login
           const { useRecipesStore } = await import('./recipes');
           useRecipesStore.getState().initializeAuth();
+          
+          // Inicializar assinatura
+          const { useSubscriptionStore } = await import('./subscription');
+          useSubscriptionStore.getState().fetchUserSubscription(data.user.id);
         } catch (error) {
           console.error('Sign in error:', error);
           const errorMessage = error instanceof Error ? error.message : 'Sign in failed';
@@ -203,6 +211,10 @@ export const useAuthStore = create<AuthState>()(
           // Inicializar favoritos após cadastro
           const { useRecipesStore } = await import('./recipes');
           useRecipesStore.getState().initializeAuth();
+          
+          // Inicializar assinatura
+          const { useSubscriptionStore } = await import('./subscription');
+          useSubscriptionStore.getState().fetchUserSubscription(data.user.id);
         } catch (error) {
           console.error('Sign up error:', error);
           const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
@@ -223,6 +235,10 @@ export const useAuthStore = create<AuthState>()(
           // Limpar favoritos
           const { useRecipesStore } = await import('./recipes');
           useRecipesStore.getState().clearUserData();
+          
+          // Limpar dados de assinatura
+          const { useSubscriptionStore } = await import('./subscription');
+          useSubscriptionStore.getState().reset?.();
           
           // Fazer logout no Supabase
           const { error } = await supabase.auth.signOut();

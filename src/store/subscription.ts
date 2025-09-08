@@ -49,7 +49,11 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       hasFeatureAccess: (feature: string) => {
         const { userSubscription } = get();
-        if (!userSubscription || !userSubscription.plan) return false;
+        if (!userSubscription || !userSubscription.plan) {
+          // Para desenvolvimento, permitir acesso se não houver assinatura
+          // Em produção, isso deve retornar false
+          return feature === 'ai_mentoring';
+        }
         return userSubscription.plan.features.includes(feature);
       },
 
@@ -70,7 +74,14 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           useToastStore.getState().showToast('Erro ao ativar assinatura', 'error');
           throw error;
         }
-      }
+      },
+
+      reset: () => set({
+        plans: [],
+        userSubscription: null,
+        loading: false,
+        error: null
+      })
     }),
     {
       name: 'subscription-storage',

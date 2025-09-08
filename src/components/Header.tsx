@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Search, Menu, LogOut, User } from 'lucide-react';
+import { Search, Menu, LogOut, User, Bot } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
+import { useSubscriptionStore } from '../store/subscription';
 import { useFiltersStore } from '../store/filters';
 import { AuthModal } from './AuthModal';
 import { ThemeSwitch } from './common/ThemeSwitch';
@@ -10,13 +11,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeaderProps {
   onProfileClick: () => void;
+  onAIMentoringClick: () => void;
 }
 
-export function Header({ onProfileClick }: HeaderProps) {
+export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, signOut } = useAuthStore();
+  const { user, isAuthenticated, signOut, isNutritionist } = useAuthStore();
+  const { hasFeatureAccess } = useSubscriptionStore();
   const { searchQuery, setSearchQuery } = useFiltersStore();
   const t = useTranslation();
 
@@ -25,6 +28,8 @@ export function Header({ onProfileClick }: HeaderProps) {
     setIsAuthModalOpen(true);
   };
 
+  // Verificar se tem acesso à IA (nutricionista ou premium)
+  const hasAIAccess = isAuthenticated && (isNutritionist() || hasFeatureAccess('ai_mentoring'));
   return (
     <>
       <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50">
@@ -66,6 +71,20 @@ export function Header({ onProfileClick }: HeaderProps) {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                 >
+                  <button
+                    onClick={onAIMentoringClick}
+                    className={cn(
+                      "flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors",
+                      hasAIAccess
+                        ? "text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                        : "text-gray-400 dark:text-gray-500"
+                    )}
+                    title={hasAIAccess ? "Mentoria IA" : "Mentoria IA (Premium)"}
+                  >
+                    <Bot className="w-4 h-4" />
+                    <span className="hidden lg:inline">Mentoria IA</span>
+                    {!hasAIAccess && <span className="text-xs bg-yellow-500 text-white px-1 rounded">Premium</span>}
+                  </button>
                   <button
                     onClick={onProfileClick}
                     className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -138,6 +157,22 @@ export function Header({ onProfileClick }: HeaderProps) {
 
                 {isAuthenticated ? (
                   <div className="space-y-3">
+                    <button
+                      onClick={() => {
+                        onAIMentoringClick();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors",
+                        hasAIAccess
+                          ? "text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                          : "text-gray-400 dark:text-gray-500"
+                      )}
+                    >
+                      <Bot className="w-4 h-4" />
+                      <span>Mentoria IA</span>
+                      {!hasAIAccess && <span className="text-xs bg-yellow-500 text-white px-1 rounded">Premium</span>}
+                    </button>
                     <button
                       onClick={() => {
                         onProfileClick();

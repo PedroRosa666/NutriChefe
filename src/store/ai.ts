@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
 import * as aiService from '../services/ai';
 import { useToastStore } from './toast';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
