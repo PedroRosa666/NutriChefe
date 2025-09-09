@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Search, Menu, LogOut, User, Bot } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { useAuthStore } from '../store/auth';
 import { useSubscriptionStore } from '../store/subscription';
 import { useFiltersStore } from '../store/filters';
