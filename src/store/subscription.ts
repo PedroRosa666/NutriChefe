@@ -50,9 +50,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       hasFeatureAccess: (feature: string) => {
         const { userSubscription } = get();
         if (!userSubscription || !userSubscription.plan) {
-          // Para desenvolvimento, permitir acesso se não houver assinatura
-          // Em produção, isso deve retornar false
-          return feature === 'ai_mentoring';
+          return false;
         }
         return userSubscription.plan.features.includes(feature);
       },
