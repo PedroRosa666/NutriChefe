@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, Loader2, Sparkles, ChefHat, Clock, Star } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, ChefHat, Clock, Star, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useAIStore } from '../../store/ai';
 import { LoadingSpinner } from '../common/LoadingSpinner';
