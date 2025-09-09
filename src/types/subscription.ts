@@ -26,4 +26,4 @@ export interface UserSubscription {
   plan?: SubscriptionPlan;
 }
 
-export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'pending';
+type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'pending';

@@ -1,4 +1,4 @@
-export type AIPersonality = 'empathetic' | 'scientific' | 'friendly' | 'professional';
+type AIPersonality = 'empathetic' | 'scientific' | 'friendly' | 'professional';
 
 export interface AIConfiguration {
   id: string;

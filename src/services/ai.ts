@@ -96,7 +96,7 @@ export async function createAIMessage(message: Omit<AIMessage, 'id' | 'created_a
 }
 
 // Buscar receitas para a IA
-export async function searchRecipesForAI(query: string, limit: number = 5): Promise<Recipe[]> {
+async function searchRecipesForAI(query: string, limit: number = 5): Promise<Recipe[]> {
   const { data, error } = await supabase
     .from('recipes')
     .select(`

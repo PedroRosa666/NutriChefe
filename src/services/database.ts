@@ -3,7 +3,7 @@ import type { Recipe } from '../types/recipe';
 import type { User } from '../types/user';
 
 // Tipos para o banco de dados
-export interface DatabaseRecipe {
+interface DatabaseRecipe {
   id: string;
   title: string;
   description: string;
@@ -297,7 +297,7 @@ export async function getRecipes() {
   return recipes;
 }
 
-export async function getRecipeById(recipeId: number) {
+async function getRecipeById(recipeId: number) {
   const uuid = getUuidFromNumericId(recipeId);
   if (!uuid) {
     throw new Error('Receita não encontrada');
@@ -548,7 +548,7 @@ export async function updatePassword(newPassword: string): Promise<void> {
   console.log('Password updated successfully');
 }
 
-export async function verifyPasswordResetToken(): Promise<boolean> {
+async function verifyPasswordResetToken(): Promise<boolean> {
   try {
     console.log('Verifying password reset token');
     

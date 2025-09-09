@@ -31,7 +31,7 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
   return data;
 }
 
-export async function hasFeatureAccess(userId: string, feature: string): Promise<boolean> {
+async function hasFeatureAccess(userId: string, feature: string): Promise<boolean> {
   try {
     const subscription = await getUserSubscription(userId);
     if (!subscription || !subscription.plan) return false;
@@ -57,7 +57,7 @@ export async function createSubscription(subscription: Omit<UserSubscription, 'i
   return data;
 }
 
-export async function updateSubscription(subscriptionId: string, updates: Partial<UserSubscription>): Promise<UserSubscription> {
+async function updateSubscription(subscriptionId: string, updates: Partial<UserSubscription>): Promise<UserSubscription> {
   const { data, error } = await supabase
     .from('user_subscriptions')
     .update(updates)
