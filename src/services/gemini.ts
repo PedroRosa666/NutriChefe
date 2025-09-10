@@ -31,7 +31,7 @@ Regras importantes:
 4. Mantenha o foco em alimentação saudável e bem-estar
 5. Responda em português brasileiro
 6. Use uma linguagem clara e acessível
-
+7. Seja breve, tente não falar demais na hora das mensagens
 `;
 
     // Adicionar histórico da conversa se disponível
