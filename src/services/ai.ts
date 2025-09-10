@@ -201,7 +201,7 @@ export async function createAIConversation(conversation: Omit<AIConversation, 'i
     .insert([conversation])
     .select(`
       *,
-      ai_config:ai_configurations(*)
+      ai_config:ai_configurations!ai_conversations_ai_config_id_fkey(*)
     `)
     .single();
 
