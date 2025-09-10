@@ -30,6 +30,28 @@ ${data.map(r => `
   return { context, structuredData };
 }
 
+/**
+ * Cria uma nova conversa de IA no banco de dados.
+ * @param userId O ID do usuário.
+ * @param title O título da conversa.
+ * @returns A nova conversa criada.
+ */
+export async function createAIConversation(userId: string, title: string): Promise<AIConversation> {
+  const { data, error } = await supabase
+    .from('ai_conversations') // Nome da sua tabela de conversas
+    .insert([{ user_id: userId, title }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao criar a conversa na IA:', error);
+    throw new Error('Não foi possível iniciar uma nova conversa.');
+  }
+
+  return data;
+}
+
+
 
 /**
  * Busca receitas no banco de dados com base em uma consulta de texto.
