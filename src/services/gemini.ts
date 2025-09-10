@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { AIConfiguration, AIMessage } from '../types/ai';
 
 // Inicializar o cliente Gemini
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyCNnsAYj6b91FFMrcunLlrRtWVohnS9JQE');
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 export interface GeminiResponse {
   content: string;
