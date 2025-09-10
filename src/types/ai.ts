@@ -36,7 +36,7 @@ export interface AIMessage {
 }
 
 // --- ATUALIZAÇÃO AQUI ---
-// Adicionamos a possibilidade de retornar perfis de nutricionistas
+// Adicionei a possibilidade de retornar perfis de nutricionistas
 export interface AIResponse {
   content: string;
   recipes?: Array<{
