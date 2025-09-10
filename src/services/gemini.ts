@@ -4,7 +4,7 @@ import type { AIConfiguration, AIMessage } from '../types/ai';
 
 // --- CONFIGURAÇÕES CENTRALIZADAS ---
 // Centralizar as configurações torna o código mais fácil de manter.
-const MODEL_NAME = "gemini-1.5-flash";
+const MODEL_NAME = "gemini-2.5-flash-lite";
 const CONVERSATION_HISTORY_LENGTH = 10; // Aumentei um pouco, mas pode ser ajustado.
 
 // --- INICIALIZAÇÃO SEGURA ---
@@ -111,7 +111,7 @@ function buildSystemInstruction(aiConfig?: AIConfiguration): string {
     '4. Mantenha o foco em alimentação saudável e bem-estar.',
     '5. Responda em português brasileiro.',
     '6. Use uma linguagem clara e acessível.',
-    '7. Seja breve, tente não falar demais na hora das mensagens.'
+    '7. Seja breve, resuma as mensagens antes de enviar.'
   ];
 
   return instructions.filter(Boolean).join('\n'); // .filter(Boolean) remove linhas vazias.
