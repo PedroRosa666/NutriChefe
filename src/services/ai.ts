@@ -185,7 +185,7 @@ export async function getAIConversations(userId: string): Promise<AIConversation
     .from('ai_conversations')
     .select(`
       *,
-      ai_config:ai_configurations(*)
+      ai_config:ai_configurations!ai_conversations_ai_config_id_fkey(*)
     `)
     .eq('client_id', userId)
     .eq('is_active', true)
