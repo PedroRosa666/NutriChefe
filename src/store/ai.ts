@@ -211,6 +211,7 @@ export const useAIStore = create<AIState>((set, get) => ({
         content: aiResponse.content,
         metadata: {
           recipes: aiResponse.recipes,
+          nutritionists: aiResponse.nutritionists,
           suggestions: aiResponse.suggestions
         }
       });
