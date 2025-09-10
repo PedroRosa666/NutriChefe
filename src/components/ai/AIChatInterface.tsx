@@ -130,30 +130,6 @@ export function AIChatInterface() {
     </motion.div>
   );
 
-  const renderNutritionistCard = (nutritionist: any) => (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-green-200 dark:border-green-700 mt-3"
-    >
-      <div className="flex items-start gap-3">
-        <User className="w-5 h-5 text-green-600 mt-1 flex-shrink-0" />
-        <div className="flex-1">
-          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
-            {nutritionist.fullName}
-          </h4>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {nutritionist.bio}
-          </p>
-          <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 mt-2">
-            <span className="bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
-              Nutricionista
-            </span>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
   // Se não há conversa ativa, mostrar tela de início
   if (!currentConversation) {
     return (
@@ -200,14 +176,6 @@ export function AIChatInterface() {
                 "Me mostre receitas de bolo fit"
               </p>
             </div>
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <h3 className="font-semibold text-green-700 dark:text-green-300 mb-2">
-                📊 Estatísticas
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                "Quantas receitas temos na plataforma?"
-              </p>
-            </div>
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <h3 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">
                 💡 Dicas
@@ -216,8 +184,8 @@ export function AIChatInterface() {
                 "Como posso melhorar minha alimentação?"
               </p>
             </div>
-            <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-              <h3 className="font-semibold text-orange-700 dark:text-orange-300 mb-2">
+            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <h3 className="font-semibold text-green-700 dark:text-green-300 mb-2">
                 ❓ Ajuda
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -294,15 +262,6 @@ export function AIChatInterface() {
                     <div className="mt-3 space-y-2">
                       {message.metadata.recipes.map((recipe: any, index: number) => 
                         renderRecipeCard(recipe)
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Renderizar nutricionistas recomendados */}
-                  {message.metadata?.nutritionists && message.metadata.nutritionists.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {message.metadata.nutritionists.map((nutritionist: any, index: number) => 
-                        renderNutritionistCard(nutritionist)
                       )}
                     </div>
                   )}
