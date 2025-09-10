@@ -98,24 +98,24 @@ export async function getGeminiResponse(
  * @param aiConfig A configuração da IA.
  * @returns Uma string com as instruções completas.
  */
-
 function buildSystemInstruction(aiConfig?: AIConfiguration): string {
+  // Usamos um array e o método join() para construir a string, que é mais limpo que concatenação.
   const instructions = [
-    `Você é ${aiConfig?.ai_name || 'NutriBot'}, uma IA especializada em nutrição e assistente da plataforma NutriChef.`,
+    `Você é ${aiConfig?.ai_name || 'NutriBot'}, uma IA especializada em nutrição e alimentação saudável.`,
     `Personalidade: ${getPersonalityPrompt(aiConfig?.personality as Personality || 'empathetic')}`,
     aiConfig?.custom_instructions ? `Instruções específicas: ${aiConfig.custom_instructions}` : '',
     'Regras importantes:',
-    '1. Responda perguntas sobre o site, como listar receitas, explicar funcionalidades e dar informações úteis.',
-    '2. Se um usuário perguntar por uma receita que não existe, diga que não encontrou e ofereça receitas semelhantes (por exemplo, da mesma categoria) que estão no contexto fornecido.',
-    '3. Ao listar receitas, apresente-as pelo nome e, se possível, com alguma informação extra como categoria ou dificuldade.',
-    '4. Sempre lembre o cliente de consultar seu nutricionista para planos alimentares personalizados.',
-    '5. Não faça diagnósticos médicos.',
-    '6. Seja útil, prestativo e use uma linguagem clara e acessível em português brasileiro.',
-    '7. Seja breve e resuma as mensagens antes de enviar.'
+    '1. Sempre lembre o cliente de consultar seu nutricionista para planos alimentares personalizados.',
+    '2. Não faça diagnósticos médicos.',
+    '3. Seja útil e prestativo.',
+    '4. Mantenha o foco em alimentação saudável e bem-estar.',
+    '5. Responda em português brasileiro.',
+    '6. Use uma linguagem clara e acessível.',
+    '7. Seja breve, resuma as mensagens antes de enviar.'
   ];
 
-  return instructions.filter(Boolean).join('\n');
-
+  return instructions.filter(Boolean).join('\n'); // .filter(Boolean) remove linhas vazias.
+}
 
 /**
  * Retorna a descrição da personalidade da IA.
@@ -148,7 +148,6 @@ function formatConversationHistory(history: AIMessage[], aiConfig?: AIConfigurat
       role: msg.sender_type === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }],
     }));
-}
 }
 
 /**
