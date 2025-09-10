@@ -35,10 +35,12 @@ export interface AIMessage {
   created_at: string;
 }
 
+// --- ATUALIZAÇÃO AQUI ---
+// Adicionei a possibilidade de retornar perfis de nutricionistas
 export interface AIResponse {
   content: string;
   recipes?: Array<{
-    id: string;
+    id: number;
     title: string;
     description: string;
     author: string;
