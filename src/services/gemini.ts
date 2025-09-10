@@ -99,9 +99,6 @@ export async function getGeminiResponse(
  * @returns Uma string com as instruções completas.
  */
 
-
-
-
 function buildSystemInstruction(aiConfig?: AIConfiguration): string {
   const instructions = [
     `Você é ${aiConfig?.ai_name || 'NutriBot'}, uma IA especializada em nutrição e assistente da plataforma NutriChef.`,
@@ -118,6 +115,7 @@ function buildSystemInstruction(aiConfig?: AIConfiguration): string {
   ];
 
   return instructions.filter(Boolean).join('\n');
+
 
 /**
  * Retorna a descrição da personalidade da IA.
