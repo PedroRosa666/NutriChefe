@@ -1,3 +1,5 @@
+// Caminho: src/types/ai.ts
+
 type AIPersonality = 'empathetic' | 'scientific' | 'friendly' | 'professional';
 
 export interface AIConfiguration {
@@ -33,6 +35,8 @@ export interface AIMessage {
   created_at: string;
 }
 
+// --- ATUALIZAÇÃO AQUI ---
+// Adicionamos a possibilidade de retornar perfis de nutricionistas
 export interface AIResponse {
   content: string;
   recipes?: Array<{
@@ -41,6 +45,11 @@ export interface AIResponse {
     description: string;
     author: string;
     rating: number;
+  }>;
+  nutritionists?: Array<{
+    id: string;
+    fullName: string;
+    bio: string;
   }>;
   suggestions?: string[];
 }
