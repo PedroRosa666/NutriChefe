@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Bot, User, Loader2, Sparkles, ChefHat, Clock, Star, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useAIStore } from '../../store/ai';
+import { isGeminiConfigured } from '../../services/gemini';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { cn } from '../../lib/utils';
 import type { AIMessage } from '../../types/ai';
@@ -23,6 +24,9 @@ export function AIChatInterface() {
   const [inputMessage, setInputMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Verificar se o Gemini está configurado
+  const geminiConfigured = isGeminiConfigured();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -155,6 +159,14 @@ export function AIChatInterface() {
             dicas alimentares, uso da plataforma e muito mais. Inicie uma conversa agora!
           </p>
 
+          {!geminiConfigured && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>Aviso:</strong> A IA está funcionando em modo limitado. Para uma experiência completa, 
+                configure a chave da API do Gemini.
+              </p>
+            </div>
+          )}
           <div className="grid md:grid-cols-3 gap-4 mb-8">
             <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
               <h3 className="font-semibold text-purple-700 dark:text-purple-300 mb-2">
@@ -329,6 +341,7 @@ export function AIChatInterface() {
           
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
             A IA pode cometer erros. Sempre consulte seu nutricionista para orientações personalizadas.
+            {!geminiConfigured && " • Funcionando em modo limitado."}
           </p>
         </div>
       </div>

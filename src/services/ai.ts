@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { getGeminiResponse } from './gemini';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
 import type { Recipe } from '../types/recipe';
 
@@ -149,48 +150,25 @@ export async function processAIMessage(
       recipes = await searchRecipesForAI(message, 3);
     }
 
-    // Preparar contexto para a IA
-    const personalityPrompts = {
-      empathetic: 'Você é uma IA empática e motivacional. Sempre demonstre compreensão e ofereça encorajamento.',
-      scientific: 'Você é uma IA focada em dados científicos e evidências. Base suas respostas em fatos nutricionais.',
-      friendly: 'Você é uma IA amigável e casual. Use um tom descontraído e próximo.',
-      professional: 'Você é uma IA profissional e formal. Mantenha um tom respeitoso e técnico.'
-    };
+    // Preparar prompt com informações de receitas se encontradas
+    let enhancedMessage = message;
+    if (recipes.length > 0) {
+      enhancedMessage += `\n\nReceitas encontradas relacionadas à sua consulta:\n`;
+      enhancedMessage += recipes.map(recipe => 
+        `- ${recipe.title} (por ${recipe.authorName}) - ${recipe.rating.toFixed(1)}⭐`
+      ).join('\n');
+      enhancedMessage += '\n\nPor favor, considere essas receitas em sua resposta se forem relevantes.';
+    }
 
-    const systemPrompt = `
-Você é ${aiConfig.ai_name}, uma IA especializada em nutrição e alimentação saudável.
-
-Personalidade: ${personalityPrompts[aiConfig.personality]}
-
-Instruções específicas: ${aiConfig.custom_instructions}
-
-Contexto da conversa anterior:
-${conversationHistory.slice(-5).map(msg => 
-  `${msg.sender_type === 'user' ? 'Cliente' : aiConfig.ai_name}: ${msg.content}`
-).join('\n')}
-
-${recipes.length > 0 ? `
-Receitas encontradas relacionadas à consulta:
-${recipes.map(recipe => 
-  `- ${recipe.title} (${recipe.authorName}) - ${recipe.rating.toFixed(1)}⭐`
-).join('\n')}
-` : ''}
-
-Regras importantes:
-1. Sempre lembre o cliente de consultar seu nutricionista para planos alimentares personalizados
-2. Não faça diagnósticos médicos
-3. Se encontrar receitas relevantes, mencione-as na resposta
-4. Seja útil e prestativo
-5. Mantenha o foco em alimentação saudável e bem-estar
-
-Responda à seguinte mensagem do cliente:
-`;
-
-    // Simular resposta da IA (aqui você integraria com o Gemini)
-    const aiResponse = await callGeminiAPI(systemPrompt, message);
+    // Chamar a API do Gemini
+    const geminiResponse = await getGeminiResponse(enhancedMessage, aiConfig, conversationHistory);
+    
+    if (geminiResponse.error) {
+      console.error('Gemini API error:', geminiResponse.error);
+    }
 
     return {
-      content: aiResponse,
+      content: geminiResponse.content,
       recipes: recipes.length > 0 ? recipes.map(recipe => ({
         id: recipe.id,
         title: recipe.title,
@@ -206,22 +184,4 @@ Responda à seguinte mensagem do cliente:
       content: 'Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente em alguns instantes.'
     };
   }
-}
-
-// Função para chamar a API do Gemini (placeholder)
-async function callGeminiAPI(systemPrompt: string, userMessage: string): Promise<string> {
-  // Esta função será implementada com a integração real do Gemini
-  // Por enquanto, retorna uma resposta simulada
-  
-  const responses = [
-    'Olá! Como posso ajudá-lo com suas dúvidas sobre nutrição hoje?',
-    'Ótima pergunta! Com base nas receitas disponíveis, posso sugerir algumas opções saudáveis.',
-    'Lembre-se sempre de manter uma alimentação equilibrada e consultar seu nutricionista para orientações personalizadas.',
-    'Vou buscar algumas receitas que podem interessar você!'
-  ];
-  
-  // Simular delay da API
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  return responses[Math.floor(Math.random() * responses.length)];
 }

@@ -192,9 +192,14 @@ export const useAIStore = create<AIState>((set, get) => ({
       const aiResponse = await aiService.processAIMessage(
         content,
         aiConfig || {
+          id: 'default',
+          nutritionist_id: 'default',
           ai_name: 'NutriBot',
           personality: 'empathetic',
-          custom_instructions: ''
+          custom_instructions: '',
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         } as AIConfiguration,
         get().messages
       );
