@@ -4,7 +4,7 @@ import type { AIConfiguration, AIMessage } from '../types/ai';
 
 // --- CONFIGURAÇÕES CENTRALIZADAS ---
 // Centralizar as configurações torna o código mais fácil de manter.
-const MODEL_NAME = "gemini-1.5-flash";
+const MODEL_NAME = "gemini-2.5-flash";
 const CONVERSATION_HISTORY_LENGTH = 10; // Aumentei um pouco, mas pode ser ajustado.
 
 // --- INICIALIZAÇÃO SEGURA ---
