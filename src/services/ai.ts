@@ -168,79 +168,6 @@ ${Object.entries(difficultyCount).map(([diff, count]) => `- ${diff}: ${count} re
     return 'Erro ao obter estatísticas do sistema.';
   }
 }
-// --- FUNÇÕES DE BUSCA DE CONTEÚDO (CONTEXTO PARA A IA) ---
-
-/**
- * Busca receitas no banco de dados com base em uma consulta de texto.
- * Retorna tanto os dados estruturados quanto uma string de contexto para a IA.
- */
-async function searchRecipesForAI(query: string, limit: number = 3) {
-  const { data, error } = await supabase
-    .from('recipes')
-    .select('*, author:profiles(full_name)')
-    .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
-    .limit(limit);
-
-  if (error) throw error;
-  if (!data || data.length === 0) return { context: '', structuredData: [] };
-
-  const context = `
-Contexto de Receitas Encontradas:
----
-${data.map(r => `
-Título: ${r.title}
-Autor: ${r.author?.full_name || 'Desconhecido'}
-Descrição: ${r.description}
-Ingredientes: ${JSON.parse(r.ingredients as any).join(', ')}
-Categoria: ${r.category}
-Dificuldade: ${r.difficulty}
-`).join('\n---\n')}
-  `.trim();
-
-  const structuredData = data.map(r => ({
-    id: r.id,
-    title: r.title,
-    description: r.description,
-    author: r.author?.full_name || 'Usuário',
-    rating: r.rating || 0
-  }));
-
-  return { context, structuredData };
-}
-
-/**
- * Busca nutricionistas no banco de dados com base em uma consulta de texto.
- * Retorna tanto os dados estruturados quanto uma string de contexto para a IA.
- */
-async function searchNutritionistsForAI(query: string, limit: number = 2) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, full_name, bio')
-    .eq('user_type', 'Nutritionist')
-    .or(`full_name.ilike.%${query}%,bio.ilike.%${query}%`)
-    .limit(limit);
-    
-  if (error) throw error;
-  if (!data || data.length === 0) return { context: '', structuredData: [] };
-
-  const context = `
-Contexto de Nutricionistas Encontrados:
----
-${data.map(p => `
-Nome: ${p.full_name}
-Biografia: ${p.bio || 'Nenhuma biografia disponível.'}
-`).join('\n---\n')}
-  `.trim();
-
-  const structuredData = data.map(p => ({
-    id: p.id,
-    fullName: p.full_name,
-    bio: p.bio || 'Nenhuma biografia disponível.'
-  }));
-  
-  return { context, structuredData };
-}
-
 
 // --- FUNÇÃO PRINCIPAL MODIFICADA ---
 
@@ -347,7 +274,6 @@ Instruções:
     };
   }
 }
-
 
 export async function getAIConfiguration(nutritionistId: string): Promise<AIConfiguration | null> {
   const { data, error } = await supabase
