@@ -138,3 +138,96 @@ export async function processAIMessage(
     };
   }
 }
+
+
+export async function getAIConfiguration(nutritionistId: string): Promise<AIConfiguration | null> {
+  const { data, error } = await supabase
+    .from('ai_configurations')
+    .select('*')
+    .eq('nutritionist_id', nutritionistId)
+    .eq('is_active', true)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  
+  return data;
+}
+
+export async function createAIConfiguration(config: Omit<AIConfiguration, 'id' | 'created_at' | 'updated_at'>): Promise<AIConfiguration> {
+  const { data, error } = await supabase
+    .from('ai_configurations')
+    .insert([config])
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateAIConfiguration(configId: string, updates: Partial<AIConfiguration>): Promise<AIConfiguration> {
+  const { data, error } = await supabase
+    .from('ai_configurations')
+    .update(updates)
+    .eq('id', configId)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Conversas com IA
+export async function getAIConversations(userId: string): Promise<AIConversation[]> {
+  const { data, error } = await supabase
+    .from('ai_conversations')
+    .select(`
+      *,
+      ai_config:ai_configurations(*)
+    `)
+    .eq('client_id', userId)
+    .eq('is_active', true)
+    .order('last_message_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createAIConversation(conversation: Omit<AIConversation, 'id' | 'created_at' | 'updated_at' | 'last_message_at'>): Promise<AIConversation> {
+  const { data, error } = await supabase
+    .from('ai_conversations')
+    .insert([conversation])
+    .select(`
+      *,
+      ai_config:ai_configurations(*)
+    `)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Mensagens da IA
+export async function getAIMessages(conversationId: string): Promise<AIMessage[]> {
+  const { data, error } = await supabase
+    .from('ai_messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createAIMessage(message: Omit<AIMessage, 'id' | 'created_at'>): Promise<AIMessage> {
+  const { data, error } = await supabase
+    .from('ai_messages')
+    .insert([message])
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
