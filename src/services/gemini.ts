@@ -149,6 +149,7 @@ function formatConversationHistory(history: AIMessage[], aiConfig?: AIConfigurat
       parts: [{ text: msg.content }],
     }));
 }
+}
 
 /**
  * Função auxiliar para validar se a API key está configurada.
