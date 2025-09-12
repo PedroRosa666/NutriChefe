@@ -306,6 +306,47 @@ export async function updateAIConfiguration(id: string, updates: Partial<AIConfi
 // CRUD – Conversas (ai_conversations)
 // =============================================================================
 
+
+// Tipagem para criar conversa via objeto (compatível com o store)
+type NewAIConversationInput = {
+  client_id: string;
+  nutritionist_id?: string | null;
+  ai_config_id?: string | null;
+  title?: string | null;
+  is_active?: boolean;
+};
+
+/**
+ * Cria conversa aceitando um objeto com todos os campos esperados pelo store.
+ * Mantém compatibilidade com a tabela ai_conversations (inclui ai_config_id e is_active).
+ */
+
+export async function createAIConversation(input: NewAIConversationInput) {
+  const {
+    client_id,
+    nutritionist_id = null,
+    ai_config_id = null,
+    title = null,
+    is_active = true
+  } = input;
+
+  const { data, error } = await supabase
+    .from('ai_conversations')
+    .insert([{
+      client_id,
+      nutritionist_id,
+      ai_config_id,
+      title,
+      is_active
+    }])
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data as AIConversation;
+}
+
+
 export async function getAIConversations(userId: string): Promise<AIConversation[]> {
   // Usuário pode ser cliente OU nutricionista na conversa
   const { data, error } = await supabase
