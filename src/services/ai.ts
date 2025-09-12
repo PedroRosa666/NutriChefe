@@ -65,38 +65,6 @@ function textFromRecipe(r: any) {
 // Regras dietéticas estritas (somente para excluir incompatíveis)
 // =============================================================================
 
-type DietaryMode =
-  | 'vegan'
-  | 'vegetarian'
-  | 'lactose-free'
-  | 'gluten-free'
-  | 'low-carb';
-
-const VEGAN_FORBIDDEN = [
-  'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','frango','galinha','peru',
-  'peixe','atum','sardinha','bacalhau','anchova','salmao','tilapia','camarao','lula','polvo','marisco',
-  'ovo','ovos','gema','clara',
-  'leite','lactose','manteiga','queijo','creme de leite','nata','requeijao','iogurte','soro do leite','whey','caseina',
-  'gelatina','mel','mel de abelha','banha'
-];
-
-const VEGETARIAN_FORBIDDEN = [
-  'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','frango','galinha','peru',
-  'peixe','atum','sardinha','bacalhau','anchova','salmao','tilapia','camarao','lula','polvo','marisco'
-];
-
-const GLUTEN_TERMS = [
-  'gluten','trigo','farinha de trigo','semolina','cuscuz','couscous','seitan','malte','cevada','centeio'
-];
-
-const LACTOSE_TERMS = [
-  'lactose','leite','manteiga','queijo','creme de leite','nata','requeijao','iogurte','soro do leite','whey','caseina'
-];
-
-const HIGH_CARB_CULPRITS = [
-  'açucar','acucar','açúcar','farinha de trigo','arroz branco','macarrao','pao','pão','batata','amido de milho','fuba','fubá'
-];
-
 function violatesDiet(r: any, mode?: DietaryMode): boolean {
   if (!mode) return false;
   const t = textFromRecipe(r);
