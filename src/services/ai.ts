@@ -1,10 +1,11 @@
 // src/services/ai.ts
 // =============================================================================
-// Serviço de IA unificado (com RAG simples)
-// - CRUD de configurações, conversas e mensagens
+// Serviço de IA unificado (com RAG simples) para o NutriChefe
+// - CRUD de configs, conversas e mensagens
 // - Busca de receitas no Supabase
-// - RAG: extrai filtros da pergunta, consulta o banco, fallback inteligente
-// - Usa o Gemini APENAS para formatar a resposta a partir dos dados do banco
+// - RAG: extrai filtros da pergunta e consulta o banco, com fallback
+// - Gemini: apenas para formatar a resposta com base nos dados encontrados
+// - UX: evita respostas "afobadas" para saudações e mensagens vagas
 // =============================================================================
 
 import { supabase } from '../lib/supabase';
@@ -13,11 +14,45 @@ import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../
 import type { Recipe } from '../types/recipe';
 
 // =============================================================================
+// UX helpers – não ser "afobado"
+// =============================================================================
+
+const GREETINGS = [
+  'oi','olá','ola','eai','e aí','bom dia','boa tarde','boa noite','hey','hi','hello'
+];
+
+function isGreeting(text: string) {
+  const t = text.trim().toLowerCase();
+  return GREETINGS.some(g => t === g || t.startsWith(g + ' ') || t.startsWith(g + '!'));
+}
+
+function isTooShortOrVague(text: string) {
+  const t = text.trim();
+  if (t.length < 6) return true; // "oi", "hello", etc.
+  const vague = ['como vai', 'tudo bem', 'teste', 'alô', 'alo'];
+  const tl = t.toLowerCase();
+  return vague.some(v => tl.includes(v));
+}
+
+// =============================================================================
 // Utilidades
 // =============================================================================
 
 function normalize(s: string) {
   return s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+}
+
+function extractAuthorName(r: any): string {
+  // tenta várias formas comuns de chegar ao nome do autor
+  // (funciona mesmo sem relacionamento no select; cai no 'Autor' se não achar nada)
+  return (
+    r?.author_profile?.full_name ??   // se relationship profiles foi carregado com alias author_profile
+    r?.author?.full_name ??           // se relationship foi apelidado como author
+    r?.author_name ??                 // se há coluna direta author_name
+    r?.authorName ??                  // variação camel
+    r?.created_by_name ??             // materializado por trigger/view
+    'Autor'
+  );
 }
 
 // =============================================================================
@@ -53,7 +88,6 @@ const DIFFICULTY_MAP: Record<string, 'easy'|'medium'|'hard'> = {
 export function extractFilters(question: string): RecipeFilters {
   const q = normalize(question);
 
-  // Ingredientes
   const ingredients: string[] = [];
   const ingredientMatch = q.match(/com\s+([a-zA-ZÀ-ÿ,\s]+)/);
   if (ingredientMatch) {
@@ -65,21 +99,17 @@ export function extractFilters(question: string): RecipeFilters {
     );
   }
 
-  // Categoria
   let category: string | undefined;
   for (const c of CATEGORY_KEYWORDS) {
     if (q.includes(normalize(c))) { category = c; break; }
   }
 
-  // Dietas/estilos
   const dietary = DIET_KEYWORDS.filter(k => q.includes(normalize(k)));
 
-  // Tempo de preparo
   let maxPrepTime: number | undefined;
   const timeMatch = q.match(/(\d{1,3})\s*(min|mins|minutos)/);
   if (timeMatch) maxPrepTime = Number(timeMatch[1]);
 
-  // Dificuldade
   let difficulty: 'easy'|'medium'|'hard' | undefined;
   for (const [pt, lv] of Object.entries(DIFFICULTY_MAP)) {
     if (q.includes(pt)) { difficulty = lv; break; }
@@ -89,44 +119,87 @@ export function extractFilters(question: string): RecipeFilters {
 }
 
 // =============================================================================
-// Consultas de receitas no Supabase (principal + fallback)
+// Consultas de receitas no Supabase (com tentativa de JOIN em profiles e fallback)
 // =============================================================================
 
-async function queryRecipes(filters: RecipeFilters, limit = 8): Promise<Recipe[]> {
-  // Observação: a tabela recipes deve ter colunas:
-  // id, title, description, image, prep_time, difficulty, rating, category, ingredients(text[]), instructions(text[])
-  let q = supabase.from('recipes').select('*').limit(limit);
-
-  if (filters.maxPrepTime) q = q.lte('prep_time', filters.maxPrepTime);
-  if (filters.difficulty) q = q.eq('difficulty', filters.difficulty);
-  if (filters.category) q = q.ilike('category', `%${filters.category}%`);
-
-  if (filters.ingredients.length) {
-    // ingredientes é um text[]; usamos contains
-    q = q.contains('ingredients', filters.ingredients);
+async function selectRecipesBase(limit: number) {
+  // 1ª tentativa: tentar trazer perfil do autor via relação comum (ajuste conforme seu schema)
+  // - profiles!recipes_author_id_fkey: relacionamento típico quando a FK é recipes.author_id → profiles.id
+  // - Se não existir no seu schema, o catch abaixo refaz a query com select('*')
+  try {
+    return supabase
+      .from('recipes')
+      .select(`
+        *,
+        author_profile:profiles!recipes_author_id_fkey ( full_name )
+      `)
+      .limit(limit);
+  } catch {
+    // fallback para um select simples (sem join)
+    return supabase.from('recipes').select('*').limit(limit);
   }
+}
 
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data as any as Recipe[]) || [];
+async function queryRecipes(filters: RecipeFilters, limit = 8): Promise<Recipe[]> {
+  // Monta query com tentativa de join; se der erro por relacionamento inexistente,
+  // refaz com select('*') mais abaixo.
+  try {
+    let q = await selectRecipesBase(limit);
+
+    if (filters.maxPrepTime) q = q.lte('prep_time', filters.maxPrepTime);
+    if (filters.difficulty) q = q.eq('difficulty', filters.difficulty);
+    if (filters.category)  q = q.ilike('category', `%${filters.category}%`);
+
+    if (filters.ingredients.length) {
+      // ingredientes é um text[]; usamos contains
+      q = q.contains('ingredients', filters.ingredients);
+    }
+
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data as any as Recipe[]) || [];
+  } catch {
+    // fallback duro: sem join
+    let q = supabase.from('recipes').select('*').limit(limit);
+
+    if (filters.maxPrepTime) q = q.lte('prep_time', filters.maxPrepTime);
+    if (filters.difficulty) q = q.eq('difficulty', filters.difficulty);
+    if (filters.category)  q = q.ilike('category', `%${filters.category}%`);
+    if (filters.ingredients.length) q = q.contains('ingredients', filters.ingredients);
+
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data as any as Recipe[]) || [];
+  }
 }
 
 async function fallbackSimilarRecipes(filters: RecipeFilters, limit = 8): Promise<Recipe[]> {
-  let q = supabase.from('recipes').select('*').limit(limit);
+  try {
+    let q = await selectRecipesBase(limit);
 
-  if (filters.category) q = q.ilike('category', `%${filters.category}%`);
-  if (filters.dietary?.length) {
-    // aproximação: busca no description por termos
-    q = q.or(filters.dietary.map(d => `description.ilike.%${d}%`).join(','));
+    if (filters.category) q = q.ilike('category', `%${filters.category}%`);
+    if (filters.dietary?.length) {
+      // aproximação: busca no description por termos
+      q = q.or(filters.dietary.map(d => `description.ilike.%${d}%`).join(','));
+    }
+
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data as any as Recipe[]) || [];
+  } catch {
+    let q = supabase.from('recipes').select('*').limit(limit);
+
+    if (filters.category) q = q.ilike('category', `%${filters.category}%`);
+    if (filters.dietary?.length) q = q.or(filters.dietary.map(d => `description.ilike.%${d}%`).join(','));
+
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data as any as Recipe[]) || [];
   }
-
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data as any as Recipe[]) || [];
 }
 
 // =============================================================================
-// Orquestrador RAG: responder com base SOMENTE no conteúdo do site
+// Orquestrador RAG
 // =============================================================================
 
 export async function answerQuestionWithSiteData(question: string): Promise<{
@@ -142,23 +215,17 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
 
   if (!found) fallback = await fallbackSimilarRecipes(filters, 8);
 
-  const ctxRecipes = (found ? primary : (fallback || [])).map(r => ({
-    id: (r as any).id,
-    title: (r as any).title,
-    description: (r as any).description,
-    category: (r as any).category,
+  const ctxRecipes = (found ? primary : (fallback || [])).map((r: any) => ({
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    category: r.category,
     prepTime: (r as any).prepTime ?? (r as any).prep_time,
-    difficulty: (r as any).difficulty,
-    rating: (r as any).rating,
-    ingredients: (r as any).ingredients,
+    difficulty: r.difficulty,
+    rating: r.rating,
+    ingredients: r.ingredients,
+    author: extractAuthorName(r)
   }));
-
-  const system = [
-    'Você é um assistente que responde APENAS com base nas receitas do sistema.',
-    'Se a pergunta pedir algo que não existe, ofereça as opções mais parecidas disponíveis.',
-    'Nunca invente receita que não esteja na lista fornecida.',
-    'Responda em português, em tom claro e direto.'
-  ].join(' ');
 
   const userPrompt = [
     `Pergunta do usuário: "${question}"`,
@@ -167,8 +234,9 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
       : 'Nenhuma receita exata encontrada; mostre as mais semelhantes.',
     'Receitas disponíveis (JSON):',
     JSON.stringify(ctxRecipes, null, 2),
-    'Monte a resposta em lista, com título, tempo de preparo, dificuldade e ingredientes principais.',
-    'Se usar fallback, avise: "Não encontrei exatamente isso, mas aqui estão alternativas semelhantes."'
+    'Monte a resposta em lista, com título, tempo de preparo, dificuldade, autor e ingredientes principais.',
+    'Se usar fallback, avise: "Não encontrei exatamente isso, mas aqui estão alternativas semelhantes."',
+    'Responda em português e não invente receitas fora da lista.'
   ].join('\n\n');
 
   // getGeminiResponse retorna { content: string }
@@ -179,13 +247,13 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
 }
 
 // =============================================================================
-// (Legado / Utilitários) – busca simples para compor contexto textual (opcional)
+// Busca simples para compor contexto textual (opcional)
 // =============================================================================
 
 export async function searchRecipesForAI(query: string, limit = 5): Promise<{ recipes: Recipe[]; context: string }> {
   const { data, error } = await supabase
     .from('recipes')
-    .select('id, title, description, category, difficulty, rating')
+    .select('id, title, description, category, difficulty, rating, author_name')
     .ilike('title', `%${query}%`)
     .order('rating', { ascending: false })
     .limit(limit);
@@ -193,36 +261,33 @@ export async function searchRecipesForAI(query: string, limit = 5): Promise<{ re
   if (error) throw error;
 
   const recipes = (data || []) as any as Recipe[];
-  const context = recipes.map(r => {
-    return `• ${r.title} (${r.category || 'geral'}) – ${r.description || ''}`;
+  const context = recipes.map((r: any) => {
+    const author = extractAuthorName(r);
+    return `• ${r.title} (${r.category || 'geral'}) – ${r.description || ''} — Autor: ${author}`;
   }).join('\n');
 
-  return {
-    recipes,
-    context
-  };
+  return { recipes, context };
 }
 
 // =============================================================================
-/**
- * (Opcional) Exemplo de resposta estruturada com base no banco + Gemini.
- * Se quiser forçar um formato, use este wrapper.
- */
+// Exemplo de resposta estruturada (opcional)
+// =============================================================================
+
 export async function askAIWithContext(question: string): Promise<AIResponse> {
   const { recipes } = await searchRecipesForAI(question, 5);
-  const system = 'Você responde com base no conteúdo fornecido e em tom claro.';
-  const user = `Pergunta: ${question}\nReceitas:\n${recipes.map(r => `- ${r.title}`).join('\n')}`;
-  const gr = await getGeminiResponse(user);
+  const gr = await getGeminiResponse(
+    `Pergunta: ${question}\nReceitas:\n${recipes.map((r: any) => `- ${r.title} — Autor: ${extractAuthorName(r)}`).join('\n')}`
+  );
   const content = gr.content;
 
   return {
     content,
-    recipes: recipes.map(r => ({
-      id: (r as any).id,
-      title: (r as any).title,
-      description: (r as any).description,
-      author: (r as any).authorName ?? 'Autor',
-      rating: (r as any).rating ?? 0
+    recipes: recipes.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      author: extractAuthorName(r),
+      rating: r.rating ?? 0
     }))
   };
 }
@@ -294,7 +359,7 @@ export async function getAIConversations(userId: string): Promise<AIConversation
 }
 
 export async function createConversation(clientId: string, nutritionistId: string, title?: string) {
-  // legacy minimal creator kept for compatibility
+  // legacy minimal creator mantido para compatibilidade
   const { data, error } = await supabase
     .from('ai_conversations')
     .insert([{ client_id: clientId, nutritionist_id: nutritionistId, title }])
@@ -305,8 +370,7 @@ export async function createConversation(clientId: string, nutritionistId: strin
   return data as AIConversation;
 }
 
-// =============================================================================
-// New creator expected by store: accepts an object with full fields
+// Novo criador esperado pelo store (objeto completo)
 type NewAIConversationInput = {
   client_id: string;
   nutritionist_id?: string | null;
@@ -366,10 +430,7 @@ export async function createAIMessage(message: Omit<AIMessage, 'id' | 'created_a
   return data as AIMessage;
 }
 
-// =============================================================================
-// Compat wrapper para o store: getAIMessages -> getMessagesByConversation
-// =============================================================================
-
+// Wrapper compatível com o store
 export async function getAIMessages(conversationId: string) {
   return getMessagesByConversation(conversationId);
 }
@@ -383,21 +444,48 @@ export async function processAIMessage(
   aiConfig?: AIConfiguration,
   conversationHistory: AIMessage[] = []
 ): Promise<AIResponse> {
-  // Usa o orquestrador RAG baseado nos dados do site/banco
+
+  // 1) Saudações: responda curto, sem RAG
+  if (isGreeting(content)) {
+    return {
+      content:
+        'Oi! 👋 Como posso te ajudar hoje na cozinha? Você quer **ideias de receita**, **adaptar algo** (ex.: sem lactose / sem glúten) ou **planejar um cardápio**?',
+      recipes: [],
+      suggestions: [
+        'Me sugira algo com frango',
+        'Quero opções sem lactose',
+        'Planeje meu almoço de 20 min'
+      ]
+    };
+  }
+
+  // 2) Mensagem muito curta/vaga: peça 1 clarificação
+  if (isTooShortOrVague(content)) {
+    return {
+      content:
+        'Legal! Me diz só mais uma coisa pra eu acertar nas sugestões: você tem algum **ingrediente-chave** ou **restrição** (ex.: sem glúten, low carb)? E prefere **rápido** (≤ 20 min) ou tanto faz?',
+      recipes: [],
+      suggestions: [
+        'Quero algo com atum',
+        'Sem glúten e rápido',
+        'Sobremesa com 3 ingredientes'
+      ]
+    };
+  }
+
+  // 3) Fluxo normal (RAG)
   const { text, primary, fallback } = await answerQuestionWithSiteData(content);
 
-  // Seleciona receitas (principal ou fallback)
   const source = (primary && primary.length ? primary : (fallback || [])) as any[];
 
   const recipes = source.map((r: any) => ({
     id: r.id,
     title: r.title,
     description: r.description,
-    author: r.authorName ?? 'Autor',
+    author: extractAuthorName(r),
     rating: r.rating ?? 0
   }));
 
-  // Sugestões simples para UX (opcional)
   const suggestions = [
     'Quer opções com menos calorias?',
     'Posso filtrar por tempo de preparo ≤ 20 min.',
@@ -412,7 +500,7 @@ export async function processAIMessage(
 }
 
 // =============================================================================
-// Usuários / Perfis (profiles) – helpers (opcionais)
+// Perfis (profiles) – helpers opcionais
 // =============================================================================
 
 type UserProfile = {
