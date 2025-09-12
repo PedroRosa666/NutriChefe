@@ -2,9 +2,9 @@
 // =============================================================================
 // Serviço de IA (categoria-first) para o NutriChefe
 // - Baseado SOMENTE em CATEGORIAS do BD/site (sem heurística de ingredientes)
-// - Descobre categorias pelo BD (tabela categories ou distinct de recipes.category)
+// - Busca categorias na tabela `category` (singular) ou usa distinct de `recipes.category`
 // - Filtros dietéticos estritos (apenas para EXCLUIR incompatíveis, se o usuário pedir)
-// - UX: evita respostas "afobadas" e não mistura listas aleatórias
+// - UX: evita respostas "afobadas" (cumprimenta e pede categoria; sem sugestões automáticas)
 // =============================================================================
 
 import { supabase } from '../lib/supabase';
@@ -73,7 +73,7 @@ type DietaryMode =
   | 'low-carb';
 
 const VEGAN_FORBIDDEN = [
-  'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','frango','galinha','peru',
+  'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','franco','frango','galinha','peru',
   'peixe','atum','sardinha','bacalhau','anchova','salmao','tilapia','camarao','lula','polvo','marisco',
   'ovo','ovos','gema','clara',
   'leite','lactose','manteiga','queijo','creme de leite','nata','requeijao','iogurte','soro do leite','whey','caseina',
@@ -81,7 +81,7 @@ const VEGAN_FORBIDDEN = [
 ];
 
 const VEGETARIAN_FORBIDDEN = [
-  'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','frango','galinha','peru',
+  'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','franco','frango','galinha','peru',
   'peixe','atum','sardinha','bacalhau','anchova','salmao','tilapia','camarao','lula','polvo','marisco'
 ];
 
@@ -129,7 +129,7 @@ function pickDietaryModeFromText(text: string): DietaryMode | undefined {
 }
 
 // =============================================================================
-// Descoberta de categorias a partir do BD (resiliente)
+// Descoberta de categorias a partir do BD (tabela `category` → fallback recipes.category)
 // =============================================================================
 
 type CategoryLite = { name: string; slug?: string };
@@ -138,15 +138,14 @@ let CACHED_CATEGORIES: CategoryLite[] | null = null;
 let LAST_CAT_FETCH = 0;
 const CAT_TTL_MS = 60_000; // 1 min
 
-// === CATEGORIAS (com fallback silencioso se a tabela não existir) ===
 async function loadCategoriesFromDB(): Promise<CategoryLite[]> {
   const now = Date.now();
   if (CACHED_CATEGORIES && now - LAST_CAT_FETCH < CAT_TTL_MS) return CACHED_CATEGORIES;
 
-  // 1) Tenta tabela "categories" — se der 404/erro, ignora e vai pro fallback
+  // 1) Tenta tabela "category" (singular)
   try {
     const { data, error } = await supabase
-      .from('categories')
+      .from('category')
       .select('name, slug, title')
       .limit(200);
 
@@ -162,7 +161,7 @@ async function loadCategoriesFromDB(): Promise<CategoryLite[]> {
       return CACHED_CATEGORIES;
     }
   } catch {
-    // ignora e cai pro fallback
+    // ignora e cai no fallback
   }
 
   // 2) Fallback: distinct em recipes.category
@@ -198,7 +197,7 @@ function matchCategoryFromText(text: string, categories: CategoryLite[]): string
     const s = c.slug ? normalize(c.slug) : '';
     if (t.includes(n) || (s && t.includes(s))) return c.name;
   }
-  // sinônimos básicos (ajuste/remoção se quiser 100% estrito)
+  // sinônimos básicos (remova se quiser 100% estrito aos nomes do BD)
   const synonyms: Record<string,string[]> = {
     'café da manhã': ['cafe da manha','breakfast','manhã','manha'],
     'almoço': ['almoco','lunch'],
@@ -359,7 +358,9 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
 }
 
 // =============================================================================
-/** Busca simples (opcional; não usada para decisão) */
+// Busca simples (opcional; não usada para decisão)
+// =============================================================================
+
 export async function searchRecipesForAI(query: string, limit = 5): Promise<{ recipes: Recipe[]; context: string }> {
   const { data, error } = await supabase
     .from('recipes')
@@ -533,7 +534,7 @@ export async function processAIMessage(
   // 1) Saudações: resposta simples, sem sugestões nem exemplos
   if (isGreeting(content)) {
     return {
-      content: 'Oi! 👋 Eu sou o NutriBot, seu assistente pessoal de nutrição! Como posso te ajudar? ',
+      content: 'Oi! 👋 Como posso te ajudar? Diga uma **categoria** do site (ex.: almoço, jantar, sobremesas).',
       recipes: [],
       suggestions: []
     };
