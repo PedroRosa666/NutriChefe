@@ -1,10 +1,9 @@
 // src/services/ai.ts
 // =============================================================================
 // Serviço de IA (categoria-first) para o NutriChefe
-// - SOMENTE CATEGORIAS (sem heurística de ingredientes)
-// - Carrega categorias via DISTINCT de recipes.category (sem depender de tabela category/categories)
-// - Filtros dietéticos estritos (apenas para EXCLUIR incompatíveis, se o usuário pedir)
-// - UX: cumprimenta e pede categoria; sem respostas “afobadas”
+// - SOMENTE CATEGORIAS fixas (pt/en) — nada de ingredientes ou dietas extras
+// - Busca receitas por recipes.category via ILIKE
+// - UX: cumprimenta e pede categoria quando a mensagem é vaga/saudação
 // =============================================================================
 
 import { supabase } from '../lib/supabase';
@@ -42,9 +41,8 @@ function normalize(s: string) {
 }
 
 function extractAuthorName(r: any): string {
+  // Se não houver nome do autor disponível na linha, devolve genérico
   return (
-    r?.author_profile?.full_name ??
-    r?.author?.full_name ??
     r?.author_name ??
     r?.authorName ??
     r?.created_by_name ??
@@ -52,118 +50,30 @@ function extractAuthorName(r: any): string {
   );
 }
 
-// Apenas para compor resposta do modelo; NÃO usamos para decidir resultados
-function textFromRecipe(r: any) {
-  const parts = [
-    r?.title, r?.description, r?.category,
-    ...(Array.isArray(r?.instructions) ? r.instructions : [])
-  ].filter(Boolean).join(' ');
-  return normalize(parts);
-}
-
 // =============================================================================
-// Regras dietéticas estritas (somente para excluir incompatíveis)
+// CATEGORIAS FIXAS (PT/EN)
 // =============================================================================
 
-type DietaryMode =
-  | 'vegan'
-  | 'vegetarian'
-  | 'lactose-free'
-  | 'gluten-free'
-  | 'low-carb';
+type FixedCategory = {
+  canonical: string;           // nome como salvo na coluna recipes.category
+  variants: string[];          // variações aceitas no texto do usuário (pt/en)
+};
 
+const FIXED_CATEGORIES: FixedCategory[] = [
+  { canonical: 'Vegana', variants: ['vegana', 'vegan'] },
+  { canonical: 'Baixo Carboidrato', variants: ['baixo carboidrato', 'low carb', 'low-carb', 'keto'] },
+  { canonical: 'Rica em Proteína', variants: ['rica em proteina', 'rica em proteína', 'high protein', 'high-protein', 'protein rich'] },
+  { canonical: 'Sem Glúten', variants: ['sem glúten', 'sem gluten', 'gluten free', 'gluten-free'] },
+  { canonical: 'Vegetariana', variants: ['vegetariana', 'vegetarian'] },
+];
 
-function violatesDiet(r: any, mode?: DietaryMode): boolean {
-  if (!mode) return false;
-  const t = textFromRecipe(r);
-  const hasAny = (terms: string[]) => terms.some(term => t.includes(normalize(term)));
-
-  switch (mode) {
-    case 'vegan':
-      return hasAny(VEGAN_FORBIDDEN);
-    case 'vegetarian':
-      return hasAny(VEGETARIAN_FORBIDDEN);
-    case 'gluten-free':
-      return hasAny(GLUTEN_TERMS);
-    case 'lactose-free':
-      return hasAny(LACTOSE_TERMS);
-    case 'low-carb':
-      return hasAny(HIGH_CARB_CULPRITS);
-    default:
-      return false;
-  }
-}
-
-function pickDietaryModeFromText(text: string): DietaryMode | undefined {
-  const q = normalize(text);
-  if (q.includes('vegana') || q.includes('vegano')) return 'vegan';
-  if (q.includes('vegetarian')) return 'vegetarian';
-  if (q.includes('sem lactose') || q.includes('lactose')) return 'lactose-free';
-  if (q.includes('sem glute') || q.includes('gluten')) return 'gluten-free';
-  if (q.includes('low carb') || q.includes('keto') || q.includes('paleo')) return 'low-carb';
-  return undefined;
-}
-
-// =============================================================================
-// CATEGORIAS (via DISTINCT de recipes.category — sem tabela extra)
-// =============================================================================
-
-type CategoryLite = { name: string };
-
-let CACHED_CATEGORIES: CategoryLite[] | null = null;
-let LAST_CAT_FETCH = 0;
-const CAT_TTL_MS = 60_000; // 1 min
-
-async function loadCategoriesFromDB(): Promise<CategoryLite[]> {
-  const now = Date.now();
-  if (CACHED_CATEGORIES && now - LAST_CAT_FETCH < CAT_TTL_MS) return CACHED_CATEGORIES;
-
-  // Usa apenas recipes.category (string) — robusto em qualquer schema
-  try {
-    const { data, error } = await supabase
-      .from('recipes')
-      .select('category')
-      .not('category', 'is', null)
-      .neq('category', '')
-      .limit(1000);
-
-    if (!error && data) {
-      const set = new Set<string>();
-      for (const r of data as any[]) if (r.category) set.add(String(r.category));
-      CACHED_CATEGORIES = Array.from(set).map(name => ({ name }));
-      LAST_CAT_FETCH = now;
-      return CACHED_CATEGORIES;
-    }
-  } catch {
-    // ignore
-  }
-
-  CACHED_CATEGORIES = [];
-  LAST_CAT_FETCH = now;
-  return CACHED_CATEGORIES;
-}
-
-function matchCategoryFromText(text: string, categories: CategoryLite[]): string | null {
+function detectCategoryFromText(text: string): string | null {
   const t = normalize(text);
-  // match direto por nome da categoria do BD
-  for (const c of categories) {
-    const n = normalize(c.name);
-    if (n && t.includes(n)) return c.name;
-  }
-  // (Opcional) sinônimos — remova se quiser 100% estrito ao nome do BD
-  const synonyms: Record<string,string[]> = {
-    'café da manhã': ['cafe da manha','breakfast','manhã','manha'],
-    'almoço': ['almoco','lunch'],
-    'jantar': ['dinner','noite'],
-    'lanche': ['snack','lanchinho'],
-    'sobremesa': ['doce','dessert'],
-    'entrada': ['aperitivo','starter'],
-    'bebida': ['drinks','suco','vitamina','shake']
-  };
-  for (const [cat, alts] of Object.entries(synonyms)) {
-    if (categories.some(c => normalize(c.name) === normalize(cat))) {
-      if (alts.some(a => t.includes(normalize(a)))) return cat;
-    }
+  for (const cat of FIXED_CATEGORIES) {
+    // se o texto já contém o nome canônico (normalizado), aceita
+    if (t.includes(normalize(cat.canonical))) return cat.canonical;
+    // senão, tenta as variantes
+    if (cat.variants.some(v => t.includes(normalize(v)))) return cat.canonical;
   }
   return null;
 }
@@ -172,78 +82,31 @@ function matchCategoryFromText(text: string, categories: CategoryLite[]): string
 // Consultas de receitas por CATEGORIA
 // =============================================================================
 
-async function selectRecipesBase(limit: number) {
-  // tenta trazer perfil do autor via relação comum; se não existir, o Supabase ignora
-  try {
-    return supabase
-      .from('recipes')
-      .select(`
-        *,
-        author_profile:profiles!recipes_author_id_fkey ( full_name )
-      `)
-      .limit(limit);
-  } catch {
-    return supabase.from('recipes').select('*').limit(limit);
-  }
-}
-
 async function queryRecipesByCategory(categoryName: string, limit = 40): Promise<Recipe[]> {
-  // Suporta:
-  // - coluna string: recipes.category
-  // - coluna text[]: recipes.categories (filtramos em memória)
-  try {
-    let q = await selectRecipesBase(limit);
+  // Consulta simples e robusta ao Supabase
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('*')
+    .ilike('category', `%${categoryName}%`)
+    .order('rating', { ascending: false })
+    .limit(limit);
 
-    // coluna string
-    q = q.ilike('category', `%${categoryName}%`);
-
-    // Preferir melhores avaliadas (se houver rating)
-    // @ts-ignore
-    if (typeof (q as any).order === 'function') {
-      // @ts-ignore
-      q = (q as any).order('rating', { ascending: false });
-    }
-
-    const { data, error } = await q;
-    if (error) throw error;
-
-    let rows: any[] = (data as any[]) || [];
-
-    // Se existir a coluna text[] 'categories', filtramos também por ela em memória
-    rows = rows.filter(r => {
-      if (Array.isArray((r as any).categories)) {
-        const arr = (r as any).categories.map((x: any) => normalize(String(x)));
-        return arr.some((x: string) => x.includes(normalize(categoryName)));
-      }
-      return true;
-    });
-
-    return rows as any as Recipe[];
-  } catch {
-    let q = supabase.from('recipes').select('*').limit(limit).ilike('category', `%${categoryName}%`);
-    const { data, error } = await q;
-    if (error) throw error;
-    return (data as any as Recipe[]) || [];
-  }
-}
-
-function applyDietaryCompliance(recipes: Recipe[], mode?: DietaryMode): Recipe[] {
-  if (!mode) return recipes;
-  return recipes.filter(r => !violatesDiet(r, mode));
+  if (error) throw error;
+  return (data as any as Recipe[]) || [];
 }
 
 function capAndMapRecipes(list: Recipe[], cap = 6) {
   // Remove duplicatas por id/título e limita a N
   const seen = new Set<string>();
-  const uniq: any[] = [];
+  const out: any[] = [];
   for (const r of list) {
     const key = (r as any).id ?? (r as any).title;
     if (!key || seen.has(key)) continue;
     seen.add(key);
-    uniq.push(r);
-    if (uniq.length >= cap) break;
+    out.push(r);
+    if (out.length >= cap) break;
   }
-  return uniq.map((r: any) => ({
+  return out.map((r: any) => ({
     id: r.id,
     title: r.title,
     description: r.description,
@@ -262,47 +125,46 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
   items: Recipe[];
   text: string;
 }> {
-  const categories = await loadCategoriesFromDB();
-  const category = matchCategoryFromText(question, categories);
+  const category = detectCategoryFromText(question);
 
   if (!category) {
     return {
       found: false,
       category: null,
       items: [],
-      text: 'Não identifiquei uma categoria do site na sua mensagem.'
+      text: 'Não identifiquei uma categoria na sua mensagem.'
     };
   }
 
   // Busca por categoria
   const raw = await queryRecipesByCategory(category, 40);
 
-  // Restrições dietéticas (se houver no texto)
-  const dietMode = pickDietaryModeFromText(question);
-  const filtered = applyDietaryCompliance(raw, dietMode);
+  // Apenas as receitas da categoria; nenhuma lógica extra
+  const chosen = raw;
 
-  const chosen = filtered.length ? filtered : [];
-  const ctxRecipes = chosen.map((r: any) => ({
+  // Contexto para o modelo (opcional; apenas formatação do texto)
+  const ctxRecipes = chosen.slice(0, 8).map((r: any) => ({
     id: r.id,
     title: r.title,
     description: r.description,
     category: r.category,
-    prepTime: (r as any).prepTime ?? (r as any).prep_time,
+    prepTime: r.prep_time,
     difficulty: r.difficulty,
     rating: r.rating,
     author: extractAuthorName(r)
   }));
 
   const disclaimer = !chosen.length
-    ? `Não encontrei receitas nessa categoria (${category}) que respeitem suas restrições.`
-    : `Categoria identificada: ${category}.`;
+    ? `Não encontrei receitas na categoria **${category}**.`
+    : `Categoria: **${category}**.`;
 
+  // Você pode remover o getGeminiResponse e montar um texto fixo se preferir 0 dependência de LLM
   const userPrompt = [
     `Pergunta do usuário: "${question}"`,
     disclaimer,
-    'Receitas disponíveis (JSON):',
+    'Receitas (JSON):',
     JSON.stringify(ctxRecipes, null, 2),
-    'Monte a resposta em lista, com título, tempo de preparo, dificuldade, autor.',
+    'Formate a resposta em lista, com título, tempo de preparo (se houver), dificuldade, autor.',
     'Responda em português e NÃO invente receitas fora da lista.'
   ].join('\n\n');
 
@@ -319,7 +181,7 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
 export async function searchRecipesForAI(query: string, limit = 5): Promise<{ recipes: Recipe[]; context: string }> {
   const { data, error } = await supabase
     .from('recipes')
-    .select('id, title, description, category, difficulty, rating, author_name')
+    .select('id, title, description, category, difficulty, rating, author_id')
     .ilike('title', `%${query}%`)
     .order('rating', { ascending: false })
     .limit(limit);
@@ -489,7 +351,7 @@ export async function processAIMessage(
   // 1) Saudações: resposta simples, sem sugestões nem exemplos
   if (isGreeting(content)) {
     return {
-      content: 'Oi! 👋 Como posso te ajudar? Diga uma **categoria** do site (ex.: almoço, jantar, sobremesas).',
+      content: 'Oi! 👋 Como posso te ajudar? Diga uma **categoria** (Vegana, Baixo Carboidrato, Rica em Proteína, Sem Glúten ou Vegetariana).',
       recipes: [],
       suggestions: []
     };
@@ -498,7 +360,7 @@ export async function processAIMessage(
   // 2) Mensagem muito curta/vaga: peça explicitamente a categoria, sem sugerir nada
   if (isTooShortOrVague(content)) {
     return {
-      content: 'Para te ajudar melhor, me diga uma **categoria** (ex.: almoço, jantar, sobremesas).',
+      content: 'Para te ajudar melhor, me diga uma **categoria** (Vegana, Baixo Carboidrato, Rica em Proteína, Sem Glúten ou Vegetariana).',
       recipes: [],
       suggestions: []
     };
@@ -507,19 +369,19 @@ export async function processAIMessage(
   // 3) Fluxo normal (categoria-first)
   const { found, category, items, text } = await answerQuestionWithSiteData(content);
 
-  // Se não identificou categoria, só peça a categoria — sem listar exemplos
+  // Se não identificou categoria
   if (!category) {
     return {
-      content: 'Não identifiquei uma **categoria** na sua mensagem. Diga uma (ex.: jantar, sobremesas).',
+      content: 'Não identifiquei uma **categoria** na sua mensagem. Use: Vegana, Baixo Carboidrato, Rica em Proteína, Sem Glúten ou Vegetariana.',
       recipes: [],
       suggestions: []
     };
   }
 
-  // Se não encontrou itens na categoria (ou dieta filtrou tudo), não invente
+  // Se não encontrou itens na categoria
   if (!found || !items.length) {
     return {
-      content: `Na categoria **${category}** não encontrei resultados que respeitem seu pedido. Quer tentar outra categoria?`,
+      content: `Na categoria **${category}** não encontrei resultados. Quer tentar outra das categorias disponíveis?`,
       recipes: [],
       suggestions: []
     };
