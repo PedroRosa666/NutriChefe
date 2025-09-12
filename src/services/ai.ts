@@ -129,7 +129,7 @@ function pickDietaryModeFromText(text: string): DietaryMode | undefined {
 }
 
 // =============================================================================
-// Descoberta de categorias a partir do BD
+// Descoberta de categorias a partir do BD (resiliente)
 // =============================================================================
 
 type CategoryLite = { name: string; slug?: string };
@@ -138,40 +138,51 @@ let CACHED_CATEGORIES: CategoryLite[] | null = null;
 let LAST_CAT_FETCH = 0;
 const CAT_TTL_MS = 60_000; // 1 min
 
+// === CATEGORIAS (com fallback silencioso se a tabela não existir) ===
 async function loadCategoriesFromDB(): Promise<CategoryLite[]> {
   const now = Date.now();
   if (CACHED_CATEGORIES && now - LAST_CAT_FETCH < CAT_TTL_MS) return CACHED_CATEGORIES;
 
-  // 1) Tenta tabela "categories"
-  const tryCategories = await supabase
-    .from('categories')
-    .select('name, slug, title')
-    .limit(200);
+  // 1) Tenta tabela "categories" — se der 404/erro, ignora e vai pro fallback
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('name, slug, title')
+      .limit(200);
 
-  if (!tryCategories.error && tryCategories.data && tryCategories.data.length) {
-    const rows = tryCategories.data as any[];
-    CACHED_CATEGORIES = rows.map(r => ({
-      name: r.name ?? r.title ?? '',
-      slug: r.slug ?? undefined
-    })).filter(c => c.name);
-    LAST_CAT_FETCH = now;
-    return CACHED_CATEGORIES;
+    if (!error && data && data.length) {
+      const rows = data as any[];
+      CACHED_CATEGORIES = rows
+        .map(r => ({
+          name: r.name ?? r.title ?? '',
+          slug: r.slug ?? undefined
+        }))
+        .filter(c => c.name);
+      LAST_CAT_FETCH = now;
+      return CACHED_CATEGORIES;
+    }
+  } catch {
+    // ignora e cai pro fallback
   }
 
   // 2) Fallback: distinct em recipes.category
-  const distinct = await supabase
-    .from('recipes')
-    .select('category')
-    .not('category', 'is', null)
-    .neq('category', '')
-    .limit(500);
+  try {
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('category')
+      .not('category', 'is', null)
+      .neq('category', '')
+      .limit(500);
 
-  if (!distinct.error && distinct.data) {
-    const set = new Set<string>();
-    for (const r of distinct.data as any[]) if (r.category) set.add(String(r.category));
-    CACHED_CATEGORIES = Array.from(set).map(name => ({ name }));
-    LAST_CAT_FETCH = now;
-    return CACHED_CATEGORIES;
+    if (!error && data) {
+      const set = new Set<string>();
+      for (const r of data as any[]) if (r.category) set.add(String(r.category));
+      CACHED_CATEGORIES = Array.from(set).map(name => ({ name }));
+      LAST_CAT_FETCH = now;
+      return CACHED_CATEGORIES;
+    }
+  } catch {
+    // se até o fallback falhar, devolve vazio
   }
 
   CACHED_CATEGORIES = [];
@@ -181,13 +192,13 @@ async function loadCategoriesFromDB(): Promise<CategoryLite[]> {
 
 function matchCategoryFromText(text: string, categories: CategoryLite[]): string | null {
   const t = normalize(text);
-  // match exato por nome ou slug
+  // match direto por nome ou slug
   for (const c of categories) {
     const n = normalize(c.name);
     const s = c.slug ? normalize(c.slug) : '';
     if (t.includes(n) || (s && t.includes(s))) return c.name;
   }
-  // tentativa por palavras-chave típicas
+  // sinônimos básicos (ajuste/remoção se quiser 100% estrito)
   const synonyms: Record<string,string[]> = {
     'café da manhã': ['cafe da manha','breakfast','manhã','manha'],
     'almoço': ['almoco','lunch'],
@@ -223,10 +234,9 @@ async function selectRecipesBase(limit: number) {
 }
 
 async function queryRecipesByCategory(categoryName: string, limit = 40): Promise<Recipe[]> {
-  // Suporta 3 jeitos comuns de armazenar categoria:
+  // Suporta 2 jeitos comuns de armazenar categoria:
   // 1) coluna string: recipes.category
-  // 2) coluna text[]: recipes.categories
-  // 3) relação N:N: recipes_categories (precisaria de RPC/VIEW; aqui cobrimos 1 e 2)
+  // 2) coluna text[]: recipes.categories (filtramos em memória)
   try {
     let q = await selectRecipesBase(limit);
 
@@ -349,9 +359,7 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
 }
 
 // =============================================================================
-// Busca simples (opcional; não usada para decisão)
-// =============================================================================
-
+/** Busca simples (opcional; não usada para decisão) */
 export async function searchRecipesForAI(query: string, limit = 5): Promise<{ recipes: Recipe[]; context: string }> {
   const { data, error } = await supabase
     .from('recipes')
@@ -522,79 +530,52 @@ export async function processAIMessage(
   conversationHistory: AIMessage[] = []
 ): Promise<AIResponse> {
 
-  // 1) Saudações: responda curto, sem buscar
+  // 1) Saudações: resposta simples, sem sugestões nem exemplos
   if (isGreeting(content)) {
-    const cats = await loadCategoriesFromDB();
-    const preview = cats.slice(0, 6).map(c => `• ${c.name}`).join('\n');
     return {
-      content:
-        `Oi! 👋 Quer explorar alguma categoria? Exemplos:\n${preview}\n\nDiga algo como: "Quero **sobremesas**" ou "mostre **jantar** sem lactose".`,
+      content: 'Oi! 👋 Como posso te ajudar? Diga uma **categoria** do site (ex.: almoço, jantar, sobremesas).',
       recipes: [],
-      suggestions: [
-        'Ver sobremesas',
-        'Ideias para jantar',
-        'Café da manhã low carb'
-      ]
+      suggestions: []
     };
   }
 
-  // 2) Mensagem muito curta/vaga: pedir categoria
+  // 2) Mensagem muito curta/vaga: peça explicitamente a categoria, sem sugerir nada
   if (isTooShortOrVague(content)) {
-    const cats = await loadCategoriesFromDB();
-    const preview = cats.slice(0, 6).map(c => `• ${c.name}`).join('\n');
     return {
-      content:
-        `Legal! Me diga uma **categoria** do site (ex.: almoço, jantar, sobremesa...).\nAlgumas opções:\n${preview}`,
+      content: 'Para te ajudar melhor, me diga uma **categoria** (ex.: almoço, jantar, sobremesas).',
       recipes: [],
-      suggestions: [
-        'Quero sobremesas',
-        'Ideias de lanche',
-        'Bebidas sem lactose'
-      ]
+      suggestions: []
     };
   }
 
   // 3) Fluxo normal (categoria-first)
   const { found, category, items, text } = await answerQuestionWithSiteData(content);
 
+  // Se não identificou categoria, só peça a categoria — sem listar exemplos
   if (!category) {
-    const cats = await loadCategoriesFromDB();
-    const preview = cats.slice(0, 6).map(c => `• ${c.name}`).join('\n');
     return {
-      content:
-        `Não identifiquei uma **categoria** na sua mensagem. Você pode dizer algo como "Quero **jantar**" ou "Ver **sobremesas**".\nAlgumas opções:\n${preview}`,
+      content: 'Não identifiquei uma **categoria** na sua mensagem. Diga uma (ex.: jantar, sobremesas).',
       recipes: [],
-      suggestions: [
-        'Ver jantar',
-        'Ver sobremesas',
-        'Ver café da manhã'
-      ]
+      suggestions: []
     };
   }
 
+  // Se não encontrou itens na categoria (ou dieta filtrou tudo), não invente
   if (!found || !items.length) {
     return {
-      content:
-        `Na categoria **${category}** não encontrei resultados que respeitem seu pedido. Quer tentar outra categoria?`,
+      content: `Na categoria **${category}** não encontrei resultados que respeitem seu pedido. Quer tentar outra categoria?`,
       recipes: [],
-      suggestions: [
-        'Ver almoço',
-        'Ver lanche',
-        'Ver bebidas'
-      ]
+      suggestions: []
     };
   }
 
+  // OK: retorna apenas as receitas selecionadas, sem enfeites
   const recipes = capAndMapRecipes(items, 6);
 
   return {
     content: text,
     recipes,
-    suggestions: [
-      'Filtrar por ≤ 20 min',
-      'Ver opções low carb',
-      `Ver mais de ${category}`
-    ]
+    suggestions: []
   };
 }
 
