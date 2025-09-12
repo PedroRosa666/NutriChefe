@@ -1,17 +1,16 @@
 // src/services/ai.ts
 // =============================================================================
-// Serviço de IA unificado (com RAG simples) para o NutriChefe
-// - CRUD de configs, conversas e mensagens
-// - Busca de receitas no Supabase
-// - RAG com filtros dietéticos **estritos** (vegano, vegetariano, sem lactose, sem glúten, low carb)
-// - UX: evita respostas "afobadas" em saudações/mensagens vagas
-// - Autor das receitas resolvido com múltiplas fontes
+// Serviço de IA (categoria-first) para o NutriChefe
+// - Baseado SOMENTE em CATEGORIAS do BD/site (sem heurística de ingredientes)
+// - Descobre categorias pelo BD (tabela categories ou distinct de recipes.category)
+// - Filtros dietéticos estritos (apenas para EXCLUIR incompatíveis, se o usuário pedir)
+// - UX: evita respostas "afobadas" e não mistura listas aleatórias
 // =============================================================================
 
 import { supabase } from '../lib/supabase';
 import { getGeminiResponse } from './gemini';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
-import type { Recipe } from '../types/recipe';
+import type { Recipe } from '../types/recipe'];
 
 // =============================================================================
 // UX helpers – não ser "afobado"
@@ -53,8 +52,17 @@ function extractAuthorName(r: any): string {
   );
 }
 
+// Apenas para compor resposta do modelo; NÃO usamos para decidir resultados
+function textFromRecipe(r: any) {
+  const parts = [
+    r?.title, r?.description, r?.category,
+    ...(Array.isArray(r?.instructions) ? r.instructions : [])
+  ].filter(Boolean).join(' ');
+  return normalize(parts);
+}
+
 // =============================================================================
-// Regras dietéticas estritas
+// Regras dietéticas estritas (somente para excluir incompatíveis)
 // =============================================================================
 
 type DietaryMode =
@@ -65,18 +73,14 @@ type DietaryMode =
   | 'low-carb';
 
 const VEGAN_FORBIDDEN = [
-  // carnes em geral
   'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','frango','galinha','peru',
   'peixe','atum','sardinha','bacalhau','anchova','salmao','tilapia','camarao','lula','polvo','marisco',
-  // ovos e lacteos
   'ovo','ovos','gema','clara',
   'leite','lactose','manteiga','queijo','creme de leite','nata','requeijao','iogurte','soro do leite','whey','caseina',
-  // outros de origem animal
   'gelatina','mel','mel de abelha','banha'
 ];
 
 const VEGETARIAN_FORBIDDEN = [
-  // carnes e pescados (ovos e lacteos permitidos)
   'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','frango','galinha','peru',
   'peixe','atum','sardinha','bacalhau','anchova','salmao','tilapia','camarao','lula','polvo','marisco'
 ];
@@ -93,21 +97,9 @@ const HIGH_CARB_CULPRITS = [
   'açucar','acucar','açúcar','farinha de trigo','arroz branco','macarrao','pao','pão','batata','amido de milho','fuba','fubá'
 ];
 
-function textFromRecipe(r: any) {
-  const parts = [
-    r?.title, r?.description, r?.category,
-    ...(Array.isArray(r?.ingredients) ? r.ingredients : []),
-    ...(Array.isArray(r?.instructions) ? r.instructions : [])
-  ]
-  .filter(Boolean)
-  .join(' ');
-  return normalize(parts);
-}
-
 function violatesDiet(r: any, mode?: DietaryMode): boolean {
   if (!mode) return false;
   const t = textFromRecipe(r);
-
   const hasAny = (terms: string[]) => terms.some(term => t.includes(normalize(term)));
 
   switch (mode) {
@@ -120,91 +112,103 @@ function violatesDiet(r: any, mode?: DietaryMode): boolean {
     case 'lactose-free':
       return hasAny(LACTOSE_TERMS);
     case 'low-carb':
-      // Heurística simples: se listar muitos high-carb explícitos, descarta
       return hasAny(HIGH_CARB_CULPRITS);
     default:
       return false;
   }
 }
 
-function pickDietaryMode(dietary: string[] | undefined): DietaryMode | undefined {
-  if (!dietary || !dietary.length) return undefined;
-  const d = dietary.map(normalize);
-  if (d.some(x => x.includes('vegana') || x.includes('vegano'))) return 'vegan';
-  if (d.some(x => x.includes('vegetarian'))) return 'vegetarian';
-  if (d.some(x => x.includes('sem lactose') || x.includes('lactose'))) return 'lactose-free';
-  if (d.some(x => x.includes('sem glute') || x.includes('gluten'))) return 'gluten-free';
-  if (d.some(x => x.includes('low carb'))) return 'low-carb';
+function pickDietaryModeFromText(text: string): DietaryMode | undefined {
+  const q = normalize(text);
+  if (q.includes('vegana') || q.includes('vegano')) return 'vegan';
+  if (q.includes('vegetarian')) return 'vegetarian';
+  if (q.includes('sem lactose') || q.includes('lactose')) return 'lactose-free';
+  if (q.includes('sem glute') || q.includes('gluten')) return 'gluten-free';
+  if (q.includes('low carb') || q.includes('keto') || q.includes('paleo')) return 'low-carb';
   return undefined;
 }
 
 // =============================================================================
-// Extrator de intenção / filtros de receitas (RAG)
+// Descoberta de categorias a partir do BD
 // =============================================================================
 
-type RecipeFilters = {
-  ingredients: string[];
-  category?: string; // café, almoço, jantar... (não é restrição dietética)
-  dietary?: string[];
-  maxPrepTime?: number;
-  difficulty?: 'easy'|'medium'|'hard';
-  freeText?: string;
-};
+type CategoryLite = { name: string; slug?: string };
 
-const CATEGORY_KEYWORDS = [
-  'café da manhã', 'cafe da manha', 'almoço', 'almoco', 'jantar',
-  'lanche', 'sobremesa', 'snack', 'entrada', 'bebida'
-];
+let CACHED_CATEGORIES: CategoryLite[] | null = null;
+let LAST_CAT_FETCH = 0;
+const CAT_TTL_MS = 60_000; // 1 min
 
-const DIET_KEYWORDS = [
-  'vegana','vegano','vegetariana','vegetariano',
-  'sem açúcar','sem acucar','sem glúten','sem gluten','sem lactose',
-  'low carb','keto','paleo' // (keto/paleo: trataremos como low-carb em heurística)
-];
+async function loadCategoriesFromDB(): Promise<CategoryLite[]> {
+  const now = Date.now();
+  if (CACHED_CATEGORIES && now - LAST_CAT_FETCH < CAT_TTL_MS) return CACHED_CATEGORIES;
 
-const DIFFICULTY_MAP: Record<string, 'easy'|'medium'|'hard'> = {
-  'fácil':'easy','facil':'easy',
-  'médio':'medium','medio':'medium',
-  'difícil':'hard','dificil':'hard'
-};
+  // 1) Tenta tabela "categories"
+  const tryCategories = await supabase
+    .from('categories')
+    .select('name, slug, title')
+    .limit(200);
 
-export function extractFilters(question: string): RecipeFilters {
-  const q = normalize(question);
-
-  const ingredients: string[] = [];
-  const ingredientMatch = q.match(/com\s+([a-zA-ZÀ-ÿ,\s]+)/);
-  if (ingredientMatch) {
-    ingredients.push(
-      ...ingredientMatch[1]
-        .split(',')
-        .map(x => x.trim())
-        .filter(Boolean)
-    );
+  if (!tryCategories.error && tryCategories.data && tryCategories.data.length) {
+    const rows = tryCategories.data as any[];
+    CACHED_CATEGORIES = rows.map(r => ({
+      name: r.name ?? r.title ?? '',
+      slug: r.slug ?? undefined
+    })).filter(c => c.name);
+    LAST_CAT_FETCH = now;
+    return CACHED_CATEGORIES;
   }
 
-  let category: string | undefined;
-  for (const c of CATEGORY_KEYWORDS) {
-    if (q.includes(normalize(c))) { category = c; break; }
+  // 2) Fallback: distinct em recipes.category
+  const distinct = await supabase
+    .from('recipes')
+    .select('category')
+    .not('category', 'is', null)
+    .neq('category', '')
+    .limit(500);
+
+  if (!distinct.error && distinct.data) {
+    const set = new Set<string>();
+    for (const r of distinct.data as any[]) if (r.category) set.add(String(r.category));
+    CACHED_CATEGORIES = Array.from(set).map(name => ({ name }));
+    LAST_CAT_FETCH = now;
+    return CACHED_CATEGORIES;
   }
 
-  const dietary = DIET_KEYWORDS.filter(k => q.includes(normalize(k)));
-  if (q.includes('keto') || q.includes('paleo')) dietary.push('low carb');
+  CACHED_CATEGORIES = [];
+  LAST_CAT_FETCH = now;
+  return CACHED_CATEGORIES;
+}
 
-  let maxPrepTime: number | undefined;
-  const timeMatch = q.match(/(\d{1,3})\s*(min|mins|minutos)/);
-  if (timeMatch) maxPrepTime = Number(timeMatch[1]);
-
-  let difficulty: 'easy'|'medium'|'hard' | undefined;
-  for (const [pt, lv] of Object.entries(DIFFICULTY_MAP)) {
-    if (q.includes(pt)) { difficulty = lv; break; }
+function matchCategoryFromText(text: string, categories: CategoryLite[]): string | null {
+  const t = normalize(text);
+  // match exato por nome ou slug
+  for (const c of categories) {
+    const n = normalize(c.name);
+    const s = c.slug ? normalize(c.slug) : '';
+    if (t.includes(n) || (s && t.includes(s))) return c.name;
   }
-
-  return { ingredients, category, dietary, maxPrepTime, difficulty, freeText: question };
+  // tentativa por palavras-chave típicas
+  const synonyms: Record<string,string[]> = {
+    'café da manhã': ['cafe da manha','breakfast','manhã','manha'],
+    'almoço': ['almoco','lunch'],
+    'jantar': ['dinner','noite'],
+    'lanche': ['snack','lanchinho'],
+    'sobremesa': ['doce','dessert'],
+    'entrada': ['aperitivo','starter'],
+    'bebida': ['drinks','suco','vitamina','shake']
+  };
+  for (const [cat, alts] of Object.entries(synonyms)) {
+    if (alts.some(a => t.includes(normalize(a)))) return cat;
+  }
+  return null;
 }
 
 // =============================================================================
-/** Base de SELECT tentando join com profiles; fallback para '*' se não houver relação */
+// Consultas de receitas por CATEGORIA
+// =============================================================================
+
 async function selectRecipesBase(limit: number) {
+  // tenta trazer perfil do autor via relação comum; se não existir, o Supabase ignora
   try {
     return supabase
       .from('recipes')
@@ -218,18 +222,18 @@ async function selectRecipesBase(limit: number) {
   }
 }
 
-// Busca principal com filtros básicos no banco; filtros dietéticos são validados em memória (mais seguro)
-async function queryRecipes(filters: RecipeFilters, limit = 40): Promise<Recipe[]> {
+async function queryRecipesByCategory(categoryName: string, limit = 40): Promise<Recipe[]> {
+  // Suporta 3 jeitos comuns de armazenar categoria:
+  // 1) coluna string: recipes.category
+  // 2) coluna text[]: recipes.categories
+  // 3) relação N:N: recipes_categories (precisaria de RPC/VIEW; aqui cobrimos 1 e 2)
   try {
     let q = await selectRecipesBase(limit);
 
-    if (filters.maxPrepTime) q = q.lte('prep_time', filters.maxPrepTime);
-    if (filters.difficulty) q = q.eq('difficulty', filters.difficulty);
-    if (filters.category)  q = q.ilike('category', `%${filters.category}%`);
-    if (filters.ingredients.length) q = q.contains('ingredients', filters.ingredients);
+    // coluna string
+    q = q.ilike('category', `%${categoryName}%`);
 
-    // Preferir melhores avaliadas para estabilidade
-    // (se sua tabela tiver "rating", ordene decrescente)
+    // Preferir melhores avaliadas (se houver rating)
     // @ts-ignore
     if (typeof (q as any).order === 'function') {
       // @ts-ignore
@@ -238,48 +242,27 @@ async function queryRecipes(filters: RecipeFilters, limit = 40): Promise<Recipe[
 
     const { data, error } = await q;
     if (error) throw error;
-    return (data as any as Recipe[]) || [];
+
+    let rows: any[] = (data as any[]) || [];
+
+    // Se existir a coluna text[] 'categories', filtramos também por ela em memória
+    rows = rows.filter(r => {
+      if (Array.isArray((r as any).categories)) {
+        const arr = (r as any).categories.map((x: any) => normalize(String(x)));
+        return arr.some((x: string) => x.includes(normalize(categoryName)));
+      }
+      return true;
+    });
+
+    return rows as any as Recipe[];
   } catch {
-    let q = supabase.from('recipes').select('*').limit(limit);
-
-    if (filters.maxPrepTime) q = q.lte('prep_time', filters.maxPrepTime);
-    if (filters.difficulty) q = q.eq('difficulty', filters.difficulty);
-    if (filters.category)  q = q.ilike('category', `%${filters.category}%`);
-    if (filters.ingredients.length) q = q.contains('ingredients', filters.ingredients);
-
+    let q = supabase.from('recipes').select('*').limit(limit).ilike('category', `%${categoryName}%`);
     const { data, error } = await q;
     if (error) throw error;
     return (data as any as Recipe[]) || [];
   }
 }
 
-async function fallbackSimilarRecipes(filters: RecipeFilters, limit = 40): Promise<Recipe[]> {
-  try {
-    let q = await selectRecipesBase(limit);
-
-    // Fallback: relaxa ingredientes, mantém categoria se houver
-    if (filters.category) q = q.ilike('category', `%${filters.category}%`);
-
-    // Ordene estável
-    // @ts-ignore
-    if (typeof (q as any).order === 'function') {
-      // @ts-ignore
-      q = (q as any).order('rating', { ascending: false });
-    }
-
-    const { data, error } = await q;
-    if (error) throw error;
-    return (data as any as Recipe[]) || [];
-  } catch {
-    let q = supabase.from('recipes').select('*').limit(limit);
-    if (filters.category) q = q.ilike('category', `%${filters.category}%`);
-    const { data, error } = await q;
-    if (error) throw error;
-    return (data as any as Recipe[]) || [];
-  }
-}
-
-// Filtra em memória para garantir conformidade dietética estrita
 function applyDietaryCompliance(recipes: Recipe[], mode?: DietaryMode): Recipe[] {
   if (!mode) return recipes;
   return recipes.filter(r => !violatesDiet(r, mode));
@@ -306,36 +289,35 @@ function capAndMapRecipes(list: Recipe[], cap = 6) {
 }
 
 // =============================================================================
-// Orquestrador RAG com dieta estrita e sem mistura aleatória
+// Orquestrador baseado em CATEGORIA
 // =============================================================================
 
 export async function answerQuestionWithSiteData(question: string): Promise<{
   found: boolean;
-  primary: Recipe[];
-  fallback?: Recipe[];
+  category: string | null;
+  items: Recipe[];
   text: string;
 }> {
-  const filters = extractFilters(question);
-  const dietaryMode = pickDietaryMode(filters.dietary);
+  const categories = await loadCategoriesFromDB();
+  const category = matchCategoryFromText(question, categories);
 
-  // 1) Busca principal
-  const rawPrimary = await queryRecipes(filters, 40);
-  const primary = applyDietaryCompliance(rawPrimary, dietaryMode);
-
-  let found = primary.length > 0;
-  let fallback: Recipe[] | undefined;
-
-  // 2) Se nada compatível, tenta fallback (relaxa só categoria; dieta permanece estrita)
-  if (!found) {
-    const rawFallback = await fallbackSimilarRecipes(filters, 40);
-    const compliantFallback = applyDietaryCompliance(rawFallback, dietaryMode);
-    if (compliantFallback.length > 0) {
-      fallback = compliantFallback;
-    }
+  if (!category) {
+    return {
+      found: false,
+      category: null,
+      items: [],
+      text: 'Não identifiquei uma categoria do site na sua mensagem.'
+    };
   }
 
-  // 3) Prepara contexto **somente** com a lista que será exibida
-  const chosen = found ? primary : (fallback || []);
+  // Busca por categoria
+  const raw = await queryRecipesByCategory(category, 40);
+
+  // Restrições dietéticas (se houver no texto)
+  const dietMode = pickDietaryModeFromText(question);
+  const filtered = applyDietaryCompliance(raw, dietMode);
+
+  const chosen = filtered.length ? filtered : [];
   const ctxRecipes = chosen.map((r: any) => ({
     id: r.id,
     title: r.title,
@@ -344,32 +326,30 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
     prepTime: (r as any).prepTime ?? (r as any).prep_time,
     difficulty: r.difficulty,
     rating: r.rating,
-    ingredients: r.ingredients,
     author: extractAuthorName(r)
   }));
 
   const disclaimer = !chosen.length
-    ? 'Não encontrei opções que respeitem suas restrições. Posso tentar com outros ingredientes ou estilos?'
-    : (found ? 'Foram encontradas receitas compatíveis.' :
-       'Não encontrei exatamente isso, mas aqui estão alternativas semelhantes que respeitam sua restrição.');
+    ? `Não encontrei receitas nessa categoria (${category}) que respeitem suas restrições.`
+    : `Categoria identificada: ${category}.`;
 
   const userPrompt = [
     `Pergunta do usuário: "${question}"`,
     disclaimer,
     'Receitas disponíveis (JSON):',
     JSON.stringify(ctxRecipes, null, 2),
-    'Monte a resposta em lista, com título, tempo de preparo, dificuldade, autor e ingredientes principais.',
-    'Responda em português e não invente receitas fora da lista.'
+    'Monte a resposta em lista, com título, tempo de preparo, dificuldade, autor.',
+    'Responda em português e NÃO invente receitas fora da lista.'
   ].join('\n\n');
 
   const resp = await getGeminiResponse(userPrompt);
   const text = resp.content;
 
-  return { found, primary, fallback, text };
+  return { found: !!chosen.length, category, items: chosen, text };
 }
 
 // =============================================================================
-// Busca simples (opcional)
+// Busca simples (opcional; não usada para decisão)
 // =============================================================================
 
 export async function searchRecipesForAI(query: string, limit = 5): Promise<{ recipes: Recipe[]; context: string }> {
@@ -385,33 +365,10 @@ export async function searchRecipesForAI(query: string, limit = 5): Promise<{ re
   const recipes = (data || []) as any as Recipe[];
   const context = recipes.map((r: any) => {
     const author = extractAuthorName(r);
-    return `• ${r.title} (${r.category || 'geral'}) – ${r.description || ''} — Autor: ${author}`;
+    return `• ${r.title} (${r.category || 'geral'}) — Autor: ${author}`;
   }).join('\n');
 
   return { recipes, context };
-}
-
-// =============================================================================
-// Exemplo de resposta estruturada (opcional)
-// =============================================================================
-
-export async function askAIWithContext(question: string): Promise<AIResponse> {
-  const { recipes } = await searchRecipesForAI(question, 5);
-  const gr = await getGeminiResponse(
-    `Pergunta: ${question}\nReceitas:\n${recipes.map((r: any) => `- ${r.title} — Autor: ${extractAuthorName(r)}`).join('\n')}`
-  );
-  const content = gr.content;
-
-  return {
-    content,
-    recipes: recipes.map((r: any) => ({
-      id: r.id,
-      title: r.title,
-      description: r.description,
-      author: extractAuthorName(r),
-      rating: r.rating ?? 0
-    }))
-  };
 }
 
 // =============================================================================
@@ -565,63 +522,78 @@ export async function processAIMessage(
   conversationHistory: AIMessage[] = []
 ): Promise<AIResponse> {
 
-  // 1) Saudações: responda curto, sem RAG
+  // 1) Saudações: responda curto, sem buscar
   if (isGreeting(content)) {
+    const cats = await loadCategoriesFromDB();
+    const preview = cats.slice(0, 6).map(c => `• ${c.name}`).join('\n');
     return {
       content:
-        'Oi! 👋 Como posso te ajudar hoje na cozinha? Você quer **ideias de receita**, **adaptar algo** (ex.: sem lactose / sem glúten) ou **planejar um cardápio**?',
+        `Oi! 👋 Quer explorar alguma categoria? Exemplos:\n${preview}\n\nDiga algo como: "Quero **sobremesas**" ou "mostre **jantar** sem lactose".`,
       recipes: [],
       suggestions: [
-        'Me sugira algo com frango',
-        'Quero opções sem lactose',
-        'Planeje meu almoço de 20 min'
+        'Ver sobremesas',
+        'Ideias para jantar',
+        'Café da manhã low carb'
       ]
     };
   }
 
-  // 2) Mensagem muito curta/vaga: peça 1 clarificação
+  // 2) Mensagem muito curta/vaga: pedir categoria
   if (isTooShortOrVague(content)) {
+    const cats = await loadCategoriesFromDB();
+    const preview = cats.slice(0, 6).map(c => `• ${c.name}`).join('\n');
     return {
       content:
-        'Legal! Me diz só mais uma coisa pra eu acertar nas sugestões: você tem algum **ingrediente-chave** ou **restrição** (ex.: sem glúten, low carb)? E prefere **rápido** (≤ 20 min) ou tanto faz?',
+        `Legal! Me diga uma **categoria** do site (ex.: almoço, jantar, sobremesa...).\nAlgumas opções:\n${preview}`,
       recipes: [],
       suggestions: [
-        'Quero algo com atum',
-        'Sem glúten e rápido',
-        'Sobremesa com 3 ingredientes'
+        'Quero sobremesas',
+        'Ideias de lanche',
+        'Bebidas sem lactose'
       ]
     };
   }
 
-  // 3) Fluxo normal (RAG com dieta estrita)
-  const { text, primary, fallback } = await answerQuestionWithSiteData(content);
+  // 3) Fluxo normal (categoria-first)
+  const { found, category, items, text } = await answerQuestionWithSiteData(content);
 
-  // usamos apenas UMA lista (sem mistura)
-  const chosen = primary.length ? primary : (fallback || []);
-  const recipes = capAndMapRecipes(chosen, 6);
-
-  // Se ainda não há nada, devolve uma resposta guiando o usuário
-  if (!recipes.length) {
+  if (!category) {
+    const cats = await loadCategoriesFromDB();
+    const preview = cats.slice(0, 6).map(c => `• ${c.name}`).join('\n');
     return {
       content:
-        'Não encontrei receitas que respeitem exatamente o que você pediu. Quer me dizer 1–2 ingredientes que tem aí ou se prefere algo rápido (≤ 20 min)? Posso tentar novamente!',
+        `Não identifiquei uma **categoria** na sua mensagem. Você pode dizer algo como "Quero **jantar**" ou "Ver **sobremesas**".\nAlgumas opções:\n${preview}`,
       recipes: [],
       suggestions: [
-        'Vegana com grão-de-bico',
-        'Sem lactose com frango',
-        'Sem glúten em 20 min'
+        'Ver jantar',
+        'Ver sobremesas',
+        'Ver café da manhã'
       ]
     };
   }
 
-  // Caso haja, usa o texto formatado pelo modelo + lista estrita
+  if (!found || !items.length) {
+    return {
+      content:
+        `Na categoria **${category}** não encontrei resultados que respeitem seu pedido. Quer tentar outra categoria?`,
+      recipes: [],
+      suggestions: [
+        'Ver almoço',
+        'Ver lanche',
+        'Ver bebidas'
+      ]
+    };
+  }
+
+  const recipes = capAndMapRecipes(items, 6);
+
   return {
     content: text,
     recipes,
     suggestions: [
       'Filtrar por ≤ 20 min',
-      'Ver versão sem glúten',
-      'Ver opções low carb'
+      'Ver opções low carb',
+      `Ver mais de ${category}`
     ]
   };
 }
