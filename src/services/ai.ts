@@ -1,18 +1,18 @@
 // src/services/ai.ts
 // =============================================================================
 // Serviço de IA (categoria-first) para o NutriChefe
-// - SOMENTE CATEGORIAS fixas (pt/en) — nada de ingredientes ou dietas extras
-// - Busca receitas por recipes.category via ILIKE
-// - UX: cumprimenta e pede categoria quando a mensagem é vaga/saudação
+// - 5 categorias fixas (pt/en), mas a BUSCA usa SEMPRE os valores do BD (em inglês)
+// - Sem heurística de ingredientes ou dietas extras
+// - UX: cumprimenta de forma natural e pede o estilo quando necessário
 // =============================================================================
 
 import { supabase } from '../lib/supabase';
 import { getGeminiResponse } from './gemini';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
-import type { Recipe } from '../types/recipe';
+import type { Recipe } from '../types/recipe'];
 
 // =============================================================================
-// UX helpers – não ser "afobado"
+// UX helpers – tom natural e não “afobado”
 // =============================================================================
 
 const GREETINGS = [
@@ -41,53 +41,81 @@ function normalize(s: string) {
 }
 
 function extractAuthorName(r: any): string {
-  // Se não houver nome do autor disponível na linha, devolve genérico
-  return (
-    r?.author_name ??
-    r?.authorName ??
-    r?.created_by_name ??
-    'Autor'
-  );
+  // Como seu schema tem apenas author_id, mantemos genérico.
+  // Se quiser o nome real, crie a relação com profiles e mude aqui.
+  return 'Autor';
 }
 
 // =============================================================================
-// CATEGORIAS FIXAS (PT/EN)
+// CATEGORIAS FIXAS: mapeamento PT/EN -> valores salvos no BD (EN)
 // =============================================================================
 
+/**
+ * labelPt: exibido nas mensagens
+ * dbKeysEn: valores (ou variações) como são salvos na coluna recipes.category
+ * variants: palavras que reconhecemos no texto do usuário (pt + en)
+ */
 type FixedCategory = {
-  canonical: string;           // nome como salvo na coluna recipes.category
-  variants: string[];          // variações aceitas no texto do usuário (pt/en)
+  labelPt: string;
+  dbKeysEn: string[];   // usado para consultar o BD
+  variants: string[];   // para detectar no texto do usuário
 };
 
 const FIXED_CATEGORIES: FixedCategory[] = [
-  { canonical: 'Vegana', variants: ['vegana', 'vegan'] },
-  { canonical: 'Baixo Carboidrato', variants: ['baixo carboidrato', 'low carb', 'low-carb', 'keto'] },
-  { canonical: 'Rica em Proteína', variants: ['rica em proteina', 'rica em proteína', 'high protein', 'high-protein', 'protein rich'] },
-  { canonical: 'Sem Glúten', variants: ['sem glúten', 'sem gluten', 'gluten free', 'gluten-free'] },
-  { canonical: 'Vegetariana', variants: ['vegetariana', 'vegetarian'] },
+  {
+    labelPt: 'Vegana',
+    dbKeysEn: ['Vegan'],
+    variants: ['vegana','vegan']
+  },
+  {
+    labelPt: 'Baixo Carboidrato',
+    dbKeysEn: ['Low Carb','Low-Carb','Keto'],
+    variants: ['baixo carboidrato','low carb','low-carb','keto']
+  },
+  {
+    labelPt: 'Rica em Proteína',
+    dbKeysEn: ['High Protein','High-Protein','Protein'],
+    variants: ['rica em proteina','rica em proteína','high protein','high-protein','protein rich','protein']
+  },
+  {
+    labelPt: 'Sem Glúten',
+    dbKeysEn: ['Gluten-Free','Gluten Free'],
+    variants: ['sem glúten','sem gluten','gluten-free','gluten free']
+  },
+  {
+    labelPt: 'Vegetariana',
+    dbKeysEn: ['Vegetarian'],
+    variants: ['vegetariana','vegetarian']
+  }
 ];
 
-function detectCategoryFromText(text: string): string | null {
+function detectCategoryFromText(text: string): { labelPt: string; dbKeysEn: string[] } | null {
   const t = normalize(text);
   for (const cat of FIXED_CATEGORIES) {
-    // se o texto já contém o nome canônico (normalizado), aceita
-    if (t.includes(normalize(cat.canonical))) return cat.canonical;
-    // senão, tenta as variantes
-    if (cat.variants.some(v => t.includes(normalize(v)))) return cat.canonical;
+    // se o texto já contém a label PT normalizada
+    if (t.includes(normalize(cat.labelPt))) return { labelPt: cat.labelPt, dbKeysEn: cat.dbKeysEn };
+    // ou qualquer variante pt/en
+    if (cat.variants.some(v => t.includes(normalize(v)))) {
+      return { labelPt: cat.labelPt, dbKeysEn: cat.dbKeysEn };
+    }
   }
   return null;
 }
 
 // =============================================================================
-// Consultas de receitas por CATEGORIA
+// Consulta de receitas por CATEGORIA (usando os valores em inglês salvos no BD)
 // =============================================================================
 
-async function queryRecipesByCategory(categoryName: string, limit = 40): Promise<Recipe[]> {
-  // Consulta simples e robusta ao Supabase
+async function queryRecipesByCategoryDB(dbKeysEn: string[], limit = 40): Promise<Recipe[]> {
+  // Montage de expressão OR para Supabase, ex.:
+  // "category.ilike.%Vegan%,category.ilike.%Gluten-Free%"
+  const orExpr = dbKeysEn.map(k => `category.ilike.%${k}%`).join(',');
+
+  // Quando usamos .or, não precisamos também do .ilike isolado
   const { data, error } = await supabase
     .from('recipes')
     .select('*')
-    .ilike('category', `%${categoryName}%`)
+    .or(orExpr)
     .order('rating', { ascending: false })
     .limit(limit);
 
@@ -96,7 +124,6 @@ async function queryRecipesByCategory(categoryName: string, limit = 40): Promise
 }
 
 function capAndMapRecipes(list: Recipe[], cap = 6) {
-  // Remove duplicatas por id/título e limita a N
   const seen = new Set<string>();
   const out: any[] = [];
   for (const r of list) {
@@ -121,28 +148,26 @@ function capAndMapRecipes(list: Recipe[], cap = 6) {
 
 export async function answerQuestionWithSiteData(question: string): Promise<{
   found: boolean;
-  category: string | null;
+  categoryPt: string | null;     // rótulo em PT para exibição
   items: Recipe[];
   text: string;
 }> {
-  const category = detectCategoryFromText(question);
+  const cat = detectCategoryFromText(question);
 
-  if (!category) {
+  if (!cat) {
     return {
       found: false,
-      category: null,
+      categoryPt: null,
       items: [],
-      text: 'Não identifiquei uma categoria na sua mensagem.'
+      text: 'Certo! Me diz rapidinho o estilo que você quer (ex.: vegana, low carb, rica em proteína, sem glúten ou vegetariana) que eu já trago sugestões. 🙂'
     };
   }
 
-  // Busca por categoria
-  const raw = await queryRecipesByCategory(category, 40);
-
-  // Apenas as receitas da categoria; nenhuma lógica extra
+  // Busca por categoria usando os valores em inglês do BD
+  const raw = await queryRecipesByCategoryDB(cat.dbKeysEn, 40);
   const chosen = raw;
 
-  // Contexto para o modelo (opcional; apenas formatação do texto)
+  // Contexto para o modelo (apenas para formatar a resposta de forma amigável)
   const ctxRecipes = chosen.slice(0, 8).map((r: any) => ({
     id: r.id,
     title: r.title,
@@ -154,24 +179,23 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
     author: extractAuthorName(r)
   }));
 
-  const disclaimer = !chosen.length
-    ? `Não encontrei receitas na categoria **${category}**.`
-    : `Categoria: **${category}**.`;
+  const header = !chosen.length
+    ? `Dei uma olhada em **${cat.labelPt}** e não achei opções por aqui. Quer tentar outro estilo?`
+    : `Boa! Separei algumas ideias em **${cat.labelPt}**:`;
 
-  // Você pode remover o getGeminiResponse e montar um texto fixo se preferir 0 dependência de LLM
   const userPrompt = [
-    `Pergunta do usuário: "${question}"`,
-    disclaimer,
+    header,
     'Receitas (JSON):',
     JSON.stringify(ctxRecipes, null, 2),
-    'Formate a resposta em lista, com título, tempo de preparo (se houver), dificuldade, autor.',
-    'Responda em português e NÃO invente receitas fora da lista.'
+    'Formate a resposta em lista (título, tempo se houver, dificuldade, autor).',
+    'Se a lista vier vazia, apenas diga que não encontrou e convide a tentar outro estilo.',
+    'Responda de forma amigável, natural e em português. Não invente receitas fora da lista.'
   ].join('\n\n');
 
   const resp = await getGeminiResponse(userPrompt);
   const text = resp.content;
 
-  return { found: !!chosen.length, category, items: chosen, text };
+  return { found: !!chosen.length, categoryPt: cat.labelPt, items: chosen, text };
 }
 
 // =============================================================================
@@ -339,7 +363,7 @@ export async function getAIMessages(conversationId: string) {
 }
 
 // =============================================================================
-// Processamento de mensagem do usuário -> AIResponse (usado pelo store)
+// Processamento de mensagem do usuário -> AIResponse (amigável & natural)
 // =============================================================================
 
 export async function processAIMessage(
@@ -366,13 +390,13 @@ export async function processAIMessage(
     };
   }
 
-  // 3) Fluxo normal (categoria-first)
-  const { found, category, items, text } = await answerQuestionWithSiteData(content);
+  // 3) Fluxo normal (categoria-first, usando os valores do BD em inglês)
+  const { found, categoryPt, items, text } = await answerQuestionWithSiteData(content);
 
   // Se não identifiquei a categoria, peça de forma leve
-  if (!category) {
+  if (!categoryPt) {
     return {
-      content: 'Entendi. Você pode me dizer em poucas palavras o estilo que prefere? (ex.: vegana, low carb, rica em proteína, sem glúten ou vegetariana)',
+      content: 'Entendi. Você pode me dizer rapidinho o estilo que prefere? (ex.: vegana, low carb, rica em proteína, sem glúten ou vegetariana)',
       recipes: [],
       suggestions: []
     };
@@ -381,7 +405,7 @@ export async function processAIMessage(
   // Se a categoria veio, mas não há resultados
   if (!found || !items.length) {
     return {
-      content: `Olhei nessa linha **${category}** e, por aqui, não encontrei opções. Quer tentar outro estilo? Posso procurar em “low carb”, “vegetariana”, “sem glúten”… você escolhe 🙂`,
+      content: `Olhei em **${categoryPt}** e, por aqui, não encontrei opções. Quer tentar outro estilo? Posso procurar em “low carb”, “vegetariana”, “sem glúten”… você escolhe 🙂`,
       recipes: [],
       suggestions: []
     };
@@ -395,52 +419,4 @@ export async function processAIMessage(
     recipes,
     suggestions: []
   };
-}
-
-
-// =============================================================================
-// Perfis (profiles) – helpers opcionais
-// =============================================================================
-
-type UserProfile = {
-  id: string;
-  full_name?: string;
-  user_type?: string;
-  email?: string;
-  avatar_url?: string | null;
-  created_at?: string;
-  updated_at?: string;
-};
-
-export async function getUserProfile(id: string): Promise<UserProfile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error) throw error;
-  return (data as any as UserProfile) || null;
-}
-
-export async function updateUserProfile(id: string, updates: {
-  name?: string;
-  type?: string;
-  email?: string;
-  avatar_url?: string | null;
-}): Promise<UserProfile> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({
-      full_name: updates.name,
-      user_type: updates.type,
-      email: updates.email,
-      avatar_url: updates.avatar_url ?? null
-    })
-    .eq('id', id)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data as UserProfile;
 }
