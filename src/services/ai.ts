@@ -65,6 +65,14 @@ function textFromRecipe(r: any) {
 // Regras dietéticas estritas (somente para excluir incompatíveis)
 // =============================================================================
 
+type DietaryMode =
+  | 'vegan'
+  | 'vegetarian'
+  | 'lactose-free'
+  | 'gluten-free'
+  | 'low-carb';
+
+
 function violatesDiet(r: any, mode?: DietaryMode): boolean {
   if (!mode) return false;
   const t = textFromRecipe(r);
