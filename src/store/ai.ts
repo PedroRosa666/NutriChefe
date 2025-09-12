@@ -157,6 +157,9 @@ export const useAIStore = create<AIState>((set, get) => ({
     }
   },
 
+
+  
+
   sendMessage: async (conversationId: string, content: string) => {
     const { currentConversation } = get();
     if (!currentConversation) return;
