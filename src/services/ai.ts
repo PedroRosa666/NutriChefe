@@ -10,7 +10,7 @@
 import { supabase } from '../lib/supabase';
 import { getGeminiResponse } from './gemini';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
-import type { Recipe } from '../types/recipe'];
+import type { Recipe } from '../types/recipe';
 
 // =============================================================================
 // UX helpers – não ser "afobado"
