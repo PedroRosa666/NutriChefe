@@ -533,7 +533,7 @@ export async function processAIMessage(
   // 1) Saudações: resposta simples, sem sugestões nem exemplos
   if (isGreeting(content)) {
     return {
-      content: 'Oi! 👋 Como posso te ajudar? Diga uma **categoria** do site (ex.: almoço, jantar, sobremesas).',
+      content: 'Oi! 👋 Eu sou o NutriBot, seu assistente pessoal de nutrição! Como posso te ajudar? ',
       recipes: [],
       suggestions: []
     };
