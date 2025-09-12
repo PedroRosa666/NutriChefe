@@ -3,6 +3,7 @@
 // Serviço de IA (categoria-first) para o NutriChefe
 // - 5 categorias fixas (pt/en), mas a BUSCA usa SEMPRE os valores do BD (em inglês)
 // - Sem heurística de ingredientes ou dietas extras
+// - Autor e rating reais (join em profiles + fallback de hidratação)
 // - UX: cumprimenta de forma natural e pede o estilo quando necessário
 // =============================================================================
 
@@ -40,10 +41,15 @@ function normalize(s: string) {
   return s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 }
 
+// Pega o nome do autor considerando join ou hidratação posterior
 function extractAuthorName(r: any): string {
-  // Como seu schema tem apenas author_id, mantemos genérico.
-  // Se quiser o nome real, crie a relação com profiles e mude aqui.
-  return 'Autor';
+  return (
+    r?.author_profile?.full_name ??
+    r?.__author_name ?? // preenchido pela hidratação
+    r?.author_name ??
+    r?.created_by_name ??
+    'Autor'
+  );
 }
 
 // =============================================================================
@@ -103,31 +109,88 @@ function detectCategoryFromText(text: string): { labelPt: string; dbKeysEn: stri
 }
 
 // =============================================================================
+// Autor: hidratação (fallback) caso o join não traga o full_name
+// =============================================================================
+
+type ProfileLite = { id: string; full_name?: string | null };
+
+async function fetchProfilesByIds(ids: string[]): Promise<Record<string, string>> {
+  if (!ids.length) return {};
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  if (!unique.length) return {};
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .in('id', unique);
+
+  if (error || !data) return {};
+  const map: Record<string, string> = {};
+  for (const p of data as ProfileLite[]) {
+    if (p?.id) map[p.id] = p.full_name ?? '';
+  }
+  return map;
+}
+
+async function hydrateAuthors(recipes: any[]): Promise<any[]> {
+  // Se já veio full_name via join, mantemos; senão buscamos pelos ids
+  const needIds = recipes
+    .filter(r => !r?.author_profile?.full_name && !r?.__author_name)
+    .map(r => r?.author_id)
+    .filter(Boolean) as string[];
+
+  const map = await fetchProfilesByIds(needIds);
+  return recipes.map(r => {
+    if (!r?.author_profile?.full_name && map[r?.author_id]) {
+      return { ...r, __author_name: map[r.author_id] };
+    }
+    return r;
+  });
+}
+
+// =============================================================================
 // Consulta de receitas por CATEGORIA (usando os valores em inglês salvos no BD)
 // =============================================================================
 
-async function queryRecipesByCategoryDB(dbKeysEn: string[], limit = 40): Promise<Recipe[]> {
-  // Montage de expressão OR para Supabase, ex.:
-  // "category.ilike.%Vegan%,category.ilike.%Gluten-Free%"
+async function queryRecipesByCategoryDB(dbKeysEn: string[], limit = 40): Promise<any[]> {
   const orExpr = dbKeysEn.map(k => `category.ilike.%${k}%`).join(',');
 
-  // Quando usamos .or, não precisamos também do .ilike isolado
-  const { data, error } = await supabase
-    .from('recipes')
-    .select('*')
-    .or(orExpr)
-    .order('rating', { ascending: false })
-    .limit(limit);
+  // 1) Tenta com join no profiles (via FK comum do Supabase)
+  try {
+    const { data, error } = await supabase
+      .from('recipes')
+      .select(`
+        id, title, description, category, prep_time, difficulty, rating, author_id,
+        author_profile:profiles!recipes_author_id_fkey ( id, full_name )
+      `)
+      .or(orExpr)
+      .order('rating', { ascending: false })
+      .limit(limit);
 
-  if (error) throw error;
-  return (data as any as Recipe[]) || [];
+    if (error) throw error;
+
+    // Se veio sem nomes (schema diferente), hidrata
+    const result = await hydrateAuthors((data || []) as any[]);
+    return result;
+  } catch {
+    // 2) Fallback: sem join, depois hidrata nomes
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('id, title, description, category, prep_time, difficulty, rating, author_id')
+      .or(orExpr)
+      .order('rating', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    const result = await hydrateAuthors((data || []) as any[]);
+    return result;
+  }
 }
 
-function capAndMapRecipes(list: Recipe[], cap = 6) {
+function capAndMapRecipes(list: any[], cap = 6) {
   const seen = new Set<string>();
   const out: any[] = [];
   for (const r of list) {
-    const key = (r as any).id ?? (r as any).title;
+    const key = r?.id ?? r?.title;
     if (!key || seen.has(key)) continue;
     seen.add(key);
     out.push(r);
@@ -138,7 +201,7 @@ function capAndMapRecipes(list: Recipe[], cap = 6) {
     title: r.title,
     description: r.description,
     author: extractAuthorName(r),
-    rating: r.rating ?? 0
+    rating: typeof r.rating === 'number' ? r.rating : 0
   }));
 }
 
@@ -149,7 +212,7 @@ function capAndMapRecipes(list: Recipe[], cap = 6) {
 export async function answerQuestionWithSiteData(question: string): Promise<{
   found: boolean;
   categoryPt: string | null;     // rótulo em PT para exibição
-  items: Recipe[];
+  items: any[];
   text: string;
 }> {
   const cat = detectCategoryFromText(question);
@@ -183,6 +246,7 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
     ? `Dei uma olhada em **${cat.labelPt}** e não achei opções por aqui. Quer tentar outro estilo?`
     : `Boa! Separei algumas ideias em **${cat.labelPt}**:`;
 
+  // Você pode remover o getGeminiResponse e montar um texto fixo se preferir 0 dependência de LLM
   const userPrompt = [
     header,
     'Receitas (JSON):',
@@ -202,23 +266,48 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
 // Busca simples (opcional; não usada para decisão)
 // =============================================================================
 
-export async function searchRecipesForAI(query: string, limit = 5): Promise<{ recipes: Recipe[]; context: string }> {
-  const { data, error } = await supabase
-    .from('recipes')
-    .select('id, title, description, category, difficulty, rating, author_id')
-    .ilike('title', `%${query}%`)
-    .order('rating', { ascending: false })
-    .limit(limit);
+export async function searchRecipesForAI(query: string, limit = 5): Promise<{ recipes: any[]; context: string }> {
+  // Tentamos o join; se falhar, hidratamos depois
+  try {
+    const { data, error } = await supabase
+      .from('recipes')
+      .select(`
+        id, title, description, category, difficulty, rating, author_id,
+        author_profile:profiles!recipes_author_id_fkey ( id, full_name )
+      `)
+      .ilike('title', `%${query}%`)
+      .order('rating', { ascending: false })
+      .limit(limit);
 
-  if (error) throw error;
+    if (error) throw error;
+    const result = await hydrateAuthors((data || []) as any[]);
 
-  const recipes = (data || []) as any as Recipe[];
-  const context = recipes.map((r: any) => {
-    const author = extractAuthorName(r);
-    return `• ${r.title} (${r.category || 'geral'}) — Autor: ${author}`;
-  }).join('\n');
+    const recipes = result;
+    const context = recipes.map((r: any) => {
+      const author = extractAuthorName(r);
+      return `• ${r.title} (${r.category || 'geral'}) — Autor: ${author} — Nota: ${typeof r.rating === 'number' ? r.rating : 0}`;
+    }).join('\n');
 
-  return { recipes, context };
+    return { recipes, context };
+  } catch {
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('id, title, description, category, difficulty, rating, author_id')
+      .ilike('title', `%${query}%`)
+      .order('rating', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+
+    const result = await hydrateAuthors((data || []) as any[]);
+    const recipes = result;
+    const context = recipes.map((r: any) => {
+      const author = extractAuthorName(r);
+      return `• ${r.title} (${r.category || 'geral'}) — Autor: ${author} — Nota: ${typeof r.rating === 'number' ? r.rating : 0}`;
+    }).join('\n');
+
+    return { recipes, context };
+  }
 }
 
 // =============================================================================
@@ -411,7 +500,7 @@ export async function processAIMessage(
     };
   }
 
-  // OK: retorna as receitas da categoria escolhida
+  // OK: retorna as receitas da categoria escolhida (com autor/rating reais)
   const recipes = capAndMapRecipes(items, 6);
 
   return {
