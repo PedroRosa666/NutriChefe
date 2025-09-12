@@ -1,15 +1,32 @@
 // src/services/ai.ts
 // =============================================================================
-// Serviço de IA (busca dinâmica por filtros NL) para o NutriChefe
+// Serviço de IA para o NutriChefe
+// - Entende pedidos naturais: categoria, dificuldade, tempo, nutricionista, etc.
+// - Busca direto no BD com supabase
 // =============================================================================
 
 import { supabase } from '../lib/supabase';
 import { getGeminiResponse } from './gemini';
-import type { AIConfiguration, AIMessage, AIResponse } from '../types/ai';
+import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
 
 // =============================================================================
-// Helpers
+// Helpers UX
 // =============================================================================
+const GREETINGS = ['oi','olá','ola','eai','e aí','bom dia','boa tarde','boa noite','hey','hi','hello'];
+
+function isGreeting(text: string) {
+  const t = text.trim().toLowerCase();
+  return GREETINGS.some(g => t === g || t.startsWith(g + ' ') || t.startsWith(g + '!'));
+}
+
+function isTooShortOrVague(text: string) {
+  const t = text.trim();
+  if (t.length < 6) return true;
+  const vague = ['como vai', 'tudo bem', 'teste', 'alô', 'alo'];
+  const tl = t.toLowerCase();
+  return vague.some(v => tl.includes(v));
+}
+
 function normalize(s: string) {
   return s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 }
@@ -25,61 +42,16 @@ function extractAuthorName(r: any): string {
 }
 
 // =============================================================================
-// Extração de filtros a partir do texto
-// =============================================================================
-function detectFiltersFromText(text: string): {
-  maxPrepTime?: number;
-  difficulty?: 'easy' | 'medium' | 'hard';
-  onlyNutritionist?: boolean;
-  authorName?: string;
-  wantAll?: boolean;
-} {
-  const t = normalize(text);
-  const filters: any = {};
-  filters.wantAll = /\btodas?\b/.test(t);
-
-  // Tempo
-  const timeMatch = t.match(/(\d{1,3})\s*(min|minuto|minutos)/);
-  if (timeMatch) filters.maxPrepTime = parseInt(timeMatch[1], 10);
-  if (!filters.maxPrepTime && /(rapida|rápida|rapido|rápido|pratica|prático|express)/.test(t)) {
-    filters.maxPrepTime = 30;
-  }
-
-  // Dificuldade
-  if (/(facil|fácil|iniciante|simples)/.test(t)) filters.difficulty = 'easy';
-  else if (/(media|média|intermediaria|intermediária)/.test(t)) filters.difficulty = 'medium';
-  else if (/(dificil|difícil|avancada|avançada)/.test(t)) filters.difficulty = 'hard';
-
-  // Apenas nutricionistas
-  if (/(por|de)\s+nutricionista(s)?/.test(t)) filters.onlyNutritionist = true;
-
-  // Autor por nome
-  const authorMatch = text.match(
-    /(?:nutricionista\s+|por\s+)([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇ]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇ]+){0,3})/i
-  );
-  if (authorMatch) {
-    filters.authorName = authorMatch[1].trim();
-    filters.onlyNutritionist = /nutricionista/i.test(authorMatch[0]);
-  }
-
-  return filters;
-}
-
-// =============================================================================
 // Categorias fixas
 // =============================================================================
-type FixedCategory = {
-  labelPt: string;
-  dbKeysEn: string[];
-  variants: string[];
-};
+type FixedCategory = { labelPt: string; dbKeysEn: string[]; variants: string[] };
 
 const FIXED_CATEGORIES: FixedCategory[] = [
-  { labelPt: 'Vegana', dbKeysEn: ['Vegan'], variants: ['vegana', 'vegan'] },
-  { labelPt: 'Baixo Carboidrato', dbKeysEn: ['Low Carb', 'Keto'], variants: ['low carb', 'keto'] },
-  { labelPt: 'Rica em Proteína', dbKeysEn: ['High Protein'], variants: ['rica em proteina', 'proteica'] },
-  { labelPt: 'Sem Glúten', dbKeysEn: ['Gluten-Free'], variants: ['sem glúten', 'sem gluten'] },
-  { labelPt: 'Vegetariana', dbKeysEn: ['Vegetarian'], variants: ['vegetariana'] },
+  { labelPt: 'Vegana', dbKeysEn: ['Vegan'], variants: ['vegana','vegan'] },
+  { labelPt: 'Baixo Carboidrato', dbKeysEn: ['Low Carb','Keto'], variants: ['baixo carboidrato','low carb','keto'] },
+  { labelPt: 'Rica em Proteína', dbKeysEn: ['High Protein'], variants: ['rica em proteina','proteica'] },
+  { labelPt: 'Sem Glúten', dbKeysEn: ['Gluten-Free'], variants: ['sem glúten','sem gluten','gluten free'] },
+  { labelPt: 'Vegetariana', dbKeysEn: ['Vegetarian'], variants: ['vegetariana','vegetarian'] },
 ];
 
 function detectCategoryFromText(text: string): { labelPt: string; dbKeysEn: string[] } | null {
@@ -92,7 +64,44 @@ function detectCategoryFromText(text: string): { labelPt: string; dbKeysEn: stri
 }
 
 // =============================================================================
-// Query builders
+// Extração de filtros NL
+// =============================================================================
+function detectFiltersFromText(text: string): {
+  maxPrepTime?: number;
+  difficulty?: 'easy'|'medium'|'hard';
+  onlyNutritionist?: boolean;
+  authorName?: string;
+  wantAll?: boolean;
+} {
+  const t = normalize(text);
+  const filters: any = {};
+  filters.wantAll = /\btodas?\b/.test(t);
+
+  // tempo
+  const timeMatch = t.match(/(\d{1,3})\s*(min|minuto|minutos)/);
+  if (timeMatch) filters.maxPrepTime = parseInt(timeMatch[1], 10);
+  if (!filters.maxPrepTime && /(rapida|rápida|rapido|rápido|pratica|express)/.test(t)) filters.maxPrepTime = 30;
+
+  // dificuldade
+  if (/(facil|fácil|iniciante|simples)/.test(t)) filters.difficulty = 'easy';
+  else if (/(media|média|intermediaria)/.test(t)) filters.difficulty = 'medium';
+  else if (/(dificil|difícil|avancada)/.test(t)) filters.difficulty = 'hard';
+
+  // nutricionista
+  if (/(por|de)\s+nutricionista/.test(t)) filters.onlyNutritionist = true;
+
+  // autor específico
+  const authorMatch = text.match(/(?:nutricionista\s+|por\s+)([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇ]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇ]+){0,3})/i);
+  if (authorMatch) {
+    filters.authorName = authorMatch[1].trim();
+    filters.onlyNutritionist = /nutricionista/i.test(authorMatch[0]);
+  }
+
+  return filters;
+}
+
+// =============================================================================
+// Query builder
 // =============================================================================
 function buildRecipesBaseSelect(inner: boolean): string {
   if (inner) {
@@ -107,16 +116,14 @@ function buildRecipesBaseSelect(inner: boolean): string {
   `;
 }
 
-type RecipeQueryOpts = {
+async function queryRecipesByAnyFilters(opts: {
   categories?: string[];
-  difficulty?: 'easy' | 'medium' | 'hard';
+  difficulty?: 'easy'|'medium'|'hard';
   maxPrepTime?: number;
   authorName?: string;
   onlyNutritionist?: boolean;
   limit?: number;
-};
-
-async function queryRecipesByAnyFilters(opts: RecipeQueryOpts): Promise<any[]> {
+}): Promise<any[]> {
   const { categories, difficulty, maxPrepTime, authorName, onlyNutritionist, limit = 50 } = opts;
   const needInner = !!(authorName || onlyNutritionist);
 
@@ -136,9 +143,6 @@ async function queryRecipesByAnyFilters(opts: RecipeQueryOpts): Promise<any[]> {
   return data || [];
 }
 
-// =============================================================================
-// Formatação para UI
-// =============================================================================
 function capAndMapRecipes(list: any[], cap = 12) {
   return list.slice(0, cap).map(r => ({
     id: r.id,
@@ -154,7 +158,7 @@ function capAndMapRecipes(list: any[], cap = 12) {
 }
 
 // =============================================================================
-// Export principal: interpretador NL
+// Export: interpretador NL
 // =============================================================================
 export async function recommendRecipesFromText(content: string): Promise<AIResponse> {
   const cat = detectCategoryFromText(content);
@@ -170,11 +174,7 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
   });
 
   if (!items.length) {
-    return {
-      content: 'Não encontrei receitas com esses critérios. Quer tentar flexibilizar algum filtro?',
-      recipes: [],
-      suggestions: [],
-    };
+    return { content: 'Não encontrei receitas com esses critérios.', recipes: [], suggestions: [] };
   }
 
   const bits: string[] = [];
@@ -194,18 +194,25 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
 }
 
 // =============================================================================
-// Integração com o fluxo atual da IA
+// Processamento principal
 // =============================================================================
 export async function processAIMessage(
   content: string,
   aiConfig?: AIConfiguration,
   conversationHistory: AIMessage[] = []
 ): Promise<AIResponse> {
-  // tenta sempre o roteador NL
+  if (isGreeting(content)) {
+    return { content: 'Oi! 👋 Tudo bem? Me conta o que você quer ver hoje.', recipes: [], suggestions: [] };
+  }
+  if (isTooShortOrVague(content)) {
+    return { content: 'Show! Me diz de que estilo você quer ideias (ex.: vegana, sem glúten). 😉', recipes: [], suggestions: [] };
+  }
+
+  // 1) tenta direto o roteador NL
   const resp = await recommendRecipesFromText(content);
   if (resp.recipes && resp.recipes.length) return resp;
 
-  // fallback: só responder com Gemini se não achou nada
+  // 2) fallback para Gemini
   const gemini = await getGeminiResponse(content, aiConfig, conversationHistory);
   return { content: gemini.content, recipes: [], suggestions: [] };
 }
