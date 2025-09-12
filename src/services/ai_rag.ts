@@ -135,4 +135,64 @@ async function fallbackSimilarRecipes(filters: RecipeFilters, limit = 8): Promis
       .order('rating', { ascending: false })
       .limit(limit);
     if (error) throw error;
-    if (dat
+    if (data?.length) return data as any as Recipe[];
+  }
+
+  // 3) Populares
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('*')
+    .order('rating', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data as any as Recipe[]) || [];
+}
+
+// ================================
+// Orquestrador (RAG simples)
+// ================================
+export async function answerQuestionWithSiteData(question: string): Promise<{
+  found: boolean;
+  primary: Recipe[];
+  fallback?: Recipe[];
+  text: string;
+}> {
+  const filters = extractFilters(question);
+  const primary = await queryRecipes(filters, 8);
+  let found = primary.length > 0;
+  let fallback: Recipe[] | undefined;
+
+  if (!found) fallback = await fallbackSimilarRecipes(filters, 8);
+
+  const ctxRecipes = (found ? primary : (fallback || [])).map(r => ({
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    category: (r as any).category,
+    prepTime: (r as any).prepTime ?? (r as any).prep_time,
+    difficulty: (r as any).difficulty,
+    rating: (r as any).rating,
+    ingredients: (r as any).ingredients,
+  }));
+
+  const system = [
+    'Você é um assistente que responde APENAS com base nas receitas do sistema.',
+    'Se a pergunta pedir algo que não existe, ofereça as opções mais parecidas disponíveis.',
+    'Nunca invente receita que não esteja na lista fornecida.',
+    'Responda em português, em tom claro e direto.'
+  ].join(' ');
+
+  const userPrompt = [
+    `Pergunta do usuário: "${question}"`,
+    found
+      ? 'Foram encontradas receitas relevantes.'
+      : 'Nenhuma receita exata encontrada; mostre as mais semelhantes.',
+    'Receitas disponíveis (JSON):',
+    JSON.stringify(ctxRecipes, null, 2),
+    'Monte a resposta em lista, com título, tempo de preparo, dificuldade e ingredientes principais.',
+    'Se usar fallback, avise: "Não encontrei exatamente isso, mas aqui estão alternativas semelhantes."'
+  ].join('\n\n');
+
+  const text = await getGeminiResponse(system, userPrompt);
+  return { found, primary, fallback, text };
+}
