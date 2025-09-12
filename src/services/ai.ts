@@ -348,19 +348,19 @@ export async function processAIMessage(
   conversationHistory: AIMessage[] = []
 ): Promise<AIResponse> {
 
-  // 1) Saudações: resposta simples, sem sugestões nem exemplos
+  // 1) Saudações: acolhedor e curto, sem empurrar nada
   if (isGreeting(content)) {
     return {
-      content: 'Oi! 👋 Como posso te ajudar? Diga uma **categoria** (Vegana, Baixo Carboidrato, Rica em Proteína, Sem Glúten ou Vegetariana).',
+      content: 'Oi! 👋 Tudo bem? Me conta o que você quer ver hoje. Se preferir, posso buscar por um estilo específico (ex.: vegana, low carb, rica em proteína, sem glúten ou vegetariana).',
       recipes: [],
       suggestions: []
     };
   }
 
-  // 2) Mensagem muito curta/vaga: peça explicitamente a categoria, sem sugerir nada
+  // 2) Mensagem muito curta/vaga: convida a pessoa a dizer o estilo
   if (isTooShortOrVague(content)) {
     return {
-      content: 'Para te ajudar melhor, me diga uma **categoria** (Vegana, Baixo Carboidrato, Rica em Proteína, Sem Glúten ou Vegetariana).',
+      content: 'Show! Diz pra mim, de que estilo você quer ideias agora? Pode ser algo como “vegana” ou “sem glúten”. 😉',
       recipes: [],
       suggestions: []
     };
@@ -369,25 +369,25 @@ export async function processAIMessage(
   // 3) Fluxo normal (categoria-first)
   const { found, category, items, text } = await answerQuestionWithSiteData(content);
 
-  // Se não identificou categoria
+  // Se não identifiquei a categoria, peça de forma leve
   if (!category) {
     return {
-      content: 'Não identifiquei uma **categoria** na sua mensagem. Use: Vegana, Baixo Carboidrato, Rica em Proteína, Sem Glúten ou Vegetariana.',
+      content: 'Entendi. Você pode me dizer em poucas palavras o estilo que prefere? (ex.: vegana, low carb, rica em proteína, sem glúten ou vegetariana)',
       recipes: [],
       suggestions: []
     };
   }
 
-  // Se não encontrou itens na categoria
+  // Se a categoria veio, mas não há resultados
   if (!found || !items.length) {
     return {
-      content: `Na categoria **${category}** não encontrei resultados. Quer tentar outra das categorias disponíveis?`,
+      content: `Olhei nessa linha **${category}** e, por aqui, não encontrei opções. Quer tentar outro estilo? Posso procurar em “low carb”, “vegetariana”, “sem glúten”… você escolhe 🙂`,
       recipes: [],
       suggestions: []
     };
   }
 
-  // OK: retorna apenas as receitas selecionadas, sem enfeites
+  // OK: retorna as receitas da categoria escolhida
   const recipes = capAndMapRecipes(items, 6);
 
   return {
@@ -396,6 +396,7 @@ export async function processAIMessage(
     suggestions: []
   };
 }
+
 
 // =============================================================================
 // Perfis (profiles) – helpers opcionais
