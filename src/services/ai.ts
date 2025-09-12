@@ -1,10 +1,10 @@
 // src/services/ai.ts
 // =============================================================================
 // Serviço de IA (categoria-first) para o NutriChefe
-// - Baseado SOMENTE em CATEGORIAS do BD/site (sem heurística de ingredientes)
-// - Busca categorias na tabela `category` (singular) ou usa distinct de `recipes.category`
+// - SOMENTE CATEGORIAS (sem heurística de ingredientes)
+// - Carrega categorias via DISTINCT de recipes.category (sem depender de tabela category/categories)
 // - Filtros dietéticos estritos (apenas para EXCLUIR incompatíveis, se o usuário pedir)
-// - UX: evita respostas "afobadas" (cumprimenta e pede categoria; sem sugestões automáticas)
+// - UX: cumprimenta e pede categoria; sem respostas “afobadas”
 // =============================================================================
 
 import { supabase } from '../lib/supabase';
@@ -73,7 +73,7 @@ type DietaryMode =
   | 'low-carb';
 
 const VEGAN_FORBIDDEN = [
-  'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','franco','frango','galinha','peru',
+  'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','frango','galinha','peru',
   'peixe','atum','sardinha','bacalhau','anchova','salmao','tilapia','camarao','lula','polvo','marisco',
   'ovo','ovos','gema','clara',
   'leite','lactose','manteiga','queijo','creme de leite','nata','requeijao','iogurte','soro do leite','whey','caseina',
@@ -81,7 +81,7 @@ const VEGAN_FORBIDDEN = [
 ];
 
 const VEGETARIAN_FORBIDDEN = [
-  'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','franco','frango','galinha','peru',
+  'carne','bovina','porco','suino','presunto','bacon','linguica','salsicha','frango','galinha','peru',
   'peixe','atum','sardinha','bacalhau','anchova','salmao','tilapia','camarao','lula','polvo','marisco'
 ];
 
@@ -129,10 +129,10 @@ function pickDietaryModeFromText(text: string): DietaryMode | undefined {
 }
 
 // =============================================================================
-// Descoberta de categorias a partir do BD (tabela `category` → fallback recipes.category)
+// CATEGORIAS (via DISTINCT de recipes.category — sem tabela extra)
 // =============================================================================
 
-type CategoryLite = { name: string; slug?: string };
+type CategoryLite = { name: string };
 
 let CACHED_CATEGORIES: CategoryLite[] | null = null;
 let LAST_CAT_FETCH = 0;
@@ -142,36 +142,14 @@ async function loadCategoriesFromDB(): Promise<CategoryLite[]> {
   const now = Date.now();
   if (CACHED_CATEGORIES && now - LAST_CAT_FETCH < CAT_TTL_MS) return CACHED_CATEGORIES;
 
-  // 1) Tenta tabela "category" (singular)
-  try {
-    const { data, error } = await supabase
-      .from('category')
-      .select('name, slug, title')
-      .limit(200);
-
-    if (!error && data && data.length) {
-      const rows = data as any[];
-      CACHED_CATEGORIES = rows
-        .map(r => ({
-          name: r.name ?? r.title ?? '',
-          slug: r.slug ?? undefined
-        }))
-        .filter(c => c.name);
-      LAST_CAT_FETCH = now;
-      return CACHED_CATEGORIES;
-    }
-  } catch {
-    // ignora e cai no fallback
-  }
-
-  // 2) Fallback: distinct em recipes.category
+  // Usa apenas recipes.category (string) — robusto em qualquer schema
   try {
     const { data, error } = await supabase
       .from('recipes')
       .select('category')
       .not('category', 'is', null)
       .neq('category', '')
-      .limit(500);
+      .limit(1000);
 
     if (!error && data) {
       const set = new Set<string>();
@@ -181,7 +159,7 @@ async function loadCategoriesFromDB(): Promise<CategoryLite[]> {
       return CACHED_CATEGORIES;
     }
   } catch {
-    // se até o fallback falhar, devolve vazio
+    // ignore
   }
 
   CACHED_CATEGORIES = [];
@@ -191,13 +169,12 @@ async function loadCategoriesFromDB(): Promise<CategoryLite[]> {
 
 function matchCategoryFromText(text: string, categories: CategoryLite[]): string | null {
   const t = normalize(text);
-  // match direto por nome ou slug
+  // match direto por nome da categoria do BD
   for (const c of categories) {
     const n = normalize(c.name);
-    const s = c.slug ? normalize(c.slug) : '';
-    if (t.includes(n) || (s && t.includes(s))) return c.name;
+    if (n && t.includes(n)) return c.name;
   }
-  // sinônimos básicos (remova se quiser 100% estrito aos nomes do BD)
+  // (Opcional) sinônimos — remova se quiser 100% estrito ao nome do BD
   const synonyms: Record<string,string[]> = {
     'café da manhã': ['cafe da manha','breakfast','manhã','manha'],
     'almoço': ['almoco','lunch'],
@@ -208,7 +185,9 @@ function matchCategoryFromText(text: string, categories: CategoryLite[]): string
     'bebida': ['drinks','suco','vitamina','shake']
   };
   for (const [cat, alts] of Object.entries(synonyms)) {
-    if (alts.some(a => t.includes(normalize(a)))) return cat;
+    if (categories.some(c => normalize(c.name) === normalize(cat))) {
+      if (alts.some(a => t.includes(normalize(a)))) return cat;
+    }
   }
   return null;
 }
@@ -233,9 +212,9 @@ async function selectRecipesBase(limit: number) {
 }
 
 async function queryRecipesByCategory(categoryName: string, limit = 40): Promise<Recipe[]> {
-  // Suporta 2 jeitos comuns de armazenar categoria:
-  // 1) coluna string: recipes.category
-  // 2) coluna text[]: recipes.categories (filtramos em memória)
+  // Suporta:
+  // - coluna string: recipes.category
+  // - coluna text[]: recipes.categories (filtramos em memória)
   try {
     let q = await selectRecipesBase(limit);
 
