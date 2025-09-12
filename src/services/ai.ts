@@ -1,10 +1,10 @@
 // src/services/ai.ts
 // =============================================================================
 // Serviço de IA (categoria-first) para o NutriChefe
-// - 5 categorias fixas (pt/en), mas a BUSCA usa SEMPRE os valores do BD (em inglês)
-// - Sem heurística de ingredientes ou dietas extras
-// - Autor e rating reais (join em profiles + fallback de hidratação)
-// - UX: cumprimenta de forma natural e pede o estilo quando necessário
+// - 5 categorias fixas (pt/en), BUSCA sempre pelos valores do BD (em inglês)
+// - Autor real (via join em profiles + fallback) e Rating real (média de reviews)
+// - Sem heurística de ingredientes/dietas extras
+// - UX: amigável e não “afobado”
 // =============================================================================
 
 import { supabase } from '../lib/supabase';
@@ -41,11 +41,11 @@ function normalize(s: string) {
   return s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 }
 
-// Pega o nome do autor considerando join ou hidratação posterior
+// Autor (join + fallback)
 function extractAuthorName(r: any): string {
   return (
     r?.author_profile?.full_name ??
-    r?.__author_name ?? // preenchido pela hidratação
+    r?.__author_name ??
     r?.author_name ??
     r?.created_by_name ??
     'Autor'
@@ -53,57 +53,26 @@ function extractAuthorName(r: any): string {
 }
 
 // =============================================================================
-// CATEGORIAS FIXAS: mapeamento PT/EN -> valores salvos no BD (EN)
-// =============================================================================
-
-/**
- * labelPt: exibido nas mensagens
- * dbKeysEn: valores (ou variações) como são salvos na coluna recipes.category
- * variants: palavras que reconhecemos no texto do usuário (pt + en)
- */
+/** CATEGORIAS FIXAS: mapeamento PT/EN -> valores salvos no BD (EN) */
 type FixedCategory = {
-  labelPt: string;
-  dbKeysEn: string[];   // usado para consultar o BD
-  variants: string[];   // para detectar no texto do usuário
+  labelPt: string;     // rótulo para mostrar ao usuário
+  dbKeysEn: string[];  // valores (variações) salvos no BD
+  variants: string[];  // termos que reconhecemos na mensagem (pt/en)
 };
 
 const FIXED_CATEGORIES: FixedCategory[] = [
-  {
-    labelPt: 'Vegana',
-    dbKeysEn: ['Vegan'],
-    variants: ['vegana','vegan']
-  },
-  {
-    labelPt: 'Baixo Carboidrato',
-    dbKeysEn: ['Low Carb','Low-Carb','Keto'],
-    variants: ['baixo carboidrato','low carb','low-carb','keto']
-  },
-  {
-    labelPt: 'Rica em Proteína',
-    dbKeysEn: ['High Protein','High-Protein','Protein'],
-    variants: ['rica em proteina','rica em proteína','high protein','high-protein','protein rich','protein']
-  },
-  {
-    labelPt: 'Sem Glúten',
-    dbKeysEn: ['Gluten-Free','Gluten Free'],
-    variants: ['sem glúten','sem gluten','gluten-free','gluten free']
-  },
-  {
-    labelPt: 'Vegetariana',
-    dbKeysEn: ['Vegetarian'],
-    variants: ['vegetariana','vegetarian']
-  }
+  { labelPt: 'Vegana',              dbKeysEn: ['Vegan'],                         variants: ['vegana','vegan'] },
+  { labelPt: 'Baixo Carboidrato',   dbKeysEn: ['Low Carb','Low-Carb','Keto'],    variants: ['baixo carboidrato','low carb','low-carb','keto'] },
+  { labelPt: 'Rica em Proteína',    dbKeysEn: ['High Protein','High-Protein','Protein'], variants: ['rica em proteina','rica em proteína','high protein','high-protein','protein rich','protein'] },
+  { labelPt: 'Sem Glúten',          dbKeysEn: ['Gluten-Free','Gluten Free'],     variants: ['sem glúten','sem gluten','gluten-free','gluten free'] },
+  { labelPt: 'Vegetariana',         dbKeysEn: ['Vegetarian'],                    variants: ['vegetariana','vegetarian'] },
 ];
 
 function detectCategoryFromText(text: string): { labelPt: string; dbKeysEn: string[] } | null {
   const t = normalize(text);
   for (const cat of FIXED_CATEGORIES) {
-    // se o texto já contém a label PT normalizada
     if (t.includes(normalize(cat.labelPt))) return { labelPt: cat.labelPt, dbKeysEn: cat.dbKeysEn };
-    // ou qualquer variante pt/en
-    if (cat.variants.some(v => t.includes(normalize(v)))) {
-      return { labelPt: cat.labelPt, dbKeysEn: cat.dbKeysEn };
-    }
+    if (cat.variants.some(v => t.includes(normalize(v)))) return { labelPt: cat.labelPt, dbKeysEn: cat.dbKeysEn };
   }
   return null;
 }
@@ -115,8 +84,7 @@ function detectCategoryFromText(text: string): { labelPt: string; dbKeysEn: stri
 type ProfileLite = { id: string; full_name?: string | null };
 
 async function fetchProfilesByIds(ids: string[]): Promise<Record<string, string>> {
-  if (!ids.length) return {};
-  const unique = Array.from(new Set(ids.filter(Boolean)));
+  const unique = Array.from(new Set((ids || []).filter(Boolean)));
   if (!unique.length) return {};
   const { data, error } = await supabase
     .from('profiles')
@@ -132,7 +100,6 @@ async function fetchProfilesByIds(ids: string[]): Promise<Record<string, string>
 }
 
 async function hydrateAuthors(recipes: any[]): Promise<any[]> {
-  // Se já veio full_name via join, mantemos; senão buscamos pelos ids
   const needIds = recipes
     .filter(r => !r?.author_profile?.full_name && !r?.__author_name)
     .map(r => r?.author_id)
@@ -148,18 +115,62 @@ async function hydrateAuthors(recipes: any[]): Promise<any[]> {
 }
 
 // =============================================================================
+// Ratings: hidratar média e contagem a partir de reviews
+// =============================================================================
+
+type RatingsAgg = { avg: number; count: number };
+
+async function fetchRatingsByRecipeIds(ids: string[]): Promise<Record<string, RatingsAgg>> {
+  const unique = Array.from(new Set((ids || []).filter(Boolean)));
+  if (!unique.length) return {};
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('recipe_id, rating')
+    .in('recipe_id', unique);
+
+  if (error || !data) return {};
+
+  // agrega em memória
+  const acc: Record<string, { sum: number; count: number }> = {};
+  for (const row of data as any[]) {
+    const rid = row.recipe_id;
+    const rating = typeof row.rating === 'number' ? row.rating : Number(row.rating);
+    if (!rid || Number.isNaN(rating)) continue;
+    if (!acc[rid]) acc[rid] = { sum: 0, count: 0 };
+    acc[rid].sum += rating;
+    acc[rid].count += 1;
+  }
+
+  const out: Record<string, RatingsAgg> = {};
+  for (const [rid, { sum, count }] of Object.entries(acc)) {
+    out[rid] = { avg: count ? sum / count : 0, count };
+  }
+  return out;
+}
+
+async function hydrateRatings(recipes: any[]): Promise<any[]> {
+  const ids = recipes.map(r => r?.id).filter(Boolean) as string[];
+  const map = await fetchRatingsByRecipeIds(ids);
+  return recipes.map(r => {
+    const agg = map[r?.id];
+    if (agg) return { ...r, __rating_avg: agg.avg, __rating_count: agg.count };
+    return { ...r, __rating_avg: (typeof r.rating === 'number' ? r.rating : null), __rating_count: 0 };
+  });
+}
+
+// =============================================================================
 // Consulta de receitas por CATEGORIA (usando os valores em inglês salvos no BD)
 // =============================================================================
 
 async function queryRecipesByCategoryDB(dbKeysEn: string[], limit = 40): Promise<any[]> {
   const orExpr = dbKeysEn.map(k => `category.ilike.%${k}%`).join(',');
 
-  // 1) Tenta com join no profiles (via FK comum do Supabase)
+  // 1) tenta com join do autor
   try {
     const { data, error } = await supabase
       .from('recipes')
       .select(`
-        id, title, description, category, prep_time, difficulty, rating, author_id,
+        id, title, description, image, category, prep_time, difficulty, rating, author_id,
         author_profile:profiles!recipes_author_id_fkey ( id, full_name )
       `)
       .or(orExpr)
@@ -168,21 +179,23 @@ async function queryRecipesByCategoryDB(dbKeysEn: string[], limit = 40): Promise
 
     if (error) throw error;
 
-    // Se veio sem nomes (schema diferente), hidrata
-    const result = await hydrateAuthors((data || []) as any[]);
-    return result;
+    const withAuthors = await hydrateAuthors((data || []) as any[]);
+    const withRatings = await hydrateRatings(withAuthors);
+    return withRatings;
   } catch {
-    // 2) Fallback: sem join, depois hidrata nomes
+    // 2) fallback sem join do autor
     const { data, error } = await supabase
       .from('recipes')
-      .select('id, title, description, category, prep_time, difficulty, rating, author_id')
+      .select('id, title, description, image, category, prep_time, difficulty, rating, author_id')
       .or(orExpr)
       .order('rating', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
-    const result = await hydrateAuthors((data || []) as any[]);
-    return result;
+
+    const withAuthors = await hydrateAuthors((data || []) as any[]);
+    const withRatings = await hydrateRatings(withAuthors);
+    return withRatings;
   }
 }
 
@@ -200,8 +213,11 @@ function capAndMapRecipes(list: any[], cap = 6) {
     id: r.id,
     title: r.title,
     description: r.description,
+    image: r.image ?? null,
     author: extractAuthorName(r),
-    rating: typeof r.rating === 'number' ? r.rating : 0
+    rating: (typeof r.__rating_avg === 'number' ? Number(r.__rating_avg.toFixed(2)) :
+            (typeof r.rating === 'number' ? r.rating : null)),
+    ratingCount: typeof r.__rating_count === 'number' ? r.__rating_count : 0
   }));
 }
 
@@ -211,7 +227,7 @@ function capAndMapRecipes(list: any[], cap = 6) {
 
 export async function answerQuestionWithSiteData(question: string): Promise<{
   found: boolean;
-  categoryPt: string | null;     // rótulo em PT para exibição
+  categoryPt: string | null; // rótulo PT
   items: any[];
   text: string;
 }> {
@@ -235,10 +251,13 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
     id: r.id,
     title: r.title,
     description: r.description,
+    image: r.image,
     category: r.category,
     prepTime: r.prep_time,
     difficulty: r.difficulty,
-    rating: r.rating,
+    ratingAvg: (typeof r.__rating_avg === 'number' ? Number(r.__rating_avg.toFixed(2)) :
+               (typeof r.rating === 'number' ? r.rating : null)),
+    ratingCount: typeof r.__rating_count === 'number' ? r.__rating_count : 0,
     author: extractAuthorName(r)
   }));
 
@@ -246,12 +265,12 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
     ? `Dei uma olhada em **${cat.labelPt}** e não achei opções por aqui. Quer tentar outro estilo?`
     : `Boa! Separei algumas ideias em **${cat.labelPt}**:`;
 
-  // Você pode remover o getGeminiResponse e montar um texto fixo se preferir 0 dependência de LLM
   const userPrompt = [
     header,
     'Receitas (JSON):',
     JSON.stringify(ctxRecipes, null, 2),
     'Formate a resposta em lista (título, tempo se houver, dificuldade, autor).',
+    'Inclua a avaliação média (quando existir) e o número de avaliações, no formato: ⭐ 4.6 (32).',
     'Se a lista vier vazia, apenas diga que não encontrou e convide a tentar outro estilo.',
     'Responda de forma amigável, natural e em português. Não invente receitas fora da lista.'
   ].join('\n\n');
@@ -267,12 +286,12 @@ export async function answerQuestionWithSiteData(question: string): Promise<{
 // =============================================================================
 
 export async function searchRecipesForAI(query: string, limit = 5): Promise<{ recipes: any[]; context: string }> {
-  // Tentamos o join; se falhar, hidratamos depois
+  // Tenta com join de autor
   try {
     const { data, error } = await supabase
       .from('recipes')
       .select(`
-        id, title, description, category, difficulty, rating, author_id,
+        id, title, description, image, category, difficulty, rating, author_id,
         author_profile:profiles!recipes_author_id_fkey ( id, full_name )
       `)
       .ilike('title', `%${query}%`)
@@ -280,30 +299,41 @@ export async function searchRecipesForAI(query: string, limit = 5): Promise<{ re
       .limit(limit);
 
     if (error) throw error;
-    const result = await hydrateAuthors((data || []) as any[]);
 
-    const recipes = result;
+    const withAuthors = await hydrateAuthors((data || []) as any[]);
+    const withRatings = await hydrateRatings(withAuthors);
+
+    const recipes = withRatings;
     const context = recipes.map((r: any) => {
       const author = extractAuthorName(r);
-      return `• ${r.title} (${r.category || 'geral'}) — Autor: ${author} — Nota: ${typeof r.rating === 'number' ? r.rating : 0}`;
+      const avg = typeof r.__rating_avg === 'number' ? Number(r.__rating_avg.toFixed(2)) :
+                  (typeof r.rating === 'number' ? r.rating : 0);
+      const cnt = typeof r.__rating_count === 'number' ? r.__rating_count : 0;
+      return `• ${r.title} (${r.category || 'geral'}) — Autor: ${author} — ⭐ ${avg}${cnt ? ` (${cnt})` : ''}`;
     }).join('\n');
 
     return { recipes, context };
   } catch {
+    // Fallback sem join
     const { data, error } = await supabase
       .from('recipes')
-      .select('id, title, description, category, difficulty, rating, author_id')
+      .select('id, title, description, image, category, difficulty, rating, author_id')
       .ilike('title', `%${query}%`)
       .order('rating', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
 
-    const result = await hydrateAuthors((data || []) as any[]);
-    const recipes = result;
+    const withAuthors = await hydrateAuthors((data || []) as any[]);
+    const withRatings = await hydrateRatings(withAuthors);
+
+    const recipes = withRatings;
     const context = recipes.map((r: any) => {
       const author = extractAuthorName(r);
-      return `• ${r.title} (${r.category || 'geral'}) — Autor: ${author} — Nota: ${typeof r.rating === 'number' ? r.rating : 0}`;
+      const avg = typeof r.__rating_avg === 'number' ? Number(r.__rating_avg.toFixed(2)) :
+                  (typeof r.rating === 'number' ? r.rating : 0);
+      const cnt = typeof r.__rating_count === 'number' ? r.__rating_count : 0;
+      return `• ${r.title} (${r.category || 'geral'}) — Autor: ${author} — ⭐ ${avg}${cnt ? ` (${cnt})` : ''}`;
     }).join('\n');
 
     return { recipes, context };
