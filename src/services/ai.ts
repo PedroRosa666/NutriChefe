@@ -10,6 +10,94 @@ import { getGeminiResponse } from './gemini';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
 
 // =============================================================================
+// Database interaction functions
+// =============================================================================
+
+export async function getAIConfiguration(nutritionistId: string): Promise<AIConfiguration | null> {
+  const { data, error } = await supabase
+    .from('ai_configurations')
+    .select('*')
+    .eq('nutritionist_id', nutritionistId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function createAIConfiguration(config: Omit<AIConfiguration, 'id' | 'created_at' | 'updated_at'>): Promise<AIConfiguration> {
+  const { data, error } = await supabase
+    .from('ai_configurations')
+    .insert(config)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateAIConfiguration(id: string, updates: Partial<AIConfiguration>): Promise<AIConfiguration> {
+  const { data, error } = await supabase
+    .from('ai_configurations')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getAIConversations(userId: string): Promise<AIConversation[]> {
+  const { data, error } = await supabase
+    .from('ai_conversations')
+    .select(`
+      *,
+      ai_configuration:ai_configurations(*)
+    `)
+    .eq('client_id', userId)
+    .order('last_message_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createAIConversation(conversation: Omit<AIConversation, 'id' | 'created_at' | 'updated_at' | 'last_message_at'>): Promise<AIConversation> {
+  const { data, error } = await supabase
+    .from('ai_conversations')
+    .insert(conversation)
+    .select(`
+      *,
+      ai_configuration:ai_configurations(*)
+    `)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getAIMessages(conversationId: string): Promise<AIMessage[]> {
+  const { data, error } = await supabase
+    .from('ai_messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createAIMessage(message: Omit<AIMessage, 'id' | 'created_at'>): Promise<AIMessage> {
+  const { data, error } = await supabase
+    .from('ai_messages')
+    .insert(message)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// =============================================================================
 // Helpers UX
 // =============================================================================
 const GREETINGS = ['oi','olá','ola','eai','e aí','bom dia','boa tarde','boa noite','hey','hi','hello'];
