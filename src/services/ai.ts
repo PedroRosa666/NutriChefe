@@ -11,8 +11,6 @@
 import { supabase } from '../lib/supabase';
 import { getGeminiResponse } from './gemini';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
-import { supabase } from '../services/supabaseClient';
-import { genAI } from './genaiClient'; // ajuste o caminho se necessário
 
 // Se você já tiver um enum/const do modelo, use-o aqui.
 const MODEL_NAME = 'gemini-1.5-pro';
