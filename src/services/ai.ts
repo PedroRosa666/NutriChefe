@@ -117,6 +117,17 @@ function isTooShortOrVague(text: string) {
   return vague.some(v => tl.includes(v));
 }
 
+// Palavras que NUNCA devem virar searchTerm (evitam bug de "fáceis")
+const SEARCH_STOP_WORDS = new Set([
+  // dificuldade & variações
+  'facil','fácil','faceis','fáceis','simples','iniciante','media','média','medio','médio','intermediaria','intermediário',
+  'dificil','difícil','avancada','avançada',
+  // rapidez
+  'rapido','rápido','rapida','rápida','express','pratica','prático','pratica','prática',
+  // genéricas
+  'receita','receitas','prato','pratos','comida','alimento','alimentos','culinaria','culinária','gastronomia'
+]);
+
 // 🔎 detecção mais robusta de pedido de receita (inclui padrões comuns)
 function isRecipeRequest(text: string): boolean {
   const t = normalize(text);
@@ -186,6 +197,32 @@ function detectCategoryFromText(text: string): { labelPt: string; dbKeysEn: stri
   return null;
 }
 
+// converte expressões de tempo variadas para minutos (ex.: "1h 15", "meia hora", "20min")
+function parsePrepTimeToMinutes(text: string): number | undefined {
+  const raw = text.toLowerCase();
+
+  // "meia hora"
+  if (/\bmeia\s+hora\b/.test(raw)) return 30;
+
+  // ex.: "1h 30", "1 h 30 m", "1 hora e 15 minutos"
+  const hAndM = raw.match(/\b(\d+)\s*(h|hora|horas)\s*(?:e\s*)?(\d{1,2})?\s*(m|min|minuto|minutos)?\b/);
+  if (hAndM) {
+    const h = parseInt(hAndM[1], 10);
+    const m = hAndM[3] ? parseInt(hAndM[3], 10) : 0;
+    return h * 60 + m;
+  }
+
+  // ex.: "90min", "90 m", "90 minutos", "20minutinhos", "20 m"
+  const onlyMin = raw.match(/\b(\d{1,3})\s*(?:m|min|minuto|minutos|minutinhos)\b/);
+  if (onlyMin) return parseInt(onlyMin[1], 10);
+
+  // ex.: "1 hora" (sem minutos)
+  const onlyHour = raw.match(/\b(\d{1,2})\s*(h|hora|horas)\b/);
+  if (onlyHour) return parseInt(onlyHour[1], 10) * 60;
+
+  return undefined;
+}
+
 function detectFiltersFromText(text: string): {
   maxPrepTime?: number;
   difficulty?: 'easy'|'medium'|'hard';
@@ -193,23 +230,43 @@ function detectFiltersFromText(text: string): {
   onlyNutritionist?: boolean;
   authorName?: string;
   wantAll?: boolean;
-  searchTerm?: string;
+  searchTerms?: string[]; // <— agora aceita vários termos
 } {
   const t = normalize(text);
   const filters: any = {};
   filters.wantAll = /\btodas?\b/.test(t);
 
-  // tempo
-  const timeMatch = t.match(/(\d{1,3})\s*(min|minuto|minutos)/);
-  if (timeMatch) filters.maxPrepTime = parseInt(timeMatch[1], 10);
-  if (!filters.maxPrepTime && /(rapida|rápida|rapido|rápido|pratica|express)/.test(t)) filters.maxPrepTime = 30;
+  // ----------------- tempo de preparo (comparativos) -----------------
+  // "menos de 30 minutos", "no máximo 45", "até 20", "em 25 min"
+  let explicitMin = parsePrepTimeToMinutes(text);
+  if (explicitMin !== undefined) {
+    filters.maxPrepTime = explicitMin;
+  }
+  if (/menos\s+de\s+(\d{1,3})\s*(?:m|min|minuto|minutos|h|hora|horas)/i.test(text)) {
+    const m = RegExp.$1;
+    const unit = text.match(/(m|min|minuto|minutos|h|hora|horas)/i)?.[1]?.toLowerCase() || 'min';
+    filters.maxPrepTime = unit.startsWith('h') ? parseInt(m, 10) * 60 : parseInt(m, 10);
+  }
+  if (/(no\s+máximo|no\s+maximo|até)\s+(\d{1,3})\s*(?:m|min|minuto|minutos|h|hora|horas)/i.test(text)) {
+    const m = RegExp.$2;
+    const unit = text.match(/(m|min|minuto|minutos|h|hora|horas)/i)?.[1]?.toLowerCase() || 'min';
+    filters.maxPrepTime = unit.startsWith('h') ? parseInt(m, 10) * 60 : parseInt(m, 10);
+  }
+  // fallback sem unidade explícita (assume minutos): "até 30", "em 20"
+  if (/(até|em|no\s+máximo|no\s+maximo)\s+(\d{1,3})\b/i.test(text) && filters.maxPrepTime === undefined) {
+    filters.maxPrepTime = parseInt(RegExp.$2, 10);
+  }
+  // palavras que sugerem rápido → 30 min
+  if (filters.maxPrepTime === undefined && /(rapida|rápida|rapido|rápido|express|pratica|prático|pratica|prática)/i.test(text)) {
+    filters.maxPrepTime = 30;
+  }
 
-  // dificuldade
+  // ----------------- dificuldade -----------------
   if (/(facil|fácil|iniciante|simples)/.test(t)) filters.difficulty = 'easy';
-  else if (/(media|média|intermediaria)/.test(t)) filters.difficulty = 'medium';
-  else if (/(dificil|difícil|avancada)/.test(t)) filters.difficulty = 'hard';
+  else if (/(media|média|medio|médio|intermediaria|intermediário)/.test(t)) filters.difficulty = 'medium';
+  else if (/(dificil|difícil|avancada|avançada)/.test(t)) filters.difficulty = 'hard';
 
-  // avaliação/rating
+  // ----------------- avaliação/rating -----------------
   const ratingMatch = t.match(/avaliacao|avaliação|nota|estrela|rating.*?(\d+(?:[.,]\d+)?)/);
   if (ratingMatch) {
     const rating = parseFloat(ratingMatch[1].replace(',', '.'));
@@ -226,27 +283,50 @@ function detectFiltersFromText(text: string): {
     if (rating >= 1 && rating <= 5) filters.minRating = rating;
   }
 
-  // nutricionista
+  // ----------------- nutricionista/autor -----------------
   if (/(por|de)\s+nutricionista/.test(t)) filters.onlyNutritionist = true;
 
-  // autor específico
   const authorMatch = text.match(/(?:nutricionista\s+|por\s+)([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇ]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][\wÁÉÍÓÚÂÊÔÃÕÇ]+){0,3})/i);
   if (authorMatch) {
     filters.authorName = authorMatch[1].trim();
     filters.onlyNutritionist = /nutricionista/i.test(authorMatch[0]);
   }
 
-  // termo de busca (ingredientes, pratos) — pega após "com/sem/usando" OU última palavra forte
-  const withIng = text.match(/\b(com|sem|usando)\s+([A-Za-zÀ-ÿ ]{2,})/i);
-  if (withIng) {
-    filters.searchTerm = withIng[2].trim();
-  } else {
+  // ----------------- ingredientes/termos (pode vir mais de um) -----------------
+  // pega após "com|de|usando|contendo|feito com ..." e separa por vírgula ou " e "
+  const terms: string[] = [];
+  const ingMatch = text.match(/\b(com|de|usando|contendo|feito(?:a)?\s+com)\s+([A-Za-zÀ-ÿ ,e]+)\b/i);
+  if (ingMatch) {
+    const chunk = ingMatch[2];
+    chunk
+      .split(/,| e /i)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .forEach(s => terms.push(s));
+  }
+
+  // fallback: pega última palavra forte
+  if (!terms.length) {
     const tokens = text
       .replace(/[?!.,;:()]+/g, ' ')
       .split(/\s+/)
-      .filter(w => w.length >= 4 && !/\b(receita|receitas|prato|cozinhar|preparar|fazer|ingrediente|ingredientes)\b/i.test(w));
-    if (tokens.length) filters.searchTerm = tokens[tokens.length - 1];
+      .filter(w => w.length >= 3);
+    if (tokens.length) terms.push(tokens[tokens.length - 1]);
   }
+
+  // filtra stop-words e termos que só repetem a dificuldade
+  const filtered = terms
+    .map(tk => tk.trim())
+    .filter(tk => {
+      const n = normalize(tk);
+      if (SEARCH_STOP_WORDS.has(n)) return false;
+      if (filters.difficulty === 'easy'   && ['facil','fácil','simples','iniciante','faceis','fáceis'].includes(n)) return false;
+      if (filters.difficulty === 'medium' && ['medio','médio','media','média','intermediaria','intermediário'].includes(n)) return false;
+      if (filters.difficulty === 'hard'   && ['dificil','difícil','avancada','avançada'].includes(n)) return false;
+      return true;
+    });
+
+  if (filtered.length) filters.searchTerms = filtered;
 
   return filters;
 }
@@ -272,49 +352,82 @@ async function queryRecipesByAnyFilters(opts: {
   difficulty?: 'easy'|'medium'|'hard';
   maxPrepTime?: number;
   minRating?: number;
-  searchTerm?: string;
+  searchTerm?: string;           // legado
+  searchTerms?: string[];        // novo (suporta vários)
   authorName?: string;
   onlyNutritionist?: boolean;
   limit?: number;
 }): Promise<any[]> {
-  const { categories, difficulty, maxPrepTime, minRating, searchTerm, authorName, onlyNutritionist, limit = 50 } = opts;
+  const { categories, difficulty, maxPrepTime, minRating, searchTerm, searchTerms, authorName, onlyNutritionist, limit = 50 } = opts;
   const needInner = !!(authorName || onlyNutritionist);
 
-  let query = supabase.from('recipes').select(buildRecipesBaseSelect(needInner));
+  // normaliza lista de termos
+  const terms: string[] = [];
+  if (searchTerms?.length) terms.push(...searchTerms);
+  if (searchTerm) terms.push(searchTerm);
 
-  if (categories?.length) {
-    const orExpr = categories.map(k => `category.ilike.%${k}%`).join(',');
-    query = query.or(orExpr);
+  const run = async (includeIngredients: boolean) => {
+    let query = supabase.from('recipes').select(buildRecipesBaseSelect(needInner));
+
+    if (categories?.length) {
+      const orExpr = categories.map(k => `category.ilike.%${k}%`).join(',');
+      query = query.or(orExpr);
+    }
+    if (difficulty) query = query.eq('difficulty', difficulty);
+    if (typeof maxPrepTime === 'number') query = query.lte('prep_time', maxPrepTime);
+    if (typeof minRating === 'number') query = query.gte('rating', minRating);
+
+    if (terms.length) {
+      const parts: string[] = [];
+      for (const raw of terms) {
+        const t = raw.trim();
+        if (!t) continue;
+        parts.push(`title.ilike.%${t}%`);
+        parts.push(`description.ilike.%${t}%`);
+        if (includeIngredients) parts.push(`ingredients::text.ilike.%${t}%`);
+      }
+      if (parts.length) query = query.or(parts.join(','));
+    }
+
+    if (onlyNutritionist) query = query.eq('author_profile.user_type', 'Nutritionist');
+    if (authorName) query = query.ilike('author_profile.full_name', `%${authorName}%`);
+
+    const { data, error } = await query.order('rating', { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data || [];
+  };
+
+  try {
+    return await run(true);
+  } catch (e: any) {
+    if (e?.code === '42703' || /column .* ingredients/i.test(String(e?.message))) {
+      return await run(false);
+    }
+    throw e;
   }
-  if (difficulty) query = query.eq('difficulty', difficulty);
-  if (typeof maxPrepTime === 'number') query = query.lte('prep_time', maxPrepTime);
-  if (typeof minRating === 'number') query = query.gte('rating', minRating);
-
-  if (searchTerm) {
-    const t = searchTerm.trim();
-    // Busca em título e descrição (mantém compatibilidade de schema)
-    query = query.or(`title.ilike.%${t}%,description.ilike.%${t}%`);
-  }
-
-  if (onlyNutritionist) query = query.eq('author_profile.user_type', 'Nutritionist');
-  if (authorName) query = query.ilike('author_profile.full_name', `%${authorName}%`);
-
-  const { data, error } = await query.order('rating', { ascending: false }).limit(limit);
-  if (error) throw error;
-  return data || [];
 }
 
 // Função para buscar receitas similares quando não encontrar resultados exatos
 async function findSimilarRecipes(originalFilters: any): Promise<any[]> {
-  // 0) Se há termo de busca, tenta sinônimos/parentes (sem mudar o resto dos filtros)
-  const baseTerm: string | undefined = originalFilters.searchTerm?.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
-  if (baseTerm && SIMILAR_INGREDIENTS[baseTerm]) {
-    for (const alt of SIMILAR_INGREDIENTS[baseTerm]) {
-      const altResults = await queryRecipesByAnyFilters({
-        ...originalFilters,
-        searchTerm: alt,
-      });
-      if (altResults.length) return altResults;
+  // 0) Se há termos de busca, tenta sinônimos/parentes (para cada termo) sem mudar o resto dos filtros
+  const baseTerms: string[] = Array.isArray(originalFilters.searchTerms)
+    ? originalFilters.searchTerms
+    : (originalFilters.searchTerm ? [originalFilters.searchTerm] : []);
+
+  if (baseTerms.length) {
+    for (const term of baseTerms) {
+      const n = term.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+      const alts = SIMILAR_INGREDIENTS[n];
+      if (!alts?.length) continue;
+
+      for (const alt of alts) {
+        const altResults = await queryRecipesByAnyFilters({
+          ...originalFilters,
+          searchTerms: [alt], // testa um por vez
+          searchTerm: undefined,
+        });
+        if (altResults.length) return altResults;
+      }
     }
   }
 
@@ -383,7 +496,7 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
     difficulty: f.difficulty,
     maxPrepTime: f.maxPrepTime,
     minRating: f.minRating,
-    searchTerm: f.searchTerm,
+    searchTerms: f.searchTerms, // <— suporta múltiplos
     authorName: f.authorName,
     onlyNutritionist: f.onlyNutritionist,
     limit: f.wantAll ? 100 : 40,
@@ -399,15 +512,16 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
       difficulty: f.difficulty,
       maxPrepTime: f.maxPrepTime,
       minRating: f.minRating,
-      searchTerm: f.searchTerm,
+      searchTerms: f.searchTerms,
       authorName: f.authorName,
       onlyNutritionist: f.onlyNutritionist,
     });
 
     if (similarItems.length) {
       // Texto natural deixando claro que são "semelhantes" do próprio site
-      responseMessage = f.searchTerm
-        ? `Não achei exatamente com "${f.searchTerm}", mas separei **receitas semelhantes** do nosso site:`
+      const termTxt = f.searchTerms?.length ? `"${f.searchTerms.join(', ')}"` : '';
+      responseMessage = f.searchTerms?.length
+        ? `Não achei exatamente com ${termTxt}, mas separei **receitas semelhantes** do nosso site:`
         : 'Separei algumas sugestões do nosso site que podem te agradar:';
       finalRecipes = similarItems;
     } else {
@@ -426,7 +540,7 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
     }
     if (typeof f.maxPrepTime === 'number') bits.push(`até ${f.maxPrepTime} min`);
     if (typeof f.minRating === 'number') bits.push(`avaliação ${f.minRating}+ estrelas`);
-    if (f.searchTerm) bits.push(`com ${f.searchTerm}`);
+    if (f.searchTerms?.length) bits.push(`com ${f.searchTerms.join(', ')}`);
     if (f.authorName) bits.push(`por ${f.authorName}`);
     if (!f.authorName && f.onlyNutritionist) bits.push('de nutricionistas');
 
@@ -468,7 +582,6 @@ export async function processAIMessage(
   }
 
   // 2) Para outras perguntas, usar Gemini — com GUARDRAIL textual embutido
-  //    (Sem alterar seu ./gemini; apenas prefixamos a instrução de política.)
   const POLICY = `
 Você é o assistente do NutriChefe. Políticas estritas:
 - Não recomende, descreva ou cite receitas que não estejam no nosso banco de dados (site).
