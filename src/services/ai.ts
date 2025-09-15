@@ -52,7 +52,7 @@ export async function getAIConversations(userId: string): Promise<AIConversation
     .from('ai_conversations')
     .select(`
       *,
-      ai_configuration:ai_configurations(*)
+      ai_configuration:ai_configurations!ai_conversations_ai_config_id_fkey(*)
     `)
     .eq('client_id', userId)
     .order('last_message_at', { ascending: false });
@@ -67,7 +67,7 @@ export async function createAIConversation(conversation: Omit<AIConversation, 'i
     .insert(conversation)
     .select(`
       *,
-      ai_configuration:ai_configurations(*)
+      ai_configuration:ai_configurations!ai_conversations_ai_config_id_fkey(*)
     `)
     .single();
 
