@@ -5,15 +5,16 @@
 //  - Guardrail do Gemini (não inventar receitas externas)
 //  - Busca por receitas do site (com sinônimos e fallback)
 //  - Mensagens naturais/dinâmicas
+//  - API compatível com o frontend (createAIConversation, sendAIMessage)
 // ============================================================
 
-
+/**
 import { supabase } from '../lib/supabase';
 import { getGeminiResponse } from './gemini';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
 
 // Se você já tiver um enum/const do modelo, use-o aqui.
-const MODEL_NAME = 'gemini-2.5-flashgemini-2.5-flash';
+const MODEL_NAME = 'gemini-1.5-pro';
 
 // ============================================================
 // Tipos utilitários simples (ajuste conforme sua UI/DB)
@@ -26,13 +27,26 @@ export type AIRecipeCard = {
   rating?: number;
   prep_time?: number;
   category?: string;
-  // adicione campos que sua UI consuma
 };
 
 export type AIResponse = {
   content: string;
   recipes: AIRecipeCard[];
   suggestions?: string[];
+};
+
+type DetectedFilters = {
+  searchTerm?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  maxPrepTime?: number;
+  minRating?: number;
+  authorName?: string;
+  onlyNutritionist?: boolean;
+  wantAll?: boolean;
+};
+
+type DetectedCategory = {
+  dbKeysEn?: string[];
 };
 
 // ============================================================
@@ -51,11 +65,8 @@ function hasText(v?: string | null) {
   return !!(v && v.trim().length > 0);
 }
 
-// Mini helpers de mapeamento (se você já tiver essas funções em outro arquivo,
-// pode remover estas versões locais e usar os imports existentes).
 function buildRecipesBaseSelect(_needInner: boolean) {
   // Ajuste este select conforme suas colunas/relacionamentos:
-  // exemplo: id, title, image_url, rating, prep_time, ingredients (jsonb), category, author_name, is_nutritionist...
   return `
     id,
     title,
@@ -84,25 +95,9 @@ function capAndMapRecipes(items: any[], max: number): AIRecipeCard[] {
 }
 
 // ============================================================
-// Heurísticas simples para extrair filtros do texto (stub leve)
-// — Se você já possui NLP mais avançado, mantenha o seu e ignore estas.
+// Heurísticas simples (stubs) — ajuste se já tiver NLP próprio
 // ============================================================
 
-type DetectedFilters = {
-  searchTerm?: string;
-  difficulty?: 'easy' | 'medium' | 'hard';
-  maxPrepTime?: number;
-  minRating?: number;
-  authorName?: string;
-  onlyNutritionist?: boolean;
-  wantAll?: boolean;
-};
-
-type DetectedCategory = {
-  dbKeysEn?: string[];
-};
-
-// Extrai apenas um "termo de busca" simples (ex.: ingrediente principal)
 function detectFiltersFromText(content: string): DetectedFilters {
   const raw = content || '';
   const t = normalizeText(raw);
@@ -118,7 +113,7 @@ function detectFiltersFromText(content: string): DetectedFilters {
   const m = raw.match(/(\d+)\s*(min|mins|minutos|minutes|m)\b/i);
   if (m) maxPrepTime = parseInt(m[1], 10);
 
-  // rating mínimo (ex: "bem avaliada", "nota 4", "pelo menos 4")
+  // rating mínimo
   let minRating: number | undefined;
   const r = raw.match(/\b(4|4\.5|5)\b/);
   if (/\b(bem avaliada|melhores|top)\b/i.test(raw) && !r) minRating = 4;
@@ -129,12 +124,11 @@ function detectFiltersFromText(content: string): DetectedFilters {
   const a = raw.match(/\b(do|da)\s+nutricion(ista|al)\s+([A-Za-zÀ-ÿ ]{2,})/i);
   const authorName = a ? a[3].trim() : undefined;
 
-  // termo de busca (heurística bem simples: após "com/sem" pega a palavra/frase)
+  // termo de busca
   let searchTerm: string | undefined;
   const withIng = raw.match(/\b(com|sem|usando)\s+([A-Za-zÀ-ÿ ]{2,})/i);
   if (withIng) searchTerm = withIng[2].trim();
 
-  // se não pegou, tenta pegar a última palavra "forte"
   if (!searchTerm) {
     const candidatas = raw
       .replace(/[?!.,;:()]+/g, ' ')
@@ -146,7 +140,6 @@ function detectFiltersFromText(content: string): DetectedFilters {
   return { searchTerm, difficulty, maxPrepTime, minRating, authorName, onlyNutritionist, wantAll: false };
 }
 
-// Categoria simples (ex.: “sobremesa”, “massa”, etc.). Ajuste mapeamento.
 function detectCategoryFromText(content: string): DetectedCategory {
   const t = normalizeText(content);
   const map: Record<string, string[]> = {
@@ -191,7 +184,6 @@ export function isRecipeRequest(text: string): boolean {
 
 // ============================================================
 // 2) Guardrail do Gemini (NUNCA citar receitas externas)
-//    — Embutido aqui para que todas as mudanças estejam neste arquivo.
 // ============================================================
 
 const SYSTEM_POLICY = `
@@ -229,7 +221,6 @@ export async function getGeminiResponse(userText: string, historyParts: any[] = 
   ];
 
   const result = await model.generateContent({ contents });
-  // Algumas libs retornam .response.text(), outras expõem candidates; cobrimos os dois casos:
   const text =
     // @ts-ignore
     (typeof result?.response?.text === 'function' ? result?.response?.text() : '') ||
@@ -252,7 +243,6 @@ const SIMILAR_INGREDIENTS: Record<string, string[]> = {
   'abobrinha': ['berinjela'],
 };
 
-// Query genérica aplicando filtros comuns + busca por termo em title/description/ingredients
 async function queryRecipesByAnyFilters(opts: {
   categories?: string[];
   difficulty?: 'easy' | 'medium' | 'hard';
@@ -291,7 +281,6 @@ async function queryRecipesByAnyFilters(opts: {
   return data || [];
 }
 
-// Função principal exposta para a UI
 export async function recommendRecipesFromText(content: string): Promise<AIResponse> {
   const f = detectFiltersFromText(content);
   const cat = detectCategoryFromText(content);
@@ -379,7 +368,6 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
     contentMsg = `Olha só essas opções do nosso site:`;
   }
 
-  // Mapear para UI
   const recipes: AIRecipeCard[] = capAndMapRecipes(items, 12);
 
   const suggestions =
@@ -395,16 +383,76 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
 }
 
 // ============================================================
-// 4) (Opcional) Função de roteamento de mensagem
-//    — Caso o seu app central chame algo como "sendAIMessage",
-//      você pode usar isso: detecta intenção e delega.
+// 4) Roteamento e camada de serviço compatível com o frontend
 // ============================================================
 
 export async function routeAIMessage(userText: string, historyParts: any[] = []) {
   if (isRecipeRequest(userText)) {
-    // Fluxo de receita: busca no site
     return await recommendRecipesFromText(userText);
   }
-  // Fluxo geral: Gemini com guardrail
   return await getGeminiResponse(userText, historyParts);
 }
+
+// --- Compatibilidade com chamadas esperadas no frontend ---
+
+// Gerador simples de IDs
+function genId() {
+  // evita depender de crypto.randomUUID
+  return 'conv_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+/**
+ * createAIConversation
+ * Frontend costuma chamar isso ao abrir o chat.
+ * Retornamos um objeto simples com id e uma mensagem de boas-vindas opcional.
+ */
+export async function createAIConversation(metadata?: any) {
+  const conversationId = genId();
+  return {
+    conversationId,
+    createdAt: new Date().toISOString(),
+    metadata: metadata ?? null,
+    // Mensagem de abertura (opcional)
+    welcome: {
+      content:
+        'Oi! Me diga o que você quer cozinhar ou um ingrediente que você tem aí. Eu buscarei **somente** receitas do nosso site. 🍳',
+    },
+  };
+}
+
+/**
+ * sendAIMessage
+ * Frontend envia: { conversationId, message, history }
+ * History pode ser um array leve com últimas mensagens (opcional).
+ */
+export async function sendAIMessage(params: {
+  conversationId: string;
+  message: string;
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+}) {
+  const { message, history = [] } = params;
+  // Converte o histórico para o formato que o Gemini usa (quando necessário)
+  const historyParts = history.map((h) => ({
+    role: h.role,
+    parts: [{ text: h.content }],
+  }));
+
+  // Usa o roteador que decide entre busca de receitas e Gemini
+  const result = await routeAIMessage(message, historyParts);
+  return {
+    conversationId: params.conversationId,
+    result, // { content, recipes?, suggestions? } — UI decide como renderizar
+  };
+}
+
+// Objeto default para import estilo "aiService.createAIConversation(...)"
+const aiService = {
+  createAIConversation,
+  sendAIMessage,
+  routeAIMessage,
+  recommendRecipesFromText,
+  getGeminiResponse,
+  isRecipeRequest,
+};
+
+export default aiService;
