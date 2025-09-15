@@ -13,7 +13,7 @@ import { getGeminiResponse } from './gemini';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
 
 // Se você já tiver um enum/const do modelo, use-o aqui.
-const MODEL_NAME = 'gemini-2.5-flash';
+const MODEL_NAME = 'gemini-2.5-flashgemini-2.5-flash';
 
 // ============================================================
 // Tipos utilitários simples (ajuste conforme sua UI/DB)
