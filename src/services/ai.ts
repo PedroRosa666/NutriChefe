@@ -1,20 +1,20 @@
 // src/services/ai.ts
 // ============================================================
-//  NutriChefe — Camada de IA (tudo em um arquivo)
-//  - Intenção de "pedido de receita"
-//  - Guardrail do Gemini (não inventar receitas externas)
-//  - Busca por receitas do site (com sinônimos e fallback)
-//  - Mensagens naturais/dinâmicas
-//  - API compatível com o frontend (createAIConversation, sendAIMessage)
+/*  NutriChefe — Camada de IA (tudo em um arquivo)
+    - Intenção de "pedido de receita"
+    - Guardrail do Gemini (não inventar receitas externas)
+    - Busca por receitas do site (com sinônimos e fallback)
+    - Mensagens naturais/dinâmicas
+    - API compatível com o frontend:
+        createAIConversation, getAIMessages (fetchMessages), sendAIMessage (sendMessage)
+    - Histórico em memória por conversa (Map)
+*/
 // ============================================================
+
 
 import { supabase } from '../lib/supabase';
 import { getGeminiResponse } from './gemini';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
-
-// Se você já tiver um enum/const do modelo, use-o aqui.
-const MODEL_NAME = 'gemini-2.5-flash';
-
 // ============================================================
 // Tipos utilitários simples (ajuste conforme sua UI/DB)
 // ============================================================
@@ -30,7 +30,7 @@ export type AIRecipeCard = {
 
 export type AIResponse = {
   content: string;
-  recipes: AIRecipeCard[];
+  recipes?: AIRecipeCard[];
   suggestions?: string[];
 };
 
@@ -47,6 +47,44 @@ type DetectedFilters = {
 type DetectedCategory = {
   dbKeysEn?: string[];
 };
+
+// ============================================================
+// Histórico em memória (simples)
+// ============================================================
+
+type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  recipes?: AIRecipeCard[];
+  suggestions?: string[];
+  createdAt: string;
+};
+
+type Conversation = {
+  id: string;
+  messages: ChatMessage[];
+  metadata?: any;
+  createdAt: string;
+};
+
+const conversations = new Map<string, Conversation>();
+
+// Gerador simples de IDs (evita depender de crypto.randomUUID)
+function genId(prefix = 'id') {
+  return `${prefix}_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
+}
+
+function pushMessage(conversationId: string, msg: Omit<ChatMessage, 'id' | 'createdAt'>) {
+  const conv = conversations.get(conversationId);
+  if (!conv) return;
+  const message: ChatMessage = {
+    id: genId('msg'),
+    createdAt: new Date().toISOString(),
+    ...msg,
+  };
+  conv.messages.push(message);
+}
 
 // ============================================================
 // Normalização e utilidades
@@ -236,6 +274,7 @@ export async function getGeminiResponse(userText: string, historyParts: any[] = 
 
 const SIMILAR_INGREDIENTS: Record<string, string[]> = {
   'morango': ['fruta vermelha','frutas vermelhas','amora','framboesa','mirtilo','cereja'],
+  'franco': ['peito de frango','sobrecoxa','ave'], // fallback para erros de digitação
   'frango': ['peito de frango','sobrecoxa','ave'],
   'carne moida': ['patinho moido','acem moido','coxao duro moido','carne bovina moida'],
   'batata': ['batata doce','mandioquinha','baroa','inhame'],
@@ -392,63 +431,108 @@ export async function routeAIMessage(userText: string, historyParts: any[] = [])
   return await getGeminiResponse(userText, historyParts);
 }
 
-// --- Compatibilidade com chamadas esperadas no frontend ---
-
-// Gerador simples de IDs
-function genId() {
-  // evita depender de crypto.randomUUID
-  return 'conv_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
-
 /**
  * createAIConversation
  * Frontend costuma chamar isso ao abrir o chat.
- * Retornamos um objeto simples com id e uma mensagem de boas-vindas opcional.
+ * Retornamos um objeto simples com id, metadados e uma mensagem de boas-vindas.
  */
 export async function createAIConversation(metadata?: any) {
-  const conversationId = genId();
-  return {
-    conversationId,
+  const conversationId = genId('conv');
+  const conv: Conversation = {
+    id: conversationId,
     createdAt: new Date().toISOString(),
     metadata: metadata ?? null,
-    // Mensagem de abertura (opcional)
-    welcome: {
-      content:
-        'Oi! Me diga o que você quer cozinhar ou um ingrediente que você tem aí. Eu buscarei **somente** receitas do nosso site. 🍳',
-    },
+    messages: [],
+  };
+  conversations.set(conversationId, conv);
+
+  // Mensagem de abertura
+  const welcomeText =
+    'Oi! Me diga o que você quer cozinhar ou um ingrediente que você tem aí. Eu buscarei **somente** receitas do nosso site. 🍳';
+  pushMessage(conversationId, { role: 'assistant', content: welcomeText });
+
+  return {
+    conversationId,
+    createdAt: conv.createdAt,
+    metadata: conv.metadata,
+    welcome: { content: welcomeText },
   };
 }
 
 /**
- * sendAIMessage
- * Frontend envia: { conversationId, message, history }
- * History pode ser um array leve com últimas mensagens (opcional).
+ * getAIMessages / fetchMessages
+ * Retorna o histórico da conversa em ordem (primeiro -> último).
+ */
+export async function getAIMessages(conversationId: string) {
+  const conv = conversations.get(conversationId);
+  if (!conv) return [];
+  // Retorna uma cópia simples (para evitar mutações externas)
+  return conv.messages.map((m) => ({ ...m }));
+}
+
+// Alias esperado por alguns frontends
+export const fetchMessages = getAIMessages;
+
+/**
+ * sendAIMessage / sendMessage
+ * Frontend envia: { conversationId, message, history? }
+ * - Armazena a mensagem do usuário e a resposta do assistente no histórico.
  */
 export async function sendAIMessage(params: {
   conversationId: string;
   message: string;
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }) {
-  const { message, history = [] } = params;
-  // Converte o histórico para o formato que o Gemini usa (quando necessário)
+  const { conversationId, message, history = [] } = params;
+
+  // Garante que a conversa existe
+  if (!conversations.has(conversationId)) {
+    await createAIConversation();
+    // se criou uma nova, substitui o id pelo novo (para consistência, porém ideal é já existir)
+  }
+
+  // Salva a mensagem do usuário
+  pushMessage(conversationId, { role: 'user', content: message });
+
+  // Converte histórico opcional para formato do Gemini
   const historyParts = history.map((h) => ({
     role: h.role,
     parts: [{ text: h.content }],
   }));
 
-  // Usa o roteador que decide entre busca de receitas e Gemini
+  // Decide entre busca de receitas e Gemini
   const result = await routeAIMessage(message, historyParts);
+
+  // Salva a resposta do assistente
+  pushMessage(conversationId, {
+    role: 'assistant',
+    content: result.content,
+    recipes: result.recipes,
+    suggestions: result.suggestions,
+  });
+
   return {
-    conversationId: params.conversationId,
-    result, // { content, recipes?, suggestions? } — UI decide como renderizar
+    conversationId,
+    result, // { content, recipes?, suggestions? }
   };
 }
 
-// Objeto default para import estilo "aiService.createAIConversation(...)"
+// Alias esperado por alguns frontends
+export const sendMessage = sendAIMessage;
+
+// Objeto default para import estilo "aiService.X(...)"
 const aiService = {
+  // fluxo de conversa
   createAIConversation,
+  getAIMessages,
+  fetchMessages,
   sendAIMessage,
+  sendMessage,
+
+  // alto nível
   routeAIMessage,
+
+  // funções de domínio
   recommendRecipesFromText,
   getGeminiResponse,
   isRecipeRequest,
