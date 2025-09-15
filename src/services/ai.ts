@@ -2,7 +2,9 @@
 // =============================================================================
 // Serviço de IA para o NutriChefe
 // - Entende pedidos naturais: categoria, dificuldade, tempo, nutricionista, etc.
-// - Busca direto no BD com supabase
+// - Busca direto no BD com supabase (somente receitas do site)
+// - Fallback: receitas semelhantes (sinônimos) e populares do site
+// - Guardrail: Gemini NÃO sugere receitas externas
 // =============================================================================
 
 import { supabase } from '../lib/supabase';
@@ -115,14 +117,25 @@ function isTooShortOrVague(text: string) {
   return vague.some(v => tl.includes(v));
 }
 
+// 🔎 detecção mais robusta de pedido de receita (inclui padrões comuns)
 function isRecipeRequest(text: string): boolean {
   const t = normalize(text);
   const recipeKeywords = [
     'receita', 'receitas', 'prato', 'pratos', 'comida', 'cozinhar',
     'ingrediente', 'ingredientes', 'preparo', 'preparar', 'fazer',
-    'culinaria', 'culinária', 'gastronomia', 'alimento', 'alimentos'
+    'culinaria', 'culinária', 'gastronomia', 'alimento', 'alimentos',
+    'modo de preparo'
   ];
-  return recipeKeywords.some(keyword => t.includes(keyword));
+  if (recipeKeywords.some(keyword => t.includes(keyword))) return true;
+
+  // padrões do tipo "quero algo com X", "o que dá pra fazer com Y"
+  const padroes = [
+    /\b(quero|preciso|busco|procuro).+\b(com|sem|usando)\b/i,
+    /\b(o que|oq|q).+\b(fazer|cozinhar|preparar)\b/i,
+    /\b(receita|prato).+\b(com|sem)\b/i,
+    /\b(ideias|ideia).+\b(receita|prato)\b/i,
+  ];
+  return padroes.some(r => r.test(text));
 }
 
 function normalize(s: string) {
@@ -140,7 +153,7 @@ function extractAuthorName(r: any): string {
 }
 
 // =============================================================================
-// Categorias fixas
+// Catálogos e sinônimos
 // =============================================================================
 type FixedCategory = { labelPt: string; dbKeysEn: string[]; variants: string[] };
 
@@ -152,6 +165,18 @@ const FIXED_CATEGORIES: FixedCategory[] = [
   { labelPt: 'Vegetariana', dbKeysEn: ['Vegetarian'], variants: ['vegetariana','vegetarian'] },
 ];
 
+// 🔁 sinônimos/parentescos simples para "semelhantes"
+const SIMILAR_INGREDIENTS: Record<string, string[]> = {
+  'morango': ['fruta vermelha','frutas vermelhas','amora','framboesa','mirtilo','cereja'],
+  'frango': ['peito de frango','sobrecoxa','ave'],
+  'carne moida': ['patinho moido','acem moido','coxao duro moido','carne bovina moida'],
+  'batata': ['batata doce','mandioquinha','baroa','inhame'],
+  'abobrinha': ['berinjela'],
+};
+
+// =============================================================================
+// Extração de filtros NL
+// =============================================================================
 function detectCategoryFromText(text: string): { labelPt: string; dbKeysEn: string[] } | null {
   const t = normalize(text);
   for (const cat of FIXED_CATEGORIES) {
@@ -161,9 +186,6 @@ function detectCategoryFromText(text: string): { labelPt: string; dbKeysEn: stri
   return null;
 }
 
-// =============================================================================
-// Extração de filtros NL
-// =============================================================================
 function detectFiltersFromText(text: string): {
   maxPrepTime?: number;
   difficulty?: 'easy'|'medium'|'hard';
@@ -193,14 +215,11 @@ function detectFiltersFromText(text: string): {
     const rating = parseFloat(ratingMatch[1].replace(',', '.'));
     if (rating >= 1 && rating <= 5) filters.minRating = rating;
   }
-  
-  // Detectar padrões como "3 para cima", "acima de 4", etc.
   const ratingUpMatch = t.match(/(\d+(?:[.,]\d+)?)\s*(?:para\s*cima|pra\s*cima|ou\s*mais|acima)/);
   if (ratingUpMatch) {
     const rating = parseFloat(ratingUpMatch[1].replace(',', '.'));
     if (rating >= 1 && rating <= 5) filters.minRating = rating;
   }
-  
   const aboveRatingMatch = t.match(/(?:acima\s*de|mais\s*que|superior\s*a)\s*(\d+(?:[.,]\d+)?)/);
   if (aboveRatingMatch) {
     const rating = parseFloat(aboveRatingMatch[1].replace(',', '.'));
@@ -217,13 +236,16 @@ function detectFiltersFromText(text: string): {
     filters.onlyNutritionist = /nutricionista/i.test(authorMatch[0]);
   }
 
-  // termo de busca geral (ingredientes, nomes de pratos)
-  const ingredientKeywords = ['com', 'de', 'frango', 'peixe', 'carne', 'ovo', 'queijo', 'chocolate', 'banana', 'maçã', 'tomate', 'alface', 'arroz', 'feijão', 'batata', 'cenoura', 'brócolis', 'espinafre', 'salmão', 'atum', 'camarão'];
-  for (const ingredient of ingredientKeywords) {
-    if (t.includes(ingredient)) {
-      filters.searchTerm = ingredient;
-      break;
-    }
+  // termo de busca (ingredientes, pratos) — pega após "com/sem/usando" OU última palavra forte
+  const withIng = text.match(/\b(com|sem|usando)\s+([A-Za-zÀ-ÿ ]{2,})/i);
+  if (withIng) {
+    filters.searchTerm = withIng[2].trim();
+  } else {
+    const tokens = text
+      .replace(/[?!.,;:()]+/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length >= 4 && !/\b(receita|receitas|prato|cozinhar|preparar|fazer|ingrediente|ingredientes)\b/i.test(w));
+    if (tokens.length) filters.searchTerm = tokens[tokens.length - 1];
   }
 
   return filters;
@@ -267,9 +289,13 @@ async function queryRecipesByAnyFilters(opts: {
   if (difficulty) query = query.eq('difficulty', difficulty);
   if (typeof maxPrepTime === 'number') query = query.lte('prep_time', maxPrepTime);
   if (typeof minRating === 'number') query = query.gte('rating', minRating);
+
   if (searchTerm) {
-    query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+    const t = searchTerm.trim();
+    // Busca em título e descrição (mantém compatibilidade de schema)
+    query = query.or(`title.ilike.%${t}%,description.ilike.%${t}%`);
   }
+
   if (onlyNutritionist) query = query.eq('author_profile.user_type', 'Nutritionist');
   if (authorName) query = query.ilike('author_profile.full_name', `%${authorName}%`);
 
@@ -280,37 +306,44 @@ async function queryRecipesByAnyFilters(opts: {
 
 // Função para buscar receitas similares quando não encontrar resultados exatos
 async function findSimilarRecipes(originalFilters: any): Promise<any[]> {
-  // Tentar com filtros mais flexíveis
+  // 0) Se há termo de busca, tenta sinônimos/parentes (sem mudar o resto dos filtros)
+  const baseTerm: string | undefined = originalFilters.searchTerm?.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  if (baseTerm && SIMILAR_INGREDIENTS[baseTerm]) {
+    for (const alt of SIMILAR_INGREDIENTS[baseTerm]) {
+      const altResults = await queryRecipesByAnyFilters({
+        ...originalFilters,
+        searchTerm: alt,
+      });
+      if (altResults.length) return altResults;
+    }
+  }
+
+  // 1) Tentar com filtros mais flexíveis (rating ↓, tempo ↑, dificuldade → medium)
   const relaxedFilters = { ...originalFilters };
-  
-  // Relaxar avaliação (diminuir em 0.5)
+
   if (relaxedFilters.minRating && relaxedFilters.minRating > 1) {
     relaxedFilters.minRating = Math.max(1, relaxedFilters.minRating - 0.5);
   }
-  
-  // Relaxar tempo de preparo (aumentar em 15 min)
   if (relaxedFilters.maxPrepTime) {
     relaxedFilters.maxPrepTime += 15;
   }
-  
-  // Relaxar dificuldade
   if (relaxedFilters.difficulty === 'easy') {
     relaxedFilters.difficulty = 'medium';
   } else if (relaxedFilters.difficulty === 'hard') {
     relaxedFilters.difficulty = 'medium';
   }
-  
+
   let results = await queryRecipesByAnyFilters(relaxedFilters);
-  
-  // Se ainda não encontrou, buscar apenas por categoria
+
+  // 2) Se ainda não encontrou, buscar apenas por categoria
   if (!results.length && originalFilters.categories) {
     results = await queryRecipesByAnyFilters({
       categories: originalFilters.categories,
       limit: 20
     });
   }
-  
-  // Se ainda não encontrou, buscar receitas populares
+
+  // 3) Se ainda não encontrou, buscar receitas populares do site
   if (!results.length) {
     const { data } = await supabase
       .from('recipes')
@@ -320,7 +353,7 @@ async function findSimilarRecipes(originalFilters: any): Promise<any[]> {
       .limit(10);
     results = data || [];
   }
-  
+
   return results;
 }
 
@@ -345,7 +378,7 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
   const cat = detectCategoryFromText(content);
   const f = detectFiltersFromText(content);
 
-  const items = await queryRecipesByAnyFilters({
+  let items = await queryRecipesByAnyFilters({
     categories: cat?.dbKeysEn,
     difficulty: f.difficulty,
     maxPrepTime: f.maxPrepTime,
@@ -358,9 +391,9 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
 
   let responseMessage = '';
   let finalRecipes = items;
-  
+
   if (!items.length) {
-    // Buscar receitas similares
+    // Buscar receitas similares (sinônimos + relax de filtros + populares)
     const similarItems = await findSimilarRecipes({
       categories: cat?.dbKeysEn,
       difficulty: f.difficulty,
@@ -370,22 +403,25 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
       authorName: f.authorName,
       onlyNutritionist: f.onlyNutritionist,
     });
-    
+
     if (similarItems.length) {
-      responseMessage = 'Não encontrei receitas exatamente com esses critérios, mas aqui estão algumas sugestões similares:';
+      // Texto natural deixando claro que são "semelhantes" do próprio site
+      responseMessage = f.searchTerm
+        ? `Não achei exatamente com "${f.searchTerm}", mas separei **receitas semelhantes** do nosso site:`
+        : 'Separei algumas sugestões do nosso site que podem te agradar:';
       finalRecipes = similarItems;
     } else {
-      return { 
-        content: 'Não encontrei receitas com esses critérios. Que tal tentar algo mais geral como "receitas fáceis" ou "receitas veganas"?', 
-        recipes: [], 
-        suggestions: ['receitas fáceis', 'receitas veganas', 'receitas rápidas', 'receitas saudáveis'] 
+      return {
+        content: 'Não encontrei receitas com esses critérios. Que tal tentar algo mais geral como "receitas fáceis" ou "receitas veganas"?',
+        recipes: [],
+        suggestions: ['receitas fáceis', 'receitas veganas', 'receitas rápidas', 'receitas saudáveis']
       };
     }
   } else {
     const bits: string[] = [];
     if (cat) bits.push(cat.labelPt);
     if (f.difficulty) {
-      const difficultyMap = { easy: 'fáceis', medium: 'médias', hard: 'difíceis' };
+      const difficultyMap = { easy: 'fáceis', medium: 'médias', hard: 'difíceis' } as const;
       bits.push(difficultyMap[f.difficulty]);
     }
     if (typeof f.maxPrepTime === 'number') bits.push(`até ${f.maxPrepTime} min`);
@@ -393,7 +429,7 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
     if (f.searchTerm) bits.push(`com ${f.searchTerm}`);
     if (f.authorName) bits.push(`por ${f.authorName}`);
     if (!f.authorName && f.onlyNutritionist) bits.push('de nutricionistas');
-    
+
     responseMessage = `Encontrei ${finalRecipes.length} receita${finalRecipes.length > 1 ? 's' : ''}${bits.length ? ' (' + bits.join(', ') + ')' : ''}:`;
   }
 
@@ -407,7 +443,12 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
 }
 
 // =============================================================================
-// Processamento principal
+/* Processamento principal
+   Regras:
+   - Cumprimentos e mensagens vagas → resposta curta
+   - Pedido de receita → busca no site (com semelhantes/fallback)
+   - Outras perguntas → Gemini **com guardrail** para NÃO citar receitas externas
+*/
 // =============================================================================
 export async function processAIMessage(
   content: string,
@@ -426,7 +467,20 @@ export async function processAIMessage(
     return await recommendRecipesFromText(content);
   }
 
-  // 2) Para outras perguntas, usar Gemini
-  const gemini = await getGeminiResponse(content, aiConfig, conversationHistory);
+  // 2) Para outras perguntas, usar Gemini — com GUARDRAIL textual embutido
+  //    (Sem alterar seu ./gemini; apenas prefixamos a instrução de política.)
+  const POLICY = `
+Você é o assistente do NutriChefe. Políticas estritas:
+- Não recomende, descreva ou cite receitas que não estejam no nosso banco de dados (site).
+- Se o usuário pedir uma receita, ingredientes, substituições, tempo de preparo ou modo de preparo,
+  devolva apenas uma orientação neutra (sem citar receitas) e a camada de aplicação fará a busca.
+- Você pode responder dúvidas gerais de nutrição, segurança alimentar e técnicas de cozinha,
+  mas SEM citar receitas específicas nem links externos.
+  `.trim();
+
+  const guardrailedPrompt =
+    `${POLICY}\n\n[Mensagem do usuário]\n${content}`;
+
+  const gemini = await getGeminiResponse(guardrailedPrompt, aiConfig, conversationHistory);
   return { content: gemini.content, recipes: [], suggestions: [] };
 }
