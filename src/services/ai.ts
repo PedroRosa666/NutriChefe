@@ -6,15 +6,18 @@
     - Busca por receitas do site (com sinônimos e fallback)
     - Mensagens naturais/dinâmicas
     - API compatível com o frontend:
-        createAIConversation, getAIMessages (fetchMessages), sendAIMessage (sendMessage)
+        createAIConversation, getAIMessages(fetchMessages),
+        sendAIMessage(sendMessage), createAIMessage(postMessage)
     - Histórico em memória por conversa (Map)
 */
 // ============================================================
 
-
 import { supabase } from '../lib/supabase';
 import { getGeminiResponse } from './gemini';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
+
+const MODEL_NAME = 'gemini-2.5-flash';
+
 // ============================================================
 // Tipos utilitários simples (ajuste conforme sua UI/DB)
 // ============================================================
@@ -70,7 +73,6 @@ type Conversation = {
 
 const conversations = new Map<string, Conversation>();
 
-// Gerador simples de IDs (evita depender de crypto.randomUUID)
 function genId(prefix = 'id') {
   return `${prefix}_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
 }
@@ -103,7 +105,6 @@ function hasText(v?: string | null) {
 }
 
 function buildRecipesBaseSelect(_needInner: boolean) {
-  // Ajuste este select conforme suas colunas/relacionamentos:
   return `
     id,
     title,
@@ -139,29 +140,24 @@ function detectFiltersFromText(content: string): DetectedFilters {
   const raw = content || '';
   const t = normalizeText(raw);
 
-  // dificuldade
   let difficulty: DetectedFilters['difficulty'] | undefined;
   if (/\bfacil\b/.test(t)) difficulty = 'easy';
   else if (/\bmedio|intermediario\b/.test(t)) difficulty = 'medium';
   else if (/\bdificil|avancad/.test(t)) difficulty = 'hard';
 
-  // tempo máximo (ex: "em 20 min", "20 minutos")
   let maxPrepTime: number | undefined;
   const m = raw.match(/(\d+)\s*(min|mins|minutos|minutes|m)\b/i);
   if (m) maxPrepTime = parseInt(m[1], 10);
 
-  // rating mínimo
   let minRating: number | undefined;
   const r = raw.match(/\b(4|4\.5|5)\b/);
   if (/\b(bem avaliada|melhores|top)\b/i.test(raw) && !r) minRating = 4;
   if (r) minRating = Math.min(5, parseFloat(r[1]));
 
-  // nutricionista/autor
   const onlyNutritionist = /\bnutricion(ista|al)\b/i.test(raw);
   const a = raw.match(/\b(do|da)\s+nutricion(ista|al)\s+([A-Za-zÀ-ÿ ]{2,})/i);
   const authorName = a ? a[3].trim() : undefined;
 
-  // termo de busca
   let searchTerm: string | undefined;
   const withIng = raw.match(/\b(com|sem|usando)\s+([A-Za-zÀ-ÿ ]{2,})/i);
   if (withIng) searchTerm = withIng[2].trim();
@@ -239,11 +235,6 @@ function looksLikeRecipeTopic(text: string): boolean {
     .test(text);
 }
 
-/**
- * getGeminiResponse
- * - Se o tema for de receitas: retorna apenas frase curta (e a camada de busca entra em ação)
- * - Caso contrário: responde normalmente, mas sob a SYSTEM_POLICY (sem citar receitas externas)
- */
 export async function getGeminiResponse(userText: string, historyParts: any[] = []) {
   if (looksLikeRecipeTopic(userText)) {
     return { content: 'Beleza! Vou procurar no nosso acervo e te mostro opções do site. 😉' };
@@ -274,7 +265,7 @@ export async function getGeminiResponse(userText: string, historyParts: any[] = 
 
 const SIMILAR_INGREDIENTS: Record<string, string[]> = {
   'morango': ['fruta vermelha','frutas vermelhas','amora','framboesa','mirtilo','cereja'],
-  'franco': ['peito de frango','sobrecoxa','ave'], // fallback para erros de digitação
+  'franco': ['peito de frango','sobrecoxa','ave'],
   'frango': ['peito de frango','sobrecoxa','ave'],
   'carne moida': ['patinho moido','acem moido','coxao duro moido','carne bovina moida'],
   'batata': ['batata doce','mandioquinha','baroa','inhame'],
@@ -306,7 +297,6 @@ async function queryRecipesByAnyFilters(opts: {
 
   if (hasText(searchTerm)) {
     const t = `%${searchTerm!.trim()}%`;
-    // Se ingredients for jsonb, o cast ::text funciona; se for texto, segue normal.
     query = query.or(
       `title.ilike.${t},description.ilike.${t},ingredients::text.ilike.${t}`
     );
@@ -339,7 +329,6 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
 
   // 2) Relaxar filtros gradualmente
   if (!items.length) {
-    // tira rating/difficulty
     items = await queryRecipesByAnyFilters({
       categories: cat?.dbKeysEn,
       maxPrepTime: f.maxPrepTime,
@@ -347,7 +336,6 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
       limit: 40,
     });
 
-    // ainda nada? tira maxPrepTime também
     if (!items.length) {
       items = await queryRecipesByAnyFilters({
         categories: cat?.dbKeysEn,
@@ -373,7 +361,7 @@ export async function recommendRecipesFromText(content: string): Promise<AIRespo
     }
   }
 
-  // 4) Ainda nada: populares do SITE (nunca externos)
+  // 4) Ainda nada: populares do SITE
   if (!items.length) {
     const { data: populares } = await supabase
       .from('recipes')
@@ -431,11 +419,8 @@ export async function routeAIMessage(userText: string, historyParts: any[] = [])
   return await getGeminiResponse(userText, historyParts);
 }
 
-/**
- * createAIConversation
- * Frontend costuma chamar isso ao abrir o chat.
- * Retornamos um objeto simples com id, metadados e uma mensagem de boas-vindas.
- */
+// ---------- Conversas ----------
+
 export async function createAIConversation(metadata?: any) {
   const conversationId = genId('conv');
   const conv: Conversation = {
@@ -446,7 +431,6 @@ export async function createAIConversation(metadata?: any) {
   };
   conversations.set(conversationId, conv);
 
-  // Mensagem de abertura
   const welcomeText =
     'Oi! Me diga o que você quer cozinhar ou um ingrediente que você tem aí. Eu buscarei **somente** receitas do nosso site. 🍳';
   pushMessage(conversationId, { role: 'assistant', content: welcomeText });
@@ -459,25 +443,14 @@ export async function createAIConversation(metadata?: any) {
   };
 }
 
-/**
- * getAIMessages / fetchMessages
- * Retorna o histórico da conversa em ordem (primeiro -> último).
- */
 export async function getAIMessages(conversationId: string) {
   const conv = conversations.get(conversationId);
   if (!conv) return [];
-  // Retorna uma cópia simples (para evitar mutações externas)
   return conv.messages.map((m) => ({ ...m }));
 }
-
-// Alias esperado por alguns frontends
 export const fetchMessages = getAIMessages;
 
-/**
- * sendAIMessage / sendMessage
- * Frontend envia: { conversationId, message, history? }
- * - Armazena a mensagem do usuário e a resposta do assistente no histórico.
- */
+// Envia e registra no histórico
 export async function sendAIMessage(params: {
   conversationId: string;
   message: string;
@@ -485,25 +458,22 @@ export async function sendAIMessage(params: {
 }) {
   const { conversationId, message, history = [] } = params;
 
-  // Garante que a conversa existe
   if (!conversations.has(conversationId)) {
-    await createAIConversation();
-    // se criou uma nova, substitui o id pelo novo (para consistência, porém ideal é já existir)
+    // cria conversa silenciosamente se não existir
+    const created = await createAIConversation();
+    // opcionalmente poderíamos usar created.conversationId,
+    // mas o front normalmente mantém o id.
   }
 
-  // Salva a mensagem do usuário
   pushMessage(conversationId, { role: 'user', content: message });
 
-  // Converte histórico opcional para formato do Gemini
   const historyParts = history.map((h) => ({
     role: h.role,
     parts: [{ text: h.content }],
   }));
 
-  // Decide entre busca de receitas e Gemini
   const result = await routeAIMessage(message, historyParts);
 
-  // Salva a resposta do assistente
   pushMessage(conversationId, {
     role: 'assistant',
     content: result.content,
@@ -513,12 +483,22 @@ export async function sendAIMessage(params: {
 
   return {
     conversationId,
-    result, // { content, recipes?, suggestions? }
+    result,
   };
 }
-
-// Alias esperado por alguns frontends
 export const sendMessage = sendAIMessage;
+
+// Alguns frontends usam "createAIMessage" para "enviar mensagem"
+export async function createAIMessage(params: {
+  conversationId: string;
+  message: string;
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+}) {
+  // Alias direto para sendAIMessage
+  return await sendAIMessage(params);
+}
+// Alias extra comum
+export const postMessage = createAIMessage;
 
 // Objeto default para import estilo "aiService.X(...)"
 const aiService = {
@@ -528,11 +508,13 @@ const aiService = {
   fetchMessages,
   sendAIMessage,
   sendMessage,
+  createAIMessage,
+  postMessage,
 
   // alto nível
   routeAIMessage,
 
-  // funções de domínio
+  // domínio
   recommendRecipesFromText,
   getGeminiResponse,
   isRecipeRequest,
