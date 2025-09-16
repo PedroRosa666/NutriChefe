@@ -560,6 +560,100 @@ function nutritionForRecipeAnswer(query: string, rows: RecipeRow[]): AIResponse 
   return { content: parts.join('\n'), recipes: [], suggestions: [] };
 }
 
+// ---------- Helpers para texto mais natural ----------
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = (h << 5) - h + s.charCodeAt(i); h |= 0; }
+  return Math.abs(h);
+}
+function pick<T>(arr: T[], seed = 0): T {
+  if (!arr.length) return arr[0] as T;
+  const idx = seed % arr.length;
+  return arr[idx];
+}
+function humanizeIntro(
+  q: string,
+  opts: {
+    f0: ParsedFilters;
+    shown: number;
+    total: number;
+    matchedExactly: boolean; // se não precisou relaxar
+    sortKey?: SortKey;
+  }
+): string {
+  const { f0, shown, total, matchedExactly, sortKey } = opts;
+  const seed = hashStr(q);
+
+  // peças de contexto
+  const tags: string[] = [];
+  if (f0.category) tags.push(f0.category);
+  if (f0.difficulty) tags.push(f0.difficulty === 'easy' ? 'fáceis' : f0.difficulty === 'medium' ? 'médias' : 'difíceis');
+  if (typeof f0.maxPrep === 'number') tags.push(`até ${f0.maxPrep} min`);
+  if (typeof f0.minRating === 'number') tags.push(`${f0.minRating}+ ⭐`);
+  if (sortKey === 'prepTime') tags.push('mais rápidas primeiro');
+  if (sortKey === 'newest') tags.push('mais recentes');
+  if (sortKey === 'rating') tags.push('bem avaliadas');
+
+  const tagStr = tags.length ? tags.join(' • ') : '';
+
+  // usuário pediu quantidade explícita? (ex.: "me mostra 8")
+  const userAskedCount = typeof f0.limit === 'number';
+
+  // Intros variadas (sem “Encontrei 25…”)
+  const introsComFiltro = [
+    `Separei estas ${tagStr ? `**${tagStr}**` : 'opções'} pra você 👇`,
+    `Olha só algumas ideias ${tagStr ? `**${tagStr}**` : ''}:`,
+    `Que tal começar por estas ${tagStr ? `**${tagStr}**` : 'sugestões'}?`,
+  ];
+  const introsGerais = [
+    'Separei algumas das favoritas do pessoal ✨',
+    'Aqui vão algumas ideias legais do nosso acervo 👇',
+    'Peguei algumas sugestões que costumam agradar 😉',
+  ];
+
+  let intro = '';
+  const hasOnlyDifficulty =
+    Boolean(f0.difficulty) &&
+    !f0.category &&
+    typeof f0.maxPrep !== 'number' &&
+    typeof f0.minPrep !== 'number' &&
+    typeof f0.minRating !== 'number';
+
+  if (hasOnlyDifficulty || f0.category || f0.maxPrep || f0.minRating || sortKey) {
+    intro = pick(introsComFiltro, seed);
+  } else {
+    intro = pick(introsGerais, seed);
+  }
+
+  // Mostrar contagem? só quando o usuário pediu número, ou quando mostrarmos menos que pediu
+  const lines: string[] = [intro];
+  if (userAskedCount) {
+    lines.push(shown < (f0.limit ?? shown) ? `Consegui **${shown}** no momento.` : `Mostrando **${shown}** como você pediu.`);
+  } else {
+    // Sem obsessão por números: omitimos o total.
+    // Em casos genéricos (sem filtro nenhum), um toque curto ajuda:
+    if (!f0.hasStructuredFilter && !f0.plainSearch) {
+      lines.push(`Mostrando ${shown}.`);
+    }
+  }
+
+  // Se precisou relaxar e mesmo assim achou pouca coisa, uma linha sutil (sem “alternativas”/“não encontrei”)
+  if (!matchedExactly && shown > 0 && !userAskedCount) {
+    const softNotes = [
+      'Ajustei um pouquinho os critérios pra ampliar as ideias.',
+      'Dei uma flexionada nos filtros pra te trazer opções parecidas.',
+      'Expandi levemente os critérios pra não te deixar na mão.',
+    ];
+    lines.push(`_${pick(softNotes, seed)}_`);
+  }
+
+  return lines.join('\n');
+}
+
+
+
+
+
 // =============================================================================
 // Recomendação (com sort, count, relax e mensagens humanas)
 // =============================================================================
