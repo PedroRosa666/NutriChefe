@@ -24,7 +24,7 @@ interface RecipeRow {
   prep_time: number;
   difficulty: Difficulty;
   rating: number | null;
-  category: string;
+  category: string; // mantemos string, mas canonizamos por dentro
   author_id?: string | null;
   author_name?: string | null;
   nutrition_facts?: {
@@ -55,7 +55,7 @@ const DIFFICULTY_SYNONYMS: Record<Difficulty, string[]> = {
   // inclui plural e diminutivos
   easy: ['fácil', 'facil', 'fáceis', 'faceis', 'facinha', 'facinho', 'facinhas', 'facinhos', 'simples', 'iniciante', 'tranquila', 'descomplicada'],
   medium: ['médio', 'medio', 'intermediário', 'intermediario', 'média', 'mediana'],
-  hard: ['difícil', 'dificil', 'difíceis', 'difíceis', 'avançado', 'avancado', 'complexo', 'trabalhosa'],
+  hard: ['difícil', 'dificil', 'difíceis', 'avançado', 'avancado', 'complexo', 'trabalhosa'],
 };
 
 const CATEGORY_LABELS: SiteCategory[] = [
@@ -69,9 +69,21 @@ const CATEGORY_LABELS: SiteCategory[] = [
 const CATEGORY_SYNONYMS: Record<SiteCategory, string[]> = {
   'Vegana': ['vegana', 'vegano', 'vegan'],
   'Baixo Carboidrato': ['baixo carboidrato', 'low carb', 'pouco carbo', 'baixo carb', 'lowcarb'],
-  'Rica em Proteína': ['rica em proteína', 'muita proteina', 'alta proteína', 'alto teor proteico', 'proteica', 'proteinado'],
+  'Rica em Proteína': ['rica em proteína', 'muita proteina', 'alta proteína', 'alto teor proteico', 'proteica', 'proteinado', 'protein rich', 'high protein'],
   'Sem Glúten': ['sem glúten', 'sem gluten', 'gluten free', 'sg', 'livre de glúten'],
-  'Vegetariana': ['vegetariana', 'vegetariano', 'veggie', 'ovo-lacto', 'ovolacto'],
+  'Vegetariana': ['vegetariana', 'vegetariano', 'veggie', 'ovo-lacto', 'ovolacto', 'vegetarian'],
+};
+
+// Aliases em inglês comuns no BD
+const CATEGORY_EN_ALIASES: Record<string, SiteCategory> = {
+  'vegan': 'Vegana',
+  'vegetarian': 'Vegetariana',
+  'gluten-free': 'Sem Glúten',
+  'gluten free': 'Sem Glúten',
+  'low carb': 'Baixo Carboidrato',
+  'low-carb': 'Baixo Carboidrato',
+  'high protein': 'Rica em Proteína',
+  'protein rich': 'Rica em Proteína',
 };
 
 const NUM_RE = /(\d+(?:[.,]\d+)?)/;
@@ -80,7 +92,7 @@ const NUM_RE = /(\d+(?:[.,]\d+)?)/;
 const STOPWORDS = new Set([
   'receita', 'receitas', 'quero', 'queria', 'gostaria', 'me', 'mostra', 'mostrar', 'mostre', 'traga', 'trazer',
   'uma', 'umas', 'um', 'uns', 'de', 'do', 'da', 'no', 'na', 'em', 'pra', 'para', 'por', 'a', 'o', 'as', 'os',
-  'ai', 'ia', 'porfavor', 'por favor'
+  'ai', 'ia', 'porfavor', 'por', 'favor'
 ]);
 
 // =============================================================================
@@ -125,6 +137,21 @@ function mapRowToCard(r: RecipeRow): AppRecipeCard {
   };
 }
 
+// Canoniza categoria do BD para rótulo do site (PT-BR)
+function canonicalSiteCategory(value: string): SiteCategory | null {
+  const n = normalize(value).trim();
+
+  // match por alias EN direto
+  if (CATEGORY_EN_ALIASES[n]) return CATEGORY_EN_ALIASES[n];
+
+  // match por sinônimos PT/EN
+  for (const cat of CATEGORY_LABELS) {
+    const syns = CATEGORY_SYNONYMS[cat].map(normalize);
+    if (syns.some(s => n === s || n.includes(s) || s.includes(n))) return cat;
+  }
+  return null;
+}
+
 // Dificuldade robusta: aceita "easy/medium/hard" e PT-BR
 function normalizeDifficultyValue(value: string): Difficulty {
   const n = normalize(value);
@@ -148,7 +175,7 @@ interface ParsedFilters {
   plainSearch?: string;
   limit?: number;
   sort?: SortKey;
-  hasStructuredFilter?: boolean; // novo: indica se achamos categoria/dificuldade/tempo/nota
+  hasStructuredFilter?: boolean; // indica se achamos categoria/dificuldade/tempo/nota
 }
 
 function parseCount(text: string): number | undefined {
@@ -181,7 +208,7 @@ function parseQueryToFilters(q: string): ParsedFilters {
   const text = normalize(q);
   const f: ParsedFilters = {};
 
-  // Categoria
+  // Categoria (a partir do texto do usuário)
   for (const cat of CATEGORY_LABELS) {
     const syns = CATEGORY_SYNONYMS[cat].map(normalize);
     if (syns.some(s => text.includes(s))) {
@@ -313,6 +340,9 @@ async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
       effectiveRating = round1(avg);
     }
 
+    // categoria canônica (PT-BR) se possível
+    const catCanon = canonicalSiteCategory(r.category) ?? r.category;
+
     return {
       id: r.id,
       title: r.title,
@@ -320,7 +350,7 @@ async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
       image: r.image,
       prep_time: r.prep_time,
       difficulty: normalizeDifficultyValue(r.difficulty),
-      category: r.category || '',
+      category: catCanon,
       rating: effectiveRating,
       author_id: r.author_id,
       author_name: (r.author_id && authorsMap[r.author_id]) ? authorsMap[r.author_id] : 'NutriChefe',
@@ -341,8 +371,10 @@ function applyFiltersBase(rows: RecipeRow[], f: ParsedFilters): RecipeRow[] {
   let list = rows.slice();
 
   if (f.category) {
-    const needle = normalize(f.category);
-    list = list.filter(r => normalize(r.category).includes(needle));
+    list = list.filter(r => {
+      const rc = canonicalSiteCategory(r.category) ?? r.category;
+      return rc === f.category;
+    });
   }
 
   if (f.difficulty) {
@@ -395,21 +427,18 @@ function progressiveRelax(rows: RecipeRow[], f: ParsedFilters): { list: RecipeRo
     g => { if (typeof g.minRating === 'number') delete g.minRating; },
     g => { if (typeof g.maxPrep === 'number') delete g.maxPrep; },
     g => { if (g.category) delete g.category; },
-    g => { if (g.difficulty) delete g.difficulty; },
+    g => { if (g.difficulty) delete g.difficulty; }, // só se nada retornou
   ];
 
-  let current = applyFiltersBase(rows, { ...f });
-  if (current.length > 0) return { list: current };
-
+  // aqui só entra quando inicial deu 0
   for (const tweak of attempts) {
     const g = { ...f };
     tweak(g);
-    current = applyFiltersBase(rows, g);
+    const current = applyFiltersBase(rows, g);
     if (current.length > 0) {
       return { list: current };
     }
   }
-
   return { list: rows.slice() };
 }
 
@@ -462,7 +491,7 @@ function detectUserIntent(q: string): ChatIntent {
   return 'fallback';
 }
 
-// Compat com código antigo
+// Compat com código antigo (se algo ainda chamar detectIntent)
 type Intent = ChatIntent;
 const detectIntent = detectUserIntent;
 
@@ -584,7 +613,6 @@ function humanizeIntro(
   const { f0, shown, total, matchedExactly, sortKey } = opts;
   const seed = hashStr(q);
 
-  // peças de contexto
   const tags: string[] = [];
   if (f0.category) tags.push(f0.category);
   if (f0.difficulty) tags.push(f0.difficulty === 'easy' ? 'fáceis' : f0.difficulty === 'medium' ? 'médias' : 'difíceis');
@@ -595,11 +623,8 @@ function humanizeIntro(
   if (sortKey === 'rating') tags.push('bem avaliadas');
 
   const tagStr = tags.length ? tags.join(' • ') : '';
-
-  // usuário pediu quantidade explícita? (ex.: "me mostra 8")
   const userAskedCount = typeof f0.limit === 'number';
 
-  // Intros variadas (sem “Encontrei 25…”)
   const introsComFiltro = [
     `Separei estas ${tagStr ? `**${tagStr}**` : 'opções'} pra você 👇`,
     `Olha só algumas ideias ${tagStr ? `**${tagStr}**` : ''}:`,
@@ -611,7 +636,6 @@ function humanizeIntro(
     'Peguei algumas sugestões que costumam agradar 😉',
   ];
 
-  let intro = '';
   const hasOnlyDifficulty =
     Boolean(f0.difficulty) &&
     !f0.category &&
@@ -619,25 +643,19 @@ function humanizeIntro(
     typeof f0.minPrep !== 'number' &&
     typeof f0.minRating !== 'number';
 
-  if (hasOnlyDifficulty || f0.category || f0.maxPrep || f0.minRating || sortKey) {
-    intro = pick(introsComFiltro, seed);
-  } else {
-    intro = pick(introsGerais, seed);
-  }
+  const intro = (hasOnlyDifficulty || f0.category || f0.maxPrep || f0.minRating || sortKey)
+    ? pick(introsComFiltro, seed)
+    : pick(introsGerais, seed);
 
-  // Mostrar contagem? só quando o usuário pediu número, ou quando mostrarmos menos que pediu
   const lines: string[] = [intro];
   if (userAskedCount) {
     lines.push(shown < (f0.limit ?? shown) ? `Consegui **${shown}** no momento.` : `Mostrando **${shown}** como você pediu.`);
   } else {
-    // Sem obsessão por números: omitimos o total.
-    // Em casos genéricos (sem filtro nenhum), um toque curto ajuda:
     if (!f0.hasStructuredFilter && !f0.plainSearch) {
       lines.push(`Mostrando ${shown}.`);
     }
   }
 
-  // Se precisou relaxar e mesmo assim achou pouca coisa, uma linha sutil (sem “alternativas”/“não encontrei”)
   if (!matchedExactly && shown > 0 && !userAskedCount) {
     const softNotes = [
       'Ajustei um pouquinho os critérios pra ampliar as ideias.',
@@ -650,13 +668,9 @@ function humanizeIntro(
   return lines.join('\n');
 }
 
-
-
 // =============================================================================
-// Recomendação (com sort, count, relax e mensagens humanas)
+// Recomendação (texto natural, contagem esperta, relaxamento discreto)
 // =============================================================================
-// Recomendação (com sort, count, relax e mensagens humanas — contagem “X de Y”)
-// Recomendação (texto natural, sem contagem seca, sem saudação gratuita)
 export async function recommendRecipesFromText(query: string): Promise<AIResponse> {
   const f0 = parseQueryToFilters(query);
   const rows = await fetchRecipesFromDB();
@@ -664,7 +678,7 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
   // 1) Aplica filtros
   const initial = applyFiltersBase(rows, f0);
   let list = initial;
-  let matchedExactly = list.length > 0; // se já temos algo, não vamos dizer que relaxamos
+  let matchedExactly = list.length > 0;
 
   // 2) Relaxa SOMENTE se realmente não houver nada
   if (list.length === 0) {
@@ -675,7 +689,6 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
 
   // 3) Ordenação + limite
   const onlyGeneric = !f0.hasStructuredFilter && !f0.plainSearch;
-  // Dica de UX: em pedidos “rápidos/fáceis”, priorize tempo; “difíceis”, priorize nota.
   let sortKey: SortKey | undefined = f0.sort ?? (onlyGeneric ? 'rating' : undefined);
   if (!f0.sort && f0.difficulty === 'easy') sortKey = 'prepTime';
   if (!f0.sort && f0.difficulty === 'hard') sortKey = 'rating';
@@ -694,7 +707,7 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
     };
   }
 
-  // 5) Texto natural (sem “Encontrei 25… Mostrando 12 de 25.”)
+  // 5) Texto natural
   const content = humanizeIntro(query, {
     f0,
     shown: cards.length,
@@ -709,7 +722,6 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
     suggestions: cards.length < 5 ? ['receitas rápidas', 'vegana fácil', '5 ⭐'] : [],
   };
 }
-
 
 // =============================================================================
 // Supabase: config / conversas / mensagens
@@ -820,8 +832,6 @@ export async function createAIMessage(message: Omit<AIMessage, 'id' | 'created_a
 // =============================================================================
 // Orquestração principal — compatível com duas assinaturas
 // =============================================================================
-// Antiga: processAIMessage(content: string, ...)
-// Nova:   processAIMessage({ conversationId, content, senderId })
 export async function processAIMessage(
   arg1: any,
   _arg2?: any,
