@@ -52,5 +52,4 @@ export interface AIResponse {
     bio: string;
   }>;
   suggestions?: string[];
-  filters?: any; // Filtros estruturados para aplicar no frontend
 }
