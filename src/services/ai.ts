@@ -79,7 +79,7 @@ const CATEGORY_SYNONYMS: Record<SiteCategory, string[]> = {
 const NUM_RE = /(\d+(?:[.,]\d+)?)/;
 
 // =============================================================================
-// Utils
+/** Utils */
 // =============================================================================
 function uuidToNumericId(uuid: string): number {
   const hex = uuid.replace(/-/g, '').slice(0, 8);
@@ -121,7 +121,7 @@ function mapRowToCard(r: RecipeRow): AppRecipeCard {
 }
 
 // =============================================================================
-// Parser de linguagem natural -> filtros
+/** Parser de linguagem natural -> filtros */
 // =============================================================================
 interface ParsedFilters {
   category?: SiteCategory;
@@ -131,13 +131,13 @@ interface ParsedFilters {
   minRating?: number;   // 0..5
   wantAll?: boolean;    // "todas/qualquer"
   plainSearch?: string; // termos livres
-  limit?: number;       // quantidade pedida (default 12)
+  limit?: number;       // quantidade pedida
   sort?: SortKey;       // rating | prepTime | newest
 }
 
 function parseCount(text: string): number | undefined {
-  // "me mostra 20", "quero só 5", "traga 8", "top 10"
-  const m = text.match(/\b(top|s[oó]|\bsomente|\bapenas|\bmostrar|\bmostra|\btraga|\btrazer)?\s*(\d{1,3})\b/);
+  // "top 10", "só 5", "apenas 8", "me mostra 20"
+  const m = text.match(/\b(top|s[oó]|somente|apenas|mostrar|mostra|traga|trazer)?\s*(\d{1,3})\b/);
   if (!m) return undefined;
   const n = parseInt(m[2], 10);
   if (!Number.isFinite(n) || n <= 0) return undefined;
@@ -216,7 +216,7 @@ function parseQueryToFilters(q: string): ParsedFilters {
 }
 
 // =============================================================================
-// DB: receitas + autores (profiles) + reviews (agregação) — sem JOIN declarativo
+/** DB: receitas + autores (profiles) + reviews (agregação) — sem JOIN declarativo */
 // =============================================================================
 async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
   // Receitas
@@ -313,7 +313,7 @@ async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
 }
 
 // =============================================================================
-// Filtro + ordenação + relaxamento
+/** Filtro + ordenação + relaxamento */
 // =============================================================================
 function applyFiltersBase(rows: RecipeRow[], f: ParsedFilters): RecipeRow[] {
   let list = rows.slice();
@@ -393,7 +393,7 @@ function progressiveRelax(rows: RecipeRow[], f: ParsedFilters): { list: RecipeRo
 }
 
 // =============================================================================
-// Conversas “inteligentes” (intents) — respostas naturais
+/** Intents + respostas utilitárias (UMA ÚNICA VEZ) */
 // =============================================================================
 type Intent =
   | 'recipe_search'
@@ -440,7 +440,6 @@ function detectIntent(q: string): Intent {
   return 'fallback';
 }
 
-// ===== respostas utilitárias (texto) =====
 function siteInfoAnswer(): AIResponse {
   const content = [
     'Aqui no **NutriChefe** você encontra receitas filtrando por:',
@@ -474,7 +473,7 @@ function thanksAnswer(): AIResponse {
 function helpAnswer(): AIResponse {
   return {
     content:
-      'Você pode pedir assim:\n• "receitas fáceis";\n• "vegana 15 min 4.5+";\n• "substituição do ovo no bolo";\n• "dica para grelhar frango";\n• "informações nutricionais do Bolo de Banana".',
+      'Você pode me pedir assim:\n• "receitas fáceis";\n• "vegana 15 min 4.5+";\n• "substituição do ovo no bolo";\n• "dica para grelhar frango";\n• "informações nutricionais do Bolo de Banana".',
     recipes: [],
     suggestions: ['substituir leite?', 'sem glúten fácil', 'rica em proteína 30 min'],
   };
@@ -539,7 +538,7 @@ function nutritionGeneralAnswer(q: string): AIResponse {
 
   blocks.push('\n⚠️ Orientação educativa — não substitui acompanhamento profissional.');
 
-  return { content: blocks.join('\n'), recipes: [], suggestions: ['rica em proteína 30 min', 'baixo carboidade fácil'] };
+  return { content: blocks.join('\n'), recipes: [], suggestions: ['rica em proteína 30 min', 'baixo carboidrato fácil'] };
 }
 
 function nutritionForRecipeAnswer(query: string, rows: RecipeRow[]): AIResponse {
@@ -568,15 +567,13 @@ function nutritionForRecipeAnswer(query: string, rows: RecipeRow[]): AIResponse 
 }
 
 // =============================================================================
-// API pública: recomendação por linguagem natural (com sort, count e relax)
+/** API pública: recomendação por linguagem natural (com sort, count e relax) */
 // =============================================================================
 export async function recommendRecipesFromText(query: string): Promise<AIResponse> {
   const f0 = parseQueryToFilters(query);
   const rows = await fetchRecipesFromDB();
 
   // Caso “genérico” — usuário só disse “receitas”/“quero receitas fáceis”, etc.
-  // Se ele falou "fáceis" (sem mais nada): já é suficiente.
-  // Se ele só disse "receitas" sem nada, devolvemos top rating.
   const onlyGeneric = !f0.category && !f0.difficulty && !f0.maxPrep && !f0.minPrep && !f0.minRating && !f0.plainSearch;
   let list = applyFiltersBase(rows, f0);
 
@@ -618,7 +615,7 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
   const prefix =
     onlyGeneric && !f0.limit
       ? 'Aqui estão algumas das **mais bem avaliadas** no site'
-      : `Encontrei ${list.length} receita(s)${bits.length ? ` (${bits.join(', ')})` : ''}`;
+      : `Encontrei ${sorted.length} receita(s)${bits.length ? ` (${bits.join(', ')})` : ''}`;
 
   const note = relaxedNote ? `\n_${relaxedNote}_` : '';
   return {
@@ -629,7 +626,7 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
 }
 
 // =============================================================================
-// Supabase: configurações / conversas / mensagens (inserts via array)
+/** Supabase: configurações / conversas / mensagens */
 // =============================================================================
 export async function getAIConfiguration(nutritionistId: string): Promise<AIConfiguration | null> {
   const { data, error } = await supabase
@@ -735,53 +732,8 @@ export async function createAIMessage(message: Omit<AIMessage, 'id' | 'created_a
 }
 
 // =============================================================================
-// Orquestração principal — compatível com as duas assinaturas
+/** Orquestração principal — compatível com duas assinaturas */
 // =============================================================================
-type Intent =
-  | 'recipe_search'
-  | 'nutrition_recipe'
-  | 'nutrition_general'
-  | 'cooking_tips'
-  | 'substitutions'
-  | 'site_info'
-  | 'greetings'
-  | 'thanks'
-  | 'help'
-  | 'fallback';
-
-function detectIntent(q: string): Intent {
-  const t = normalize(q);
-
-  const looksLikeRecipe =
-    /\breceit/.test(t) ||
-    CATEGORY_LABELS.some(cat => t.includes(normalize(cat))) ||
-    Object.values(DIFFICULTY_SYNONYMS).some(syns => syns.some(s => t.includes(normalize(s)))) ||
-    /\b(15|30)\b\s*(min|mins|minutos)|\b(r[aá]pid|m[eé]di|longo)\b/.test(t) ||
-    /\b(4|4[.,]5|5)\s*(\+|estrelas?|\*)?/.test(t);
-
-  if (looksLikeRecipe) return 'recipe_search';
-
-  if (/\bnutri(c|ç)[aã]o|\bcaloria|\bprote[ií]na|\bcarbo|\bgordur|fibra|\bmacro|\bmicro/.test(t)) {
-    if (/\breceit|nome|t[ií]tulo|\bdessa\b|\bdesta\b/.test(t)) return 'nutrition_recipe';
-    return 'nutrition_general';
-  }
-
-  if (/\bdica|\bt[eé]cnica|\bassar|\bfritar|\btemperatur|ponto|forno|frigideira|air ?fryer|panela/.test(t))
-    return 'cooking_tips';
-
-  if (/\bsubstit|posso trocar|alternativa|sem (ovo|leite|gl[úu]ten|a[çc]ucar|lactose)/.test(t))
-    return 'substitutions';
-
-  if (/\bsite|plano|assinatura|categorias?|filtros?|avalia[cç][aã]o|min[ií]ma|privacidade|dados|como funciona|sobre\b/.test(t))
-    return 'site_info';
-
-  if (/\b(oi|ol[aá]|bom dia|boa tarde|boa noite|hello|hey)\b/.test(t)) return 'greetings';
-  if (/\b(obrigad|valeu|agrade[cç]o)\b/.test(t)) return 'thanks';
-  if (/\bajuda|como usar|n[aã]o sei|d[úu]vida\b/.test(t)) return 'help';
-
-  return 'fallback';
-}
-
 // Antiga: processAIMessage(content: string, ...)
 // Nova:   processAIMessage({ conversationId, content, senderId })
 export async function processAIMessage(
