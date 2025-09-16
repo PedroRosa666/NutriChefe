@@ -563,26 +563,30 @@ function nutritionForRecipeAnswer(query: string, rows: RecipeRow[]): AIResponse 
 // =============================================================================
 // Recomendação (com sort, count, relax e mensagens humanas)
 // =============================================================================
+// Recomendação (com sort, count, relax e mensagens humanas — contagem “X de Y”)
 export async function recommendRecipesFromText(query: string): Promise<AIResponse> {
   const f0 = parseQueryToFilters(query);
   const rows = await fetchRecipesFromDB();
 
-  const onlyGeneric = !f0.hasStructuredFilter && !f0.plainSearch;
-  let list = applyFiltersBase(rows, f0);
+  // 1) Aplica filtros
+  const initial = applyFiltersBase(rows, f0);
+  let list = initial;
 
-  // Relaxamento se vazio (sem exibir nota)
+  // 2) Relaxa SOMENTE se realmente não houver nada
   if (list.length === 0) {
     const pr = progressiveRelax(rows, f0);
     list = pr.list;
   }
 
-  // Ordenação + limite
+  // 3) Ordenação + limite
+  const onlyGeneric = !f0.hasStructuredFilter && !f0.plainSearch;
   const sortKey: SortKey | undefined = f0.sort ?? (onlyGeneric ? 'rating' : undefined);
   const limit = f0.limit ?? (f0.wantAll ? 100 : 12);
 
   const sorted = sortList(list, sortKey);
   const cards = capAndMap(sorted, limit);
 
+  // 4) Se mesmo assim não houver cards (lista vazia), orienta
   if (cards.length === 0) {
     return {
       content:
@@ -592,7 +596,13 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
     };
   }
 
-  // Mensagem humanizada
+  // 5) Mensagem humanizada com contagem correta
+  const total = list.length;                 // total disponível depois dos filtros (e eventual relaxamento)
+  const shown = cards.length;                // quantas estamos mostrando agora
+  const hasOnlyDifficulty =
+    Boolean(f0.difficulty) &&
+    !f0.category && typeof f0.maxPrep !== 'number' && typeof f0.minPrep !== 'number' && typeof f0.minRating !== 'number';
+
   const bits: string[] = [];
   if (f0.category) bits.push(f0.category);
   if (f0.difficulty) bits.push(f0.difficulty === 'easy' ? 'fáceis' : f0.difficulty === 'medium' ? 'médias' : 'difíceis');
@@ -603,16 +613,14 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
   if (sortKey === 'prepTime') bits.push('mais rápidas primeiro');
   if (sortKey === 'newest') bits.push('mais recentes');
 
-  const shown = cards.length;
-  const total = list.length;
-
   let content: string;
-  if (f0.difficulty && !f0.category && !f0.maxPrep && !f0.minPrep && !f0.minRating) {
-    content = `Separei estas **${bits.join(', ') || 'receitas'}** pra você 👇\nMostrando ${shown}.`;
+  if (hasOnlyDifficulty) {
+    // Ex.: “receitas difíceis” → não confunde o usuário com relaxamento/explicações
+    content = `Separei estas **${bits.join(', ') || 'receitas'}** pra você 👇\nMostrando ${shown} de ${total}.`;
   } else if (onlyGeneric && !f0.limit) {
-    content = `Separei algumas das **mais bem avaliadas** do site ✨\nMostrando ${shown}.`;
+    content = `Separei algumas das **mais bem avaliadas** do site ✨\nMostrando ${shown} de ${total}.`;
   } else {
-    content = `Encontrei ${total} ${total === 1 ? 'opção' : 'opções'}${bits.length ? ` — ${bits.join(', ')}` : ''}.\nMostrando ${shown}.`;
+    content = `Encontrei ${total} ${total === 1 ? 'opção' : 'opções'}${bits.length ? ` — ${bits.join(', ')}` : ''}.\nMostrando ${shown} de ${total}.`;
   }
 
   return {
@@ -621,6 +629,7 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
     suggestions: shown < 5 ? ['receitas rápidas', 'vegana fácil', '5 ⭐'] : [],
   };
 }
+
 
 // =============================================================================
 // Supabase: config / conversas / mensagens
