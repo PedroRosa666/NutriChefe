@@ -1,17 +1,16 @@
 // src/services/ai.ts
 // =============================================================================
 // Serviço de IA do NutriChefe — Busca natural de receitas do próprio banco
-// - Interpreta linguagem natural em PT-BR para: categoria, dificuldade, tempo, rating
-// - Categorias oficiais: Vegana, Baixo Carboidrato, Rica em Proteína, Sem Glúten, Vegetariana
-// - Filtros: Fácil/Médio/Difícil • Rápido(≤15)/Médio(≤30)/Longo(>30) • Avaliação mínima (4, 4.5, 5)
+// - Interpreta linguagem natural (PT-BR) -> filtros (categoria, dificuldade, tempo, rating)
 // - NUNCA recomenda receitas externas ao site (guardrails)
+// - Compatível com seu schema: recipes, reviews, profiles (sem depender de FK no cache)
 // =============================================================================
 
 import { supabase } from '../lib/supabase';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
 
 // =============================================================================
-// Tipos auxiliares
+// Tipos auxiliares alinhados ao seu schema
 // =============================================================================
 type Difficulty = 'easy' | 'medium' | 'hard';
 type SiteCategory =
@@ -27,18 +26,18 @@ interface RecipeRow {
   description: string;
   image: string;
   prep_time: number;
-  difficulty: Difficulty;
-  rating: number | null;      // rating médio calculado (se existir coluna)
-  category: string;           // texto livre (mapearemos)
+  difficulty: Difficulty;     // normalizada para easy|medium|hard
+  rating: number | null;      // rating efetivo (coluna ou média das reviews)
+  category: string;
   author_id?: string | null;
   author_name?: string | null;
-  reviews?: { rating: number }[];
+  reviews?: { rating: number }[]; // opcional (não necessário p/ média)
   created_at?: string;
   updated_at?: string;
 }
 
 interface AppRecipeCard {
-  id: number;                 // número derivado do uuid só pra UI
+  id: number;                 // número derivado do uuid só p/ UI
   title: string;
   description: string;
   author: string;
@@ -46,12 +45,12 @@ interface AppRecipeCard {
 }
 
 // =============================================================================
-// Mapeamentos e vocabulário PT-BR
+// Vocabulário e mapeamentos PT-BR
 // =============================================================================
 const DIFFICULTY_SYNONYMS: Record<Difficulty, string[]> = {
-  easy: ['fácil', 'facil', 'simples', 'iniciante'],
-  medium: ['médio', 'medio', 'intermediário', 'intermediario'],
-  hard: ['difícil', 'dificil', 'avançado', 'avancado', 'complexo'],
+  easy: ['fácil', 'facil', 'simples', 'iniciante', 'tranquila', 'descomplicada'],
+  medium: ['médio', 'medio', 'intermediário', 'intermediario', 'média', 'mediana'],
+  hard: ['difícil', 'dificil', 'avançado', 'avancado', 'complexo', 'trabalhosa'],
 };
 
 const CATEGORY_LABELS: SiteCategory[] = [
@@ -64,16 +63,17 @@ const CATEGORY_LABELS: SiteCategory[] = [
 
 const CATEGORY_SYNONYMS: Record<SiteCategory, string[]> = {
   'Vegana': ['vegana', 'vegano', 'vegan'],
-  'Baixo Carboidrato': ['baixo carboidrato', 'low carb', 'pouco carbo', 'baixo carb'],
-  'Rica em Proteína': ['rica em proteína', 'muita proteina', 'alta proteína', 'alto teor proteico', 'proteica'],
+  'Baixo Carboidrato': ['baixo carboidrato', 'low carb', 'pouco carbo', 'baixo carb', 'lowcarb'],
+  'Rica em Proteína': ['rica em proteína', 'muita proteina', 'alta proteína', 'alto teor proteico', 'proteica', 'proteinado'],
   'Sem Glúten': ['sem glúten', 'sem gluten', 'gluten free', 'sg', 'livre de glúten'],
-  'Vegetariana': ['vegetariana', 'vegetariano', 'veggie', 'ovo-lacto'],
+  'Vegetariana': ['vegetariana', 'vegetariano', 'veggie', 'ovo-lacto', 'ovolacto'],
 };
 
+// buckets de tempo
 const TIME_BUCKETS = {
-  rapido: { label: 'Rápido', max: 15 },   // ≤15
-  medio: { label: 'Médio', max: 30 },     // ≤30
-  longo: { label: 'Longo', min: 31 },     // >30
+  rapido: { label: 'Rápido', max: 15 },   // ≤ 15
+  medio:  { label: 'Médio', max: 30 },    // ≤ 30
+  longo:  { label: 'Longo', min: 31 },    // > 30
 };
 
 const NUM_RE = /(\d+(?:[.,]\d+)?)/;
@@ -116,7 +116,7 @@ function mapRowToCard(r: RecipeRow): AppRecipeCard {
 }
 
 // =============================================================================
-/** Parser de linguagem natural -> filtros */
+// Parser de linguagem natural -> filtros
 // =============================================================================
 interface ParsedFilters {
   category?: SiteCategory;
@@ -148,27 +148,27 @@ function parseQueryToFilters(q: string): ParsedFilters {
       break;
     }
   }
-  // “média”
+  // “média/médio”
   if (!f.difficulty && (/\bm[eé]di[oa]\b/.test(text))) f.difficulty = 'medium';
 
-  // Tempo de preparo
+  // Tempo de preparo (palavras)
   if (/\br[aá]pid[oa]\b/.test(text) || /\b<=?\s*15\b/.test(text)) f.maxPrep = 15;
   if (/\bm[eé]di[oa]\b/.test(text) || /\b<=?\s*30\b/.test(text)) f.maxPrep = f.maxPrep ?? 30;
   if (/\blongo?\b|\b>?\s*30\b/.test(text)) f.minPrep = 31;
 
-  // “em X minutos”
+  // “em X minutos / até X min”
   const mTime = text.match(new RegExp(`\\b(em|ate|até|<=?)\\s*${NUM_RE.source}\\s*(min|mins|minutos)\\b`));
   if (mTime) {
     const mins = parseFloat(mTime[2].replace(',', '.'));
     if (!isNaN(mins)) f.maxPrep = Math.min(f.maxPrep ?? Infinity, mins);
   }
 
-  // Avaliação mínima
+  // Avaliação mínima: 4+, 4.5+, 5 estrelas
   const starPlus = text.match(new RegExp(`${NUM_RE.source}\\s*(\\+|mais)?\\s*(\\*|estrela|estrelas)?`));
   if (starPlus) {
     const val = parseFloat(starPlus[1].replace(',', '.'));
     if (!isNaN(val) && val >= 0 && val <= 5) {
-      if (/\+|mais/.test(starPlus[2] || '') || /estrela/.test(starPlus[3] || '')) {
+      if (/\+|mais/.test(starPlus[2] || '') || /estrela|\*/.test(starPlus[3] || '')) {
         f.minRating = val;
       }
     }
@@ -188,47 +188,128 @@ function parseQueryToFilters(q: string): ParsedFilters {
 }
 
 // =============================================================================
-/** Busca no Supabase com filtros */
+// Busca no Supabase com filtros (sem JOIN; usa consultas separadas)
 // =============================================================================
 async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
-  const { data, error } = await supabase
+  // 1) Buscar receitas básicas
+  const { data: recipeRows, error: recipesErr } = await supabase
     .from('recipes')
-    .select(`
-      id, title, description, image, prep_time, difficulty, category, rating,
-      reviews:reviews(rating),
-      author:users!recipes_author_id_fkey(full_name)
-    `);
+    .select('id, title, description, image, prep_time, difficulty, category, rating, author_id, created_at, updated_at');
 
-  if (error) throw error;
+  if (recipesErr) throw recipesErr;
 
-  return (data || []).map((r: any) => ({
-    ...r,
-    author_name: r.author?.full_name ?? null,
-  })) as RecipeRow[];
+  const rows = (recipeRows || []) as Array<{
+    id: string;
+    title: string;
+    description: string;
+    image: string;
+    prep_time: number;
+    difficulty: string;
+    category: string;
+    rating: number | null;
+    author_id: string | null;
+    created_at?: string;
+    updated_at?: string;
+  }>;
+
+  if (rows.length === 0) return [];
+
+  // 2) Buscar autores na tabela profiles
+  const authorIds = Array.from(new Set(rows.map(r => r.author_id).filter(Boolean))) as string[];
+  let authorsMap: Record<string, string> = {};
+  if (authorIds.length > 0) {
+    const { data: profiles, error: profilesErr } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', authorIds);
+
+    if (!profilesErr && profiles) {
+      authorsMap = Object.fromEntries(
+        profiles.map(p => [p.id as string, (p.full_name as string) || 'NutriChefe'])
+      );
+    }
+  }
+
+  // 3) Buscar reviews e calcular média por receita (para quando recipes.rating estiver nulo)
+  const recipeIds = rows.map(r => r.id);
+  const { data: reviews, error: reviewsErr } = await supabase
+    .from('reviews')
+    .select('recipe_id, rating')
+    .in('recipe_id', recipeIds);
+
+  const ratingsAgg: Record<string, { sum: number; count: number }> = {};
+  if (!reviewsErr && reviews && reviews.length) {
+    for (const r of reviews as Array<{ recipe_id: string; rating: number }>) {
+      if (!ratingsAgg[r.recipe_id]) ratingsAgg[r.recipe_id] = { sum: 0, count: 0 };
+      ratingsAgg[r.recipe_id].sum += r.rating ?? 0;
+      ratingsAgg[r.recipe_id].count += 1;
+    }
+  }
+
+  // 4) Montar o resultado uniformizado
+  const result: RecipeRow[] = rows.map(r => {
+    // rating efetivo: usa coluna se existir; senão média das reviews
+    let effectiveRating: number | null = r.rating ?? null;
+    if (effectiveRating == null && ratingsAgg[r.id]?.count) {
+      const avg = ratingsAgg[r.id].sum / ratingsAgg[r.id].count;
+      effectiveRating = Math.round(avg * 10) / 10;
+    }
+
+    // normalizar dificuldade para union type
+    const diffNorm = normalize(r.difficulty);
+    const difficulty: Difficulty =
+      (diffNorm.includes('facil') || diffNorm.includes('fácil')) ? 'easy' :
+      (diffNorm.includes('medi')) ? 'medium' :
+      (diffNorm.includes('dific')) ? 'hard' :
+      'medium'; // fallback seguro
+
+    return {
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      image: r.image,
+      prep_time: r.prep_time,
+      difficulty,
+      category: r.category || '',
+      rating: effectiveRating,          // pode ser null
+      author_id: r.author_id,
+      author_name: (r.author_id && authorsMap[r.author_id]) ? authorsMap[r.author_id] : 'NutriChefe',
+      reviews: [],
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+    } as RecipeRow;
+  });
+
+  return result;
 }
 
 function applyFilters(rows: RecipeRow[], f: ParsedFilters): RecipeRow[] {
   let list = rows.slice();
 
+  // Categoria
   if (f.category) {
     const needle = normalize(f.category);
     list = list.filter(r => normalize(r.category).includes(needle));
   }
 
+  // Dificuldade
   if (f.difficulty) {
     list = list.filter(r => r.difficulty === f.difficulty);
   }
 
+  // Tempo
   if (typeof f.maxPrep === 'number') list = list.filter(r => r.prep_time <= f.maxPrep);
   if (typeof f.minPrep === 'number') list = list.filter(r => r.prep_time >= f.minPrep);
 
+  // Avaliação
   if (typeof f.minRating === 'number') {
     list = list.filter(r => {
-      const rating = (typeof r.rating === 'number' ? r.rating : avgRating(r.reviews)) || 0;
+      const rating = (typeof r.rating === 'number' ? r.rating : 0);
       return rating >= f.minRating!;
     });
   }
 
+  // Full-text leve (título/descrição)
   if (f.plainSearch) {
     const n = normalize(f.plainSearch);
     list = list.filter(r =>
@@ -239,8 +320,8 @@ function applyFilters(rows: RecipeRow[], f: ParsedFilters): RecipeRow[] {
 
   // Ordena: rating desc, depois mais rápido
   list.sort((a, b) => {
-    const ar = (typeof a.rating === 'number' ? a.rating : avgRating(a.reviews)) || 0;
-    const br = (typeof b.rating === 'number' ? b.rating : avgRating(b.reviews)) || 0;
+    const ar = (typeof a.rating === 'number' ? a.rating : 0);
+    const br = (typeof b.rating === 'number' ? b.rating : 0);
     if (br !== ar) return br - ar;
     return a.prep_time - b.prep_time;
   });
@@ -253,7 +334,7 @@ function capAndMap(list: RecipeRow[], limit = 12): AppRecipeCard[] {
 }
 
 // =============================================================================
-/** API pública: recomendação a partir de texto */
+// API pública: recomendação por linguagem natural
 // =============================================================================
 export async function recommendRecipesFromText(query: string): Promise<AIResponse> {
   const f = parseQueryToFilters(query);
@@ -289,7 +370,7 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
 }
 
 // =============================================================================
-/** Conversas / Mensagens (Supabase) */
+// Conversas / Mensagens (Supabase) — com inserts por array
 // =============================================================================
 export async function getAIConfiguration(nutritionistId: string): Promise<AIConfiguration | null> {
   const { data, error } = await supabase
@@ -330,7 +411,6 @@ export async function updateAIConfiguration(
   return data as AIConfiguration;
 }
 
-// ✅ CORRIGIDO: insert com array + parse defensivo
 export async function createAIConversation(input: {
   client_id: string;
   nutritionist_id?: string | null;
@@ -396,7 +476,7 @@ export async function createAIMessage(message: Omit<AIMessage, 'id' | 'created_a
 }
 
 // =============================================================================
-/** Processamento principal — compatível com assinatura antiga e nova */
+// Processamento principal — compatível com assinatura antiga e nova
 // Antiga: processAIMessage(content: string, ...)
 // Nova:   processAIMessage({ conversationId, content, senderId })
 // =============================================================================
@@ -405,7 +485,6 @@ export async function processAIMessage(
   _arg2?: any,
   _arg3?: any
 ): Promise<AIResponse> {
-  // Extrai o content de forma compatível
   let content = '';
   if (typeof arg1 === 'string') {
     content = arg1;
@@ -415,7 +494,7 @@ export async function processAIMessage(
 
   const norm = normalize(content);
 
-  // Heurística: pedido de receitas / filtros
+  // Heurística: se parecer intenção de receita/filtro -> recomendar
   const wantsRecipe =
     /\breceit/.test(norm) ||
     CATEGORY_LABELS.some(cat => norm.includes(normalize(cat))) ||
