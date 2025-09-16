@@ -399,40 +399,6 @@ type Intent =
   | 'help'
   | 'fallback';
 
-function detectIntent(q: string): Intent {
-  const t = normalize(q);
-
-  const looksLikeRecipe =
-    /\breceit/.test(t) ||
-    CATEGORY_LABELS.some(cat => t.includes(normalize(cat))) ||
-    Object.values(DIFFICULTY_SYNONYMS).some(syns => syns.some(s => t.includes(normalize(s)))) ||
-    /\b(15|30)\b\s*(min|mins|minutos)|\b(r[aá]pid|m[eé]di|longo)\b/.test(t) ||
-    /\b(4|4[.,]5|5)\s*(\+|estrelas?|\*)?/.test(t) ||
-    /\bf[aá]cei(s|s)?\b/.test(t);
-
-  if (looksLikeRecipe) return 'recipe_search';
-
-  if (/\bnutri(c|ç)[aã]o|\bcaloria|\bprote[ií]na|\bcarbo|\bgordur|fibra|\bmacro|\bmicro/.test(t)) {
-    if (/\breceit|nome|t[ií]tulo|\bdessa\b|\bdesta\b/.test(t)) return 'nutrition_recipe';
-    return 'nutrition_general';
-  }
-
-  if (/\bdica|\bt[eé]cnica|\bassar|\bfritar|\btemperatur|ponto|forno|frigideira|air ?fryer|panela/.test(t))
-    return 'cooking_tips';
-
-  if (/\bsubstit|posso trocar|alternativa|sem (ovo|leite|gl[úu]ten|a[çc]ucar|lactose)/.test(t))
-    return 'substitutions';
-
-  if (/\bsite|plano|assinatura|categorias?|filtros?|avalia[cç][aã]o|min[ií]ma|privacidade|dados|como funciona|sobre\b/.test(t))
-    return 'site_info';
-
-  if (/\b(oi|ol[aá]|bom dia|boa tarde|boa noite|hello|hey)\b/.test(t)) return 'greetings';
-  if (/\b(obrigad|valeu|agrade[cç]o)\b/.test(t)) return 'thanks';
-  if (/\bajuda|como usar|n[aã]o sei|d[úu]vida\b/.test(t)) return 'help';
-
-  return 'fallback';
-}
-
 function siteInfoAnswer(): AIResponse {
   const content = [
     'Aqui no **NutriChefe** você encontra receitas filtrando por:',
