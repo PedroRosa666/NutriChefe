@@ -435,7 +435,7 @@ function detectUserIntent(q: string): ChatIntent {
   return 'fallback';
 }
 
-// ===== Compatibilidade com código antigo (NÃO remove!) =====
+// ===== Compatibilidade com código antigo (NÃO remover!) =====
 type Intent = ChatIntent;
 const detectIntent = detectUserIntent;
 
