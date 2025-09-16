@@ -3,13 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Bot, User, Loader2, Sparkles, ChefHat, Clock, Star, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useAIStore } from '../../store/ai';
+import { useFiltersStore } from '../../store/filters';
 import { isGeminiConfigured } from '../../services/gemini';
+import { applyFiltersToStore } from '../../services/ai';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { cn } from '../../lib/utils';
 import type { AIMessage } from '../../types/ai';
 
 export function AIChatInterface() {
   const { user } = useAuthStore();
+  const filtersStore = useFiltersStore();
   const { 
     conversations, 
     currentConversation, 
@@ -59,6 +62,12 @@ export function AIChatInterface() {
 
     try {
       await sendMessage(currentConversation.id, messageToSend);
+      
+      // Verificar se a última mensagem da IA contém filtros para aplicar
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage?.metadata?.filters) {
+        applyFiltersToStore(lastMessage.metadata.filters, filtersStore);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       // Restaurar mensagem em caso de erro

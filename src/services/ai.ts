@@ -8,7 +8,99 @@
 
 import { supabase } from '../lib/supabase';
 import { getGeminiResponse } from './gemini';
+import { normalizeDifficulty, parsePrepTime, extractIngredients, parseRatings } from '../lib/utils';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
+
+// Interface para filtros estruturados
+export interface ParsedQuery {
+  searchQuery?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  prepTimeRange?: string;
+  prepTimeMin?: number;
+  prepTimeMax?: number;
+  minRating?: number;
+  maxRating?: number;
+  category?: string;
+  ingredients?: {
+    include: string[];
+    exclude: string[];
+  };
+  sortBy?: 'relevance' | 'rating' | 'prepTime' | 'newest';
+  authorType?: 'Nutritionist' | 'Client';
+  servings?: number;
+  diet?: string;
+  course?: string;
+  cuisine?: string;
+}
+
+// Parser principal de linguagem natural
+export function parseUserQuery(content: string): ParsedQuery {
+  const normalized = content.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const result: ParsedQuery = {};
+  
+  // Extrair dificuldade
+  const difficulty = normalizeDifficulty(content);
+  if (difficulty) result.difficulty = difficulty;
+  
+  // Extrair tempo de preparo
+  const prepTime = parsePrepTime(content);
+  if (prepTime.min !== null) result.prepTimeMin = prepTime.min;
+  if (prepTime.max !== null) result.prepTimeMax = prepTime.max;
+  
+  // Mapear para prepTimeRange se possível
+  if (prepTime.max !== null) {
+    if (prepTime.max <= 15) result.prepTimeRange = 'quick';
+    else if (prepTime.max <= 30) result.prepTimeRange = 'medium';
+    else result.prepTimeRange = 'long';
+  }
+  
+  // Extrair avaliações
+  const ratings = parseRatings(content);
+  if (ratings.min !== null) result.minRating = ratings.min;
+  if (ratings.max !== null) result.maxRating = ratings.max;
+  
+  // Extrair ingredientes
+  const ingredients = extractIngredients(content);
+  if (ingredients.include.length > 0 || ingredients.exclude.length > 0) {
+    result.ingredients = ingredients;
+  }
+  
+  // Detectar categorias/dietas
+  if (/\b(vegan|vegana|veganas)\b/.test(normalized)) result.category = 'vegan';
+  if (/\b(vegetarian|vegetariana|vegetarianas)\b/.test(normalized)) result.category = 'vegetarian';
+  if (/\b(low\s*carb|baixo\s*carboidrato|lowcarb)\b/.test(normalized)) result.category = 'lowCarb';
+  if (/\b(high\s*protein|rica?\s*em\s*proteina|proteica)\b/.test(normalized)) result.category = 'highProtein';
+  if (/\b(gluten\s*free|sem\s*gluten)\b/.test(normalized)) result.category = 'glutenFree';
+  
+  // Detectar tipo de autor
+  if (/\b(nutricionista|nutricionist)\b/.test(normalized)) result.authorType = 'Nutritionist';
+  
+  // Detectar ordenação
+  if (/\b(melhor|melhores|mais\s*bem|bem\s*avaliada)\b/.test(normalized)) result.sortBy = 'rating';
+  if (/\b(mais\s*rapida|mais\s*rapido|rapidas|rapidos)\b/.test(normalized)) result.sortBy = 'prepTime';
+  if (/\b(nova|novas|recente|recentes|ultima|ultimas)\b/.test(normalized)) result.sortBy = 'newest';
+  
+  // Extrair termo de busca geral (remover palavras de filtro)
+  let searchTerms = content
+    .replace(/\b(receita|receitas|prato|pratos|comida|facil|faceis|rapida|rapido|dificil|avaliacao|estrela|estrelas|minuto|minutos|hora|horas|com|sem|de|para|cima|acima|abaixo|entre|ate|no|maximo|minimo)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+    
+  if (searchTerms.length > 2) {
+    result.searchQuery = searchTerms;
+  }
+  
+  return result;
+}
+
+// Aplicar filtros no store
+export function applyFiltersToStore(filters: ParsedQuery, filtersStore: any) {
+  if (filters.difficulty) filtersStore.setDifficulty(filters.difficulty);
+  if (filters.prepTimeRange) filtersStore.setPrepTimeRange(filters.prepTimeRange);
+  if (filters.minRating) filtersStore.setMinRating(filters.minRating);
+  if (filters.searchQuery) filtersStore.setSearchQuery(filters.searchQuery);
+  if (filters.category) filtersStore.setCategory(filters.category);
+}
 
 // =============================================================================
 // Database interaction functions
@@ -524,6 +616,80 @@ export async function processAIMessage(
   aiConfig?: AIConfiguration,
   conversationHistory: AIMessage[] = []
 ): Promise<AIResponse> {
+  // Primeiro, tentar interpretar como consulta de receitas
+  const isRecipeQuery = /\b(receita|receitas|prato|pratos|comida|cozinhar|ingrediente|preparo|fazer|culinaria|gastronomia|alimento)\b/i.test(content);
+  
+  if (isRecipeQuery) {
+    const parsedQuery = parseUserQuery(content);
+    
+    // Construir resposta baseada nos filtros detectados
+    let responseText = "Entendi! Você está procurando por ";
+    const criteria: string[] = [];
+    
+    if (parsedQuery.difficulty) {
+      const difficultyMap = { easy: 'receitas fáceis', medium: 'receitas de dificuldade média', hard: 'receitas difíceis' };
+      criteria.push(difficultyMap[parsedQuery.difficulty]);
+    }
+    
+    if (parsedQuery.category) {
+      const categoryMap = {
+        vegan: 'receitas veganas',
+        vegetarian: 'receitas vegetarianas',
+        lowCarb: 'receitas low carb',
+        highProtein: 'receitas ricas em proteína',
+        glutenFree: 'receitas sem glúten'
+      };
+      criteria.push(categoryMap[parsedQuery.category as keyof typeof categoryMap] || parsedQuery.category);
+    }
+    
+    if (parsedQuery.prepTimeMax) {
+      criteria.push(`que levem até ${parsedQuery.prepTimeMax} minutos`);
+    }
+    
+    if (parsedQuery.minRating) {
+      criteria.push(`com avaliação mínima de ${parsedQuery.minRating} estrelas`);
+    }
+    
+    if (parsedQuery.ingredients?.include.length) {
+      criteria.push(`com ${parsedQuery.ingredients.include.join(', ')}`);
+    }
+    
+    if (parsedQuery.ingredients?.exclude.length) {
+      criteria.push(`sem ${parsedQuery.ingredients.exclude.join(', ')}`);
+    }
+    
+    if (parsedQuery.authorType === 'Nutritionist') {
+      criteria.push('criadas por nutricionistas');
+    }
+    
+    responseText += criteria.length > 0 ? criteria.join(', ') : 'receitas';
+    responseText += ". Vou buscar as melhores opções para você!";
+    
+    // Incluir os filtros como metadata para o frontend aplicar
+    return {
+      content: responseText,
+      recipes: [], // O frontend vai buscar as receitas baseado nos filtros
+      suggestions: ['receitas fáceis', 'receitas rápidas', 'receitas saudáveis'],
+      filters: parsedQuery // Novo campo para passar os filtros
+    };
+  }
+  
+  // Para outras consultas, usar o Gemini com prompt melhorado
+  const enhancedPrompt = `
+Você é o assistente do NutriChef, especializado em nutrição e receitas saudáveis.
+
+IMPORTANTE: Quando o usuário perguntar sobre receitas, ingredientes, ou qualquer coisa relacionada a culinária:
+1. Responda de forma natural e útil
+2. Se possível, inclua dicas nutricionais
+3. Mantenha o foco em alimentação saudável
+4. Seja empático e motivacional
+
+Configuração da IA: ${aiConfig?.ai_name || 'NutriBot'} - Personalidade: ${aiConfig?.personality || 'empática'}
+${aiConfig?.custom_instructions ? `Instruções específicas: ${aiConfig.custom_instructions}` : ''}
+
+Pergunta do usuário: ${content}
+  `;
+  
   if (isGreeting(content)) {
     return { content: 'Oi! 👋 Tudo bem? Me conta o que você quer ver hoje.', recipes: [], suggestions: [] };
   }
@@ -533,7 +699,7 @@ export async function processAIMessage(
 
   if (isRecipeRequest(content)) {
     return await recommendRecipesFromText(content);
-  }
+    const response = await getGeminiResponse(enhancedPrompt, aiConfig, conversationHistory);
 
   const POLICY = `
 Você é o assistente do NutriChefe. Políticas estritas:
