@@ -387,17 +387,6 @@ function progressiveRelax(rows: RecipeRow[], f: ParsedFilters): { list: RecipeRo
 // =============================================================================
 // Intents e respostas utilitárias
 // =============================================================================
-type Intent =
-  | 'recipe_search'
-  | 'nutrition_recipe'
-  | 'nutrition_general'
-  | 'cooking_tips'
-  | 'substitutions'
-  | 'site_info'
-  | 'greetings'
-  | 'thanks'
-  | 'help'
-  | 'fallback';
 
 function siteInfoAnswer(): AIResponse {
   const content = [
@@ -674,17 +663,6 @@ export async function createAIMessage(message: Omit<AIMessage, 'id' | 'created_a
 // =============================================================================
 // Orquestração principal — compatível com duas assinaturas
 // =============================================================================
-type Intent =
-  | 'recipe_search'
-  | 'nutrition_recipe'
-  | 'nutrition_general'
-  | 'cooking_tips'
-  | 'substitutions'
-  | 'site_info'
-  | 'greetings'
-  | 'thanks'
-  | 'help'
-  | 'fallback';
 
 // Antiga: processAIMessage(content: string, ...)
 // Nova:   processAIMessage({ conversationId, content, senderId })
