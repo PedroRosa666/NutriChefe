@@ -652,12 +652,11 @@ function humanizeIntro(
 
 
 
-
-
 // =============================================================================
 // Recomendação (com sort, count, relax e mensagens humanas)
 // =============================================================================
 // Recomendação (com sort, count, relax e mensagens humanas — contagem “X de Y”)
+// Recomendação (texto natural, sem contagem seca, sem saudação gratuita)
 export async function recommendRecipesFromText(query: string): Promise<AIResponse> {
   const f0 = parseQueryToFilters(query);
   const rows = await fetchRecipesFromDB();
@@ -665,62 +664,49 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
   // 1) Aplica filtros
   const initial = applyFiltersBase(rows, f0);
   let list = initial;
+  let matchedExactly = list.length > 0; // se já temos algo, não vamos dizer que relaxamos
 
   // 2) Relaxa SOMENTE se realmente não houver nada
   if (list.length === 0) {
     const pr = progressiveRelax(rows, f0);
     list = pr.list;
+    matchedExactly = false;
   }
 
   // 3) Ordenação + limite
   const onlyGeneric = !f0.hasStructuredFilter && !f0.plainSearch;
-  const sortKey: SortKey | undefined = f0.sort ?? (onlyGeneric ? 'rating' : undefined);
-  const limit = f0.limit ?? (f0.wantAll ? 100 : 12);
+  // Dica de UX: em pedidos “rápidos/fáceis”, priorize tempo; “difíceis”, priorize nota.
+  let sortKey: SortKey | undefined = f0.sort ?? (onlyGeneric ? 'rating' : undefined);
+  if (!f0.sort && f0.difficulty === 'easy') sortKey = 'prepTime';
+  if (!f0.sort && f0.difficulty === 'hard') sortKey = 'rating';
 
+  const limit = f0.limit ?? (f0.wantAll ? 100 : 12);
   const sorted = sortList(list, sortKey);
   const cards = capAndMap(sorted, limit);
 
-  // 4) Se mesmo assim não houver cards (lista vazia), orienta
+  // 4) Nada mesmo? Ajuda curta e direta
   if (cards.length === 0) {
     return {
       content:
-        'Não achei nada com esses critérios. Quer tentar “vegana fácil”, “rápida 4.5+” ou “sem glúten em 15 min”?',
+        'Não pintou nada com esses critérios. Quer tentar “vegana fácil”, “rápida 4.5+” ou “sem glúten em 15 min”?',
       recipes: [],
       suggestions: ['receitas fáceis', 'vegana rápida', 'rica em proteína 5⭐'],
     };
   }
 
-  // 5) Mensagem humanizada com contagem correta
-  const total = list.length;                 // total disponível depois dos filtros (e eventual relaxamento)
-  const shown = cards.length;                // quantas estamos mostrando agora
-  const hasOnlyDifficulty =
-    Boolean(f0.difficulty) &&
-    !f0.category && typeof f0.maxPrep !== 'number' && typeof f0.minPrep !== 'number' && typeof f0.minRating !== 'number';
-
-  const bits: string[] = [];
-  if (f0.category) bits.push(f0.category);
-  if (f0.difficulty) bits.push(f0.difficulty === 'easy' ? 'fáceis' : f0.difficulty === 'medium' ? 'médias' : 'difíceis');
-  if (typeof f0.maxPrep === 'number') bits.push(`até ${f0.maxPrep} min`);
-  if (typeof f0.minPrep === 'number') bits.push(`> ${f0.minPrep - 1} min`);
-  if (typeof f0.minRating === 'number') bits.push(`${f0.minRating}+ ⭐`);
-  if (sortKey === 'rating') bits.push('ordenadas por nota');
-  if (sortKey === 'prepTime') bits.push('mais rápidas primeiro');
-  if (sortKey === 'newest') bits.push('mais recentes');
-
-  let content: string;
-  if (hasOnlyDifficulty) {
-    // Ex.: “receitas difíceis” → não confunde o usuário com relaxamento/explicações
-    content = `Separei estas **${bits.join(', ') || 'receitas'}** pra você 👇\nMostrando ${shown} de ${total}.`;
-  } else if (onlyGeneric && !f0.limit) {
-    content = `Separei algumas das **mais bem avaliadas** do site ✨\nMostrando ${shown} de ${total}.`;
-  } else {
-    content = `Encontrei ${total} ${total === 1 ? 'opção' : 'opções'}${bits.length ? ` — ${bits.join(', ')}` : ''}.\nMostrando ${shown} de ${total}.`;
-  }
+  // 5) Texto natural (sem “Encontrei 25… Mostrando 12 de 25.”)
+  const content = humanizeIntro(query, {
+    f0,
+    shown: cards.length,
+    total: list.length,
+    matchedExactly,
+    sortKey,
+  });
 
   return {
     content,
     recipes: cards,
-    suggestions: shown < 5 ? ['receitas rápidas', 'vegana fácil', '5 ⭐'] : [],
+    suggestions: cards.length < 5 ? ['receitas rápidas', 'vegana fácil', '5 ⭐'] : [],
   };
 }
 
