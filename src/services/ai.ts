@@ -354,19 +354,44 @@ export async function getAIConversations(userId: string) {
   return (data || []) as any[];
 }
 
-export async function createAIConversation(clientId: string, nutritionistId?: string) {
+// Substitua a função createAIConversation existente por esta
+export async function createAIConversation(input: {
+  client_id: string;
+  nutritionist_id?: string | null;
+  ai_config_id?: string | null;
+  title?: string;
+  is_active?: boolean;
+}): Promise<AIConversation> {
+  // Se alguém passar uma string JSON por engano, tentamos fazer o parse
+  let payload: any = input as any;
+  if (typeof input === 'string') {
+    try {
+      payload = JSON.parse(input);
+    } catch {
+      // Se não der parse, joga erro claro
+      throw new Error('createAIConversation: payload inválido (string não é JSON)');
+    }
+  }
+
+  const row = {
+    client_id: payload.client_id,                        // uuid do usuário (obrigatório)
+    nutritionist_id: payload.nutritionist_id ?? null,    // uuid opcional
+    ai_config_id: payload.ai_config_id ?? null,          // uuid opcional
+    title: payload.title ?? 'Nova conversa com IA',
+    is_active: payload.is_active ?? true,
+  };
+
+  // ⚠️ Use array no insert (forma recomendada pelo Supabase)
   const { data, error } = await supabase
     .from('ai_conversations')
-    .insert({
-      client_id: clientId,
-      ai_config_id: nutritionistId || null,
-    })
-    .select()
+    .insert([row])
+    .select('*')
     .single();
 
   if (error) throw error;
-  return data as any;
+  return data as AIConversation;
 }
+
 
 export async function getAIMessages(conversationId: string): Promise<AIMessage[]> {
   const { data, error } = await supabase
