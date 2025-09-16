@@ -435,6 +435,10 @@ function detectUserIntent(q: string): ChatIntent {
   return 'fallback';
 }
 
+// ===== Compatibilidade com código antigo (NÃO remove!) =====
+type Intent = ChatIntent;
+const detectIntent = detectUserIntent;
+
 
 function siteInfoAnswer(): AIResponse {
   const content = [
