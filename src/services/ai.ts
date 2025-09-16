@@ -11,7 +11,7 @@ import { getGeminiResponse } from './gemini';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
 
 // =============================================================================
-// Database interaction functionss
+// Database interaction functions
 // =============================================================================
 
 export async function getAIConfiguration(nutritionistId: string): Promise<AIConfiguration | null> {
