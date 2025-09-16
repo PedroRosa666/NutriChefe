@@ -700,6 +700,7 @@ Pergunta do usuário: ${content}
   if (isRecipeRequest(content)) {
     return await recommendRecipesFromText(content);
     const response = await getGeminiResponse(enhancedPrompt, aiConfig, conversationHistory);
+  }
 
   const POLICY = `
 Você é o assistente do NutriChefe. Políticas estritas:
