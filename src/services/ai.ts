@@ -1,8 +1,5 @@
 // src/services/ai.ts
 // =============================================================================
-// NutriChefe — Serviço de IA Conversacional (super dinâmico)
-// =============================================================================
-
 import { supabase } from '../lib/supabase';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
 
@@ -79,7 +76,7 @@ const CATEGORY_SYNONYMS: Record<SiteCategory, string[]> = {
 const NUM_RE = /(\d+(?:[.,]\d+)?)/;
 
 // =============================================================================
-/** Utils */
+// Utils
 // =============================================================================
 function uuidToNumericId(uuid: string): number {
   const hex = uuid.replace(/-/g, '').slice(0, 8);
@@ -120,23 +117,32 @@ function mapRowToCard(r: RecipeRow): AppRecipeCard {
   };
 }
 
+// Dificuldade robusta: aceita "easy/medium/hard" e PT-BR
+function normalizeDifficultyValue(value: string): Difficulty {
+  const n = normalize(value);
+  if (n === 'easy' || n === 'medium' || n === 'hard') return n as Difficulty;
+  if (n.includes('facil') || n.includes('fácil') || n.includes('simples')) return 'easy';
+  if (n.includes('medi')) return 'medium';
+  if (n.includes('dific')) return 'hard';
+  return 'medium'; // fallback seguro
+}
+
 // =============================================================================
-/** Parser de linguagem natural -> filtros */
+// Parser de linguagem natural -> filtros
 // =============================================================================
 interface ParsedFilters {
   category?: SiteCategory;
   difficulty?: Difficulty;
-  maxPrep?: number;     // minutos (≤)
-  minPrep?: number;     // minutos (≥)
-  minRating?: number;   // 0..5
-  wantAll?: boolean;    // "todas/qualquer"
-  plainSearch?: string; // termos livres
-  limit?: number;       // quantidade pedida
-  sort?: SortKey;       // rating | prepTime | newest
+  maxPrep?: number;
+  minPrep?: number;
+  minRating?: number;
+  wantAll?: boolean;
+  plainSearch?: string;
+  limit?: number;
+  sort?: SortKey;
 }
 
 function parseCount(text: string): number | undefined {
-  // "top 10", "só 5", "apenas 8", "me mostra 20"
   const m = text.match(/\b(top|s[oó]|somente|apenas|mostrar|mostra|traga|trazer)?\s*(\d{1,3})\b/);
   if (!m) return undefined;
   const n = parseInt(m[2], 10);
@@ -173,7 +179,7 @@ function parseQueryToFilters(q: string): ParsedFilters {
   }
   if (!f.difficulty && (/\bm[eé]di[oa]\b/.test(text))) f.difficulty = 'medium';
 
-  // Tempo (palavras)
+  // Tempo
   if (/\br[aá]pid[oa]s?\b/.test(text) || /\b<=?\s*15\b/.test(text)) f.maxPrep = 15;
   if (/\bm[eé]di[oa]\b/.test(text) || /\b<=?\s*30\b/.test(text)) f.maxPrep = f.maxPrep ?? 30;
   if (/\blongo?s?\b|\b>?\s*30\b/.test(text)) f.minPrep = 31;
@@ -199,16 +205,11 @@ function parseQueryToFilters(q: string): ParsedFilters {
   if (/\b4[.,]5\+\b/.test(text)) f.minRating = Math.max(f.minRating ?? 0, 4.5);
   if (/\b5\s*(\*|estrelas?)?\b/.test(text)) f.minRating = 5;
 
-  // “todas/qualquer”
   if (/\btod[ao]s?\b|\bqualquer\b/.test(text)) f.wantAll = true;
 
-  // quantidade pedida
   f.limit = parseCount(text) ?? undefined;
-
-  // sort
   f.sort = parseSort(text) ?? undefined;
 
-  // termo livre
   const cleaned = (q || '').trim();
   if (cleaned && cleaned.length > 2) f.plainSearch = cleaned;
 
@@ -216,7 +217,7 @@ function parseQueryToFilters(q: string): ParsedFilters {
 }
 
 // =============================================================================
-/** DB: receitas + autores (profiles) + reviews (agregação) — sem JOIN declarativo */
+// DB (sem JOIN declarativo)
 // =============================================================================
 async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
   // Receitas
@@ -283,21 +284,13 @@ async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
       effectiveRating = round1(avg);
     }
 
-    // dificuldade -> union type
-    const diffNorm = normalize(r.difficulty);
-    const difficulty: Difficulty =
-      (diffNorm.includes('facil') || diffNorm.includes('fácil')) ? 'easy' :
-      (diffNorm.includes('medi')) ? 'medium' :
-      (diffNorm.includes('dific')) ? 'hard' :
-      'medium';
-
     return {
       id: r.id,
       title: r.title,
       description: r.description,
       image: r.image,
       prep_time: r.prep_time,
-      difficulty,
+      difficulty: normalizeDifficultyValue(r.difficulty), // ✅ correção aqui
       category: r.category || '',
       rating: effectiveRating,
       author_id: r.author_id,
@@ -313,7 +306,7 @@ async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
 }
 
 // =============================================================================
-/** Filtro + ordenação + relaxamento */
+// Filtro + ordenação + relaxamento
 // =============================================================================
 function applyFiltersBase(rows: RecipeRow[], f: ParsedFilters): RecipeRow[] {
   let list = rows.slice();
@@ -367,13 +360,13 @@ function capAndMap(list: RecipeRow[], limit = 12): AppRecipeCard[] {
   return list.slice(0, limit).map(mapRowToCard);
 }
 
-// Relaxamento progressivo para evitar “nenhum resultado”
+// Relaxamento progressivo (mensagens humanizadas)
 function progressiveRelax(rows: RecipeRow[], f: ParsedFilters): { list: RecipeRow[]; note: string | null } {
   const attempts: Array<{ tweak: (g: ParsedFilters) => void; note: string }> = [
-    { tweak: g => { if (typeof g.minRating === 'number') delete g.minRating; }, note: 'Removi a nota mínima.' },
-    { tweak: g => { if (typeof g.maxPrep === 'number') delete g.maxPrep; }, note: 'Flexibilizei o tempo de preparo.' },
-    { tweak: g => { if (g.category) delete g.category; }, note: 'Mostrando além da categoria.' },
-    { tweak: g => { if (g.difficulty) delete g.difficulty; }, note: 'Incluí outras dificuldades.' },
+    { tweak: g => { if (typeof g.minRating === 'number') delete g.minRating; }, note: 'Não achei com essa nota mínima — então foquei no restante do que você pediu.' },
+    { tweak: g => { if (typeof g.maxPrep === 'number') delete g.maxPrep; }, note: 'Flexibilizei o tempo de preparo para ampliar as opções.' },
+    { tweak: g => { if (g.category) delete g.category; }, note: 'Ampliei para além da categoria para te trazer ideias parecidas.' },
+    { tweak: g => { if (g.difficulty) delete g.difficulty; }, note: 'Incluí outras dificuldades para não te deixar sem opção.' },
   ];
 
   let current = applyFiltersBase(rows, { ...f });
@@ -388,12 +381,11 @@ function progressiveRelax(rows: RecipeRow[], f: ParsedFilters): { list: RecipeRo
     }
   }
 
-  // Último recurso: tudo
-  return { list: rows.slice(), note: 'Mostrando sugestões gerais.' };
+  return { list: rows.slice(), note: 'Não encontrei exatamente o que você pediu — estas são boas alternativas do nosso site.' };
 }
 
 // =============================================================================
-/** Intents + respostas utilitárias (UMA ÚNICA VEZ) */
+// Intents e respostas utilitárias
 // =============================================================================
 type Intent =
   | 'recipe_search'
@@ -415,7 +407,8 @@ function detectIntent(q: string): Intent {
     CATEGORY_LABELS.some(cat => t.includes(normalize(cat))) ||
     Object.values(DIFFICULTY_SYNONYMS).some(syns => syns.some(s => t.includes(normalize(s)))) ||
     /\b(15|30)\b\s*(min|mins|minutos)|\b(r[aá]pid|m[eé]di|longo)\b/.test(t) ||
-    /\b(4|4[.,]5|5)\s*(\+|estrelas?|\*)?/.test(t);
+    /\b(4|4[.,]5|5)\s*(\+|estrelas?|\*)?/.test(t) ||
+    /\bf[aá]cei(s|s)?\b/.test(t);
 
   if (looksLikeRecipe) return 'recipe_search';
 
@@ -448,11 +441,7 @@ function siteInfoAnswer(): AIResponse {
     '• **Tempo de preparo**: Rápido (≤15 min), Médio (≤30 min), Longo (>30 min);',
     '• **Avaliação mínima**: 4+, 4.5+ ou 5⭐.',
     '',
-    'Peça à vontade, em linguagem natural:',
-    '— "Receitas **fáceis**";',
-    '— "**Vegana** **rápida** 4.5+ ⭐";',
-    '— "**Sem glúten** em **30 min**";',
-    '— "**Baixo carbo** **difícil** 5⭐".',
+    'Pode falar comigo do seu jeito: “receitas fáceis”, “vegana rápida 4.5+”, “sem glúten em 30 min”… eu entendo 😉',
   ].join('\n');
   return { content, recipes: [], suggestions: ['fáceis', 'sem glúten 30 min', 'baixo carbo 5⭐'] };
 }
@@ -460,7 +449,7 @@ function siteInfoAnswer(): AIResponse {
 function greetingsAnswer(): AIResponse {
   return {
     content:
-      'Oi! 👋 Sou a assistente do NutriChefe. Posso sugerir receitas, dar dicas de cozinha e responder dúvidas de nutrição (educativas). O que você quer hoje?',
+      'Oi! 👋 Sou a assistente do NutriChefe. Quer ideias de receitas, dicas de cozinha ou informações nutricionais? Tô aqui pra ajudar!',
     recipes: [],
     suggestions: ['receitas fáceis', 'vegana rápida', 'dica para air fryer'],
   };
@@ -473,31 +462,21 @@ function thanksAnswer(): AIResponse {
 function helpAnswer(): AIResponse {
   return {
     content:
-      'Você pode me pedir assim:\n• "receitas fáceis";\n• "vegana 15 min 4.5+";\n• "substituição do ovo no bolo";\n• "dica para grelhar frango";\n• "informações nutricionais do Bolo de Banana".',
+      'Pode pedir assim:\n• "receitas fáceis"\n• "vegana 15 min 4.5+"\n• "substituição do ovo no bolo"\n• "dica para grelhar frango"\n• "info nutricional do Bolo de Banana".',
     recipes: [],
-    suggestions: ['substituir leite?', 'sem glúten fácil', 'rica em proteína 30 min'],
+    suggestions: ['sem glúten fácil', 'rica em proteína 30 min', 'baixo carbo 5⭐'],
   };
 }
 
 function cookingTipsAnswer(q: string): AIResponse {
   const t = normalize(q);
   const tips: string[] = [];
-
-  if (/\barroz\b/.test(t)) {
-    tips.push('Arroz soltinho: lave até a água sair clara; refogue; use 1:1,6 de arroz:água; fogo baixo com panela semi-tampada; descansar 5 min.');
-  }
-  if (/\bfrango|peito\b/.test(t)) {
-    tips.push('Frango suculento: sele bem quente 2–3 min por lado, finalize tampado; descanse 3–5 min antes de cortar.');
-  }
-  if (/\bforno|assar\b/.test(t)) {
-    tips.push('Assados: pré-aqueça; não lotar assadeira; use termômetro (frango 74°C no centro).');
-  }
-  if (/\bair ?fryer\b/.test(t)) {
-    tips.push('Air fryer: pré-aqueça; pincele óleo; vire na metade; não sobrecarregue o cesto.');
-  }
-  if (tips.length === 0) tips.push('Regra de ouro: pré-aqueça, tempere com antecedência, não lote panelas e dê descanso às carnes.');
-
-  return { content: tips.join('\n'), recipes: [], suggestions: ['receitas rápidas', 'dica para legumes assados'] };
+  if (/\barroz\b/.test(t)) tips.push('Arroz soltinho: lave até a água sair clara; refogue; 1:1,6 arroz:água; fogo baixo; descansar 5 min.');
+  if (/\bfrango|peito\b/.test(t)) tips.push('Frango suculento: sele bem quente 2–3 min por lado; finalize tampado; descanse 3–5 min antes de cortar.');
+  if (/\bforno|assar\b/.test(t)) tips.push('Assados: pré-aqueça; não lotar assadeira; use termômetro (frango 74°C no centro).');
+  if (/\bair ?fryer\b/.test(t)) tips.push('Air fryer: pré-aqueça; pincele óleo; vire na metade; não sobrecarregue o cesto.');
+  if (!tips.length) tips.push('Regra de ouro: pré-aqueça, tempere com antecedência, não lote panelas e dê descanso às carnes.');
+  return { content: tips.join('\n'), recipes: [], suggestions: ['receitas rápidas', 'legumes assados crocantes'] };
 }
 
 function substitutionsAnswer(q: string): AIResponse {
@@ -506,53 +485,35 @@ function substitutionsAnswer(q: string): AIResponse {
   if (/\bovo\b/.test(t)) lines.push('Sem ovo: 1 ovo = 1 c.s. linhaça/chia moída + 3 c.s. água (gel 10 min) ou 1/4 xíc. purê de maçã/banana.');
   if (/\bleite|lactose\b/.test(t)) lines.push('Sem leite: bebidas vegetais (aveia, amêndoas, soja). Em molhos, leite de coco dá corpo.');
   if (/\bgluten|gl[úu]ten\b/.test(t)) lines.push('Sem glúten: blend (arroz + fécula + polvilho) + goma xantana (0,5–1%).');
-  if (/\ba[çc][uú]car\b/.test(t)) lines.push('Menos açúcar: reduza 10–20% sem afetar estrutura; use adoçantes culinários conforme proporção do fabricante.');
-  if (lines.length === 0) {
-    lines.push('Substituições comuns:\n• Ovo: linhaça/chia gel ou purê de frutas\n• Leite: bebidas vegetais\n• Trigo: blends sem glúten + xantana\n• Açúcar: reduzir 10–20% ou adoçante culinário');
-  }
+  if (/\ba[çc][uú]car\b/.test(t)) lines.push('Menos açúcar: reduza 10–20% sem afetar estrutura; adoçantes culinários conforme o fabricante.');
+  if (!lines.length)
+    lines.push('Substituições úteis:\n• Ovo: linhaça/chia gel ou purê de frutas\n• Leite: bebidas vegetais\n• Trigo: mixes sem glúten + xantana\n• Açúcar: -10–20% ou adoçante culinário');
   return { content: lines.join('\n'), recipes: [], suggestions: ['bolos sem ovo', 'pão sem glúten', 'vegana fácil'] };
 }
 
 function nutritionGeneralAnswer(q: string): AIResponse {
   const t = normalize(q);
   const blocks: string[] = [];
-
-  if (/\bprote[ií]na|ganhar massa|hipertrof|m[úu]sculo/.test(t)) {
-    blocks.push('Proteína: 1.2–2.0 g/kg/dia distribuídas; fontes magras e/ou vegetais (soja, leguminosas).');
-  }
-  if (/\bemagrec|déficit|deficit/.test(t)) {
-    blocks.push('Emagrecimento: déficit calórico sustentável + fibras (vegetais, integrais) e proteína para saciedade.');
-  }
-  if (/\bcarbo|energia|corrida|bike|treino/.test(t)) {
-    blocks.push('Carboidratos: integrais no dia a dia; para treinos longos, carbo de rápida digestão antes/durante; pós-treino com proteína.');
-  }
-  if (/\bgordur|colesterol|hdl|ldl/.test(t)) {
-    blocks.push('Gorduras: priorize mono e poli-insaturadas (azeite, abacate, castanhas, peixes); limite trans e saturadas.');
-  }
-  if (/\bfibra|intest|saciedad/.test(t)) {
-    blocks.push('Fibras: 25–35 g/dia; aumente gradualmente e hidrate bem. Fontes: feijões, aveia, frutas, verduras.');
-  }
-  if (blocks.length === 0) {
-    blocks.push('Nutrição: equilíbrio de macros, alimentos minimamente processados, fibras e hidratação adequada.');
-  }
-
+  if (/\bprote[ií]na|ganhar massa|hipertrof|m[úu]sculo/.test(t)) blocks.push('Proteína: 1.2–2.0 g/kg/dia distribuídas; fontes magras e/ou vegetais (soja, leguminosas).');
+  if (/\bemagrec|déficit|deficit/.test(t)) blocks.push('Emagrecimento: déficit calórico sustentável + fibras (vegetais, integrais) e proteína para saciedade.');
+  if (/\bcarbo|energia|corrida|bike|treino/.test(t)) blocks.push('Carboidratos: integrais no dia a dia; para treinos longos, carbo de fácil digestão antes/durante; pós com proteína.');
+  if (/\bgordur|colesterol|hdl|ldl/.test(t)) blocks.push('Gorduras: priorize mono/poli-insaturadas (azeite, abacate, castanhas, peixes); limite trans e saturadas.');
+  if (/\bfibra|intest|saciedad/.test(t)) blocks.push('Fibras: 25–35 g/dia; aumente gradualmente e hidrate bem. Fontes: feijões, aveia, frutas, verduras.');
+  if (!blocks.length) blocks.push('Nutrição: equilíbrio de macros, alimentos minimamente processados, fibras e hidratação adequada.');
   blocks.push('\n⚠️ Orientação educativa — não substitui acompanhamento profissional.');
-
-  return { content: blocks.join('\n'), recipes: [], suggestions: ['rica em proteína 30 min', 'baixo carboidrato fácil'] };
+  return { content: blocks.join('\n'), recipes: [], suggestions: ['rica em proteína 30 min', 'baixo carbo fácil'] };
 }
 
 function nutritionForRecipeAnswer(query: string, rows: RecipeRow[]): AIResponse {
   const t = normalize(query);
   const found = rows.find(r => normalize(r.title).includes(t)) || rows.find(r => t.includes(normalize(r.title)));
-
   if (!found) {
     return {
       content: 'Me diga o **nome exato** da receita do site que você quer os dados nutricionais (pode copiar do card).',
       recipes: [],
-      suggestions: ['informações nutricionais do "Bolo de Banana Fit"'],
+      suggestions: ['info nutricional do "Bolo de Banana Fit"'],
     };
   }
-
   const nf = found.nutrition_facts || {};
   const parts: string[] = [
     `**${found.title}** — info nutricional (por porção):`,
@@ -567,14 +528,15 @@ function nutritionForRecipeAnswer(query: string, rows: RecipeRow[]): AIResponse 
 }
 
 // =============================================================================
-/** API pública: recomendação por linguagem natural (com sort, count e relax) */
+// Recomendação (com sort, count, relax e mensagens humanas)
 // =============================================================================
 export async function recommendRecipesFromText(query: string): Promise<AIResponse> {
   const f0 = parseQueryToFilters(query);
   const rows = await fetchRecipesFromDB();
 
-  // Caso “genérico” — usuário só disse “receitas”/“quero receitas fáceis”, etc.
-  const onlyGeneric = !f0.category && !f0.difficulty && !f0.maxPrep && !f0.minPrep && !f0.minRating && !f0.plainSearch;
+  const onlyGeneric =
+    !f0.category && !f0.difficulty && !f0.maxPrep && !f0.minPrep && !f0.minRating && !f0.plainSearch;
+
   let list = applyFiltersBase(rows, f0);
 
   // Relaxamento se vazio
@@ -595,13 +557,13 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
   if (cards.length === 0) {
     return {
       content:
-        'Não encontrei receitas com esses critérios. Tente "vegana fácil", "rápida 4.5+" ou "sem glúten em 15 min".',
+        'Hmm, não achei nada exatamente assim. Que tal tentar “vegana fácil”, “rápida 4.5+” ou “sem glúten em 15 min”?',
       recipes: [],
-      suggestions: ['receitas fáceis', 'vegana rápida', 'rico em proteína 5⭐'],
+      suggestions: ['receitas fáceis', 'vegana rápida', 'rica em proteína 5⭐'],
     };
   }
 
-  // Mensagem natural
+  // Mensagem humanizada
   const bits: string[] = [];
   if (f0.category) bits.push(f0.category);
   if (f0.difficulty) bits.push(f0.difficulty === 'easy' ? 'fáceis' : f0.difficulty === 'medium' ? 'médias' : 'difíceis');
@@ -612,21 +574,33 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
   if (sortKey === 'prepTime') bits.push('mais rápidas primeiro');
   if (sortKey === 'newest') bits.push('mais recentes');
 
-  const prefix =
-    onlyGeneric && !f0.limit
-      ? 'Aqui estão algumas das **mais bem avaliadas** no site'
-      : `Encontrei ${sorted.length} receita(s)${bits.length ? ` (${bits.join(', ')})` : ''}`;
+  const shown = cards.length;
+  const total = list.length;
 
-  const note = relaxedNote ? `\n_${relaxedNote}_` : '';
+  let prefix: string;
+  if (onlyGeneric && !f0.limit) {
+    prefix = 'Separei algumas das **mais bem avaliadas** do site ✨';
+  } else if (f0.difficulty && !f0.category && !f0.maxPrep && !f0.minPrep && !f0.minRating) {
+    // caso clássico: “receitas fáceis”
+    prefix = `Olha só estas **${bits.join(', ') || 'receitas'}** que separei pra você 👇`;
+  } else {
+    prefix = `Encontrei ${total} opção(ões)${bits.length ? ` — ${bits.join(', ')}` : ''}.`;
+  }
+
+  const relaxLine = relaxedNote ? `\n_${relaxedNote}_` : '';
+
   return {
-    content: `${prefix}. Mostrando ${cards.length}.${note}`,
+    content: `${prefix}\nMostrando ${shown}.${relaxLine}`,
     recipes: cards,
-    suggestions: cards.length < 5 ? ['receitas fáceis', 'rápidas 15 min', '5 ⭐'] : [],
+    suggestions:
+      shown < 5
+        ? ['receitas rápidas', 'vegana fácil', '5 ⭐']
+        : [],
   };
 }
 
 // =============================================================================
-/** Supabase: configurações / conversas / mensagens */
+// Supabase: config / conversas / mensagens
 // =============================================================================
 export async function getAIConfiguration(nutritionistId: string): Promise<AIConfiguration | null> {
   const { data, error } = await supabase
@@ -732,8 +706,54 @@ export async function createAIMessage(message: Omit<AIMessage, 'id' | 'created_a
 }
 
 // =============================================================================
-/** Orquestração principal — compatível com duas assinaturas */
+// Orquestração principal — compatível com duas assinaturas
 // =============================================================================
+type Intent =
+  | 'recipe_search'
+  | 'nutrition_recipe'
+  | 'nutrition_general'
+  | 'cooking_tips'
+  | 'substitutions'
+  | 'site_info'
+  | 'greetings'
+  | 'thanks'
+  | 'help'
+  | 'fallback';
+
+function detectIntent(q: string): Intent {
+  const t = normalize(q);
+
+  const looksLikeRecipe =
+    /\breceit/.test(t) ||
+    CATEGORY_LABELS.some(cat => t.includes(normalize(cat))) ||
+    Object.values(DIFFICULTY_SYNONYMS).some(syns => syns.some(s => t.includes(normalize(s)))) ||
+    /\b(15|30)\b\s*(min|mins|minutos)|\b(r[aá]pid|m[eé]di|longo)\b/.test(t) ||
+    /\b(4|4[.,]5|5)\s*(\+|estrelas?|\*)?/.test(t) ||
+    /\bf[aá]cei(s|s)?\b/.test(t);
+
+  if (looksLikeRecipe) return 'recipe_search';
+
+  if (/\bnutri(c|ç)[aã]o|\bcaloria|\bprote[ií]na|\bcarbo|\bgordur|fibra|\bmacro|\bmicro/.test(t)) {
+    if (/\breceit|nome|t[ií]tulo|\bdessa\b|\bdesta\b/.test(t)) return 'nutrition_recipe';
+    return 'nutrition_general';
+  }
+
+  if (/\bdica|\bt[eé]cnica|\bassar|\bfritar|\btemperatur|ponto|forno|frigideira|air ?fryer|panela/.test(t))
+    return 'cooking_tips';
+
+  if (/\bsubstit|posso trocar|alternativa|sem (ovo|leite|gl[úu]ten|a[çc]ucar|lactose)/.test(t))
+    return 'substitutions';
+
+  if (/\bsite|plano|assinatura|categorias?|filtros?|avalia[cç][aã]o|min[ií]ma|privacidade|dados|como funciona|sobre\b/.test(t))
+    return 'site_info';
+
+  if (/\b(oi|ol[aá]|bom dia|boa tarde|boa noite|hello|hey)\b/.test(t)) return 'greetings';
+  if (/\b(obrigad|valeu|agrade[cç]o)\b/.test(t)) return 'thanks';
+  if (/\bajuda|como usar|n[aã]o sei|d[úu]vida\b/.test(t)) return 'help';
+
+  return 'fallback';
+}
+
 // Antiga: processAIMessage(content: string, ...)
 // Nova:   processAIMessage({ conversationId, content, senderId })
 export async function processAIMessage(
@@ -781,7 +801,7 @@ export async function processAIMessage(
     default: {
       const rows = await fetchRecipesFromDB();
       const hint = rows.length
-        ? 'Você pode pedir por **categoria**, **dificuldade**, **tempo** e **avaliação**. Ex.: "vegana fácil 15 min 4.5+"'
+        ? 'Dica: peça por **categoria**, **dificuldade**, **tempo** e **avaliação**. Ex.: "vegana fácil 15 min 4.5+"'
         : 'Posso te ajudar com dúvidas de nutrição e dicas de cozinha.';
       return {
         content: `Entendi! ${hint}`,
