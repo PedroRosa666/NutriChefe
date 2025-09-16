@@ -52,9 +52,10 @@ interface AppRecipeCard {
 // Vocabulário
 // =============================================================================
 const DIFFICULTY_SYNONYMS: Record<Difficulty, string[]> = {
-  easy: ['fácil', 'facil', 'simples', 'iniciante', 'tranquila', 'descomplicada', 'facinhas'],
+  // inclui plural e diminutivos
+  easy: ['fácil', 'facil', 'fáceis', 'faceis', 'facinha', 'facinho', 'facinhas', 'facinhos', 'simples', 'iniciante', 'tranquila', 'descomplicada'],
   medium: ['médio', 'medio', 'intermediário', 'intermediario', 'média', 'mediana'],
-  hard: ['difícil', 'dificil', 'avançado', 'avancado', 'complexo', 'trabalhosa'],
+  hard: ['difícil', 'dificil', 'difíceis', 'difíceis', 'avançado', 'avancado', 'complexo', 'trabalhosa'],
 };
 
 const CATEGORY_LABELS: SiteCategory[] = [
@@ -74,6 +75,13 @@ const CATEGORY_SYNONYMS: Record<SiteCategory, string[]> = {
 };
 
 const NUM_RE = /(\d+(?:[.,]\d+)?)/;
+
+// Palavras genéricas que não devem virar busca de texto
+const STOPWORDS = new Set([
+  'receita', 'receitas', 'quero', 'queria', 'gostaria', 'me', 'mostra', 'mostrar', 'mostre', 'traga', 'trazer',
+  'uma', 'umas', 'um', 'uns', 'de', 'do', 'da', 'no', 'na', 'em', 'pra', 'para', 'por', 'a', 'o', 'as', 'os',
+  'ai', 'ia', 'porfavor', 'por favor'
+]);
 
 // =============================================================================
 // Utils
@@ -121,10 +129,10 @@ function mapRowToCard(r: RecipeRow): AppRecipeCard {
 function normalizeDifficultyValue(value: string): Difficulty {
   const n = normalize(value);
   if (n === 'easy' || n === 'medium' || n === 'hard') return n as Difficulty;
-  if (n.includes('facil') || n.includes('fácil') || n.includes('simples')) return 'easy';
-  if (n.includes('medi')) return 'medium';
-  if (n.includes('dific')) return 'hard';
-  return 'medium'; // fallback seguro
+  if (/\bfac(eis|il|inha|inho|inhas|inhos)?\b/.test(n) || n.includes('simples')) return 'easy';
+  if (/\bmedi/.test(n)) return 'medium';
+  if (/\bdific/.test(n)) return 'hard';
+  return 'medium';
 }
 
 // =============================================================================
@@ -140,6 +148,7 @@ interface ParsedFilters {
   plainSearch?: string;
   limit?: number;
   sort?: SortKey;
+  hasStructuredFilter?: boolean; // novo: indica se achamos categoria/dificuldade/tempo/nota
 }
 
 function parseCount(text: string): number | undefined {
@@ -157,6 +166,17 @@ function parseSort(text: string): SortKey | undefined {
   return undefined;
 }
 
+function pickPlainSearchSource(q: string): string | undefined {
+  const tokens = normalize(q)
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter(tok => !STOPWORDS.has(tok))
+    .join(' ')
+    .trim();
+  if (!tokens || tokens.length <= 2) return undefined;
+  return tokens;
+}
+
 function parseQueryToFilters(q: string): ParsedFilters {
   const text = normalize(q);
   const f: ParsedFilters = {};
@@ -170,14 +190,18 @@ function parseQueryToFilters(q: string): ParsedFilters {
     }
   }
 
-  // Dificuldade
+  // Dificuldade (sinônimos + regex plural/diminutivos)
   for (const [key, syns] of Object.entries(DIFFICULTY_SYNONYMS)) {
     if (syns.some(s => text.includes(normalize(s)))) {
       f.difficulty = key as Difficulty;
       break;
     }
   }
-  if (!f.difficulty && (/\bm[eé]di[oa]\b/.test(text))) f.difficulty = 'medium';
+  if (!f.difficulty) {
+    if (/\bfac(eis|il|inha|inho|inhas|inhos)?\b/.test(text)) f.difficulty = 'easy';
+    else if (/\bm[eé]di[oa]\b/.test(text)) f.difficulty = 'medium';
+    else if (/\bdif[ií]cil|\bdific\b/.test(text)) f.difficulty = 'hard';
+  }
 
   // Tempo
   if (/\br[aá]pid[oa]s?\b/.test(text) || /\b<=?\s*15\b/.test(text)) f.maxPrep = 15;
@@ -205,13 +229,19 @@ function parseQueryToFilters(q: string): ParsedFilters {
   if (/\b4[.,]5\+\b/.test(text)) f.minRating = Math.max(f.minRating ?? 0, 4.5);
   if (/\b5\s*(\*|estrelas?)?\b/.test(text)) f.minRating = 5;
 
+  // “todas/qualquer”
   if (/\btod[ao]s?\b|\bqualquer\b/.test(text)) f.wantAll = true;
 
+  // quantidade e ordenação
   f.limit = parseCount(text) ?? undefined;
   f.sort = parseSort(text) ?? undefined;
 
-  const cleaned = (q || '').trim();
-  if (cleaned && cleaned.length > 2) f.plainSearch = cleaned;
+  // marcou se há filtro estruturado
+  f.hasStructuredFilter = Boolean(f.category || f.difficulty || f.maxPrep || f.minPrep || f.minRating);
+
+  // termo livre (só quando não há filtros estruturados e sobra algo relevante)
+  const maybePlain = pickPlainSearchSource(q);
+  if (!f.hasStructuredFilter && maybePlain) f.plainSearch = maybePlain;
 
   return f;
 }
@@ -220,7 +250,6 @@ function parseQueryToFilters(q: string): ParsedFilters {
 // DB (sem JOIN declarativo)
 // =============================================================================
 async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
-  // Receitas
   const { data: recipeRows, error: recipesErr } = await supabase
     .from('recipes')
     .select('id, title, description, image, prep_time, difficulty, category, rating, nutrition_facts, author_id, created_at, updated_at');
@@ -290,7 +319,7 @@ async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
       description: r.description,
       image: r.image,
       prep_time: r.prep_time,
-      difficulty: normalizeDifficultyValue(r.difficulty), // ✅ correção aqui
+      difficulty: normalizeDifficultyValue(r.difficulty),
       category: r.category || '',
       rating: effectiveRating,
       author_id: r.author_id,
@@ -360,35 +389,33 @@ function capAndMap(list: RecipeRow[], limit = 12): AppRecipeCard[] {
   return list.slice(0, limit).map(mapRowToCard);
 }
 
-// Relaxamento progressivo (mensagens humanizadas)
-function progressiveRelax(rows: RecipeRow[], f: ParsedFilters): { list: RecipeRow[]; note: string | null } {
-  const attempts: Array<{ tweak: (g: ParsedFilters) => void; note: string }> = [
-    { tweak: g => { if (typeof g.minRating === 'number') delete g.minRating; }, note: 'Não achei com essa nota mínima — então foquei no restante do que você pediu.' },
-    { tweak: g => { if (typeof g.maxPrep === 'number') delete g.maxPrep; }, note: 'Flexibilizei o tempo de preparo para ampliar as opções.' },
-    { tweak: g => { if (g.category) delete g.category; }, note: 'Ampliei para além da categoria para te trazer ideias parecidas.' },
-    { tweak: g => { if (g.difficulty) delete g.difficulty; }, note: 'Incluí outras dificuldades para não te deixar sem opção.' },
+// Relaxamento progressivo (sem vazar nota para o usuário)
+function progressiveRelax(rows: RecipeRow[], f: ParsedFilters): { list: RecipeRow[] } {
+  const attempts: Array<(g: ParsedFilters) => void> = [
+    g => { if (typeof g.minRating === 'number') delete g.minRating; },
+    g => { if (typeof g.maxPrep === 'number') delete g.maxPrep; },
+    g => { if (g.category) delete g.category; },
+    g => { if (g.difficulty) delete g.difficulty; },
   ];
 
   let current = applyFiltersBase(rows, { ...f });
-  if (current.length > 0) return { list: current, note: null };
+  if (current.length > 0) return { list: current };
 
-  for (const step of attempts) {
+  for (const tweak of attempts) {
     const g = { ...f };
-    step.tweak(g);
+    tweak(g);
     current = applyFiltersBase(rows, g);
     if (current.length > 0) {
-      return { list: current, note: step.note };
+      return { list: current };
     }
   }
 
-  return { list: rows.slice(), note: 'Não encontrei exatamente o que você pediu — estas são boas alternativas do nosso site.' };
+  return { list: rows.slice() };
 }
 
 // =============================================================================
 // Intents e respostas utilitárias
 // =============================================================================
-
-// ====== INTENTS (NOMES NOVOS PARA EVITAR COLISÃO) ======
 type ChatIntent =
   | 'recipe_search'
   | 'nutrition_recipe'
@@ -410,7 +437,7 @@ function detectUserIntent(q: string): ChatIntent {
     Object.values(DIFFICULTY_SYNONYMS).some(syns => syns.some(s => t.includes(normalize(s)))) ||
     /\b(15|30)\b\s*(min|mins|minutos)|\b(r[aá]pid|m[eé]di|longo)\b/.test(t) ||
     /\b(4|4[.,]5|5)\s*(\+|estrelas?|\*)?/.test(t) ||
-    /\bf[aá]cei(s)?\b/.test(t);
+    /\bfac(eis|il|inha|inho|inhas|inhos)?\b/.test(t);
 
   if (looksLikeRecipe) return 'recipe_search';
 
@@ -435,10 +462,9 @@ function detectUserIntent(q: string): ChatIntent {
   return 'fallback';
 }
 
-// ===== Compatibilidade com código antigo (NÃO remover!) =====
+// Compat com código antigo
 type Intent = ChatIntent;
 const detectIntent = detectUserIntent;
-
 
 function siteInfoAnswer(): AIResponse {
   const content = [
@@ -541,17 +567,13 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
   const f0 = parseQueryToFilters(query);
   const rows = await fetchRecipesFromDB();
 
-  const onlyGeneric =
-    !f0.category && !f0.difficulty && !f0.maxPrep && !f0.minPrep && !f0.minRating && !f0.plainSearch;
-
+  const onlyGeneric = !f0.hasStructuredFilter && !f0.plainSearch;
   let list = applyFiltersBase(rows, f0);
 
-  // Relaxamento se vazio
-  let relaxedNote: string | null = null;
+  // Relaxamento se vazio (sem exibir nota)
   if (list.length === 0) {
     const pr = progressiveRelax(rows, f0);
     list = pr.list;
-    relaxedNote = pr.note;
   }
 
   // Ordenação + limite
@@ -564,7 +586,7 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
   if (cards.length === 0) {
     return {
       content:
-        'Hmm, não achei nada exatamente assim. Que tal tentar “vegana fácil”, “rápida 4.5+” ou “sem glúten em 15 min”?',
+        'Não achei nada com esses critérios. Quer tentar “vegana fácil”, “rápida 4.5+” ou “sem glúten em 15 min”?',
       recipes: [],
       suggestions: ['receitas fáceis', 'vegana rápida', 'rica em proteína 5⭐'],
     };
@@ -584,25 +606,19 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
   const shown = cards.length;
   const total = list.length;
 
-  let prefix: string;
-  if (onlyGeneric && !f0.limit) {
-    prefix = 'Separei algumas das **mais bem avaliadas** do site ✨';
-  } else if (f0.difficulty && !f0.category && !f0.maxPrep && !f0.minPrep && !f0.minRating) {
-    // caso clássico: “receitas fáceis”
-    prefix = `Olha só estas **${bits.join(', ') || 'receitas'}** que separei pra você 👇`;
+  let content: string;
+  if (f0.difficulty && !f0.category && !f0.maxPrep && !f0.minPrep && !f0.minRating) {
+    content = `Separei estas **${bits.join(', ') || 'receitas'}** pra você 👇\nMostrando ${shown}.`;
+  } else if (onlyGeneric && !f0.limit) {
+    content = `Separei algumas das **mais bem avaliadas** do site ✨\nMostrando ${shown}.`;
   } else {
-    prefix = `Encontrei ${total} opção(ões)${bits.length ? ` — ${bits.join(', ')}` : ''}.`;
+    content = `Encontrei ${total} ${total === 1 ? 'opção' : 'opções'}${bits.length ? ` — ${bits.join(', ')}` : ''}.\nMostrando ${shown}.`;
   }
 
-  const relaxLine = relaxedNote ? `\n_${relaxedNote}_` : '';
-
   return {
-    content: `${prefix}\nMostrando ${shown}.${relaxLine}`,
+    content,
     recipes: cards,
-    suggestions:
-      shown < 5
-        ? ['receitas rápidas', 'vegana fácil', '5 ⭐']
-        : [],
+    suggestions: shown < 5 ? ['receitas rápidas', 'vegana fácil', '5 ⭐'] : [],
   };
 }
 
@@ -715,7 +731,6 @@ export async function createAIMessage(message: Omit<AIMessage, 'id' | 'created_a
 // =============================================================================
 // Orquestração principal — compatível com duas assinaturas
 // =============================================================================
-
 // Antiga: processAIMessage(content: string, ...)
 // Nova:   processAIMessage({ conversationId, content, senderId })
 export async function processAIMessage(
@@ -727,7 +742,7 @@ export async function processAIMessage(
   if (typeof arg1 === 'string') content = arg1;
   else if (arg1 && typeof arg1 === 'object' && 'content' in arg1) content = toSafeString(arg1.content);
 
-  const intent = detectIntent(content);
+  const intent: ChatIntent = detectUserIntent(content);
 
   switch (intent) {
     case 'recipe_search':
