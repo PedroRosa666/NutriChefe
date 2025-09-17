@@ -625,7 +625,7 @@ function humanizeIntro(
     f0: ParsedFilters;
     shown: number;
     total: number;
-    matchedExactly: boolean; // se não precisou relaxar
+    matchedExactly: boolean;
     sortKey?: SortKey;
   }
 ): string {
@@ -641,11 +641,9 @@ function humanizeIntro(
   if (sortKey === 'newest') tags.push('mais recentes');
   if (sortKey === 'rating') tags.push('bem avaliadas');
 
-  // ✅ usa conjunção correta em vez de " • "
   const tagStr = joinTagsBR(tags);
   const userAskedCount = typeof f0.limit === 'number';
 
-  // ✅ frases sem interrogação; fecham com dois-pontos
   const introsComFiltro = [
     `Separei estas ${tagStr ? `**${tagStr}**` : 'opções'} pra você:`,
     `Olha só algumas ideias ${tagStr ? `**${tagStr}**` : ''}:`,
@@ -669,12 +667,11 @@ function humanizeIntro(
     : pick(introsGerais, seed);
 
   const lines: string[] = [intro];
+
   if (userAskedCount) {
     lines.push(shown < (f0.limit ?? shown) ? `Consegui **${shown}** no momento.` : `Mostrando **${shown}** como você pediu.`);
-  } else {
-    if (!f0.hasStructuredFilter && !f0.plainSearch) {
-      lines.push(`Mostrando ${shown}.`);
-    }
+  } else if (!f0.hasStructuredFilter && !f0.plainSearch) {
+    lines.push(`Mostrando ${shown}.`);
   }
 
   if (!matchedExactly && shown > 0 && !userAskedCount) {
@@ -683,7 +680,8 @@ function humanizeIntro(
       'Dei uma flexionada nos filtros pra te trazer opções parecidas.',
       'Expandi levemente os critérios pra não te deixar na mão.',
     ];
-    lines.push(`_${pick(softNotes, seed)}_`);
+    // ✅ sem itálico/underscore
+    lines.push(pick(softNotes, seed));
   }
 
   return lines.join('\n');
