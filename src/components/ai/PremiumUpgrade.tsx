@@ -94,7 +94,7 @@ export function PremiumUpgrade() {
           
           <div className="text-center mb-6">
             <span className="text-4xl font-bold text-purple-600 dark:text-purple-400">
-              R$ 29,90
+              R$ 19,90
             </span>
             <span className="text-gray-600 dark:text-gray-400 ml-2">/mês</span>
           </div>
