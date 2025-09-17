@@ -602,6 +602,16 @@ function pick<T>(arr: T[], seed = 0): T {
   const idx = seed % arr.length;
   return arr[idx];
 }
+
+// ✅ NOVO: junta tags de forma natural em PT-BR: "a", "b e c"
+function joinTagsBR(tags: string[]): string {
+  const t = tags.filter(Boolean);
+  if (t.length === 0) return '';
+  if (t.length === 1) return t[0];
+  if (t.length === 2) return `${t[0]} e ${t[1]}`;
+  return `${t.slice(0, -1).join(', ')} e ${t[t.length - 1]}`;
+}
+
 function humanizeIntro(
   q: string,
   opts: {
@@ -624,18 +634,20 @@ function humanizeIntro(
   if (sortKey === 'newest') tags.push('mais recentes');
   if (sortKey === 'rating') tags.push('bem avaliadas');
 
-  const tagStr = tags.length ? tags.join(' • ') : '';
+  // ✅ usa conjunção correta em vez de " • "
+  const tagStr = joinTagsBR(tags);
   const userAskedCount = typeof f0.limit === 'number';
 
+  // ✅ frases sem interrogação; fecham com dois-pontos
   const introsComFiltro = [
-    `Separei estas ${tagStr ? `**${tagStr}**` : 'opções'} pra você 👇`,
+    `Separei estas ${tagStr ? `**${tagStr}**` : 'opções'} pra você:`,
     `Olha só algumas ideias ${tagStr ? `**${tagStr}**` : ''}:`,
-    `Que tal começar por estas ${tagStr ? `**${tagStr}**` : 'sugestões'}?`,
+    `Que tal começar por estas ${tagStr ? `**${tagStr}**` : 'sugestões'}:`,
   ];
   const introsGerais = [
-    'Separei algumas das favoritas do pessoal ✨',
-    'Aqui vão algumas ideias legais do nosso acervo 👇',
-    'Peguei algumas sugestões que costumam agradar 😉',
+    'Separei algumas das favoritas do pessoal:',
+    'Aqui vão algumas ideias legais do nosso acervo:',
+    'Peguei algumas sugestões que costumam agradar:',
   ];
 
   const hasOnlyDifficulty =
@@ -669,6 +681,7 @@ function humanizeIntro(
 
   return lines.join('\n');
 }
+
 
 // =============================================================================
 // Recomendação (texto natural, contagem esperta, relaxamento discreto)
