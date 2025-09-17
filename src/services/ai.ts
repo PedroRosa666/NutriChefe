@@ -52,10 +52,10 @@ interface AppRecipeCard {
 // Vocabulário
 // =============================================================================
 const DIFFICULTY_SYNONYMS: Record<Difficulty, string[]> = {
-  // inclui plural e diminutivos
-  easy: ['fácil', 'facil', 'fáceis', 'faceis', 'facinha', 'facinho', 'facinhas', 'facinhos', 'simples', 'iniciante', 'tranquila', 'descomplicada'],
-  medium: ['médio', 'medio', 'intermediário', 'intermediario', 'média', 'mediana'],
-  hard: ['difícil', 'dificil', 'difíceis', 'avançado', 'avancado', 'complexo', 'trabalhosa'],
+  // inclui plural, diminutivos e inglês
+  easy: ['fácil', 'facil', 'fáceis', 'faceis', 'facinha', 'facinho', 'facinhas', 'facinhos', 'simples', 'iniciante', 'tranquila', 'descomplicada', 'easy', 'simple', 'beginner', 'quick'],
+  medium: ['médio', 'medio', 'intermediário', 'intermediario', 'média', 'mediana', 'medium', 'average', 'intermediate', 'normal'],
+  hard: ['difícil', 'dificil', 'difíceis', 'dificeis', 'avançado', 'avancado', 'complexo', 'trabalhosa', 'desafiadora', 'hard', 'difficult', 'advanced', 'complex', 'challenging'],
 };
 
 const CATEGORY_LABELS: SiteCategory[] = [
@@ -109,10 +109,13 @@ function toSafeString(v: any): string {
 }
 
 function normalize(s: any) {
+  // ⚠️ Corrigido: removendo acentos SEM inserir espaços (antes colocava ' ')
   return toSafeString(s)
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, ' ');
+    .replace(/[\u0300-\u036f]/g, '') // <-- aqui está a correção principal
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function round1(n: number | null | undefined): number {
@@ -158,7 +161,7 @@ function normalizeDifficultyValue(value: string): Difficulty {
   if (n === 'easy' || n === 'medium' || n === 'hard') return n as Difficulty;
   if (/\bfac(eis|il|inha|inho|inhas|inhos)?\b/.test(n) || n.includes('simples')) return 'easy';
   if (/\bmedi/.test(n)) return 'medium';
-  if (/\bdific/.test(n)) return 'hard';
+  if (/\bdific/.test(n) || /\bhard\b/.test(n) || /\bdifficult\b/.test(n)) return 'hard';
   return 'medium';
 }
 
@@ -217,7 +220,7 @@ function parseQueryToFilters(q: string): ParsedFilters {
     }
   }
 
-  // Dificuldade (sinônimos + regex plural/diminutivos)
+  // Dificuldade (sinônimos + regex plural/diminutivos + inglês)
   for (const [key, syns] of Object.entries(DIFFICULTY_SYNONYMS)) {
     if (syns.some(s => text.includes(normalize(s)))) {
       f.difficulty = key as Difficulty;
@@ -225,9 +228,9 @@ function parseQueryToFilters(q: string): ParsedFilters {
     }
   }
   if (!f.difficulty) {
-    if (/\bfac(eis|il|inha|inho|inhas|inhos)?\b/.test(text)) f.difficulty = 'easy';
-    else if (/\bm[eé]di[oa]\b/.test(text)) f.difficulty = 'medium';
-    else if (/\bdif[ií]cil|\bdific\b/.test(text)) f.difficulty = 'hard';
+    if (/\bfac(eis|il|inha|inho|inhas|inhos)?\b/.test(text) || /\beasy\b|\bsimple\b/.test(text)) f.difficulty = 'easy';
+    else if (/\bm[eé]di[oa]\b|\bmedium\b/.test(text)) f.difficulty = 'medium';
+    else if (/\bdific(?:eis|il)\b|\bhard\b|\bdifficult\b/.test(text)) f.difficulty = 'hard';
   }
 
   // Tempo
@@ -430,7 +433,6 @@ function progressiveRelax(rows: RecipeRow[], f: ParsedFilters): { list: RecipeRo
     g => { if (g.difficulty) delete g.difficulty; }, // só se nada retornou
   ];
 
-  // aqui só entra quando inicial deu 0
   for (const tweak of attempts) {
     const g = { ...f };
     tweak(g);
@@ -466,7 +468,7 @@ function detectUserIntent(q: string): ChatIntent {
     Object.values(DIFFICULTY_SYNONYMS).some(syns => syns.some(s => t.includes(normalize(s)))) ||
     /\b(15|30)\b\s*(min|mins|minutos)|\b(r[aá]pid|m[eé]di|longo)\b/.test(t) ||
     /\b(4|4[.,]5|5)\s*(\+|estrelas?|\*)?/.test(t) ||
-    /\bfac(eis|il|inha|inho|inhas|inhos)?\b/.test(t);
+    /\bfac(eis|il|inha|inho|inhas|inhos)?\b|\bhard\b|\bdifficult\b/.test(t);
 
   if (looksLikeRecipe) return 'recipe_search';
 
@@ -491,7 +493,7 @@ function detectUserIntent(q: string): ChatIntent {
   return 'fallback';
 }
 
-// Compat com código antigo (se algo ainda chamar detectIntent)
+// Compat com código antigo
 type Intent = ChatIntent;
 const detectIntent = detectUserIntent;
 
@@ -499,7 +501,7 @@ function siteInfoAnswer(): AIResponse {
   const content = [
     'Aqui no **NutriChefe** você encontra receitas filtrando por:',
     '• **Categorias**: Vegana, Baixo Carboidrato, Rica em Proteína, Sem Glúten, Vegetariana;',
-    '• **Dificuldade**: Fácil, Médio, Difícil;',
+    '• **Dificuldade**: Fácil (easy), Médio (medium), Difícil (hard);',
     '• **Tempo de preparo**: Rápido (≤15 min), Médio (≤30 min), Longo (>30 min);',
     '• **Avaliação mínima**: 4+, 4.5+ ou 5⭐.',
     '',
@@ -610,7 +612,7 @@ function humanizeIntro(
     sortKey?: SortKey;
   }
 ): string {
-  const { f0, shown, total, matchedExactly, sortKey } = opts;
+  const { f0, shown, matchedExactly, sortKey } = opts;
   const seed = hashStr(q);
 
   const tags: string[] = [];
@@ -707,7 +709,7 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
     };
   }
 
-  // 5) Texto natural
+  // 5) Texto natural + call-to-action implícito (usuário segue conversando)
   const content = humanizeIntro(query, {
     f0,
     shown: cards.length,
