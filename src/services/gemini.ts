@@ -124,3 +124,36 @@ Regras:
 5) Se perguntarem a data/hora, use o contexto: hoje é ${now} (America/Sao_Paulo).
   `.trim();
 }
+
+/**
+ * Retorna a descrição da personalidade da IA.
+ */
+function getPersonalityPrompt(personality: Personality): string {
+  const personalityPrompts: Record<Personality, string> = {
+    empathetic: 'Você é empática e motivacional. Demonstre compreensão e ofereça encorajamento. Tom caloroso e acolhedor.',
+    scientific: 'Você é focada em dados e evidências. Baseie respostas em fatos e pesquisas. Tom técnico porém acessível.',
+    friendly: 'Você é amigável e casual. Tom descontraído e próximo, como uma amiga dando conselhos.',
+    professional: 'Você é profissional e objetiva. Tom respeitoso e técnico, como um profissional de saúde.',
+  };
+  return personalityPrompts[personality] || personalityPrompts.empathetic;
+}
+
+/**
+ * Formata o histórico da conversa para o formato esperado pela API do Gemini.
+ */
+function formatConversationHistory(history: AIMessage[], _aiConfig?: AIConfiguration): Content[] {
+  return history
+    .slice(-CONVERSATION_HISTORY_LENGTH)
+    .map(msg => ({
+      // A API espera 'user' ou 'model'
+      role: msg.sender_type === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }],
+    }));
+}
+
+/**
+ * Checagem simples de configuração da API
+ */
+export function isGeminiConfigured(): boolean {
+  return !!apiKey && apiKey !== 'your-api-key-here';
+}
