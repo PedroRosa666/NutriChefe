@@ -854,6 +854,16 @@ import { getGeminiResponse } from './gemini';
 // =============================================================================
 // Orquestração principal — agora generalizada
 // =============================================================================
+
+function isNutritionGoalQuery(text: string): boolean {
+  const t = normalize(text);
+  return (
+    /\bemagrec|perder peso|perda de gordura|defini[cç][aã]o|definir|secar\b/.test(t) ||
+    /\bganhar massa|hipertrof|massa magra|bulking|volume\b/.test(t)
+  );
+}
+
+
 export async function processAIMessage(
   arg1: any,
   _arg2?: any,
