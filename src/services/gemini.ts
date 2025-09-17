@@ -18,7 +18,6 @@ if (!apiKey) {
 const genAI = new GoogleGenerativeAI(apiKey);
 
 // --- TIPOS E INTERFACES ---
-// A interface de resposta permanece a mesma.
 export interface GeminiResponse {
   content: string;
   error?: string;
@@ -31,25 +30,22 @@ type Personality = 'empathetic' | 'scientific' | 'friendly' | 'professional';
 export async function getGeminiResponse(
   userPrompt: string,
   aiConfig?: AIConfiguration,
-  conversationHistory: AIMessage[] = [] // Definimos um valor padrão
+  conversationHistory: AIMessage[] = []
 ): Promise<GeminiResponse> {
   try {
-    // 1. CONSTRUÇÃO DAS INSTRUÇÕES DO SISTEMA (SYSTEM PROMPT)
-    // Movido para uma função auxiliar para manter a função principal mais limpa.
+    // 1) SYSTEM PROMPT mais humano e útil
     const systemInstruction = buildSystemInstruction(aiConfig);
-    
-    // 2. FORMATAÇÃO DO HISTÓRICO DA CONVERSA
-    // O histórico agora é formatado para o padrão da API de chat.
+
+    // 2) HISTÓRICO
     const history = formatConversationHistory(conversationHistory, aiConfig);
 
-    // 3. INICIALIZAÇÃO DO MODELO E DO CHAT
+    // 3) MODELO + chat
     const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
       systemInstruction: {
-        role: "system", // Opcional, mas bom para clareza
+        role: "system",
         parts: [{ text: systemInstruction }],
       },
-      // Configurações de segurança para evitar respostas indesejadas.
       safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
@@ -58,22 +54,20 @@ export async function getGeminiResponse(
 
     const chat = model.startChat({ history });
 
-    // 4. ENVIO DA MENSAGEM E RECEBIMENTO DA RESPOSTA
+    // 4) RESPOSTA
     const result = await chat.sendMessage(userPrompt);
     const response = result.response;
-    const text = response.text();
+    const text = (response?.text?.() || '').trim();
 
+    // Fallback simpático caso algo venha vazio
     return {
-      content: text.trim()
+      content: text || 'Oi! Como posso te ajudar hoje? Posso sugerir receitas por dificuldade (easy/medium/hard), tempo (ex.: até 30 min) e avaliação (ex.: 4.5+ ⭐).'
     };
 
   } catch (error) {
     console.error("Erro ao chamar a API do Gemini:", error);
-    
-    // O seu tratamento de erros já é muito bom!
-    // Mantive a lógica, pois ela é clara e útil para o usuário.
     let errorMessage = "Desculpe, ocorreu um erro ao tentar processar sua solicitação. Tente novamente em alguns instantes.";
-    
+
     if (error instanceof Error) {
       if (error.message.includes('API_KEY')) {
         errorMessage = "Erro de configuração da IA. Entre em contato com o suporte.";
@@ -95,65 +89,60 @@ export async function getGeminiResponse(
 
 /**
  * Constrói a instrução do sistema com base na configuração da IA.
- * @param aiConfig A configuração da IA.
- * @returns Uma string com as instruções completas.
+ * Reforça conversa natural, follow-up curto e mapeamento de dificuldades.
  */
 function buildSystemInstruction(aiConfig?: AIConfiguration): string {
-  // Usamos um array e o método join() para construir a string, que é mais limpo que concatenação.
   const instructions = [
-    `Você é ${aiConfig?.ai_name || 'NutriBot'}, uma IA especializada em nutrição e alimentação saudável.`,
+    `Você é ${aiConfig?.ai_name || 'NutriBot'}, uma IA especializada em nutrição e alimentação saudável para o site NutriChefe.`,
     `Personalidade: ${getPersonalityPrompt(aiConfig?.personality as Personality || 'empathetic')}`,
     aiConfig?.custom_instructions ? `Instruções específicas: ${aiConfig.custom_instructions}` : '',
+    '',
+    'Estilo de conversa:',
+    '- Fale como uma pessoa real, acolhedora e direta (sem soar robótico).',
+    '- Use listas curtas quando ajudar; evite blocos longos.',
+    '- Se a intenção não estiver clara, faça no máximo **1 pergunta curta** para destravar a conversa.',
+    '- Convide o usuário a refinar: tempo (ex.: ≤ 30 min), avaliação (ex.: ⭐≥4.5), dificuldade (easy/medium/hard) e ingredientes.',
+    '',
     'Regras importantes:',
-    '1. Sempre lembre o cliente de consultar seu nutricionista para planos alimentares personalizados.',
-    '2. Não faça diagnósticos médicos.',
-    '3. Seja útil e prestativo.',
-    '4. Mantenha o foco em alimentação saudável e bem-estar.',
-    '5. Responda em português brasileiro.',
-    '6. Use uma linguagem clara e acessível.',
-    '7. Seja breve, tente não falar demais na hora das mensagens.'
+    '1) Sempre lembre que orientações são educativas — para plano individual, consulte um nutricionista.',
+    '2) Não faça diagnósticos médicos.',
+    '3) Responda em português brasileiro, com linguagem simples.',
+    '4) Seja objetivo: vá direto ao ponto sem perder a simpatia.',
+    '5) Quando o usuário disser "difícil/dificeis", interprete como **hard**; "médio/média" → **medium**; "fácil/fáceis" → **easy**.',
+    '6) Em inglês, "hard/difficult", "medium", "easy" mapeiam para os mesmos níveis.',
   ];
 
-  return instructions.filter(Boolean).join('\n'); // .filter(Boolean) remove linhas vazias.
+  return instructions.filter(Boolean).join('\n');
 }
 
 /**
  * Retorna a descrição da personalidade da IA.
- * @param personality O tipo de personalidade.
- * @returns A string de prompt para a personalidade.
  */
 function getPersonalityPrompt(personality: Personality): string {
-  // Usamos um Record para dar um tipo explícito ao nosso objeto de prompts.
   const personalityPrompts: Record<Personality, string> = {
-    empathetic: 'Você é empática e motivacional. Sempre demonstre compreensão e ofereça encorajamento. Use um tom caloroso e acolhedor.',
-    scientific: 'Você é focada em dados científicos e evidências. Base suas respostas em fatos nutricionais e pesquisas. Use um tom técnico mas acessível.',
-    friendly: 'Você é amigável e casual. Use um tom descontraído e próximo, como se fosse uma amiga dando conselhos.',
-    professional: 'Você é profissional e formal. Mantenha um tom respeitoso e técnico, como um profissional de saúde.'
+    empathetic: 'Você é empática e motivacional. Demonstre compreensão e ofereça encorajamento. Tom caloroso e acolhedor.',
+    scientific: 'Você é focada em dados e evidências. Baseie respostas em fatos e pesquisas. Tom técnico porém acessível.',
+    friendly: 'Você é amigável e casual. Tom descontraído e próximo, como uma amiga dando conselhos.',
+    professional: 'Você é profissional e objetiva. Tom respeitoso e técnico, como um profissional de saúde.',
   };
-
   return personalityPrompts[personality] || personalityPrompts.empathetic;
 }
 
 /**
  * Formata o histórico da conversa para o formato esperado pela API do Gemini.
- * @param history O histórico no formato da sua aplicação.
- * @param aiConfig A configuração da IA.
- * @returns Um array de `Content` para a API.
  */
-function formatConversationHistory(history: AIMessage[], aiConfig?: AIConfiguration): Content[] {
+function formatConversationHistory(history: AIMessage[], _aiConfig?: AIConfiguration): Content[] {
   return history
     .slice(-CONVERSATION_HISTORY_LENGTH)
     .map(msg => ({
-      // Mapeia o 'sender_type' para o 'role' esperado pela API ('user' ou 'model').
+      // A API espera 'user' ou 'model'
       role: msg.sender_type === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }],
     }));
 }
 
 /**
- * Função auxiliar para validar se a API key está configurada.
- * A sua implementação já está ótima, apenas verificando a constante.
- * @returns `true` se a chave estiver configurada.
+ * Checagem simples de configuração da API
  */
 export function isGeminiConfigured(): boolean {
   return !!apiKey && apiKey !== 'your-api-key-here';
