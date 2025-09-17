@@ -851,8 +851,10 @@ export async function createAIMessage(message: Omit<AIMessage, 'id' | 'created_a
   return data as AIMessage;
 }
 
+import { getGeminiResponse } from './gemini';
+
 // =============================================================================
-// Orquestração principal — compatível com duas assinaturas
+// Orquestração principal — agora generalizada
 // =============================================================================
 export async function processAIMessage(
   arg1: any,
@@ -860,52 +862,26 @@ export async function processAIMessage(
   _arg3?: any
 ): Promise<AIResponse> {
   let content = '';
-  if (typeof arg1 === 'string') content = arg1;
-  else if (arg1 && typeof arg1 === 'object' && 'content' in arg1) content = toSafeString(arg1.content);
-
-  const intent: ChatIntent = detectUserIntent(content);
-
-  switch (intent) {
-    case 'recipe_search':
-      return recommendRecipesFromText(content);
-
-    case 'nutrition_recipe': {
-      const rows = await fetchRecipesFromDB();
-      return nutritionForRecipeAnswer(content, rows);
-    }
-
-    case 'nutrition_general':
-      return nutritionGeneralAnswer(content);
-
-    case 'cooking_tips':
-      return cookingTipsAnswer(content);
-
-    case 'substitutions':
-      return substitutionsAnswer(content);
-
-    case 'site_info':
-      return siteInfoAnswer();
-
-    case 'greetings':
-      return greetingsAnswer();
-
-    case 'thanks':
-      return thanksAnswer();
-
-    case 'help':
-      return helpAnswer();
-
-    case 'fallback':
-    default: {
-      const rows = await fetchRecipesFromDB();
-      const hint = rows.length
-        ? 'Dica: peça por **categoria**, **dificuldade**, **tempo** e **avaliação**. Ex.: "vegana fácil 15 min 4.5+"'
-        : 'Posso te ajudar com dúvidas de nutrição e dicas de cozinha.';
-      return {
-        content: `Entendi! ${hint}`,
-        recipes: [],
-        suggestions: ['receitas fáceis', 'vegana rápida', '5 ⭐'],
-      };
-    }
+  if (typeof arg1 === 'string') {
+    content = arg1;
+  } else if (arg1 && typeof arg1 === 'object' && 'content' in arg1) {
+    content = String(arg1.content);
   }
+
+  // Heurística simples para identificar buscas de receitas
+  const looksLikeRecipe = /\breceit|\bprato|\bingredient|\bvegana|\bgluten|\bcarbo|\bprote[ií]na|\bfac(eis|il)|\bhard\b|\bdifficult\b|\bmedium\b/.test(
+    content.toLowerCase()
+  );
+
+  if (looksLikeRecipe) {
+    return recommendRecipesFromText(content);
+  }
+
+  // Caso contrário, envia para o Gemini — responde sobre qualquer tema
+  const gem = await getGeminiResponse(content);
+  return {
+    content: gem.content,
+    recipes: [],
+    suggestions: [],
+  };
 }
