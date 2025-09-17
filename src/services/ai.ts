@@ -334,38 +334,42 @@ async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
     }
   }
 
-  // Resultado
-  const result: RecipeRow[] = rows.map(r => {
-    // rating efetivo
-    let effectiveRating: number | null = r.rating ?? null;
-    if (effectiveRating == null && ratingsAgg[r.id]?.count) {
-      const avg = ratingsAgg[r.id].sum / ratingsAgg[r.id].count;
-      effectiveRating = round1(avg);
-    }
+  // ... dentro de fetchRecipesFromDB(), depois de montar ratingsAgg ...
 
-    // categoria canônica (PT-BR) se possível
-    const catCanon = canonicalSiteCategory(r.category) ?? r.category;
+// Resultado
+const result: RecipeRow[] = rows.map(r => {
+  // ✅ Use SEMPRE a média das reviews quando existir; só use o rating do recipe se não houver review
+  const agg = ratingsAgg[r.id];
+  let effectiveRating: number | null = null;
 
-    return {
-      id: r.id,
-      title: r.title,
-      description: r.description,
-      image: r.image,
-      prep_time: r.prep_time,
-      difficulty: normalizeDifficultyValue(r.difficulty),
-      category: catCanon,
-      rating: effectiveRating,
-      author_id: r.author_id,
-      author_name: (r.author_id && authorsMap[r.author_id]) ? authorsMap[r.author_id] : 'NutriChefe',
-      nutrition_facts: r.nutrition_facts || null,
-      reviews: [],
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-    } as RecipeRow;
-  });
+  if (agg && agg.count > 0) {
+    effectiveRating = round1(agg.sum / agg.count);
+  } else if (r.rating !== null && r.rating !== undefined) {
+    const num = Number(r.rating);
+    effectiveRating = Number.isFinite(num) && num > 0 ? round1(num) : null; // ignora 0 como “sem avaliação”
+  }
 
-  return result;
-}
+  // categoria canônica (PT-BR) se possível
+  const catCanon = canonicalSiteCategory(r.category) ?? r.category;
+
+  return {
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    image: r.image,
+    prep_time: r.prep_time,
+    difficulty: normalizeDifficultyValue(r.difficulty),
+    category: catCanon,
+    rating: effectiveRating,              // ✅ agora vem a média (ou null se realmente sem avaliação)
+    author_id: r.author_id,
+    author_name: (r.author_id && authorsMap[r.author_id]) ? authorsMap[r.author_id] : 'NutriChefe',
+    nutrition_facts: r.nutrition_facts || null,
+    reviews: [],                          // você pode manter vazio; não é mais usado para média
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+  } as RecipeRow;
+});
+
 
 // =============================================================================
 // Filtro + ordenação + relaxamento
