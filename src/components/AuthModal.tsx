@@ -82,33 +82,6 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
           >
             <X className="w-6 h-6" />
           </button>
-
-          {/* === 🧭 Abas Entrar / Cadastrar (não submetem form) === */}
-          <div className="mb-6 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setMode('signin')}
-              className={cn(
-                'flex-1 py-2 rounded-lg border-2 transition-colors',
-                mode === 'signin'
-                  ? 'border-green-600 text-green-700 bg-green-50 dark:bg-green-50 dark:text-green-700'
-                  : 'border-gray-200 text-gray-700 dark:text-white hover:border-green-300'
-              )}
-            >
-              {t.common.signIn}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('signup')}
-              className={cn(
-                'flex-1 py-2 rounded-lg border-2 transition-colors',
-                mode === 'signup'
-                  ? 'border-green-600 text-green-700 bg-green-50 dark:bg-green-50 dark:text-green-700'
-                  : 'border-gray-200 text-gray-700 dark:text-white hover:border-green-300'
-              )}
-            >
-              {t.common.signUp}
-            </button>
           </div>
 
           <h2 className="sr-only">
