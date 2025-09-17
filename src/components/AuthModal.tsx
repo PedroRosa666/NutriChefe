@@ -82,7 +82,6 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
           >
             <X className="w-6 h-6" />
           </button>
-          </div>
 
           <h2 className="sr-only">
             {isSignup ? t.common.createaccount : t.common.signIn}
