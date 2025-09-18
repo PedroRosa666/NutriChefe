@@ -28,8 +28,8 @@ export interface UserSubscription {
 
 type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'pending';
 
-// === Adicione a partir daqui (no final de src/services/subscription.ts) ===
-import { supabase } from '../lib/supabase'; // se já existe no topo, ignore esta linha duplicada
+
+import { supabase } from '../lib/supabase'; 
 
 export async function startCheckout({
   priceId,
