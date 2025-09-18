@@ -31,6 +31,20 @@ export interface UserSubscription {
 type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'pending';
 
 
+export async function startCheckout({ priceId, planId, successUrl, cancelUrl } : { priceId?: string, planId?: string, successUrl?: string, cancelUrl?: string }) {
+  const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+  if (sessionErr || !session?.access_token) throw sessionErr || new Error('Not authenticated');
+
+  const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+    body: { priceId, planId, successUrl, cancelUrl },
+    headers: { Authorization: `Bearer ${session.access_token}` }
+  });
+  if (error) throw error;
+  if (!data?.url) throw new Error('Falha ao criar sessão de pagamento');
+  (window as any).location.href = data.url as string;
+}
+
+
 // === Adicione a partir daqui (no final de src/services/subscription.ts) ===
 export async function startCheckout({
   priceId,
