@@ -6,6 +6,9 @@ export interface SubscriptionPlan {
   currency: string;
   billing_period: string;
   features: string[];
+  // Campos Stripe (opcionais, mas úteis para o checkout)
+  stripe_product_id?: string;
+  stripe_price_id?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -26,38 +29,4 @@ export interface UserSubscription {
   plan?: SubscriptionPlan;
 }
 
-type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'pending';
-
-
-import { supabase } from '../lib/supabase'; 
-
-export async function startCheckout({
-  priceId,
-  planId,
-  successUrl,
-  cancelUrl,
-}: {
-  priceId?: string;
-  planId?: string;
-  successUrl?: string;
-  cancelUrl?: string;
-}) {
-  // Garante que o usuário está autenticado e pega o access_token
-  const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
-  if (sessionErr || !session?.access_token) {
-    throw sessionErr || new Error('Not authenticated');
-  }
-
-  // Invoca a Edge Function que cria a sessão do Stripe Checkout
-  const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-    body: { priceId, planId, successUrl, cancelUrl },
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  });
-
-  if (error) throw error;
-  if (!data?.url) throw new Error('Falha ao criar sessão de pagamento');
-
-  // Redireciona para o Stripe Checkout
-  (window as any).location.href = data.url as string;
-}
-// === Fim do trecho a adicionar ===
+export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'pending';
