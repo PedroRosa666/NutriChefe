@@ -145,31 +145,80 @@ export function PremiumUpgrade() {
             </h2>
           </div>
           
-          <div className="text-center mb-6">
-            <span className="text-4xl font-bold text-purple-600 dark:text-purple-400">
-              {priceBRL}
-            </span>
-            <span className="text-gray-600 dark:text-gray-400 ml-2">/ {billing === 'monthly' ? 'mês' : billing}</span>
-          </div>
+          {/* Preço */}
+<div className="text-center mb-6">
+  <span className="text-4xl font-bold text-purple-600 dark:text-purple-400">
+    {priceBRL}
+  </span>
+  <span className="text-gray-600 dark:text-gray-400 ml-2">
+    / {billing === 'monthly' ? 'mês' : billing}
+  </span>
+</div>
 
-          <ul className="space-y-3 mb-6 text-left max-w-md mx-auto">
-            <li className="flex items-center gap-3">
-              <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-              <span className="text-gray-700 dark:text-gray-300">Chat IA ilimitado</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-              <span className="text-gray-700 dark:text-gray-300">IA personalizada pelo nutricionista</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-              <span className="text-gray-700 dark:text-gray-300">Recomendações inteligentes</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-              <span className="text-gray-700 dark:text-gray-300">Suporte prioritário</span>
-            </li>
-          </ul>
+{/* Benefícios — 8 itens (4 de cada lado) */}
+<div className="rounded-xl border border-purple-100 dark:border-purple-900/40 bg-white/70 dark:bg-white/5 backdrop-blur p-4 md:p-5">
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+    {/* Coluna Esquerda */}
+    <ul className="space-y-3">
+      <li className="flex items-center gap-3">
+        <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+        <span className="text-gray-700 dark:text-gray-300">
+          Acesso a <span className="font-medium">nutricionistas certificados</span>
+        </span>
+      </li>
+      <li className="flex items-center gap-3">
+        <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+        <span className="text-gray-700 dark:text-gray-300">
+          <span className="font-medium">WhatsApp direto</span> com nutricionistas
+        </span>
+      </li>
+      <li className="flex items-center gap-3">
+        <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+        <span className="text-gray-700 dark:text-gray-300">
+          <span className="font-medium">Metas personalizadas</span> e periodização
+        </span>
+      </li>
+      <li className="flex items-center gap-3">
+        <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+        <span className="text-gray-700 dark:text-gray-300">
+          <span className="font-medium">Planos alimentares</span> ajustados ao seu perfil
+        </span>
+      </li>
+    </ul>
+
+    {/* Divisor vertical no desktop */}
+    <div className="hidden md:block md:h-full md:w-px md:bg-gradient-to-b md:from-purple-200/60 md:via-purple-200/20 md:to-purple-200/60 dark:md:from-purple-900/40 dark:md:via-purple-900/10 dark:md:to-purple-900/40 mx-auto rounded-full" />
+
+    {/* Coluna Direita */}
+    <ul className="space-y-3 md:order-last md:col-start-2">
+      <li className="flex items-center gap-3">
+        <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+        <span className="text-gray-700 dark:text-gray-300">
+          <span className="font-medium">Acompanhamento semanal</span> e ajustes contínuos
+        </span>
+      </li>
+      <li className="flex items-center gap-3">
+        <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+        <span className="text-gray-700 dark:text-gray-300">
+          <span className="font-medium">Relatórios de progresso</span> com gráficos
+        </span>
+      </li>
+      <li className="flex items-center gap-3">
+        <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+        <span className="text-gray-700 dark:text-gray-300">
+          <span className="font-medium">Receitas premium</span> exclusivas
+        </span>
+      </li>
+      <li className="flex items-center gap-3">
+        <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+        <span className="text-gray-700 dark:text-gray-300">
+          <span className="font-medium">Comunidade VIP</span> e desafios mensais
+        </span>
+      </li>
+    </ul>
+  </div>
+</div>
+
 
           <motion.button
             whileHover={{ scale: 1.05 }}
