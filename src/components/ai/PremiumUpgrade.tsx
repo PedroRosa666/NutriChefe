@@ -54,24 +54,34 @@ export function PremiumUpgrade() {
   const priceBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(priceNumber);
   const billing = primaryPlan?.billing_period || 'monthly';
 
-  const handleSubscribe = async () => {
-    try {
-      setLoading(true);
+const handleSubscribe = async () => {
+  try {
+    setLoading(true);
 
-      // Se não há plano ou não há stripe_price_id, cai no fallback para abrir o checkout
-      const priceIdToUse = (primaryPlan as any)?.stripe_price_id || FALLBACK_STRIPE_PRICE_ID;
-
-      await startCheckout({
-        planId: primaryPlan?.id,  // ajuda o backend a mapear quando existir
-        priceId: priceIdToUse,
-      });
-    } catch (e: any) {
-      console.error(e);
-      showToast(e?.message || 'Não foi possível iniciar o checkout');
-    } finally {
-      setLoading(false);
+    // 0) Precisa estar logado
+    if (!user) {
+      // Se você tiver um modal de login próprio, chame-o aqui
+      // ex.: openAuthModal(); return;
+      showToast('Faça login para assinar');
+      window.location.href = '/login'; // ajuste a rota se sua tela de login for outra
+      return;
     }
-  };
+
+    // 1) Usa o price do plano se existir; senão, fallback
+    const priceIdToUse = (primaryPlan as any)?.stripe_price_id || FALLBACK_STRIPE_PRICE_ID;
+
+    await startCheckout({
+      planId: primaryPlan?.id,     // ajuda o backend a vincular quando existir
+      priceId: priceIdToUse,
+    });
+  } catch (e: any) {
+    console.error(e);
+    showToast(e?.message || 'Não foi possível iniciar o checkout');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const features = [
     {
@@ -231,8 +241,6 @@ export function PremiumUpgrade() {
     </div>
   </div>
 </div>
-
-
 
           <motion.button
             whileHover={{ scale: 1.05 }}
