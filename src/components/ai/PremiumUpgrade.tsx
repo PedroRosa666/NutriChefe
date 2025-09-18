@@ -1,134 +1,121 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Crown, Check, Sparkles, Bot, MessageCircle, Star, Zap } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
+import { getSubscriptionPlans, startCheckout } from '../../services/subscription';
+import type { SubscriptionPlan } from '../../types/subscription';
+import { useToastStore } from '../../store/toast';
 
 export function PremiumUpgrade() {
   const t = useTranslation();
+  const { showToast } = useToastStore();
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    getSubscriptionPlans().then((ps) => setPlans(ps || [])).catch((e) => {
+      console.error(e);
+      showToast({ title: 'Erro ao carregar planos', description: String(e), type: 'error' });
+    });
+  }, [showToast]);
+
+  const primaryPlan = useMemo(() => plans?.[0], [plans]);
 
   const features = [
-    {
-      icon: <Bot className="w-5 h-5" />,
-      title: 'Mentoria IA Ilimitada',
-      description: 'Chat 24/7 com IA especializada em nutrição'
-    },
-    {
-      icon: <MessageCircle className="w-5 h-5" />,
-      title: 'Consultas Personalizadas',
-      description: 'IA configurada pelo seu nutricionista'
-    },
-    {
-      icon: <Star className="w-5 h-5" />,
-      title: 'Recomendações Inteligentes',
-      description: 'Sugestões de receitas baseadas no seu perfil'
-    },
-    {
-      icon: <Zap className="w-5 h-5" />,
-      title: 'Suporte Prioritário',
-      description: 'Atendimento rápido e especializado'
-    }
+    { icon: <Bot className="w-5 h-5" />, title: 'Mentoria IA Ilimitada', description: 'Chat 24/7 com IA especializada em nutrição' },
+    { icon: <MessageCircle className="w-5 h-5" />, title: 'Acompanhamento Inteligente', description: 'Feedback contínuo e recomendações personalizadas' },
+    { icon: <Star className="w-5 h-5" />, title: 'Receitas Premium', description: 'Acesso a receitas exclusivas com macros' },
+    { icon: <Zap className="w-5 h-5" />, title: 'Atualizações Prioritárias', description: 'Novos recursos liberados primeiro' }
   ];
 
+  const handleSubscribe = async () => {
+    try {
+      setLoading(true);
+      if (!primaryPlan) throw new Error('Nenhum plano ativo encontrado');
+      if (!primaryPlan.stripe_price_id) throw new Error('Plano não possui stripe_price_id configurado');
+      await startCheckout({ planId: primaryPlan.id, priceId: primaryPlan.stripe_price_id });
+    } catch (e: any) {
+      console.error(e);
+      showToast({ title: 'Não foi possível iniciar o checkout', description: String(e?.message || e), type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const displayPrice = primaryPlan ? Number(primaryPlan.price).toFixed(2) : '—';
+  const billing = primaryPlan?.billing_period || 'monthly';
+
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="min-h-[60vh] flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl p-8 text-center border border-purple-200 dark:border-purple-700"
+        className="w-full max-w-3xl text-center"
       >
-        <div className="flex justify-center mb-6">
-          <div className="relative">
-            <div className="p-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full">
-              <Crown className="w-12 h-12 text-white" />
-            </div>
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="absolute -top-2 -right-2"
-            >
-              <Sparkles className="w-6 h-6 text-yellow-500" />
-            </motion.div>
-          </div>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-200 mb-6">
+          <Sparkles className="w-4 h-4" />
+          <span>Desbloqueie o melhor do NutriChef</span>
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-          Desbloqueie a Mentoria IA
+        <h1 className="text-3xl md:text-4xl font-bold mb-3 text-gray-900 dark:text-white">
+          Torne-se <span className="text-purple-600 dark:text-purple-400">Premium</span>
         </h1>
-        
-        <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
-          Para ter acesso ilimitado à nossa Mentoria IA e outras funcionalidades exclusivas, 
-          assine o nosso <span className="font-semibold text-purple-600 dark:text-purple-400">Plano Premium</span>!
+        <p className="text-gray-600 dark:text-gray-300 mb-10 max-w-2xl mx-auto">
+          Acesse mentoria por IA, conteúdo exclusivo e novidades primeiro.
         </p>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {features.map((feature, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="flex items-start gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm"
+        <div className="grid md:grid-cols-2 gap-6 items-stretch">
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-6 md:p-8 text-left">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Crown className="w-5 h-5 text-purple-600" /> Plano Premium
+            </h3>
+
+            <div className="text-center mb-6">
+              <span className="text-4xl font-bold text-purple-600 dark:text-purple-400">
+                R$ {displayPrice}
+              </span>
+              <span className="text-gray-600 dark:text-gray-400 ml-2">/ {billing === 'monthly' ? 'mês' : billing}</span>
+            </div>
+
+            <ul className="space-y-3 mb-6 text-left max-w-md mx-auto">
+              {features.map((f, i) => (
+                <li key={i} className="flex items-center gap-3">
+                  <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <span className="text-gray-700 dark:text-gray-300">{f.title}</span>
+                </li>
+              ))}
+            </ul>
+
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={handleSubscribe}
+              disabled={loading || !primaryPlan}
+              className="w-full py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg font-medium shadow hover:brightness-110 disabled:opacity-50 transition-all duration-200 flex items-center justify-center gap-2"
             >
-              <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg text-white">
-                {feature.icon}
-              </div>
-              <div className="text-left">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {feature.description}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-8 border border-purple-200 dark:border-purple-700">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Crown className="w-6 h-6 text-purple-600" />
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Plano Premium
-            </h2>
-          </div>
-          
-          <div className="text-center mb-6">
-            <span className="text-4xl font-bold text-purple-600 dark:text-purple-400">
-              R$ 19,90
-            </span>
-            <span className="text-gray-600 dark:text-gray-400 ml-2">/mês</span>
+              <Crown className="w-5 h-5" />
+              {loading ? 'Iniciando...' : 'Assinar Plano Premium'}
+            </motion.button>
           </div>
 
-          <ul className="space-y-3 mb-6 text-left max-w-md mx-auto">
-            <li className="flex items-center gap-3">
-              <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-              <span className="text-gray-700 dark:text-gray-300">Chat IA ilimitado</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-              <span className="text-gray-700 dark:text-gray-300">IA personalizada pelo nutricionista</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-              <span className="text-gray-700 dark:text-gray-300">Recomendações inteligentes</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-              <span className="text-gray-700 dark:text-gray-300">Suporte prioritário</span>
-            </li>
-          </ul>
-
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all duration-200 flex items-center justify-center gap-2"
-          >
-            <Crown className="w-5 h-5" />
-            Assinar Plano Premium
-          </motion.button>
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-6 md:p-8">
+            <h3 className="text-lg font-semibold mb-4">Tudo que você recebe</h3>
+            <div className="grid gap-3">
+              {features.map((f, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="p-2 rounded-md bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200">
+                    {f.icon}
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">{f.title}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{f.description}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-6">
           Cancele a qualquer momento • Sem compromisso • Suporte 24/7
         </p>
       </motion.div>
