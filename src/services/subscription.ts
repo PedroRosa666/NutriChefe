@@ -96,21 +96,35 @@ export async function startCheckout({
     headers: { Authorization: `Bearer ${session.access_token}` },
   });
 
-  // Se o invoke retornou erro de rede/SDK:
   if (error) {
-    // @ts-ignore: a SDK às vezes coloca mensagem aqui
     const msg = (error as any)?.message || JSON.stringify(error);
     throw new Error(`Checkout failed (invoke): ${msg}`);
   }
-
-  // Se a Function respondeu 4xx/5xx com { error: "..." }
   if (data?.error) {
     throw new Error(`Checkout failed: ${data.error}`);
   }
-
   if (!data?.url) {
     throw new Error('Falha ao criar sessão de pagamento (sem URL)');
   }
 
-  (window as any).location.href = data.url as string;
+  const url = data.url as string;
+
+  // tenta sair do iframe
+  try {
+    if (typeof window !== 'undefined' && window.top && window.top !== window) {
+      window.top.location.href = url; // sobe para o topo
+      return;
+    }
+  } catch {
+    // ignore cross-origin issues
+  }
+
+  // fallback: navegar na mesma aba
+  try {
+    window.location.assign(url);
+    return;
+  } catch {
+    // último recurso: nova aba
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
 }
