@@ -91,40 +91,43 @@ export async function startCheckout({
     throw sessionErr || new Error('Not authenticated');
   }
 
-  const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+  // Agora a function SEMPRE responde 200 (ok:true/false)
+  const { data } = await supabase.functions.invoke('create-checkout-session', {
     body: { priceId, planId, successUrl, cancelUrl },
     headers: { Authorization: `Bearer ${session.access_token}` },
   });
 
-  if (error) {
-    const msg = (error as any)?.message || JSON.stringify(error);
-    throw new Error(`Checkout failed (invoke): ${msg}`);
+  if (!data) throw new Error('Checkout failed: sem resposta do servidor');
+
+  if (data.error) {
+    // Mostra a mensagem real + dicas quando for erro Stripe
+    const hint = data.debug?.priceId
+      ? ` (priceId: ${data.debug.priceId}${
+          data.debug?.message ? ` • ${data.debug.message}` : ''
+        })`
+      : '';
+    throw new Error(`Checkout failed: ${data.error}${hint}`);
   }
-  if (data?.error) {
-    throw new Error(`Checkout failed: ${data.error}`);
-  }
-  if (!data?.url) {
+
+  if (!data.url) {
     throw new Error('Falha ao criar sessão de pagamento (sem URL)');
   }
 
   const url = data.url as string;
 
-  // tenta sair do iframe
+  // sair de iframe se necessário
   try {
     if (typeof window !== 'undefined' && window.top && window.top !== window) {
-      window.top.location.href = url; // sobe para o topo
+      window.top.location.href = url;
       return;
     }
   } catch {
-    // ignore cross-origin issues
+    // ignore
   }
 
-  // fallback: navegar na mesma aba
   try {
     window.location.assign(url);
-    return;
   } catch {
-    // último recurso: nova aba
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 }
