@@ -82,48 +82,48 @@ export async function startCheckout({
   successUrl?: string;
   cancelUrl?: string;
 }) {
-  const {
+  // 1) tenta pegar a sessão atual
+  let {
     data: { session },
     error: sessionErr,
   } = await supabase.auth.getSession();
 
+  // 2) Se não houver sessão ou token, tenta renovar (caso tenha refresh_token salvo)
   if (sessionErr || !session?.access_token) {
-    throw sessionErr || new Error('Not authenticated');
+    const refreshed = await supabase.auth.refreshSession().catch(() => null);
+    session = refreshed?.data?.session ?? null;
   }
 
-  // Agora a function SEMPRE responde 200 (ok:true/false)
+  // 3) Se ainda não houver token, interrompa com erro legível
+  const accessToken = session?.access_token;
+  if (!accessToken) {
+    throw new Error('Você precisa estar logado para assinar. Faça login e tente novamente.');
+  }
+
+  // 4) Invoca a Edge Function (que agora sempre responde 200 com ok:true/false)
   const { data } = await supabase.functions.invoke('create-checkout-session', {
     body: { priceId, planId, successUrl, cancelUrl },
-    headers: { Authorization: `Bearer ${session.access_token}` },
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 
   if (!data) throw new Error('Checkout failed: sem resposta do servidor');
-
   if (data.error) {
-    // Mostra a mensagem real + dicas quando for erro Stripe
     const hint = data.debug?.priceId
-      ? ` (priceId: ${data.debug.priceId}${
-          data.debug?.message ? ` • ${data.debug.message}` : ''
-        })`
+      ? ` (priceId: ${data.debug.priceId}${data.debug?.message ? ` • ${data.debug.message}` : ''})`
       : '';
     throw new Error(`Checkout failed: ${data.error}${hint}`);
   }
-
-  if (!data.url) {
-    throw new Error('Falha ao criar sessão de pagamento (sem URL)');
-  }
+  if (!data.url) throw new Error('Falha ao criar sessão de pagamento (sem URL)');
 
   const url = data.url as string;
 
-  // sair de iframe se necessário
+  // Sair de iframe se necessário (StackBlitz/WebContainer)
   try {
     if (typeof window !== 'undefined' && window.top && window.top !== window) {
       window.top.location.href = url;
       return;
     }
-  } catch {
-    // ignore
-  }
+  } catch {/* ignore */}
 
   try {
     window.location.assign(url);
