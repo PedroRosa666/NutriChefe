@@ -6,8 +6,6 @@ export interface SubscriptionPlan {
   currency: string;
   billing_period: string;
   features: string[];
-  stripe_product_id?: string;  // ADICIONADO
-  stripe_price_id?: string;    // ADICIONADO
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -30,8 +28,9 @@ export interface UserSubscription {
 
 type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'pending';
 
-
 // === Adicione a partir daqui (no final de src/services/subscription.ts) ===
+import { supabase } from '../lib/supabase'; // se já existe no topo, ignore esta linha duplicada
+
 export async function startCheckout({
   priceId,
   planId,
