@@ -44,7 +44,7 @@ export const translations = {
       title: 'Discover Healthy Recipes',
       subtitle: 'Find and share nutritious recipes that match your dietary preferences.',
       createRecipe: 'Create Recipe',
-      noRecipes: 'No recipes found. Try adjusting your filters.',
+      noRecipes: 'No recipes found. Try adjusting your filters, or log in to see the recipes.',
     },
     profile: {
       myRecipes: 'My Recipes',
