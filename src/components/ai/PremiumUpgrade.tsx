@@ -5,6 +5,8 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { getSubscriptionPlans, startCheckout } from '../../services/subscription';
 import type { SubscriptionPlan } from '../../types/subscription';
 import { useToastStore } from '../../store/toast';
+import { supabase } from '../../lib/supabase';
+
 
 /** Fallbacks para não travar o fluxo enquanto ajusta o banco */
 const FALLBACK_STRIPE_PRICE_ID = 'price_1S8hUJRvfweGXYGcPyJ9VAR9';
