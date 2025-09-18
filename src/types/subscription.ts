@@ -6,6 +6,8 @@ export interface SubscriptionPlan {
   currency: string;
   billing_period: string;
   features: string[];
+  stripe_product_id?: string;  // ADICIONADO
+  stripe_price_id?: string;    // ADICIONADO
   is_active: boolean;
   created_at: string;
   updated_at: string;
