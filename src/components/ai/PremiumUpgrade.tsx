@@ -8,6 +8,18 @@ import { useToastStore } from '../../store/toast';
 import { supabase } from '../../lib/supabase';
 
 
+
+const [user, setUser] = useState<{ id: string } | null>(null);
+
+useEffect(() => {
+  supabase.auth.getUser().then(({ data }) => setUser(data.user ? { id: data.user.id } : null));
+  const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    setUser(session?.user ? { id: session.user.id } : null);
+  });
+  return () => { sub?.subscription?.unsubscribe?.(); };
+}, []);
+
+
 /** Fallbacks para não travar o fluxo enquanto ajusta o banco */
 const FALLBACK_STRIPE_PRICE_ID = 'price_1S8hUJRvfweGXYGcPyJ9VAR9';
 const FALLBACK_DISPLAY_PRICE = 19.90;
