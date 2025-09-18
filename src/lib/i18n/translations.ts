@@ -168,7 +168,7 @@ export const translations = {
       title: 'Descubra Receitas Saudáveis',
       subtitle: 'Encontre e compartilhe receitas nutritivas que combinam com suas preferências alimentares.',
       createRecipe: 'Criar Receita',
-      noRecipes: 'Nenhuma receita encontrada. Tente ajustar seus filtros.',
+      noRecipes: 'Nenhuma receita encontrada. Tente ajustar seus filtros ou faça login para ver as receitas.',
     },
     profile: {
       myRecipes: 'Minhas Receitas',
