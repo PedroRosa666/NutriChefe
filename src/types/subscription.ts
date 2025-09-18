@@ -6,7 +6,7 @@ export interface SubscriptionPlan {
   currency: string;
   billing_period: string;
   features: string[];
-  // Campos Stripe (opcionais, mas úteis para o checkout)
+  // Campos Stripe (opcionais, mas usados no checkout)
   stripe_product_id?: string;
   stripe_price_id?: string;
   is_active: boolean;
