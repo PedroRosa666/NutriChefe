@@ -82,7 +82,6 @@ export async function startCheckout({
   successUrl?: string;
   cancelUrl?: string;
 }) {
-  // 1) precisa estar autenticado para vincular o pagamento ao usuário
   const {
     data: { session },
     error: sessionErr,
@@ -92,15 +91,26 @@ export async function startCheckout({
     throw sessionErr || new Error('Not authenticated');
   }
 
-  // 2) chama a Edge Function (create-checkout-session) no Supabase
   const { data, error } = await supabase.functions.invoke('create-checkout-session', {
     body: { priceId, planId, successUrl, cancelUrl },
     headers: { Authorization: `Bearer ${session.access_token}` },
   });
 
-  if (error) throw error;
-  if (!data?.url) throw new Error('Falha ao criar sessão de pagamento');
+  // Se o invoke retornou erro de rede/SDK:
+  if (error) {
+    // @ts-ignore: a SDK às vezes coloca mensagem aqui
+    const msg = (error as any)?.message || JSON.stringify(error);
+    throw new Error(`Checkout failed (invoke): ${msg}`);
+  }
 
-  // 3) redireciona para o Stripe Checkout
+  // Se a Function respondeu 4xx/5xx com { error: "..." }
+  if (data?.error) {
+    throw new Error(`Checkout failed: ${data.error}`);
+  }
+
+  if (!data?.url) {
+    throw new Error('Falha ao criar sessão de pagamento (sem URL)');
+  }
+
   (window as any).location.href = data.url as string;
 }
