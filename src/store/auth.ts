@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
-// REMOVIDO: createUserProfile (perfil será criado pelo trigger no banco)
-import { getUserProfile } from '../services/database';
+import { createUserProfile, getUserProfile } from '../services/database';
 import { useToastStore } from './toast';
 import type { User, UserType } from '../types/user';
 
@@ -15,9 +14,10 @@ interface AuthState {
   signIn: (email: string, password: string, name?: string) => Promise<void>;
   signUp: (email: string, password: string, name: string, type: UserType) => Promise<void>;
   signOut: () => Promise<void>;
-  initializeAuth: () => Promise<void>;
   clearError: () => void;
   isNutritionist: () => boolean;
+  updateUserProfile: (updates: Partial<User>) => Promise<void>;
+  initializeAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -33,6 +33,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           console.log('Initializing auth...');
           const { data: { session }, error } = await supabase.auth.getSession();
+          
           if (error) {
             console.error('Error getting session:', error);
             set({ user: null, isAuthenticated: false, token: null });
@@ -50,14 +51,21 @@ export const useAuthStore = create<AuthState>()(
                 type: profile.user_type as UserType,
                 profile: {}
               };
-
-              set({
+              set({ 
                 user: userData,
                 isAuthenticated: true,
-                token: session.access_token || null
+                token: session.access_token
               });
+
+              // Inicializar favoritos após autenticação
+              const { useRecipesStore } = await import('./recipes');
+              useRecipesStore.getState().initializeAuth();
+              
+              // Inicializar assinatura
+              const { useSubscriptionStore } = await import('./subscription');
+              useSubscriptionStore.getState().fetchUserSubscription(session.user.id);
             } catch (profileError) {
-              console.error('Error fetching profile on init:', profileError);
+              console.error('Error getting profile:', profileError);
               set({ user: null, isAuthenticated: false, token: null });
             }
           } else {
@@ -81,6 +89,7 @@ export const useAuthStore = create<AuthState>()(
 
           if (error) {
             console.error('Sign in error:', error);
+            // Mensagens de erro amigáveis
             let friendlyMessage = 'Erro ao fazer login';
             if (error.message.includes('Invalid login credentials')) {
               friendlyMessage = 'Email ou senha incorretos. Verifique suas credenciais e tente novamente.';
@@ -89,39 +98,43 @@ export const useAuthStore = create<AuthState>()(
             } else if (error.message.includes('Too many requests')) {
               friendlyMessage = 'Muitas tentativas de login. Tente novamente em alguns minutos.';
             }
-            set({ error: friendlyMessage });
+            
             useToastStore.getState().showToast(friendlyMessage, 'error');
+            set({ error: friendlyMessage });
             return;
           }
-
-          if (!data.session?.user) {
-            set({ error: 'Falha ao obter sessão.' });
-            useToastStore.getState().showToast('Falha ao obter sessão.', 'error');
-            return;
+          
+          if (!data.user) {
+            throw new Error('No user returned from Supabase');
           }
 
-          const profile = await getUserProfile(data.session.user.id);
+          console.log('Sign in successful, getting profile...');
+          // Buscar perfil do usuário
+          const profile = await getUserProfile(data.user.id);
+          
           const userData: User = {
-            id: data.session.user.id,
+            id: data.user.id,
             email: profile.email,
             name: profile.full_name,
             type: profile.user_type as UserType,
             profile: {}
           };
 
-          set({
+          set({ 
             user: userData,
             isAuthenticated: true,
-            token: data.session.access_token || null
+            token: data.session?.access_token || null
           });
 
           useToastStore.getState().showToast('Login realizado com sucesso!', 'success');
 
+          // Inicializar favoritos após login
           const { useRecipesStore } = await import('./recipes');
           useRecipesStore.getState().initializeAuth();
-
+          
+          // Inicializar assinatura
           const { useSubscriptionStore } = await import('./subscription');
-          useSubscriptionStore.getState().fetchUserSubscription(data.session.user.id);
+          useSubscriptionStore.getState().fetchUserSubscription(data.user.id);
         } catch (error) {
           console.error('Sign in error:', error);
           const errorMessage = error instanceof Error ? error.message : 'Sign in failed';
@@ -132,7 +145,6 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      // >>> ALTERADO: cadastro não autentica; envia link de verificação e orienta o usuário
       signUp: async (email: string, password: string, name: string, type: UserType) => {
         set({ loading: true, error: null });
         try {
@@ -141,7 +153,6 @@ export const useAuthStore = create<AuthState>()(
             email,
             password,
             options: {
-              emailRedirectTo: `${window.location.origin}/auth/confirm`,
               data: {
                 full_name: name,
                 user_type: type
@@ -151,6 +162,7 @@ export const useAuthStore = create<AuthState>()(
 
           if (error) {
             console.error('Sign up error:', error);
+            // Mensagens de erro amigáveis
             let friendlyMessage = 'Erro ao criar conta';
             if (error.message.includes('User already registered')) {
               friendlyMessage = 'Este email já está cadastrado. Tente fazer login ou use outro email.';
@@ -161,27 +173,48 @@ export const useAuthStore = create<AuthState>()(
             } else if (error.message.includes('duplicate key value')) {
               friendlyMessage = 'Este email já está cadastrado. Tente fazer login.';
             }
+            
             useToastStore.getState().showToast(friendlyMessage, 'error');
             set({ error: friendlyMessage });
             return;
           }
-
+          
           if (!data.user) {
-            throw new Error('Nenhum usuário retornado pelo Supabase');
+            throw new Error('No user returned from Supabase');
           }
 
-          // NÃO criamos perfil aqui (o trigger faz isso).
-          // NÃO autenticamos antes da confirmação.
-          set({
-            user: null,
-            isAuthenticated: false,
-            token: null
+          console.log('Sign up successful, creating profile...');
+          // Criar perfil do usuário
+          await createUserProfile({
+            id: data.user.id,
+            email,
+            full_name: name,
+            user_type: type
           });
 
-          useToastStore.getState().showToast(
-            'Conta criada! Confirme seu e-mail para acessar.',
-            'success'
-          );
+          const userData: User = {
+            id: data.user.id,
+            email,
+            name,
+            type,
+            profile: {}
+          };
+
+          set({ 
+            user: userData,
+            isAuthenticated: true,
+            token: data.session?.access_token || null
+          });
+
+          useToastStore.getState().showToast('Conta criada com sucesso!', 'success');
+
+          // Inicializar favoritos após cadastro
+          const { useRecipesStore } = await import('./recipes');
+          useRecipesStore.getState().initializeAuth();
+          
+          // Inicializar assinatura
+          const { useSubscriptionStore } = await import('./subscription');
+          useSubscriptionStore.getState().fetchUserSubscription(data.user.id);
         } catch (error) {
           console.error('Sign up error:', error);
           const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
@@ -195,22 +228,47 @@ export const useAuthStore = create<AuthState>()(
       signOut: async () => {
         try {
           console.log('Signing out...');
+          
+          // Limpar estado local primeiro
           set({ user: null, token: null, isAuthenticated: false });
-
+          
+          // Limpar favoritos
           const { useRecipesStore } = await import('./recipes');
           useRecipesStore.getState().clearUserData();
-
+          
+          // Limpar dados de assinatura
           const { useSubscriptionStore } = await import('./subscription');
           useSubscriptionStore.getState().reset?.();
-
+          
+          // Fazer logout no Supabase
           const { error } = await supabase.auth.signOut();
-          if (error) console.error('Supabase signOut error:', error);
-
+          if (error) {
+            console.error('Supabase signOut error:', error);
+          }
+          
           useToastStore.getState().showToast('Logout realizado com sucesso!', 'info');
+          
         } catch (error) {
           console.error('Error signing out:', error);
+          // Mesmo com erro, limpar estado local
           set({ user: null, token: null, isAuthenticated: false });
           useToastStore.getState().showToast('Logout realizado', 'info');
+        }
+      },
+
+      updateUserProfile: async (updates: Partial<User>) => {
+        const { user } = get();
+        if (!user) return;
+
+        try {
+          const { updateUserProfile } = await import('../services/database');
+          await updateUserProfile(user.id, updates);
+          set({ user: { ...user, ...updates } });
+          useToastStore.getState().showToast('Perfil atualizado com sucesso!', 'success');
+        } catch (error) {
+          console.error('Error updating profile:', error);
+          useToastStore.getState().showToast('Erro ao atualizar perfil', 'error');
+          throw error;
         }
       },
 
@@ -219,7 +277,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({
+      partialize: (state) => ({ 
         user: state.user,
         token: state.token,
         isAuthenticated: state.isAuthenticated
