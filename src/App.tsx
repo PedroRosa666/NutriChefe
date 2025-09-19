@@ -16,6 +16,8 @@ import { useTranslation } from './hooks/useTranslation';
 import { Plus } from 'lucide-react';
 import { Toast } from './components/common/Toast';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
+import ConfirmEmailPage from './components/auth/ConfirmEmailPage';
+
 
 function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<number | null>(null);
