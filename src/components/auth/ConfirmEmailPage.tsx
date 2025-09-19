@@ -1,61 +1,71 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useAuthStore } from '../../store/auth';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
+/**
+ * Página de confirmação de email.
+ * Trata diferentes formatos de retorno do Supabase:
+ *  - ?code=...
+ *  - #access_token=...&refresh_token=...
+ *  - ?token_hash=...&type=signup
+ */
 export default function ConfirmEmailPage() {
-  const [status, setStatus] = useState<'loading'|'ok'|'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
   const [message, setMessage] = useState('Confirmando seu e-mail...');
 
   useEffect(() => {
     (async () => {
       try {
         const url = new URL(window.location.href);
-        const code = url.searchParams.get('code');
 
+        // 1) Novo fluxo (?code=...)
+        const code = url.searchParams.get('code');
         if (code) {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error || !data.session) throw error || new Error('Não foi possível criar a sessão.');
-        } else {
-          const hash = new URLSearchParams(window.location.hash.substring(1));
-          const access_token = hash.get('access_token');
-          const refresh_token = hash.get('refresh_token');
-          const type = hash.get('type');
-          if (type !== 'signup' || !access_token || !refresh_token) {
-            throw new Error('Link de confirmação inválido ou expirado.');
+          if (error) throw error;
+          if (data?.user) {
+            setStatus('ok');
+            setMessage('E-mail confirmado com sucesso! Você já pode acessar o sistema.');
+            return;
           }
-          const { error: errSession } = await supabase.auth.setSession({ access_token, refresh_token });
-          if (errSession) throw errSession;
         }
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) throw new Error('Usuário não encontrado após confirmar.');
+        // 2) Fluxo com hash (#access_token=...)
+        if (window.location.hash.includes('access_token')) {
+          const hash = new URLSearchParams(window.location.hash.substring(1));
+          const access_token = hash.get('access_token') || '';
+          const refresh_token = hash.get('refresh_token') || '';
+          if (access_token) {
+            const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+            if (error) throw error;
+            setStatus('ok');
+            setMessage('E-mail confirmado com sucesso! Você já pode acessar o sistema.');
+            return;
+          }
+        }
 
-        // Carrega perfil e atualiza store
-        const { getUserProfile } = await import('../../services/database');
-        const profile = await getUserProfile(session.user.id);
+        // 3) Fluxo legado (?token_hash=...&type=signup)
+        const token_hash = url.searchParams.get('token_hash');
+        const type = (url.searchParams.get('type') || 'signup') as any;
+        if (token_hash) {
+          const { data, error } = await supabase.auth.verifyOtp({ type, token_hash });
+          if (error) throw error;
+          if (data?.user) {
+            setStatus('ok');
+            setMessage('E-mail confirmado com sucesso! Você já pode acessar o sistema.');
+            return;
+          }
+        }
 
-        useAuthStore.setState({
-          user: {
-            id: session.user.id,
-            email: profile.email,
-            name: profile.full_name,
-            type: profile.user_type,
-            profile: {}
-          },
-          token: session.access_token ?? null,
-          isAuthenticated: true,
-          error: null,
-          loading: false
-        });
-
-        setStatus('ok');
-        setMessage('E-mail confirmado! Redirecionando...');
-        setTimeout(() => window.location.replace('/'), 1200);
-      } catch (e: any) {
-        console.error(e);
         setStatus('error');
-        setMessage(e?.message || 'Falha ao confirmar o e-mail.');
+        setMessage('Link inválido ou expirado. Solicite um novo e-mail de confirmação.');
+      } catch (err: any) {
+        console.error('Erro ao confirmar e-mail:', err);
+        setStatus('error');
+        const friendly = err?.message?.includes('expired')
+          ? 'Seu link expirou. Solicite um novo e-mail de confirmação.'
+          : 'Não foi possível confirmar seu e-mail. Tente novamente.';
+        setMessage(friendly);
       }
     })();
   }, []);
@@ -64,8 +74,8 @@ export default function ConfirmEmailPage() {
     <div className="min-h-[60vh] flex items-center justify-center">
       <div className="max-w-md w-full text-center p-8">
         {status === 'loading' && <Loader2 className="mx-auto animate-spin" />}
-        {status === 'ok' && <CheckCircle className="mx-auto" />}
-        {status === 'error' && <AlertCircle className="mx-auto" />}
+        {status === 'ok' && <CheckCircle className="mx-auto text-green-600" />}
+        {status === 'error' && <AlertCircle className="mx-auto text-red-600" />}
         <p className="mt-4 text-lg">{message}</p>
       </div>
     </div>
