@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import { X, Plus, Minus } from 'lucide-react';
+import { useRecipesStore } from '../store/recipes';
 import { useAuthStore } from '../store/auth';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
 import type { Recipe } from '../types/recipe';
-
-// Importa "com segurança" para evitar que uma importação quebrada cause crash
-// e evita desestruturação direta do store.
-import * as RecipesStore from '../store/recipes';
 
 type CategoryKey = keyof ReturnType<typeof useTranslation>['categories'];
 
@@ -18,20 +15,9 @@ interface CreateRecipeFormProps {
 
 export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
   const { user } = useAuthStore();
+  const { createRecipe } = useRecipesStore();
   const translations = useTranslation();
   const [loading, setLoading] = useState(false);
-
-  // ======== ⚠️ ACESSO DEFENSIVO AO STORE =========
-  const useRecipesStore: any = (RecipesStore as any)?.useRecipesStore;
-  const storeState: any = typeof useRecipesStore === 'function' ? useRecipesStore() : null;
-
-  // Se o store existir, usa a função real; senão, define um no-op seguro.
-  const createRecipe: (r: Recipe) => Promise<any> =
-    storeState?.createRecipe ??
-    (async (_r: Recipe) => {
-      console.warn('[CreateRecipeForm] createRecipe indisponível. Fallback no-op chamado.');
-      return Promise.resolve();
-    });
 
   // Estado inicial corrigido
   const [recipe, setRecipe] = useState<Partial<Recipe>>({
@@ -52,14 +38,20 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
     },
   });
 
-  if (!isOpen) return null;
-  if (!user) return null;
+  if (!isOpen || !user) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
 
+    setLoading(true);
     try {
+      console.log('Submitting recipe:', recipe);
+      console.log('User ID:', user.id);
+      
       const recipeData = {
         ...recipe,
         authorId: user.id,
@@ -68,7 +60,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
       } as Recipe;
 
       await createRecipe(recipeData);
-
+      
       // Reset form
       setRecipe({
         title: '',
@@ -87,7 +79,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
           fiber: 0,
         },
       });
-
+      
       onClose();
     } catch (error) {
       console.error('Error creating recipe:', error);
@@ -121,6 +113,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
     }));
   };
 
+  // Função para lidar com valores nutricionais decimais
   const handleNutritionChange = (key: string, value: string) => {
     const numericValue = parseFloat(value) || 0;
     setRecipe((prev) => ({
@@ -132,8 +125,9 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
     }));
   };
 
+  // Mapeia as categorias traduzidas para o formato { valor: 'original', label: 'traduzido' }
   const translatedCategories = (Object.keys(translations.categories) as CategoryKey[])
-    .filter(key => key !== 'all')
+    .filter(key => key !== 'all') // Remove 'all' das opções
     .map((key) => ({
       value: key,
       label: translations.categories[key],
@@ -362,5 +356,3 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
     </div>
   );
 }
-
-export default CreateRecipeForm;
