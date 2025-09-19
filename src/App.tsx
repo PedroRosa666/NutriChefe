@@ -21,12 +21,16 @@ import { ConfirmEmailPage } from './components/auth/ConfirmEmailPage';
 function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showAIMentoring, setShowAIMentoring] = useState(false);
+  const [showCreateRecipe, setShowCreateRecipe] = useState(false); // << novo
   const [initialized, setInitialized] = useState(false);
 
   const {
     category, difficulty, prepTimeRange, minRating, setCategory
   } = useFiltersStore();
-  const { recipes, loading, fetchRecipes } = useRecipesStore();
+
+  // ⚠️ PEGUE TAMBÉM createRecipe DO STORE
+  const { recipes, loading, fetchRecipes, createRecipe } = useRecipesStore();
+
   const { isAuthenticated, isNutritionist, user, initializeAuth } = useAuthStore();
   const { message, type, hideToast } = useToastStore();
   const t = useTranslation();
@@ -105,7 +109,7 @@ function App() {
 
               {isAuthenticated && isNutritionist() && (
                 <button
-                  onClick={() => setShowProfile(true)}
+                  onClick={() => setShowCreateRecipe(true)} // << abre modal certo
                   className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
                 >
                   <Plus size={18} />
@@ -152,10 +156,11 @@ function App() {
               </div>
             </div>
 
-            {/* Modal de criação (se existir) */}
+            {/* Modal de criação: agora com as props certas */}
             <CreateRecipeForm
-              open={false}
-              onClose={() => {}}
+              open={showCreateRecipe}
+              onClose={() => setShowCreateRecipe(false)}
+              createRecipe={createRecipe} // <- ESSENCIAL
             />
           </>
         )}
