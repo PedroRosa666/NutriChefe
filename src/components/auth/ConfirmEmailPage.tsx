@@ -4,10 +4,10 @@ import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 /**
  * Página de confirmação de email.
- * Trata diferentes formatos de retorno do Supabase:
- *  - ?code=...
- *  - #access_token=...&refresh_token=...
- *  - ?token_hash=...&type=signup
+ * Trata todos os formatos possíveis do Supabase:
+ *  - ?code=...                                 → exchangeCodeForSession
+ *  - #access_token=...&refresh_token=...       → setSession
+ *  - ?token_hash=...&type=signup               → verifyOtp (legado)
  */
 export default function ConfirmEmailPage() {
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
@@ -30,7 +30,7 @@ export default function ConfirmEmailPage() {
           }
         }
 
-        // 2) Fluxo com hash (#access_token=...)
+        // 2) Fluxo com hash (#access_token=...&refresh_token=...)
         if (window.location.hash.includes('access_token')) {
           const hash = new URLSearchParams(window.location.hash.substring(1));
           const access_token = hash.get('access_token') || '';
@@ -44,7 +44,7 @@ export default function ConfirmEmailPage() {
           }
         }
 
-        // 3) Fluxo legado (?token_hash=...&type=signup)
+        // 3) Legado (?token_hash=...&type=signup)
         const token_hash = url.searchParams.get('token_hash');
         const type = (url.searchParams.get('type') || 'signup') as any;
         if (token_hash) {
