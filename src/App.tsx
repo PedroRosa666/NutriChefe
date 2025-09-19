@@ -3,6 +3,8 @@ import { Header } from './components/Header';
 import { RecipeCard } from './components/RecipeCard';
 import { CategoryFilter } from './components/CategoryFilter';
 import { AdvancedFilters } from './components/filters/AdvancedFilters';
+// (Removido o import do RecipeDetails, se não estiver usando,
+// pode recolocar depois)
 import { ProfilePage } from './components/profile/ProfilePage';
 import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
 import { AIMentoringPage } from './components/ai/AIMentoringPage';
@@ -15,18 +17,17 @@ import { Plus } from 'lucide-react';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { Toast } from './components/common/Toast';
 import { ConfirmEmailPage } from './components/auth/ConfirmEmailPage';
+import { CreateRecipeForm } from './components/CreateRecipeForm';
 
 function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showAIMentoring, setShowAIMentoring] = useState(false);
+  const [showCreateRecipe, setShowCreateRecipe] = useState(false); // <- controle do modal
   const [initialized, setInitialized] = useState(false);
 
-  const {
-    category, setCategory
-    // (se você usa difficulty, prepTimeRange, minRating em outro lugar, re-adicione aqui)
-  } = useFiltersStore();
+  const { category, setCategory } = useFiltersStore();
 
-  // ⚠️ Repare que NÃO pegamos mais `createRecipe` aqui
+  // ⚠️ Pegue APENAS o que você realmente usa do store
   const { recipes, loading, fetchRecipes } = useRecipesStore();
 
   const { isAuthenticated, isNutritionist, initializeAuth } = useAuthStore();
@@ -35,18 +36,23 @@ function App() {
 
   const CATEGORIES = ['all', 'vegan', 'lowCarb', 'highProtein', 'glutenFree', 'vegetarian'];
 
-  // Páginas especiais baseadas na URL
+  // Páginas especiais
   const isResetPasswordPage =
     window.location.pathname === '/reset-password' ||
     window.location.hash.includes('type=recovery');
 
-  const url = new URL(window.location.href);
-  const isConfirmPage =
-    window.location.pathname === '/auth/confirm' ||
-    url.searchParams.get('code') !== null ||
-    window.location.hash.includes('access_token');
+  let isConfirmPage = false;
+  try {
+    const url = new URL(window.location.href);
+    isConfirmPage =
+      window.location.pathname === '/auth/confirm' ||
+      url.searchParams.get('code') !== null ||
+      window.location.hash.includes('access_token');
+  } catch {
+    // se der erro de URL em algum ambiente, caímos fora silenciosamente
+  }
 
-  // Inicializar aplicação
+  // Inicialização
   useEffect(() => {
     const initialize = async () => {
       if (initialized) return;
@@ -61,13 +67,8 @@ function App() {
     initialize();
   }, [initialized, initializeAuth, fetchRecipes]);
 
-  if (isResetPasswordPage) {
-    return <ResetPasswordPage />;
-  }
-
-  if (isConfirmPage) {
-    return <ConfirmEmailPage />;
-  }
+  if (isResetPasswordPage) return <ResetPasswordPage />;
+  if (isConfirmPage) return <ConfirmEmailPage />;
 
   if (!initialized) {
     return (
@@ -106,8 +107,7 @@ function App() {
 
               {isAuthenticated && isNutritionist() && (
                 <button
-                  // Por ora só mostra o botão; se quiser abrir um modal depois, adiciono de volta
-                  onClick={() => setShowProfile(true)}
+                  onClick={() => setShowCreateRecipe(true)}
                   className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
                 >
                   <Plus size={18} />
@@ -116,7 +116,6 @@ function App() {
               )}
             </div>
 
-            {/* Filtros */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
               <div className="md:col-span-1">
                 <CategoryFilter
@@ -134,38 +133,32 @@ function App() {
                       <div key={i} className="h-64 bg-gray-200 dark:bg-gray-800 animate-pulse rounded-lg" />
                     ))}
                   </div>
+                ) : recipes.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {t.recipes.noRecipesFound}
+                    </p>
+                  </div>
                 ) : (
-                  <>
-                    {recipes.length === 0 ? (
-                      <div className="text-center py-12">
-                        <p className="text-gray-600 dark:text-gray-400">
-                          {t.recipes.noRecipesFound}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {recipes.map((recipe) => (
-                          <RecipeCard key={recipe.id} recipe={recipe} />
-                        ))}
-                      </div>
-                    )}
-                  </>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {recipes.map((recipe) => (
+                      <RecipeCard key={recipe.id} recipe={recipe} />
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Removido: <CreateRecipeForm /> para evitar o erro de createRecipe */}
+            {/* Modal de criação: usa as props corretas que seu componente espera */}
+            <CreateRecipeForm
+              isOpen={showCreateRecipe}
+              onClose={() => setShowCreateRecipe(false)}
+            />
           </>
         )}
       </main>
 
-      {message && (
-        <Toast
-          message={message}
-          type={type}
-          onClose={hideToast}
-        />
-      )}
+      {message && <Toast message={message} type={type} onClose={hideToast} />}
     </div>
   );
 }
