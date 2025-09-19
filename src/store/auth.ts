@@ -5,6 +5,11 @@ import { getUserProfile } from '../services/database';
 import { useToastStore } from './toast';
 import type { User, UserType } from '../types/user';
 
+function isEmailConfirmed(u: any): boolean {
+  // Supabase (GoTrue v2) expõe uma destas chaves
+  return Boolean(u?.email_confirmed_at || u?.confirmed_at);
+}
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -30,44 +35,49 @@ export const useAuthStore = create<AuthState>()(
 
       initializeAuth: async () => {
         try {
-          const { data: { session }, error } = await supabase.auth.getSession();
-          if (error) {
-            console.error('Error getting session:', error);
+          const { data: { session } } = await supabase.auth.getSession();
+
+          // Se não houver sessão, limpa estado
+          if (!session?.user) {
             set({ user: null, isAuthenticated: false, token: null });
             return;
           }
 
-          if (session?.user) {
-            try {
-              const profile = await getUserProfile(session.user.id);
-              const userData: User = {
-                id: session.user.id,
-                email: profile.email,
-                name: profile.full_name,
-                type: profile.user_type as UserType,
-                profile: {}
-              };
-              set({
-                user: userData,
-                isAuthenticated: true,
-                token: session.access_token || null
-              });
-
-              // Inicializações dependentes de usuário
-              const { useRecipesStore } = await import('./recipes');
-              useRecipesStore.getState().initializeAuth();
-
-              const { useSubscriptionStore } = await import('./subscription');
-              useSubscriptionStore.getState().fetchUserSubscription(session.user.id);
-            } catch (profileError) {
-              console.error('Error fetching profile on init:', profileError);
-              set({ user: null, isAuthenticated: false, token: null });
-            }
-          } else {
+          // ⚠️ Gate: recusa sessão de e-mail não confirmado
+          if (!isEmailConfirmed(session.user)) {
+            await supabase.auth.signOut();
             set({ user: null, isAuthenticated: false, token: null });
+            useToastStore.getState().showToast('Confirme seu e-mail para acessar.', 'error');
+            return;
           }
+
+          // Carrega perfil
+          const profile = await getUserProfile(session.user.id);
+          const userData: User = {
+            id: session.user.id,
+            email: profile.email,
+            name: profile.full_name,
+            type: profile.user_type as UserType,
+            profile: {}
+          };
+
+          set({
+            user: userData,
+            isAuthenticated: true,
+            token: session.access_token || null
+          });
+
+          // Inicializações dependentes
+          try {
+            const { useRecipesStore } = await import('./recipes');
+            useRecipesStore.getState().initializeAuth();
+          } catch {}
+          try {
+            const { useSubscriptionStore } = await import('./subscription');
+            useSubscriptionStore.getState().fetchUserSubscription(session.user.id);
+          } catch {}
         } catch (e) {
-          console.error('Error initializing auth:', e);
+          console.error('initializeAuth error:', e);
           set({ user: null, isAuthenticated: false, token: null });
         }
       },
@@ -76,30 +86,34 @@ export const useAuthStore = create<AuthState>()(
         set({ loading: true, error: null });
         try {
           const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
           if (error) {
-            let friendlyMessage = 'Erro ao fazer login';
-            if (error.message.includes('Invalid login credentials')) {
-              friendlyMessage = 'Email ou senha incorretos. Verifique e tente novamente.';
-            } else if (error.message.includes('Email not confirmed')) {
-              friendlyMessage = 'Email não confirmado. Verifique sua caixa de entrada.';
-            } else if (error.message.includes('Too many requests')) {
-              friendlyMessage = 'Muitas tentativas. Tente novamente em alguns minutos.';
-            }
-            useToastStore.getState().showToast(friendlyMessage, 'error');
-            set({ error: friendlyMessage });
+            let friendly = 'Erro ao fazer login';
+            if (error.message.includes('Invalid login credentials')) friendly = 'Email ou senha incorretos.';
+            if (error.message.includes('Email not confirmed')) friendly = 'Email não confirmado. Verifique sua caixa de entrada.';
+            if (error.message.includes('Too many requests')) friendly = 'Muitas tentativas. Tente mais tarde.';
+            useToastStore.getState().showToast(friendly, 'error');
+            set({ error: friendly });
             return;
           }
 
-          if (!data.session?.user) {
+          const u = data.user;
+          if (!u || !data.session) {
             useToastStore.getState().showToast('Falha ao obter sessão.', 'error');
             set({ error: 'Falha ao obter sessão.' });
             return;
           }
 
-          const profile = await getUserProfile(data.session.user.id);
+          // ⚠️ Gate: recusa login sem e-mail confirmado
+          if (!isEmailConfirmed(u)) {
+            await supabase.auth.signOut();
+            useToastStore.getState().showToast('Confirme seu e-mail para acessar.', 'error');
+            set({ user: null, isAuthenticated: false, token: null });
+            return;
+          }
+
+          const profile = await getUserProfile(u.id);
           const userData: User = {
-            id: data.session.user.id,
+            id: u.id,
             email: profile.email,
             name: profile.full_name,
             type: profile.user_type as UserType,
@@ -114,22 +128,25 @@ export const useAuthStore = create<AuthState>()(
 
           useToastStore.getState().showToast('Login realizado com sucesso!', 'success');
 
-          const { useRecipesStore } = await import('./recipes');
-          useRecipesStore.getState().initializeAuth();
-
-          const { useSubscriptionStore } = await import('./subscription');
-          useSubscriptionStore.getState().fetchUserSubscription(data.session.user.id);
-        } catch (err) {
-          console.error('Sign in error:', err);
-          const errorMessage = err instanceof Error ? err.message : 'Sign in failed';
-          set({ error: errorMessage });
-          useToastStore.getState().showToast(errorMessage, 'error');
+          try {
+            const { useRecipesStore } = await import('./recipes');
+            useRecipesStore.getState().initializeAuth();
+          } catch {}
+          try {
+            const { useSubscriptionStore } = await import('./subscription');
+            useSubscriptionStore.getState().fetchUserSubscription(u.id);
+          } catch {}
+        } catch (err: any) {
+          console.error('signIn error:', err);
+          const msg = err?.message ?? 'Falha no login';
+          set({ error: msg });
+          useToastStore.getState().showToast(msg, 'error');
         } finally {
           set({ loading: false });
         }
       },
 
-      // >>> CADASTRO COM VERIFICAÇÃO: NÃO autentica antes de confirmar o e-mail
+      // Cadastro com verificação: envia link e NÃO autentica
       signUp: async (email: string, password: string, name: string, type: UserType) => {
         set({ loading: true, error: null });
         try {
@@ -138,44 +155,33 @@ export const useAuthStore = create<AuthState>()(
             password,
             options: {
               emailRedirectTo: `${window.location.origin}/auth/confirm`,
-              data: {
-                full_name: name,
-                user_type: type
-              }
+              data: { full_name: name, user_type: type }
             }
           });
 
           if (error) {
-            let friendlyMessage = 'Erro ao criar conta';
-            if (error.message.includes('User already registered')) {
-              friendlyMessage = 'Este e-mail já está cadastrado. Faça login ou use outro e-mail.';
-            } else if (error.message.includes('Password should be at least')) {
-              friendlyMessage = 'A senha deve ter pelo menos 6 caracteres.';
-            } else if (error.message.includes('Invalid email')) {
-              friendlyMessage = 'E-mail inválido. Verifique o formato.';
-            }
-            useToastStore.getState().showToast(friendlyMessage, 'error');
-            set({ error: friendlyMessage });
+            let friendly = 'Erro ao criar conta';
+            if (error.message.includes('User already registered')) friendly = 'Este e-mail já está cadastrado.';
+            if (error.message.includes('Password should be at least')) friendly = 'A senha deve ter pelo menos 6 caracteres.';
+            if (error.message.includes('Invalid email')) friendly = 'E-mail inválido.';
+            useToastStore.getState().showToast(friendly, 'error');
+            set({ error: friendly });
             return;
           }
 
-          if (!data.user) {
-            throw new Error('Falha ao criar usuário.');
-          }
+          // Tentativa extra (opcional) de reenviar o e-mail caso o projeto permita
+          try {
+            await supabase.auth.resend({ type: 'signup', email });
+          } catch {}
 
-          // Não criamos perfil no cliente (há trigger no banco).
-          // Não autenticamos antes da confirmação.
+          // Não autenticar aqui
           set({ user: null, isAuthenticated: false, token: null });
-
-          useToastStore.getState().showToast(
-            'Conta criada! Confirme seu e-mail para acessar.',
-            'success'
-          );
-        } catch (err) {
-          console.error('Sign up error:', err);
-          const errorMessage = err instanceof Error ? err.message : 'Sign up failed';
-          set({ error: errorMessage });
-          useToastStore.getState().showToast(errorMessage, 'error');
+          useToastStore.getState().showToast('Conta criada! Confirme seu e-mail para acessar.', 'success');
+        } catch (err: any) {
+          console.error('signUp error:', err);
+          const msg = err?.message ?? 'Falha no cadastro';
+          set({ error: msg });
+          useToastStore.getState().showToast(msg, 'error');
         } finally {
           set({ loading: false });
         }
@@ -184,20 +190,18 @@ export const useAuthStore = create<AuthState>()(
       signOut: async () => {
         try {
           set({ user: null, token: null, isAuthenticated: false });
-
-          const { useRecipesStore } = await import('./recipes');
-          useRecipesStore.getState().clearUserData();
-
-          const { useSubscriptionStore } = await import('./subscription');
-          useSubscriptionStore.getState().reset?.();
-
-          const { error } = await supabase.auth.signOut();
-          if (error) console.error('Supabase signOut error:', error);
-
+          try {
+            const { useRecipesStore } = await import('./recipes');
+            useRecipesStore.getState().clearUserData();
+          } catch {}
+          try {
+            const { useSubscriptionStore } = await import('./subscription');
+            useSubscriptionStore.getState().reset?.();
+          } catch {}
+          await supabase.auth.signOut();
           useToastStore.getState().showToast('Logout realizado!', 'info');
-        } catch (err) {
-          console.error('Error signing out:', err);
-          set({ user: null, token: null, isAuthenticated: false });
+        } catch (e) {
+          console.error('signOut error:', e);
           useToastStore.getState().showToast('Logout realizado', 'info');
         }
       },
@@ -207,11 +211,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated
-      })
+      partialize: (s) => ({ user: s.user, token: s.token, isAuthenticated: s.isAuthenticated })
     }
   )
 );
