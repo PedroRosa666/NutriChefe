@@ -17,6 +17,9 @@ import { Plus } from 'lucide-react';
 import { Toast } from './components/common/Toast';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 
+// 👉 ADIÇÃO: importar a página de confirmação de e-mail
+import ConfirmEmailPage from './components/auth/ConfirmEmailPage';
+
 function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -42,6 +45,12 @@ function App() {
   // Verificar se é página de reset de senha
   const isResetPasswordPage = window.location.pathname === '/reset-password' || 
                              window.location.hash.includes('type=recovery');
+
+  // 👉 ADIÇÃO: verificar se é página de confirmação de e-mail (link do Supabase)
+  const isConfirmEmailPage =
+    window.location.pathname === '/auth/confirm' ||
+    new URLSearchParams(window.location.search).has('code') ||
+    window.location.hash.includes('access_token');
 
   // Inicializar aplicação
   useEffect(() => {
@@ -77,6 +86,11 @@ function App() {
   // Se for página de reset de senha, mostrar apenas essa página
   if (isResetPasswordPage) {
     return <ResetPasswordPage />;
+  }
+
+  // 👉 ADIÇÃO: Se for página de confirmação de e-mail, mostrar apenas essa página
+  if (isConfirmEmailPage) {
+    return <ConfirmEmailPage />;
   }
 
   // Função para normalizar as chaves
