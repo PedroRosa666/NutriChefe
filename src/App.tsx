@@ -45,6 +45,9 @@ function App() {
   const isResetPasswordPage = window.location.pathname === '/reset-password' || 
                              window.location.hash.includes('type=recovery');
 
+  const isConfirmPage = window.location.pathname === '/auth/confirm';
+
+
   // Inicializar aplicação
   useEffect(() => {
     const initialize = async () => {
