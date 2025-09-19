@@ -84,6 +84,11 @@ function App() {
     return <ResetPasswordPage />;
   }
 
+  if (isConfirmPage) {
+  return <ConfirmEmailPage />;
+}
+
+
   // Função para normalizar as chaves
   const normalizeKey = (key: string) => {
     return key.toLowerCase().replace(/\s+/g, '');
