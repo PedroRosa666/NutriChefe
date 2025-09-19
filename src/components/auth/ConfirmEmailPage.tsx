@@ -3,10 +3,9 @@ import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/auth';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
-export function ConfirmEmailPage() {
+export default function ConfirmEmailPage() {
   const [status, setStatus] = useState<'loading'|'ok'|'error'>('loading');
   const [message, setMessage] = useState('Confirmando seu e-mail...');
-  const setAuth = useAuthStore();
 
   useEffect(() => {
     (async () => {
@@ -15,30 +14,24 @@ export function ConfirmEmailPage() {
         const code = url.searchParams.get('code');
 
         if (code) {
-          // Fluxo PKCE moderno: troca code por sessão
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error || !data.session) throw error || new Error('Sem sessão');
+          if (error || !data.session) throw error || new Error('Não foi possível criar a sessão.');
         } else {
-          // Fallback para links antigos com hash #access_token=...
           const hash = new URLSearchParams(window.location.hash.substring(1));
           const access_token = hash.get('access_token');
           const refresh_token = hash.get('refresh_token');
           const type = hash.get('type');
           if (type !== 'signup' || !access_token || !refresh_token) {
-            throw new Error('Link inválido ou expirado.');
+            throw new Error('Link de confirmação inválido ou expirado.');
           }
-          const { error: sessionErr } = await supabase.auth.setSession({
-            access_token,
-            refresh_token
-          });
-          if (sessionErr) throw sessionErr;
+          const { error: errSession } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (errSession) throw errSession;
         }
 
-        const { data: sessionRes } = await supabase.auth.getSession();
-        const session = sessionRes.session;
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) throw new Error('Usuário não encontrado após confirmar.');
 
-        // Buscar perfil
+        // Carrega perfil e atualiza store
         const { getUserProfile } = await import('../../services/database');
         const profile = await getUserProfile(session.user.id);
 
@@ -50,7 +43,7 @@ export function ConfirmEmailPage() {
             type: profile.user_type,
             profile: {}
           },
-          token: session.access_token,
+          token: session.access_token ?? null,
           isAuthenticated: true,
           error: null,
           loading: false
@@ -58,13 +51,11 @@ export function ConfirmEmailPage() {
 
         setStatus('ok');
         setMessage('E-mail confirmado! Redirecionando...');
-        setTimeout(() => {
-          window.location.replace('/');
-        }, 1200);
-      } catch (err: any) {
-        console.error(err);
+        setTimeout(() => window.location.replace('/'), 1200);
+      } catch (e: any) {
+        console.error(e);
         setStatus('error');
-        setMessage(err?.message || 'Falha ao confirmar o e-mail.');
+        setMessage(e?.message || 'Falha ao confirmar o e-mail.');
       }
     })();
   }, []);
