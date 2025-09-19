@@ -5,6 +5,14 @@ import { getUserProfile } from '../services/database';
 import { useToastStore } from './toast';
 import type { User, UserType } from '../types/user';
 
+// Define URL segura de redirecionamento para confirmação de e-mail
+// 1) Usa VITE_AUTH_REDIRECT_URL se existir
+// 2) Se origem conter domínios webcontainer/credentialless, usa localhost:5173 (dev)
+// 3) Caso contrário, usa window.location.origin
+const _origin = (import.meta.env.VITE_AUTH_REDIRECT_URL as string) || window.location.origin;
+const _unsafe = /webcontainer-api\.io|credentialless|\.local-credentialless\./.test(_origin);
+const CONFIRM_REDIRECT_BASE = _unsafe ? 'http://localhost:5173' : _origin;
+
 function isEmailConfirmed(u: any): boolean {
   // GoTrue v2 expõe uma destas chaves
   return Boolean(u?.email_confirmed_at || u?.confirmed_at);
@@ -128,7 +136,7 @@ export const useAuthStore = create<AuthState>()(
             email,
             password,
             options: {
-              emailRedirectTo: `${window.location.origin}/auth/confirm`,
+              emailRedirectTo: `${CONFIRM_REDIRECT_BASE}/auth/confirm`,
               data: { full_name: name, user_type: type }
             }
           });
