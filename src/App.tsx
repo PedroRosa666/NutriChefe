@@ -3,8 +3,6 @@ import { Header } from './components/Header';
 import { RecipeCard } from './components/RecipeCard';
 import { CategoryFilter } from './components/CategoryFilter';
 import { AdvancedFilters } from './components/filters/AdvancedFilters';
-import { RecipeDetails } from './components/RecipeDetails';
-import { CreateRecipeForm } from './components/CreateRecipeForm';
 import { ProfilePage } from './components/profile/ProfilePage';
 import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
 import { AIMentoringPage } from './components/ai/AIMentoringPage';
@@ -21,17 +19,17 @@ import { ConfirmEmailPage } from './components/auth/ConfirmEmailPage';
 function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showAIMentoring, setShowAIMentoring] = useState(false);
-  const [showCreateRecipe, setShowCreateRecipe] = useState(false); // << novo
   const [initialized, setInitialized] = useState(false);
 
   const {
-    category, difficulty, prepTimeRange, minRating, setCategory
+    category, setCategory
+    // (se você usa difficulty, prepTimeRange, minRating em outro lugar, re-adicione aqui)
   } = useFiltersStore();
 
-  // ⚠️ PEGUE TAMBÉM createRecipe DO STORE
-  const { recipes, loading, fetchRecipes, createRecipe } = useRecipesStore();
+  // ⚠️ Repare que NÃO pegamos mais `createRecipe` aqui
+  const { recipes, loading, fetchRecipes } = useRecipesStore();
 
-  const { isAuthenticated, isNutritionist, user, initializeAuth } = useAuthStore();
+  const { isAuthenticated, isNutritionist, initializeAuth } = useAuthStore();
   const { message, type, hideToast } = useToastStore();
   const t = useTranslation();
 
@@ -52,7 +50,6 @@ function App() {
   useEffect(() => {
     const initialize = async () => {
       if (initialized) return;
-      console.log('Initializing app...');
       try {
         await initializeAuth();
         await fetchRecipes();
@@ -109,7 +106,8 @@ function App() {
 
               {isAuthenticated && isNutritionist() && (
                 <button
-                  onClick={() => setShowCreateRecipe(true)} // << abre modal certo
+                  // Por ora só mostra o botão; se quiser abrir um modal depois, adiciono de volta
+                  onClick={() => setShowProfile(true)}
                   className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
                 >
                   <Plus size={18} />
@@ -156,12 +154,7 @@ function App() {
               </div>
             </div>
 
-            {/* Modal de criação: agora com as props certas */}
-            <CreateRecipeForm
-              open={showCreateRecipe}
-              onClose={() => setShowCreateRecipe(false)}
-              createRecipe={createRecipe} // <- ESSENCIAL
-            />
+            {/* Removido: <CreateRecipeForm /> para evitar o erro de createRecipe */}
           </>
         )}
       </main>
