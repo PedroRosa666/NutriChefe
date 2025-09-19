@@ -14,23 +14,17 @@ import { useAuthStore } from './store/auth';
 import { useToastStore } from './store/toast';
 import { useTranslation } from './hooks/useTranslation';
 import { Plus } from 'lucide-react';
-import { Toast } from './components/common/Toast';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
+import { Toast } from './components/common/Toast';
+import { ConfirmEmailPage } from './components/auth/ConfirmEmailPage';
 
 function App() {
-  const [selectedRecipe, setSelectedRecipe] = useState<number | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showAIMentoring, setShowAIMentoring] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  
-  const { 
-    category, 
-    searchQuery, 
-    difficulty, 
-    prepTimeRange, 
-    minRating, 
-    setCategory 
+
+  const {
+    category, difficulty, prepTimeRange, minRating, setCategory
   } = useFiltersStore();
   const { recipes, loading, fetchRecipes } = useRecipesStore();
   const { isAuthenticated, isNutritionist, user, initializeAuth } = useAuthStore();
@@ -39,88 +33,44 @@ function App() {
 
   const CATEGORIES = ['all', 'vegan', 'lowCarb', 'highProtein', 'glutenFree', 'vegetarian'];
 
-  // Verificar se é página de reset de senha
-  const isResetPasswordPage = window.location.pathname === '/reset-password' || 
-                             window.location.hash.includes('type=recovery');
+  // Páginas especiais baseadas na URL
+  const isResetPasswordPage =
+    window.location.pathname === '/reset-password' ||
+    window.location.hash.includes('type=recovery');
+
+  const url = new URL(window.location.href);
+  const isConfirmPage =
+    window.location.pathname === '/auth/confirm' ||
+    url.searchParams.get('code') !== null ||
+    window.location.hash.includes('access_token');
 
   // Inicializar aplicação
   useEffect(() => {
     const initialize = async () => {
       if (initialized) return;
-      
       console.log('Initializing app...');
       try {
-        // Primeiro inicializar autenticação
         await initializeAuth();
-        
-        // Depois buscar receitas
         await fetchRecipes();
-        
         setInitialized(true);
-        console.log('App initialized successfully');
-      } catch (error) {
-        console.error('Error initializing app:', error);
-        setInitialized(true); // Marcar como inicializado mesmo com erro
+      } catch (e) {
+        console.error(e);
       }
     };
-
     initialize();
-  }, [initializeAuth, fetchRecipes, initialized]);
+  }, [initialized, initializeAuth, fetchRecipes]);
 
-  // Sincroniza a categoria inicial
-  useEffect(() => {
-    if (initialized) {
-      setCategory('all');
-    }
-  }, [setCategory, initialized]);
-
-  // Se for página de reset de senha, mostrar apenas essa página
   if (isResetPasswordPage) {
     return <ResetPasswordPage />;
   }
 
-  // Função para normalizar as chaves
-  const normalizeKey = (key: string) => {
-    return key.toLowerCase().replace(/\s+/g, '');
-  };
+  if (isConfirmPage) {
+    return <ConfirmEmailPage />;
+  }
 
-  // Função para filtrar por tempo de preparo
-  const matchesPrepTime = (recipe: any) => {
-    if (!prepTimeRange) return true;
-    
-    switch (prepTimeRange) {
-      case 'quick':
-        return recipe.prepTime <= 15;
-      case 'medium':
-        return recipe.prepTime <= 30;
-      case 'long':
-        return recipe.prepTime > 30;
-      default:
-        return true;
-    }
-  };
-
-  // Filtra as receitas
-  const filteredRecipes = recipes.filter(recipe => {
-    const normalizedRecipeCategory = normalizeKey(recipe.category);
-    const normalizedSelectedCategory = normalizeKey(category);
-
-    const matchesCategory = normalizedSelectedCategory === 'all' || normalizedRecipeCategory === normalizedSelectedCategory;
-    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDifficulty = !difficulty || recipe.difficulty === difficulty;
-    const matchesRating = !minRating || recipe.rating >= minRating;
-    const matchesTime = matchesPrepTime(recipe);
-
-    return matchesCategory && matchesSearch && matchesDifficulty && matchesRating && matchesTime;
-  });
-
-  const selectedRecipeData = recipes.find(r => r.id === selectedRecipe);
-
-  // Mostrar loading inicial
   if (!initialized) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <LoadingSpinner size="lg" />
           <p className="mt-4 text-gray-600 dark:text-gray-400">Carregando aplicação...</p>
@@ -131,7 +81,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <Header 
+      <Header
         onProfileClick={() => setShowProfile(true)}
         onAIMentoringClick={() => setShowAIMentoring(true)}
       />
@@ -155,74 +105,61 @@ function App() {
 
               {isAuthenticated && isNutritionist() && (
                 <button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap text-sm sm:text-base"
+                  onClick={() => setShowProfile(true)}
+                  className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
                 >
-                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                  {t.home.createRecipe}
+                  <Plus size={18} />
+                  {t.recipes.createRecipe}
                 </button>
               )}
             </div>
 
-            {/* Filtros com layout melhorado */}
-            <div className="mb-8 space-y-4">
-              {/* Filtros de categoria - sempre em linha completa */}
-              <div className="w-full">
+            {/* Filtros */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+              <div className="md:col-span-1">
                 <CategoryFilter
                   categories={CATEGORIES}
                   selectedCategory={category}
-                  onSelectCategory={setCategory}
+                  onCategoryChange={setCategory}
                 />
-              </div>
-              
-              {/* Filtros avançados - alinhados à direita em desktop, centralizados em mobile */}
-              <div className="flex justify-center sm:justify-end">
                 <AdvancedFilters />
+              </div>
+
+              <div className="md:col-span-3">
+                {loading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className="h-64 bg-gray-200 dark:bg-gray-800 animate-pulse rounded-lg" />
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    {recipes.length === 0 ? (
+                      <div className="text-center py-12">
+                        <p className="text-gray-600 dark:text-gray-400">
+                          {t.recipes.noRecipesFound}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {recipes.map((recipe) => (
+                          <RecipeCard key={recipe.id} recipe={recipe} />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
 
-            {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <LoadingSpinner size="lg" />
-              </div>
-            ) : filteredRecipes.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500 dark:text-gray-400 mb-4">{t.home.noRecipes}</p>
-                {recipes.length === 0 && !loading && (
-                  <button
-                    onClick={fetchRecipes}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    Tentar novamente
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRecipes.map((recipe) => (
-                  <RecipeCard
-                    key={recipe.id}
-                    recipe={recipe}
-                    onClick={() => setSelectedRecipe(recipe.id)}
-                  />
-                ))}
-              </div>
-            )}
+            {/* Modal de criação (se existir) */}
+            <CreateRecipeForm
+              open={false}
+              onClose={() => {}}
+            />
           </>
         )}
       </main>
-
-      {selectedRecipeData && (
-        <RecipeDetails
-          recipe={selectedRecipeData}
-          onClose={() => setSelectedRecipe(null)}
-        />
-      )}
-
-      <CreateRecipeForm
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-      />
 
       {message && (
         <Toast
