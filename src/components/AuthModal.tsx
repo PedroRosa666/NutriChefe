@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { ForgotPasswordModal } from './auth/ForgotPasswordModal';
+import { EmailVerificationModal } from './auth/EmailVerificationModal';
 import { cn } from '../lib/utils';
 import type { UserType } from '../types/user';
 import { useTranslation } from '../hooks/useTranslation';
@@ -22,9 +23,10 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   const [userType, setUserType] = useState<UserType>('Client');
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
   const t = useTranslation();
 
-  const { signIn, signUp } = useAuthStore();
+  const { signIn, signUp, pendingEmailVerification, setPendingEmailVerification } = useAuthStore();
 
   // === 🔧 Sincroniza o modo sempre que o modal abrir ===
   useEffect(() => {
@@ -46,6 +48,12 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     } catch { /* ignore */ }
   }, [mode]);
 
+  // Verificar se há email pendente de verificação
+  useEffect(() => {
+    if (pendingEmailVerification && !showEmailVerification) {
+      setShowEmailVerification(true);
+    }
+  }, [pendingEmailVerification, showEmailVerification]);
   // Abas
   const isSignup = mode === 'signup';
 
@@ -57,10 +65,15 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     try {
       if (mode === 'signin') {
         await signIn(email, password, name);
+        // Se login bem-sucedido, fechar modal
+        if (!pendingEmailVerification) {
+          onClose();
+        }
       } else {
         await signUp(email, password, name, userType);
+        // Após signup, mostrar modal de verificação
+        setShowEmailVerification(true);
       }
-      onClose();
     } catch (error) {
       console.error('Auth error:', error);
     } finally {
@@ -72,6 +85,16 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     setShowForgotPassword(true);
   };
 
+  const handleCloseEmailVerification = () => {
+    setShowEmailVerification(false);
+    setPendingEmailVerification(null);
+  };
+
+  const handleEmailVerificationSuccess = () => {
+    setShowEmailVerification(false);
+    setPendingEmailVerification(null);
+    onClose();
+  };
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -181,6 +204,21 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               </div>
             )}
 
+            {/* Mostrar botão de verificação se há email pendente */}
+            {mode === 'signin' && pendingEmailVerification && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
+                  Email não confirmado. Verifique sua caixa de entrada.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowEmailVerification(true)}
+                  className="text-sm text-yellow-700 dark:text-yellow-300 hover:text-yellow-800 dark:hover:text-yellow-200 font-medium underline"
+                >
+                  Reenviar email de confirmação
+                </button>
+              </div>
+            )}
             <button
               type="submit"
               disabled={loading}
@@ -214,5 +252,11 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
         onClose={() => setShowForgotPassword(false)}
       />
     </>
+      <EmailVerificationModal
+        isOpen={showEmailVerification}
+        onClose={handleCloseEmailVerification}
+        email={pendingEmailVerification || email}
+        onSuccess={handleEmailVerificationSuccess}
+      />
   );
 }
