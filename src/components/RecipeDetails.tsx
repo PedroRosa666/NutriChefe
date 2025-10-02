@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, Clock, ChefHat, Heart, Edit, Trash2, User, Calendar, Edit2, X } from 'lucide-react';
+import { Star, Clock, ChefHat, Heart, CreditCard as Edit, Trash2, User, Calendar, CreditCard as Edit2, X } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useRecipesStore } from '../store/recipes';
 import { EditRecipeForm } from './recipe/EditRecipeForm';
