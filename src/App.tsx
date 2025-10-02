@@ -20,12 +20,15 @@ import { EmailVerificationPage } from './components/auth/EmailVerificationPage';
 
 
 function App() {
+  console.log('App component rendering...');
   const [selectedRecipe, setSelectedRecipe] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showAIMentoring, setShowAIMentoring] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  
+
+  console.log('App state initialized');
+
   const { 
     category, 
     searchQuery, 
