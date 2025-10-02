@@ -55,7 +55,17 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
 
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Verificar autenticação e verificação de email
     if (!isAuthenticated) {
+      useToastStore.getState().showToast('Faça login para favoritar receitas', 'error');
+      return;
+    }
+    
+    // Verificar se email foi confirmado
+    const { pendingEmailVerification } = useAuthStore.getState();
+    if (pendingEmailVerification) {
+      useToastStore.getState().showToast('Confirme seu email para favoritar receitas', 'error');
       return;
     }
 

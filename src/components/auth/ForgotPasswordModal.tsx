@@ -48,18 +48,10 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
     try {
       console.log('Starting password reset process for:', trimmedEmail);
       
-      // Verificar se o email existe no banco de dados
-      const emailExists = await checkEmailExists(trimmedEmail);
-
-      if (!emailExists) {
-        setError('Email não encontrado. Verifique se o email está correto ou crie uma conta.');
-        setStep('error');
-        return;
-      }
-
-      console.log('Email exists, sending reset email...');
+      // Enviar email de recuperação diretamente
+      // O Supabase já valida se o email existe
+      console.log('Sending reset email...');
       
-      // Enviar email de recuperação
       await sendPasswordResetEmail(trimmedEmail);
       
       console.log('Reset email sent successfully');
@@ -68,9 +60,13 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
     } catch (err: any) {
       console.error('Password reset error:', err);
       
-      let friendlyMessage = 'Erro ao enviar email de recuperação. Tente novamente em alguns minutos.';
+      let friendlyMessage = 'Erro ao enviar email de recuperação.';
       
-      if (err.message) {
+      if (err.message?.includes('User not found')) {
+        friendlyMessage = 'Email não encontrado. Verifique se o email está correto ou crie uma conta.';
+      } else if (err.message?.includes('rate limit')) {
+        friendlyMessage = 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.';
+      } else if (err.message) {
         friendlyMessage = err.message;
       }
       

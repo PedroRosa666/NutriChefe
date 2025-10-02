@@ -56,7 +56,18 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
   const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    
+    if (!user) {
+      useToastStore.getState().showToast('Faça login para avaliar receitas', 'error');
+      return;
+    }
+    
+    // Verificar se email foi confirmado
+    const { pendingEmailVerification } = useAuthStore.getState();
+    if (pendingEmailVerification) {
+      useToastStore.getState().showToast('Confirme seu email para avaliar receitas', 'error');
+      return;
+    }
 
     try {
       await addReview(recipe.id, {

@@ -16,7 +16,7 @@ import { useTranslation } from './hooks/useTranslation';
 import { Plus } from 'lucide-react';
 import { Toast } from './components/common/Toast';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
-import ConfirmEmailPage from './components/auth/ConfirmEmailPage';
+import { EmailVerificationPage } from './components/auth/EmailVerificationPage';
 
 
 function App() {
@@ -35,7 +35,7 @@ function App() {
     setCategory 
   } = useFiltersStore();
   const { recipes, loading, fetchRecipes } = useRecipesStore();
-  const { isAuthenticated, isNutritionist, user, initializeAuth } = useAuthStore();
+  const { isAuthenticated, isNutritionist, user, initializeAuth, pendingEmailVerification } = useAuthStore();
   const { message, type, hideToast } = useToastStore();
   const t = useTranslation();
 
@@ -45,7 +45,10 @@ function App() {
   const isResetPasswordPage = window.location.pathname === '/reset-password' || 
                              window.location.hash.includes('type=recovery');
 
-  const isConfirmPage = window.location.pathname === '/auth/confirm';
+  // Verificar se é página de verificação de email
+  const isEmailVerificationPage = window.location.pathname === '/auth/verify-email' ||
+                                  window.location.search.includes('code=') ||
+                                  window.location.search.includes('token_hash=');
 
 
   // Inicializar aplicação
@@ -84,9 +87,10 @@ function App() {
     return <ResetPasswordPage />;
   }
 
-  if (isConfirmPage) {
-  return <ConfirmEmailPage />;
-}
+  // Se for página de verificação de email, mostrar apenas essa página
+  if (isEmailVerificationPage) {
+    return <EmailVerificationPage />;
+  }
 
 
   // Função para normalizar as chaves

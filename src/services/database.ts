@@ -472,12 +472,12 @@ export async function getFavorites(userId: string) {
 // Função para verificar se email existe (para recuperação de senha)
 export async function checkEmailExists(email: string): Promise<boolean> {
   try {
-    console.log('Checking if email exists:', email);
+    console.log('Checking if email exists in profiles:', email);
     const { data, error } = await supabase
       .from('profiles')
       .select('email')
       .eq('email', email.toLowerCase().trim())
-      .single();
+      .maybeSingle();
 
     if (error) {
       if (error.code === 'PGRST116') { // No rows returned
@@ -486,6 +486,20 @@ export async function checkEmailExists(email: string): Promise<boolean> {
       }
       console.error('Error checking email:', error);
       return false;
+    }
+
+    // Também verificar na tabela auth.users do Supabase
+    if (!data) {
+      console.log('Email not found in profiles, checking auth.users...');
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+      
+      if (!authError && authData?.users) {
+        const userExists = authData.users.some(user => 
+          user.email?.toLowerCase() === email.toLowerCase()
+        );
+        console.log('Email found in auth.users:', userExists);
+        return userExists;
+      }
     }
 
     console.log('Email found in profiles table:', !!data);
@@ -501,7 +515,7 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
   console.log('Sending password reset email to:', email);
   
   const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: `${window.location.origin}/reset-password`
   });
 
   if (error) {
@@ -510,12 +524,12 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
     // Mapear erros específicos para mensagens amigáveis
     if (error.message.includes('Email rate limit exceeded')) {
       throw new Error('Muitas tentativas de recuperação. Aguarde alguns minutos antes de tentar novamente.');
+    } else if (error.message.includes('User not found')) {
+      throw new Error('Email não encontrado. Verifique se o email está correto ou crie uma conta.');
     } else if (error.message.includes('For security purposes')) {
       throw new Error('Por motivos de segurança, aguarde alguns minutos antes de solicitar outro email.');
     } else if (error.message.includes('Invalid email')) {
       throw new Error('Email inválido. Verifique o formato do email.');
-    } else if (error.message.includes('User not found')) {
-      throw new Error('Email não encontrado. Verifique se o email está correto ou crie uma conta.');
     }
     
     throw new Error('Erro ao enviar email de recuperação. Tente novamente em alguns minutos.');

@@ -78,9 +78,10 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                       "flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors",
                       hasAIAccess
                         ? "text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
-                        : "text-gray-400 dark:text-gray-500"
+                        : "text-gray-400 dark:text-gray-500 cursor-not-allowed"
                     )}
                     title={hasAIAccess ? "Mentoria IA" : "Mentoria IA (Premium)"}
+                    disabled={!hasAIAccess}
                   >
                     <Bot className="w-4 h-4" />
                     <span className="hidden lg:inline">Mentoria IA</span>

@@ -1,21 +1,23 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
-import { getUserProfile } from '../services/database';
+import { getUserProfile, createUserProfile } from '../services/database';
 import { useToastStore } from './toast';
+import { useRecipesStore } from './recipes';
 import type { User, UserType } from '../types/user';
 
 // Define URL segura de redirecionamento para confirmação de e-mail
-// 1) Usa VITE_AUTH_REDIRECT_URL se existir
-// 2) Se origem conter domínios webcontainer/credentialless, usa localhost:5173 (dev)
-// 3) Caso contrário, usa window.location.origin
-const _origin = (import.meta.env.VITE_AUTH_REDIRECT_URL as string) || window.location.origin;
-const _unsafe = /webcontainer-api\.io|credentialless|\.local-credentialless\./.test(_origin);
-const CONFIRM_REDIRECT_BASE = _unsafe ? 'http://localhost:5173' : _origin;
+const getRedirectUrl = () => {
+  const envUrl = import.meta.env.VITE_AUTH_REDIRECT_URL;
+  if (envUrl) return envUrl;
+  
+  const origin = window.location.origin;
+  const isUnsafe = /webcontainer-api\.io|credentialless|\.local-credentialless\./.test(origin);
+  return isUnsafe ? 'http://localhost:5173' : origin;
+};
 
-function isEmailConfirmed(u: any): boolean {
-  // GoTrue v2 expõe uma destas chaves
-  return Boolean(u?.email_confirmed_at || u?.confirmed_at);
+function isEmailConfirmed(user: any): boolean {
+  return Boolean(user?.email_confirmed_at || user?.confirmed_at);
 }
 
 interface AuthState {
@@ -25,6 +27,7 @@ interface AuthState {
   error: string | null;
   loading: boolean;
   pendingEmailVerification: string | null;
+  emailVerificationSent: boolean;
 
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string, type: UserType) => Promise<void>;
@@ -35,6 +38,7 @@ interface AuthState {
   clearError: () => void;
   isNutritionist: () => boolean;
   setPendingEmailVerification: (email: string | null) => void;
+  clearPendingVerification: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -46,143 +50,242 @@ export const useAuthStore = create<AuthState>()(
       error: null,
       loading: false,
       pendingEmailVerification: null,
+      emailVerificationSent: false,
 
       initializeAuth: async () => {
+        console.log('Initializing authentication...');
         try {
-          const { data } = await supabase.auth.getSession();
-          const session = data.session;
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('Session error:', error);
+            set({ user: null, token: null, isAuthenticated: false });
+            return;
+          }
+
           if (!session?.user) {
+            console.log('No active session found');
             set({ user: null, token: null, isAuthenticated: false });
             return;
           }
 
-          const u = session.user;
-          if (!isEmailConfirmed(u)) {
-            // Mantém coerência: sem e-mail confirmado → não autenticado
+          const user = session.user;
+          console.log('Session found for user:', user.id, 'Email confirmed:', isEmailConfirmed(user));
+
+          // Verificar se o email foi confirmado
+          if (!isEmailConfirmed(user)) {
+            console.log('Email not confirmed, signing out...');
             await supabase.auth.signOut();
-            set({ user: null, token: null, isAuthenticated: false });
+            set({ 
+              user: null, 
+              token: null, 
+              isAuthenticated: false,
+              pendingEmailVerification: user.email || null
+            });
             return;
           }
 
-          // Montar objeto User do app
-          const profile = await getUserProfile(u.id).catch(() => null);
-          const mapped: User = {
-            id: u.id,
-            email: u.email ?? '',
-            name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
-            type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+          // Buscar ou criar perfil do usuário
+          let profile;
+          try {
+            profile = await getUserProfile(user.id);
+          } catch (profileError: any) {
+            // Se perfil não existe, criar um novo
+            if (profileError.code === 'PGRST116') {
+              console.log('Profile not found, creating new profile...');
+              const userData = {
+                id: user.id,
+                email: user.email || '',
+                full_name: user.user_metadata?.full_name || '',
+                user_type: user.user_metadata?.user_type || 'Client'
+              };
+              profile = await createUserProfile(userData);
+            } else {
+              throw profileError;
+            }
+          }
+
+          const mappedUser: User = {
+            id: user.id,
+            email: user.email || '',
+            name: profile?.full_name || user.user_metadata?.full_name || '',
+            type: profile?.user_type || user.user_metadata?.user_type || 'Client',
             profile: undefined
           };
 
           set({
-            user: mapped,
+            user: mappedUser,
             token: session.access_token,
-            isAuthenticated: true
+            isAuthenticated: true,
+            pendingEmailVerification: null
           });
-        } catch (e) {
-          console.error('initializeAuth error:', e);
+
+          console.log('Authentication initialized successfully for:', mappedUser.name);
+
+          // Inicializar dados do usuário
+          const recipesStore = useRecipesStore.getState();
+          if (recipesStore.initializeAuth) {
+            await recipesStore.initializeAuth();
+          }
+
+        } catch (error) {
+          console.error('Error initializing auth:', error);
           set({ user: null, token: null, isAuthenticated: false });
         }
       },
 
       signIn: async (email, password) => {
         set({ loading: true, error: null });
+        
         try {
-          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-          if (error) {
-            let friendly = 'Erro ao fazer login';
-            if (error.message.includes('Invalid login credentials')) friendly = 'Email ou senha incorretos.';
-            if (error.message.includes('Email not confirmed')) friendly = 'Email não confirmado. Verifique sua caixa de entrada.';
-            if (error.message.includes('Too many requests')) friendly = 'Muitas tentativas. Tente mais tarde.';
-            useToastStore.getState().showToast(friendly, 'error');
-            set({ error: friendly, loading: false });
-            return;
-          }
-
-          const u = data.user;
-          // Bloqueia acesso se e-mail ainda não foi confirmado
-          if (!isEmailConfirmed(u)) {
-            await supabase.auth.signOut();
-            const msg = 'Email não confirmado. Verifique sua caixa de entrada e clique no link de confirmação.';
-            useToastStore.getState().showToast(msg, 'error');
-            set({ error: msg, loading: false, isAuthenticated: false, user: null, token: null });
-            return;
-          }
-
-          const session = data.session ?? (await supabase.auth.getSession()).data.session;
-          const profile = await getUserProfile(u.id).catch(() => null);
-          const mapped: User = {
-            id: u.id,
-            email: u.email ?? '',
-            name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
-            type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
-            profile: undefined
-          };
-
-          set({
-            user: mapped,
-            token: session?.access_token ?? null,
-            isAuthenticated: true,
-            pendingEmailVerification: null
-            loading: false
+          console.log('Attempting sign in for:', email);
+          
+          const { data, error } = await supabase.auth.signInWithPassword({ 
+            email: email.toLowerCase().trim(), 
+            password 
           });
 
-          useToastStore.getState().showToast('Login realizado com sucesso!', 'success');
-        } catch (e) {
-          console.error('signIn error:', e);
-          useToastStore.getState().showToast('Erro inesperado ao fazer login.', 'error');
-          set({ error: 'Erro inesperado', loading: false });
-        }
-      },
-
-      signUp: async (email, password, name, type) => {
-        set({ loading: true, error: null });
-        try {
-          const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              emailRedirectTo: `${CONFIRM_REDIRECT_BASE}/auth/confirm`,
-              data: { full_name: name, user_type: type }
-            }
-          });
-
-          // Aviso de confirmação sempre (mesmo se erro, para orientar usuário)
-          useToastStore.getState().showToast('Conta criada! Confirme seu e-mail para acessar.', 'info');
-
           if (error) {
-            let friendly = 'Erro ao criar conta';
-            if (error.message.includes('User already registered')) friendly = 'Este e-mail já está cadastrado.';
-            if (error.message.includes('Email not confirmed')) {
-              friendly = 'Email não confirmado. Verifique sua caixa de entrada e clique no link de confirmação.';
+            console.error('Sign in error:', error);
+            
+            let friendlyMessage = 'Erro ao fazer login';
+            
+            if (error.message.includes('Invalid login credentials')) {
+              friendlyMessage = 'Email ou senha incorretos. Verifique suas credenciais.';
+            } else if (error.message.includes('Email not confirmed')) {
+              friendlyMessage = 'Email não confirmado. Verifique sua caixa de entrada.';
               set({ pendingEmailVerification: email });
+            } else if (error.message.includes('Too many requests')) {
+              friendlyMessage = 'Muitas tentativas de login. Aguarde alguns minutos.';
+            } else if (error.message.includes('signup_disabled')) {
+              friendlyMessage = 'Cadastros temporariamente desabilitados.';
             }
-            if (error.message.includes('Invalid email')) friendly = 'E-mail inválido.';
-            useToastStore.getState().showToast(friendly, 'error');
-            set({ error: friendly, loading: false });
+
+            set({ error: friendlyMessage, loading: false });
+            useToastStore.getState().showToast(friendlyMessage, 'error');
             return;
           }
 
-              emailRedirectTo: `${CONFIRM_REDIRECT_BASE}/auth/verify-email`,
-          set({ loading: false });
-        } catch (e) {
-          console.error('signUp error:', e);
-          useToastStore.getState().showToast('Erro inesperado ao criar conta.', 'error');
-              error: msg, 
+          const user = data.user;
+          
+          // Verificar confirmação de email
+          if (!isEmailConfirmed(user)) {
+            console.log('Email not confirmed for user:', user.id);
+            await supabase.auth.signOut();
+            
+            const message = 'Email não confirmado. Verifique sua caixa de entrada e clique no link de confirmação.';
+            set({ 
+              error: message, 
               loading: false, 
               isAuthenticated: false, 
               user: null, 
               token: null,
               pendingEmailVerification: email
             });
+            useToastStore.getState().showToast(message, 'error');
+            return;
+          }
+
+          // Buscar perfil do usuário
+          let profile;
+          try {
+            profile = await getUserProfile(user.id);
+          } catch (profileError: any) {
+            if (profileError.code === 'PGRST116') {
+              // Criar perfil se não existir
+              const userData = {
+                id: user.id,
+                email: user.email || '',
+                full_name: user.user_metadata?.full_name || '',
+                user_type: user.user_metadata?.user_type || 'Client'
+              };
+              profile = await createUserProfile(userData);
+            } else {
+              throw profileError;
+            }
+          }
+
+          const mappedUser: User = {
+            id: user.id,
+            email: user.email || '',
+            name: profile?.full_name || user.user_metadata?.full_name || '',
+            type: profile?.user_type || user.user_metadata?.user_type || 'Client',
+            profile: undefined
+          };
+
+          set({
+            user: mappedUser,
+            token: data.session?.access_token || null,
+            isAuthenticated: true,
+            loading: false,
+            pendingEmailVerification: null,
+            error: null
+          });
+
+          console.log('Sign in successful for:', mappedUser.name);
+          useToastStore.getState().showToast('Login realizado com sucesso!', 'success');
+
+          // Inicializar dados do usuário
+          const recipesStore = useRecipesStore.getState();
+          if (recipesStore.initializeAuth) {
+            await recipesStore.initializeAuth();
+          }
+
+        } catch (error: any) {
+          console.error('Unexpected sign in error:', error);
+          const message = 'Erro inesperado ao fazer login. Tente novamente.';
+          set({ error: message, loading: false });
+          useToastStore.getState().showToast(message, 'error');
+        }
       },
 
-      signOut: async () => {
-            loading: false,
-          // Sucesso no cadastro - definir email pendente para verificação
+      signUp: async (email, password, name, type) => {
+        set({ loading: true, error: null });
+        
+        try {
+          console.log('Attempting sign up for:', email, 'as', type);
+          
+          const trimmedEmail = email.toLowerCase().trim();
+          const redirectUrl = `${getRedirectUrl()}/auth/confirm`;
+          
+          const { data, error } = await supabase.auth.signUp({
+            email: trimmedEmail,
+            password,
+            options: {
+              emailRedirectTo: redirectUrl,
+              data: { 
+                full_name: name.trim(), 
+                user_type: type 
+              }
+            }
+          });
+
+          if (error) {
+            console.error('Sign up error:', error);
+            
+            let friendlyMessage = 'Erro ao criar conta';
+            
+            if (error.message.includes('User already registered')) {
+              friendlyMessage = 'Este email já está cadastrado. Tente fazer login ou use outro email.';
+            } else if (error.message.includes('Password should be at least')) {
+              friendlyMessage = 'A senha deve ter pelo menos 6 caracteres.';
+            } else if (error.message.includes('Invalid email')) {
+              friendlyMessage = 'Email inválido. Verifique o formato do email.';
+            } else if (error.message.includes('signup_disabled')) {
+              friendlyMessage = 'Cadastros temporariamente desabilitados.';
+            }
+
+            set({ error: friendlyMessage, loading: false });
+            useToastStore.getState().showToast(friendlyMessage, 'error');
+            return;
+          }
+
+          console.log('Sign up successful, verification email sent to:', trimmedEmail);
+          
           set({ 
             loading: false, 
-            pendingEmailVerification: email,
+            pendingEmailVerification: trimmedEmail,
+            emailVerificationSent: true,
             error: null 
           });
           
@@ -190,100 +293,231 @@ export const useAuthStore = create<AuthState>()(
             'Conta criada! Verifique seu email para confirmar o cadastro.', 
             'success'
           );
-            pendingEmailVerification: null
-          useToastStore.getState().showToast('Logout realizado!', 'info');
-        } catch (e) {
-          console.error('signOut error:', e);
+
+        } catch (error: any) {
+          console.error('Unexpected sign up error:', error);
+          const message = 'Erro inesperado ao criar conta. Tente novamente.';
+          set({ error: message, loading: false });
+          useToastStore.getState().showToast(message, 'error');
+        }
+      },
+
+      signOut: async () => {
+        try {
+          console.log('Signing out user...');
+          
+          // Limpar dados do usuário antes do logout
+          const recipesStore = useRecipesStore.getState();
+          if (recipesStore.clearUserData) {
+            recipesStore.clearUserData();
+          }
+
+          await supabase.auth.signOut();
+          
+          set({ 
+            user: null, 
+            token: null, 
+            isAuthenticated: false, 
+            pendingEmailVerification: null,
+            emailVerificationSent: false,
+            error: null
+          });
+          
+          console.log('Sign out successful');
+          useToastStore.getState().showToast('Logout realizado com sucesso!', 'info');
+          
+        } catch (error) {
+          console.error('Sign out error:', error);
+          // Mesmo com erro, limpar estado local
+          set({ 
+            user: null, 
+            token: null, 
+            isAuthenticated: false, 
+            pendingEmailVerification: null,
+            emailVerificationSent: false
+          });
           useToastStore.getState().showToast('Logout realizado', 'info');
         }
       },
 
       resendVerificationEmail: async (email: string) => {
         set({ loading: true, error: null });
+        
         try {
+          console.log('Resending verification email to:', email);
+          
           const { error } = await supabase.auth.resend({
             type: 'signup',
-            email: email,
+            email: email.toLowerCase().trim(),
             options: {
-              emailRedirectTo: `${CONFIRM_REDIRECT_BASE}/auth/verify-email`
+              emailRedirectTo: `${getRedirectUrl()}/auth/confirm`
             }
           });
 
           if (error) {
-            if (error.message.includes('rate limit')) {
-              throw new Error('Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.');
+            console.error('Resend email error:', error);
+            
+            let friendlyMessage = 'Erro ao reenviar email de confirmação';
+            
+            if (error.message.includes('rate limit') || error.message.includes('Email rate limit')) {
+              friendlyMessage = 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.';
+            } else if (error.message.includes('User not found')) {
+              friendlyMessage = 'Email não encontrado. Verifique se o email está correto.';
             }
-            throw error;
+            
+            set({ error: friendlyMessage, loading: false });
+            useToastStore.getState().showToast(friendlyMessage, 'error');
+            throw new Error(friendlyMessage);
           }
 
-          useToastStore.getState().showToast('Email de confirmação reenviado!', 'success');
+          set({ loading: false, emailVerificationSent: true });
+          useToastStore.getState().showToast('Email de confirmação reenviado com sucesso!', 'success');
+          
         } catch (error: any) {
-          const errorMessage = error.message || 'Erro ao reenviar email de confirmação';
-          set({ error: errorMessage });
-          useToastStore.getState().showToast(errorMessage, 'error');
+          console.error('Unexpected resend error:', error);
+          if (!get().error) {
+            const message = 'Erro inesperado ao reenviar email. Tente novamente.';
+            set({ error: message, loading: false });
+            useToastStore.getState().showToast(message, 'error');
+          }
           throw error;
-        } finally {
-          set({ loading: false });
         }
       },
 
       confirmEmail: async (token: string) => {
         set({ loading: true, error: null });
+        
         try {
+          console.log('Confirming email with token...');
+          
           const { data, error } = await supabase.auth.verifyOtp({
             type: 'signup',
             token_hash: token
           });
 
-          if (error) throw error;
+          if (error) {
+            console.error('Email confirmation error:', error);
+            
+            let friendlyMessage = 'Erro ao confirmar email';
+            
+            if (error.message.includes('expired')) {
+              friendlyMessage = 'Link de confirmação expirado. Solicite um novo email.';
+            } else if (error.message.includes('invalid')) {
+              friendlyMessage = 'Link de confirmação inválido. Solicite um novo email.';
+            }
+            
+            set({ error: friendlyMessage, loading: false });
+            useToastStore.getState().showToast(friendlyMessage, 'error');
+            throw new Error(friendlyMessage);
+          }
 
           if (data?.user) {
-            // Buscar perfil e configurar usuário
-            const profile = await getUserProfile(data.user.id).catch(() => null);
-            const mapped: User = {
+            console.log('Email confirmed successfully for user:', data.user.id);
+            
+            // Buscar ou criar perfil
+            let profile;
+            try {
+              profile = await getUserProfile(data.user.id);
+            } catch (profileError: any) {
+              if (profileError.code === 'PGRST116') {
+                const userData = {
+                  id: data.user.id,
+                  email: data.user.email || '',
+                  full_name: data.user.user_metadata?.full_name || '',
+                  user_type: data.user.user_metadata?.user_type || 'Client'
+                };
+                profile = await createUserProfile(userData);
+              } else {
+                throw profileError;
+              }
+            }
+
+            const mappedUser: User = {
               id: data.user.id,
-              email: data.user.email ?? '',
-              name: (data.user.user_metadata?.full_name as string) || profile?.full_name || '',
-              type: ((data.user.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+              email: data.user.email || '',
+              name: profile?.full_name || data.user.user_metadata?.full_name || '',
+              type: profile?.user_type || data.user.user_metadata?.user_type || 'Client',
               profile: undefined
             };
 
             set({
-              user: mapped,
-              token: data.session?.access_token ?? null,
+              user: mappedUser,
+              token: data.session?.access_token || null,
               isAuthenticated: true,
               loading: false,
-              pendingEmailVerification: null
+              pendingEmailVerification: null,
+              emailVerificationSent: false,
+              error: null
             });
 
-            useToastStore.getState().showToast('Email confirmado com sucesso!', 'success');
+            useToastStore.getState().showToast('Email confirmado com sucesso! Bem-vindo!', 'success');
+
+            // Inicializar dados do usuário
+            const recipesStore = useRecipesStore.getState();
+            if (recipesStore.initializeAuth) {
+              await recipesStore.initializeAuth();
+            }
           }
         } catch (error: any) {
-          const errorMessage = error.message || 'Erro ao confirmar email';
-          set({ error: errorMessage, loading: false });
-          useToastStore.getState().showToast(errorMessage, 'error');
+          console.error('Unexpected confirmation error:', error);
+          if (!get().error) {
+            const message = 'Erro inesperado ao confirmar email';
+            set({ error: message, loading: false });
+            useToastStore.getState().showToast(message, 'error');
+          }
           throw error;
         }
       },
+
       clearError: () => set({ error: null }),
+      
       isNutritionist: () => get().user?.type === 'Nutritionist',
-      setPendingEmailVerification: (email: string | null) => set({ pendingEmailVerification: email })
+      
+      setPendingEmailVerification: (email: string | null) => set({ pendingEmailVerification: email }),
+      
+      clearPendingVerification: () => set({ 
+        pendingEmailVerification: null, 
+        emailVerificationSent: false 
+      })
     }),
     {
       name: 'auth-storage',
-      partialize: (s) => ({ 
-        user: s.user, 
-        token: s.token, 
-        isAuthenticated: s.isAuthenticated,
-        pendingEmailVerification: s.pendingEmailVerification
+      partialize: (state) => ({ 
+        user: state.user, 
+        token: state.token, 
+        isAuthenticated: state.isAuthenticated,
+        pendingEmailVerification: state.pendingEmailVerification
       })
     }
   )
 );
 
-          set({ 
-            user: null, 
-            token: null, 
-            isAuthenticated: false, 
-            pendingEmailVerification: null 
-          });
+// Listener para mudanças de autenticação
+supabase.auth.onAuthStateChange(async (event, session) => {
+  console.log('Auth state changed:', event, session?.user?.id);
+  
+  const store = useAuthStore.getState();
+  
+  if (event === 'SIGNED_OUT') {
+    console.log('User signed out');
+    store.clearPendingVerification();
+    
+    // Limpar dados do usuário
+    const recipesStore = useRecipesStore.getState();
+    if (recipesStore.clearUserData) {
+      recipesStore.clearUserData();
+    }
+  } else if (event === 'SIGNED_IN' && session?.user) {
+    console.log('User signed in via auth state change');
+    
+    // Verificar se email foi confirmado
+    if (isEmailConfirmed(session.user)) {
+      // Re-inicializar autenticação para atualizar estado
+      await store.initializeAuth();
+    }
+  } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+    console.log('Token refreshed');
+    // Atualizar token no estado
+    useAuthStore.setState({ token: session.access_token });
+  }
+});

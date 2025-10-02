@@ -42,8 +42,17 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!user) {
       console.error('User not authenticated');
+      useToastStore.getState().showToast('Faça login para criar receitas', 'error');
+      return;
+    }
+    
+    // Verificar se email foi confirmado
+    const { pendingEmailVerification } = useAuthStore.getState();
+    if (pendingEmailVerification) {
+      useToastStore.getState().showToast('Confirme seu email para criar receitas', 'error');
       return;
     }
 
