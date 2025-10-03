@@ -265,6 +265,8 @@ export async function deleteRecipe(recipeId: number) {
 
 export async function getRecipes() {
   console.log('Fetching recipes from Supabase...');
+
+  // Não requer autenticação - acesso público
   const { data, error } = await supabase
     .from('recipes')
     .select(`
@@ -285,13 +287,13 @@ export async function getRecipes() {
     console.error('Error fetching recipes:', error);
     throw error;
   }
-  
+
   console.log('Raw recipes from database:', data?.length || 0);
   if (!data || data.length === 0) {
     console.log('No recipes found in database');
     return [];
   }
-  
+
   const recipes = data.map(convertDatabaseRecipeToAppRecipe);
   console.log('Converted recipes:', recipes.length);
   return recipes;

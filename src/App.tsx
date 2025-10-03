@@ -65,10 +65,14 @@ function App() {
       console.log('Initializing app...');
 
       try {
-        // Primeiro inicializar autenticação
-        await initializeAuth();
+        // Inicializar autenticação (não bloqueia se falhar)
+        try {
+          await initializeAuth();
+        } catch (authError) {
+          console.log('Auth initialization failed (user not logged in):', authError);
+        }
 
-        // Depois buscar receitas
+        // Buscar receitas (funciona mesmo sem autenticação)
         await fetchRecipes();
 
         setInitialized(true);

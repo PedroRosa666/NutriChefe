@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Eye, EyeOff, Mail, Lock, User, Shield, AlertCircle } from 'lucide-react';
+import { X, Eye, EyeOff, Mail, Lock, User, Shield, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { ForgotPasswordModal } from './auth/ForgotPasswordModal';
 import { EmailVerificationModal } from './auth/EmailVerificationModal';

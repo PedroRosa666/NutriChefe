@@ -85,24 +85,45 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
 
-          // Buscar ou criar perfil do usuário
+          // Buscar perfil do usuário (deve existir após confirmação de email)
           let profile;
-          try {
-            profile = await getUserProfile(user.id);
-          } catch (profileError: any) {
-            // Se perfil não existe, criar um novo
-            if (profileError.code === 'PGRST116') {
-              console.log('Profile not found, creating new profile...');
-              const userData = {
-                id: user.id,
-                email: user.email || '',
-                full_name: user.user_metadata?.full_name || '',
-                user_type: user.user_metadata?.user_type || 'Client'
-              };
-              profile = await createUserProfile(userData);
-            } else {
-              throw profileError;
+          let retryCount = 0;
+          const maxRetries = 3;
+
+          while (retryCount < maxRetries) {
+            try {
+              profile = await getUserProfile(user.id);
+              break;
+            } catch (profileError: any) {
+              // Se perfil não existe, tentar criar um novo
+              if (profileError.code === 'PGRST116') {
+                console.log('Profile not found, creating new profile...');
+                try {
+                  const userData = {
+                    id: user.id,
+                    email: user.email || '',
+                    full_name: user.user_metadata?.full_name || 'Usuário',
+                    user_type: user.user_metadata?.user_type || 'Client'
+                  };
+                  profile = await createUserProfile(userData);
+                  break;
+                } catch (createError: any) {
+                  if (createError.code === '23505') {
+                    // Profile já existe, tentar buscar novamente
+                    retryCount++;
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    continue;
+                  }
+                  throw createError;
+                }
+              } else {
+                throw profileError;
+              }
             }
+          }
+
+          if (!profile) {
+            throw new Error('Não foi possível carregar ou criar o perfil do usuário');
           }
 
           const mappedUser: User = {
@@ -186,17 +207,18 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
 
-          // Buscar perfil do usuário
+          // Buscar perfil do usuário (deve existir após confirmação)
           let profile;
           try {
             profile = await getUserProfile(user.id);
           } catch (profileError: any) {
             if (profileError.code === 'PGRST116') {
               // Criar perfil se não existir
+              console.log('Creating missing profile for user:', user.id);
               const userData = {
                 id: user.id,
                 email: user.email || '',
-                full_name: user.user_metadata?.full_name || '',
+                full_name: user.user_metadata?.full_name || 'Usuário',
                 user_type: user.user_metadata?.user_type || 'Client'
               };
               profile = await createUserProfile(userData);
@@ -241,30 +263,31 @@ export const useAuthStore = create<AuthState>()(
 
       signUp: async (email, password, name, type) => {
         set({ loading: true, error: null });
-        
+
         try {
           console.log('Attempting sign up for:', email, 'as', type);
-          
+
           const trimmedEmail = email.toLowerCase().trim();
+          const trimmedName = name.trim();
           const redirectUrl = `${getRedirectUrl()}/auth/confirm`;
-          
+
           const { data, error } = await supabase.auth.signUp({
             email: trimmedEmail,
             password,
             options: {
               emailRedirectTo: redirectUrl,
-              data: { 
-                full_name: name.trim(), 
-                user_type: type 
+              data: {
+                full_name: trimmedName,
+                user_type: type
               }
             }
           });
 
           if (error) {
             console.error('Sign up error:', error);
-            
+
             let friendlyMessage = 'Erro ao criar conta';
-            
+
             if (error.message.includes('User already registered')) {
               friendlyMessage = 'Este email já está cadastrado. Tente fazer login ou use outro email.';
             } else if (error.message.includes('Password should be at least')) {
@@ -281,16 +304,16 @@ export const useAuthStore = create<AuthState>()(
           }
 
           console.log('Sign up successful, verification email sent to:', trimmedEmail);
-          
-          set({ 
-            loading: false, 
+
+          set({
+            loading: false,
             pendingEmailVerification: trimmedEmail,
             emailVerificationSent: true,
-            error: null 
+            error: null
           });
-          
+
           useToastStore.getState().showToast(
-            'Conta criada! Verifique seu email para confirmar o cadastro.', 
+            'Conta criada com sucesso! Verifique seu email para confirmar o cadastro.',
             'success'
           );
 
