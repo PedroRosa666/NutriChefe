@@ -493,27 +493,19 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // Listener para mudanças de autenticação
-supabase.auth.onAuthStateChange(async (event, session) => {
+supabase.auth.onAuthStateChange((event, session) => {
   console.log('Auth state changed:', event, session?.user?.id);
-  
+
   const store = useAuthStore.getState();
-  
+
   if (event === 'SIGNED_OUT') {
     console.log('User signed out');
     store.clearPendingVerification();
-    
+
     // Limpar dados do usuário
     const recipesStore = useRecipesStore.getState();
     if (recipesStore.clearUserData) {
       recipesStore.clearUserData();
-    }
-  } else if (event === 'SIGNED_IN' && session?.user) {
-    console.log('User signed in via auth state change');
-    
-    // Verificar se email foi confirmado
-    if (isEmailConfirmed(session.user)) {
-      // Re-inicializar autenticação para atualizar estado
-      await store.initializeAuth();
     }
   } else if (event === 'TOKEN_REFRESHED' && session?.user) {
     console.log('Token refreshed');

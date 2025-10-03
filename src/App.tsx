@@ -56,27 +56,33 @@ function App() {
 
   // Inicializar aplicação
   useEffect(() => {
+    let isInitializing = false;
+
     const initialize = async () => {
-      if (initialized) return;
-      
+      if (initialized || isInitializing) return;
+
+      isInitializing = true;
       console.log('Initializing app...');
+
       try {
         // Primeiro inicializar autenticação
         await initializeAuth();
-        
+
         // Depois buscar receitas
         await fetchRecipes();
-        
+
         setInitialized(true);
         console.log('App initialized successfully');
       } catch (error) {
         console.error('Error initializing app:', error);
         setInitialized(true); // Marcar como inicializado mesmo com erro
+      } finally {
+        isInitializing = false;
       }
     };
 
     initialize();
-  }, [initializeAuth, fetchRecipes, initialized]);
+  }, []);
 
   // Sincroniza a categoria inicial
   useEffect(() => {
