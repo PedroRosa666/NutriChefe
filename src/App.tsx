@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
 import { RecipeCard } from './components/RecipeCard';
 import { CategoryFilter } from './components/CategoryFilter';
@@ -16,6 +16,7 @@ import { useTranslation } from './hooks/useTranslation';
 import { Plus } from 'lucide-react';
 import { Toast } from './components/common/Toast';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
+import type { Recipe } from './types/recipe';
 
 function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<number | null>(null);
@@ -40,8 +41,10 @@ function App() {
   const CATEGORIES = ['all', 'vegan', 'lowCarb', 'highProtein', 'glutenFree', 'vegetarian'];
 
   // Verificar se é página de reset de senha
-  const isResetPasswordPage = window.location.pathname === '/reset-password' || 
-                             window.location.hash.includes('type=recovery');
+  const isResetPasswordPage = typeof window !== 'undefined' && (
+    window.location.pathname === '/reset-password' ||
+    window.location.hash.includes('type=recovery')
+  );
 
   // Inicializar aplicação
   useEffect(() => {
@@ -80,14 +83,15 @@ function App() {
   }
 
   // Função para normalizar as chaves
-  const normalizeKey = (key: string) => {
+  const normalizeKey = (key: string | null | undefined) => {
+    if (!key) return '';
     return key.toLowerCase().replace(/\s+/g, '');
   };
 
   // Função para filtrar por tempo de preparo
-  const matchesPrepTime = (recipe: any) => {
+  const matchesPrepTime = (recipe: Recipe) => {
     if (!prepTimeRange) return true;
-    
+
     switch (prepTimeRange) {
       case 'quick':
         return recipe.prepTime <= 15;
@@ -101,19 +105,27 @@ function App() {
   };
 
   // Filtra as receitas
-  const filteredRecipes = recipes.filter(recipe => {
-    const normalizedRecipeCategory = normalizeKey(recipe.category);
-    const normalizedSelectedCategory = normalizeKey(category);
+  const filteredRecipes = useMemo(() => {
+    const normalizedSelectedCategory = normalizeKey(category) || 'all';
+    const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
-    const matchesCategory = normalizedSelectedCategory === 'all' || normalizedRecipeCategory === normalizedSelectedCategory;
-    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDifficulty = !difficulty || recipe.difficulty === difficulty;
-    const matchesRating = !minRating || recipe.rating >= minRating;
-    const matchesTime = matchesPrepTime(recipe);
+    return recipes.filter((recipe) => {
+      const normalizedRecipeCategory = normalizeKey(recipe.category);
+      const title = (recipe.title ?? '').toLowerCase();
+      const description = (recipe.description ?? '').toLowerCase();
 
-    return matchesCategory && matchesSearch && matchesDifficulty && matchesRating && matchesTime;
-  });
+      const matchesCategory = normalizedSelectedCategory === 'all' || normalizedRecipeCategory === normalizedSelectedCategory;
+      const matchesSearch =
+        normalizedSearchQuery.length === 0 ||
+        title.includes(normalizedSearchQuery) ||
+        description.includes(normalizedSearchQuery);
+      const matchesDifficulty = !difficulty || recipe.difficulty === difficulty;
+      const matchesRating = minRating == null || recipe.rating >= minRating;
+      const matchesTime = matchesPrepTime(recipe);
+
+      return matchesCategory && matchesSearch && matchesDifficulty && matchesRating && matchesTime;
+    });
+  }, [recipes, category, searchQuery, difficulty, minRating, prepTimeRange]);
 
   const selectedRecipeData = recipes.find(r => r.id === selectedRecipe);
 

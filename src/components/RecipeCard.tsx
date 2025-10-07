@@ -4,6 +4,7 @@ import { cn } from '../lib/utils';
 import { useRecipesStore } from '../store/recipes';
 import { useAuthStore } from '../store/auth';
 import { useTranslation } from '../hooks/useTranslation';
+import { useToastStore } from '../store/toast';
 import type { Recipe } from '../types/recipe';
 
 interface RecipeCardProps {
@@ -15,6 +16,7 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
   const { favoriteRecipes, addToFavorites, removeFromFavorites } = useRecipesStore();
   const { isAuthenticated } = useAuthStore();
   const t = useTranslation();
+  const showToast = useToastStore((state) => state.showToast);
 
   // Para dificuldade
   const difficultyTranslations = t.recipe.difficultyLevels;
@@ -56,6 +58,7 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated) {
+      showToast('Faça login para favoritar receitas', 'error');
       return;
     }
 
@@ -96,17 +99,20 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
         <span className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">
           {translatedCategory}
         </span>
-        {isAuthenticated && (
-          <button
-            onClick={handleFavoriteClick}
-            className={cn(
-              "absolute top-4 left-4 p-2 rounded-full bg-white dark:bg-gray-800 shadow-md transition-colors",
-              isFavorite ? "text-red-500" : "text-gray-400 hover:text-red-500"
-            )}
-          >
-            <Heart className={cn("w-5 h-5", isFavorite && "fill-current")} />
-          </button>
-        )}
+        <button
+          onClick={handleFavoriteClick}
+          className={cn(
+            'absolute top-4 left-4 p-2 rounded-full bg-white dark:bg-gray-800 shadow-md transition-colors',
+            isFavorite && isAuthenticated
+              ? 'text-red-500'
+              : 'text-gray-400 hover:text-red-500'
+          )}
+          aria-pressed={isFavorite}
+          aria-label={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+          type="button"
+        >
+          <Heart className={cn('w-5 h-5', isFavorite && isAuthenticated && 'fill-current')} />
+        </button>
       </div>
       
       {/* Conteúdo principal que cresce */}
