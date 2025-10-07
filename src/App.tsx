@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { RecipeCard } from './components/RecipeCard';
 import { CategoryFilter } from './components/CategoryFilter';
@@ -16,7 +16,6 @@ import { useTranslation } from './hooks/useTranslation';
 import { Plus } from 'lucide-react';
 import { Toast } from './components/common/Toast';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
-import type { Recipe } from './types/recipe';
 
 function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<number | null>(null);
@@ -24,19 +23,24 @@ function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showAIMentoring, setShowAIMentoring] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  
-  const { 
-    category, 
-    searchQuery, 
-    difficulty, 
-    prepTimeRange, 
-    minRating, 
-    setCategory 
+
+  const {
+    category,
+    searchQuery,
+    difficulty,
+    prepTimeRange,
+    minRating,
+    setCategory
   } = useFiltersStore();
   const { recipes, loading, fetchRecipes } = useRecipesStore();
-  const { isAuthenticated, isNutritionist, user, initializeAuth } = useAuthStore();
+  const authStore = useAuthStore();
   const { message, type, hideToast } = useToastStore();
   const t = useTranslation();
+
+  const isAuthenticated = authStore?.isAuthenticated || false;
+  const isNutritionist = authStore?.isNutritionist || false;
+  const user = authStore?.user || null;
+  const initializeAuth = authStore?.initializeAuth;
 
   const CATEGORIES = ['all', 'vegan', 'lowCarb', 'highProtein', 'glutenFree', 'vegetarian'];
 
@@ -50,32 +54,28 @@ function App() {
   useEffect(() => {
     const initialize = async () => {
       if (initialized) return;
-      
-      console.log('Initializing app...');
+
       try {
-        // Primeiro inicializar autenticação
-        await initializeAuth();
-        
-        // Depois buscar receitas
+        if (initializeAuth) {
+          await initializeAuth();
+        }
         await fetchRecipes();
-        
         setInitialized(true);
-        console.log('App initialized successfully');
       } catch (error) {
         console.error('Error initializing app:', error);
-        setInitialized(true); // Marcar como inicializado mesmo com erro
+        setInitialized(true);
       }
     };
 
     initialize();
-  }, [initializeAuth, fetchRecipes, initialized]);
+  }, []);
 
   // Sincroniza a categoria inicial
   useEffect(() => {
-    if (initialized) {
+    if (initialized && setCategory) {
       setCategory('all');
     }
-  }, [setCategory, initialized]);
+  }, [initialized]);
 
   // Se for página de reset de senha, mostrar apenas essa página
   if (isResetPasswordPage) {
