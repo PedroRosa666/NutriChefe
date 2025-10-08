@@ -16,8 +16,6 @@ import { useTranslation } from './hooks/useTranslation';
 import { Plus } from 'lucide-react';
 import { Toast } from './components/common/Toast';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
-import ConfirmEmailPage from './components/auth/ConfirmEmailPage';
-
 
 function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<number | null>(null);
@@ -44,9 +42,6 @@ function App() {
   // Verificar se é página de reset de senha
   const isResetPasswordPage = window.location.pathname === '/reset-password' || 
                              window.location.hash.includes('type=recovery');
-
-  const isConfirmPage = window.location.pathname === '/auth/confirm';
-
 
   // Inicializar aplicação
   useEffect(() => {
@@ -83,11 +78,6 @@ function App() {
   if (isResetPasswordPage) {
     return <ResetPasswordPage />;
   }
-
-  if (isConfirmPage) {
-  return <ConfirmEmailPage />;
-}
-
 
   // Função para normalizar as chaves
   const normalizeKey = (key: string) => {
@@ -167,7 +157,8 @@ function App() {
         </div>
       </div>
     );
-    
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <Header 
