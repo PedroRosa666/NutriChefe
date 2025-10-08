@@ -127,9 +127,6 @@ function App() {
 
   const selectedRecipeData = recipes.find(r => r.id === selectedRecipe);
 
-  
-const selectedRecipeData = recipes.find(r => r.id === selectedRecipe);
-
   // Mostrar loading inicial com design moderno
   if (!initialized) {
     return (
