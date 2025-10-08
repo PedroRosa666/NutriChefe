@@ -6,6 +6,9 @@ export interface SubscriptionPlan {
   currency: string;
   billing_period: string;
   features: string[];
+  // Campos Stripe (opcionais, mas usados no checkout)
+  stripe_product_id?: string;
+  stripe_price_id?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -26,4 +29,4 @@ export interface UserSubscription {
   plan?: SubscriptionPlan;
 }
 
-type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'pending';
+export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'pending';

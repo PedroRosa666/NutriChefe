@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS ai_messages (
 -- Inserir planos padrão
 INSERT INTO subscription_plans (name, description, price, features) VALUES
 ('Básico', 'Acesso básico às receitas e funcionalidades essenciais', 0.00, '["recipe_access", "favorites", "basic_profile"]'::jsonb),
-('Premium', 'Acesso completo incluindo Mentoria IA e funcionalidades avançadas', 29.90, '["recipe_access", "favorites", "advanced_profile", "ai_mentoring", "priority_support", "advanced_analytics"]'::jsonb)
+('Premium', 'Acesso completo incluindo Mentoria IA e funcionalidades avançadas', 19.90, '["recipe_access", "favorites", "advanced_profile", "ai_mentoring", "priority_support", "advanced_analytics"]'::jsonb)
 ON CONFLICT DO NOTHING;
 
 -- Dar assinatura básica para todos os usuários existentes

@@ -1,9 +1,22 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
-import { createUserProfile, getUserProfile } from '../services/database';
+import { getUserProfile } from '../services/database';
 import { useToastStore } from './toast';
 import type { User, UserType } from '../types/user';
+
+// Define URL segura de redirecionamento para confirmação de e-mail
+// 1) Usa VITE_AUTH_REDIRECT_URL se existir
+// 2) Se origem conter domínios webcontainer/credentialless, usa localhost:5173 (dev)
+// 3) Caso contrário, usa window.location.origin
+const _origin = (import.meta.env.VITE_AUTH_REDIRECT_URL as string) || window.location.origin;
+const _unsafe = /webcontainer-api\.io|credentialless|\.local-credentialless\./.test(_origin);
+const CONFIRM_REDIRECT_BASE = _unsafe ? 'http://localhost:5173' : _origin;
+
+function isEmailConfirmed(u: any): boolean {
+  // GoTrue v2 expõe uma destas chaves
+  return Boolean(u?.email_confirmed_at || u?.confirmed_at);
+}
 
 interface AuthState {
   user: User | null;
@@ -11,13 +24,13 @@ interface AuthState {
   isAuthenticated: boolean;
   error: string | null;
   loading: boolean;
-  signIn: (email: string, password: string, name?: string) => Promise<void>;
+
+  signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string, type: UserType) => Promise<void>;
   signOut: () => Promise<void>;
+  initializeAuth: () => Promise<void>;
   clearError: () => void;
   isNutritionist: () => boolean;
-  updateUserProfile: (updates: Partial<User>) => Promise<void>;
-  initializeAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -31,244 +44,133 @@ export const useAuthStore = create<AuthState>()(
 
       initializeAuth: async () => {
         try {
-          console.log('Initializing auth...');
-          const { data: { session }, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error('Error getting session:', error);
-            set({ user: null, isAuthenticated: false, token: null });
+          const { data } = await supabase.auth.getSession();
+          const session = data.session;
+          if (!session?.user) {
+            set({ user: null, token: null, isAuthenticated: false });
             return;
           }
 
-          if (session?.user) {
-            console.log('Session found, getting profile...');
-            try {
-              const profile = await getUserProfile(session.user.id);
-              const userData: User = {
-                id: session.user.id,
-                email: profile.email,
-                name: profile.full_name,
-                type: profile.user_type as UserType,
-                profile: {}
-              };
-              set({ 
-                user: userData,
-                isAuthenticated: true,
-                token: session.access_token
-              });
-
-              // Inicializar favoritos após autenticação
-              const { useRecipesStore } = await import('./recipes');
-              useRecipesStore.getState().initializeAuth();
-              
-              // Inicializar assinatura
-              const { useSubscriptionStore } = await import('./subscription');
-              useSubscriptionStore.getState().fetchUserSubscription(session.user.id);
-            } catch (profileError) {
-              console.error('Error getting profile:', profileError);
-              set({ user: null, isAuthenticated: false, token: null });
-            }
-          } else {
-            console.log('No session found');
-            set({ user: null, isAuthenticated: false, token: null });
+          const u = session.user;
+          if (!isEmailConfirmed(u)) {
+            // Mantém coerência: sem e-mail confirmado → não autenticado
+            await supabase.auth.signOut();
+            set({ user: null, token: null, isAuthenticated: false });
+            return;
           }
-        } catch (error) {
-          console.error('Error initializing auth:', error);
-          set({ user: null, isAuthenticated: false, token: null });
+
+          // Montar objeto User do app
+          const profile = await getUserProfile(u.id).catch(() => null);
+          const mapped: User = {
+            id: u.id,
+            email: u.email ?? '',
+            name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
+            type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+            profile: undefined
+          };
+
+          set({
+            user: mapped,
+            token: session.access_token,
+            isAuthenticated: true
+          });
+        } catch (e) {
+          console.error('initializeAuth error:', e);
+          set({ user: null, token: null, isAuthenticated: false });
         }
       },
 
-      signIn: async (email: string, password: string) => {
+      signIn: async (email, password) => {
         set({ loading: true, error: null });
         try {
-          console.log('Attempting sign in...');
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password
-          });
-
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) {
-            console.error('Sign in error:', error);
-            // Mensagens de erro amigáveis
-            let friendlyMessage = 'Erro ao fazer login';
-            if (error.message.includes('Invalid login credentials')) {
-              friendlyMessage = 'Email ou senha incorretos. Verifique suas credenciais e tente novamente.';
-            } else if (error.message.includes('Email not confirmed')) {
-              friendlyMessage = 'Email não confirmado. Verifique sua caixa de entrada.';
-            } else if (error.message.includes('Too many requests')) {
-              friendlyMessage = 'Muitas tentativas de login. Tente novamente em alguns minutos.';
-            }
-            
-            useToastStore.getState().showToast(friendlyMessage, 'error');
-            set({ error: friendlyMessage });
+            let friendly = 'Erro ao fazer login';
+            if (error.message.includes('Invalid login credentials')) friendly = 'Email ou senha incorretos.';
+            if (error.message.includes('Email not confirmed')) friendly = 'Email não confirmado. Verifique sua caixa de entrada.';
+            if (error.message.includes('Too many requests')) friendly = 'Muitas tentativas. Tente mais tarde.';
+            useToastStore.getState().showToast(friendly, 'error');
+            set({ error: friendly, loading: false });
             return;
           }
-          
-          if (!data.user) {
-            throw new Error('No user returned from Supabase');
+
+          const u = data.user;
+          // Bloqueia acesso se e-mail ainda não foi confirmado
+          if (!isEmailConfirmed(u)) {
+            await supabase.auth.signOut();
+            const msg = 'Email não confirmado. Verifique sua caixa de entrada e clique no link de confirmação.';
+            useToastStore.getState().showToast(msg, 'error');
+            set({ error: msg, loading: false, isAuthenticated: false, user: null, token: null });
+            return;
           }
 
-          console.log('Sign in successful, getting profile...');
-          // Buscar perfil do usuário
-          const profile = await getUserProfile(data.user.id);
-          
-          const userData: User = {
-            id: data.user.id,
-            email: profile.email,
-            name: profile.full_name,
-            type: profile.user_type as UserType,
-            profile: {}
+          const session = data.session ?? (await supabase.auth.getSession()).data.session;
+          const profile = await getUserProfile(u.id).catch(() => null);
+          const mapped: User = {
+            id: u.id,
+            email: u.email ?? '',
+            name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
+            type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+            profile: undefined
           };
 
-          set({ 
-            user: userData,
+          set({
+            user: mapped,
+            token: session?.access_token ?? null,
             isAuthenticated: true,
-            token: data.session?.access_token || null
+            loading: false
           });
 
           useToastStore.getState().showToast('Login realizado com sucesso!', 'success');
-
-          // Inicializar favoritos após login
-          const { useRecipesStore } = await import('./recipes');
-          useRecipesStore.getState().initializeAuth();
-          
-          // Inicializar assinatura
-          const { useSubscriptionStore } = await import('./subscription');
-          useSubscriptionStore.getState().fetchUserSubscription(data.user.id);
-        } catch (error) {
-          console.error('Sign in error:', error);
-          const errorMessage = error instanceof Error ? error.message : 'Sign in failed';
-          set({ error: errorMessage });
-          useToastStore.getState().showToast(errorMessage, 'error');
-        } finally {
-          set({ loading: false });
+        } catch (e) {
+          console.error('signIn error:', e);
+          useToastStore.getState().showToast('Erro inesperado ao fazer login.', 'error');
+          set({ error: 'Erro inesperado', loading: false });
         }
       },
 
-      signUp: async (email: string, password: string, name: string, type: UserType) => {
+      signUp: async (email, password, name, type) => {
         set({ loading: true, error: null });
         try {
-          console.log('Attempting sign up...');
           const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-              data: {
-                full_name: name,
-                user_type: type
-              }
+              emailRedirectTo: `${CONFIRM_REDIRECT_BASE}/auth/confirm`,
+              data: { full_name: name, user_type: type }
             }
           });
+
+          // Aviso de confirmação sempre (mesmo se erro, para orientar usuário)
+          useToastStore.getState().showToast('Conta criada! Confirme seu e-mail para acessar.', 'info');
 
           if (error) {
-            console.error('Sign up error:', error);
-            // Mensagens de erro amigáveis
-            let friendlyMessage = 'Erro ao criar conta';
-            if (error.message.includes('User already registered')) {
-              friendlyMessage = 'Este email já está cadastrado. Tente fazer login ou use outro email.';
-            } else if (error.message.includes('Password should be at least')) {
-              friendlyMessage = 'A senha deve ter pelo menos 6 caracteres.';
-            } else if (error.message.includes('Invalid email')) {
-              friendlyMessage = 'Email inválido. Verifique o formato do email.';
-            } else if (error.message.includes('duplicate key value')) {
-              friendlyMessage = 'Este email já está cadastrado. Tente fazer login.';
-            }
-            
-            useToastStore.getState().showToast(friendlyMessage, 'error');
-            set({ error: friendlyMessage });
+            let friendly = 'Erro ao criar conta';
+            if (error.message.includes('User already registered')) friendly = 'Este e-mail já está cadastrado.';
+            if (error.message.includes('Password should be at least')) friendly = 'A senha deve ter pelo menos 6 caracteres.';
+            if (error.message.includes('Invalid email')) friendly = 'E-mail inválido.';
+            useToastStore.getState().showToast(friendly, 'error');
+            set({ error: friendly, loading: false });
             return;
           }
-          
-          if (!data.user) {
-            throw new Error('No user returned from Supabase');
-          }
 
-          console.log('Sign up successful, creating profile...');
-          // Criar perfil do usuário
-          await createUserProfile({
-            id: data.user.id,
-            email,
-            full_name: name,
-            user_type: type
-          });
-
-          const userData: User = {
-            id: data.user.id,
-            email,
-            name,
-            type,
-            profile: {}
-          };
-
-          set({ 
-            user: userData,
-            isAuthenticated: true,
-            token: data.session?.access_token || null
-          });
-
-          useToastStore.getState().showToast('Conta criada com sucesso!', 'success');
-
-          // Inicializar favoritos após cadastro
-          const { useRecipesStore } = await import('./recipes');
-          useRecipesStore.getState().initializeAuth();
-          
-          // Inicializar assinatura
-          const { useSubscriptionStore } = await import('./subscription');
-          useSubscriptionStore.getState().fetchUserSubscription(data.user.id);
-        } catch (error) {
-          console.error('Sign up error:', error);
-          const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
-          set({ error: errorMessage });
-          useToastStore.getState().showToast(errorMessage, 'error');
-        } finally {
+          // Não autentica imediatamente — exige confirmação de email
           set({ loading: false });
+        } catch (e) {
+          console.error('signUp error:', e);
+          useToastStore.getState().showToast('Erro inesperado ao criar conta.', 'error');
+          set({ error: 'Erro inesperado', loading: false });
         }
       },
 
       signOut: async () => {
         try {
-          console.log('Signing out...');
-          
-          // Limpar estado local primeiro
+          await supabase.auth.signOut();
           set({ user: null, token: null, isAuthenticated: false });
-          
-          // Limpar favoritos
-          const { useRecipesStore } = await import('./recipes');
-          useRecipesStore.getState().clearUserData();
-          
-          // Limpar dados de assinatura
-          const { useSubscriptionStore } = await import('./subscription');
-          useSubscriptionStore.getState().reset?.();
-          
-          // Fazer logout no Supabase
-          const { error } = await supabase.auth.signOut();
-          if (error) {
-            console.error('Supabase signOut error:', error);
-          }
-          
-          useToastStore.getState().showToast('Logout realizado com sucesso!', 'info');
-          
-        } catch (error) {
-          console.error('Error signing out:', error);
-          // Mesmo com erro, limpar estado local
-          set({ user: null, token: null, isAuthenticated: false });
+          useToastStore.getState().showToast('Logout realizado!', 'info');
+        } catch (e) {
+          console.error('signOut error:', e);
           useToastStore.getState().showToast('Logout realizado', 'info');
-        }
-      },
-
-      updateUserProfile: async (updates: Partial<User>) => {
-        const { user } = get();
-        if (!user) return;
-
-        try {
-          const { updateUserProfile } = await import('../services/database');
-          await updateUserProfile(user.id, updates);
-          set({ user: { ...user, ...updates } });
-          useToastStore.getState().showToast('Perfil atualizado com sucesso!', 'success');
-        } catch (error) {
-          console.error('Error updating profile:', error);
-          useToastStore.getState().showToast('Erro ao atualizar perfil', 'error');
-          throw error;
         }
       },
 
@@ -277,11 +179,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ 
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated
-      })
+      partialize: (s) => ({ user: s.user, token: s.token, isAuthenticated: s.isAuthenticated })
     }
   )
 );
