@@ -7,7 +7,6 @@ import type { Recipe } from '../types/recipe';
 interface RecipesState {
   recipes: Recipe[];
   favoriteRecipes: number[];
-  favoritesLoaded: boolean;
   loading: boolean;
   error: string | null;
   addToFavorites: (recipeId: number) => Promise<void>;
@@ -27,13 +26,12 @@ interface RecipesState {
 export const useRecipesStore = create<RecipesState>((set, get) => ({
   recipes: [],
   favoriteRecipes: [],
-  favoritesLoaded: false,
   loading: false,
   error: null,
 
   clearUserData: () => {
     console.log('Clearing user data from recipes store');
-    set({ favoriteRecipes: [], favoritesLoaded: false });
+    set({ favoriteRecipes: [] });
   },
 
   initializeAuth: async () => {
@@ -54,7 +52,7 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
       
       // Se o usuário estiver autenticado, buscar favoritos
       const { user } = useAuthStore.getState();
-      if (user && !get().favoritesLoaded) {
+      if (user) {
         await get().fetchFavorites(user.id);
       }
     } catch (error) {
@@ -70,7 +68,7 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
       console.log('Fetching favorites for user:', userId);
       const favorites = await db.getFavorites(userId);
       console.log('Favorites fetched:', favorites);
-      set({ favoriteRecipes: favorites, favoritesLoaded: true });
+      set({ favoriteRecipes: favorites });
     } catch (error) {
       console.error('Failed to fetch favorites:', error);
       // Não mostrar toast para erro de favoritos, pois não é crítico

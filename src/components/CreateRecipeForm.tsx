@@ -7,31 +7,11 @@ import { cn } from '../lib/utils';
 import type { Recipe } from '../types/recipe';
 
 type CategoryKey = keyof ReturnType<typeof useTranslation>['categories'];
-type CreateRecipeInput = Omit<Recipe, 'id' | 'rating' | 'reviews' | 'createdAt' | 'updatedAt'>;
-type RecipeFormState = Omit<CreateRecipeInput, 'authorId' | 'authorName' | 'authorType'>;
 
 interface CreateRecipeFormProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const createInitialRecipe = (): RecipeFormState => ({
-  title: '',
-  description: '',
-  image: '',
-  prepTime: 30,
-  difficulty: 'medium',
-  category: 'vegan',
-  ingredients: [''],
-  instructions: [''],
-  nutritionFacts: {
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-    fiber: 0,
-  },
-});
 
 export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
   const { user } = useAuthStore();
@@ -39,7 +19,24 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
   const translations = useTranslation();
   const [loading, setLoading] = useState(false);
 
-  const [recipe, setRecipe] = useState<RecipeFormState>(createInitialRecipe);
+  // Estado inicial corrigido
+  const [recipe, setRecipe] = useState<Partial<Recipe>>({
+    title: '',
+    description: '',
+    image: '',
+    prepTime: 30,
+    difficulty: 'medium',
+    category: 'vegan', // Categoria válida
+    ingredients: [''],
+    instructions: [''],
+    nutritionFacts: {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+    },
+  });
 
   if (!isOpen || !user) return null;
 
@@ -55,15 +52,33 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
       console.log('Submitting recipe:', recipe);
       console.log('User ID:', user.id);
       
-      const recipeData: CreateRecipeInput = {
+      const recipeData = {
         ...recipe,
         authorId: user.id,
-      };
+        rating: 0,
+        reviews: [],
+      } as Recipe;
 
       await createRecipe(recipeData);
-
+      
       // Reset form
-      setRecipe(createInitialRecipe());
+      setRecipe({
+        title: '',
+        description: '',
+        image: '',
+        prepTime: 30,
+        difficulty: 'medium',
+        category: 'vegan',
+        ingredients: [''],
+        instructions: [''],
+        nutritionFacts: {
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          fiber: 0,
+        },
+      });
       
       onClose();
     } catch (error) {
@@ -80,21 +95,21 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
   ) => {
     setRecipe((prev) => ({
       ...prev,
-      [field]: prev[field].map((item, i) => (i === index ? value : item)),
+      [field]: prev[field]?.map((item, i) => (i === index ? value : item)),
     }));
   };
 
   const addArrayItem = (field: 'ingredients' | 'instructions') => {
     setRecipe((prev) => ({
       ...prev,
-      [field]: [...prev[field], ''],
+      [field]: [...(prev[field] || []), ''],
     }));
   };
 
   const removeArrayItem = (field: 'ingredients' | 'instructions', index: number) => {
     setRecipe((prev) => ({
       ...prev,
-      [field]: prev[field].filter((_, i) => i !== index),
+      [field]: prev[field]?.filter((_, i) => i !== index),
     }));
   };
 
