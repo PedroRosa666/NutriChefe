@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { ForgotPasswordModal } from './auth/ForgotPasswordModal';
@@ -23,6 +23,19 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   const t = useTranslation();
 
   const { signIn, signUp } = useAuthStore();
+
+  // Atualizar mode quando initialMode mudar
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      // Limpar campos ao abrir
+      setEmail('');
+      setPassword('');
+      setName('');
+      setUserType('Client');
+      setShowForgotPassword(false);
+    }
+  }, [isOpen, initialMode]);
 
   if (!isOpen) return null;
 
