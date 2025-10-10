@@ -16,6 +16,8 @@ import { useTranslation } from './hooks/useTranslation';
 import { Plus } from 'lucide-react';
 import { Toast } from './components/common/Toast';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
+import ConfirmEmailPage from './components/auth/ConfirmEmailPage';
+
 
 function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<number | null>(null);
@@ -42,6 +44,9 @@ function App() {
   // Verificar se é página de reset de senha
   const isResetPasswordPage = window.location.pathname === '/reset-password' || 
                              window.location.hash.includes('type=recovery');
+
+  const isConfirmPage = window.location.pathname === '/auth/confirm';
+
 
   // Inicializar aplicação
   useEffect(() => {
@@ -78,6 +83,11 @@ function App() {
   if (isResetPasswordPage) {
     return <ResetPasswordPage />;
   }
+
+  if (isConfirmPage) {
+  return <ConfirmEmailPage />;
+}
+
 
   // Função para normalizar as chaves
   const normalizeKey = (key: string) => {
@@ -117,43 +127,13 @@ function App() {
 
   const selectedRecipeData = recipes.find(r => r.id === selectedRecipe);
 
-  // Mostrar loading inicial com design moderno
+  // Mostrar loading inicial
   if (!initialized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
-        <div className="text-center space-y-8 max-w-md">
-          {/* Logo animado */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/30 animate-pulse"></div>
-            </div>
-            <div className="relative flex items-center justify-center py-8">
-              <h1 className="text-5xl font-bold text-green-600 dark:text-green-400 tracking-tight">
-                NutriChef
-              </h1>
-            </div>
-          </div>
-
-          {/* Spinner e texto centralizados */}
-          <div className="flex flex-col items-center justify-center gap-4">
-            <LoadingSpinner size="lg" className="text-green-600 dark:text-green-400" />
-            <div className="space-y-2">
-              <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-                Carregando aplicação
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Preparando suas receitas favoritas...
-              </p>
-            </div>
-          </div>
-
-          {/* Barra de progresso decorativa */}
-          <div className="w-full max-w-xs mx-auto">
-            <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full animate-[shimmer_2s_ease-in-out_infinite]"
-                   style={{width: '60%'}}></div>
-            </div>
-          </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Carregando aplicação...</p>
         </div>
       </div>
     );
