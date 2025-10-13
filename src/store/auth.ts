@@ -1,3 +1,7 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { supabase } from '../lib/supabase';
+import { getUserProfile } from '../services/database';
 import { useToastStore } from './toast';
 import type { User, UserType } from '../types/user';
 
@@ -23,7 +27,6 @@ interface AuthState {
 
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string, type: UserType) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   initializeAuth: () => Promise<void>;
   clearError: () => void;
@@ -49,7 +52,94 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const u = session.user;
-          const useAuthStore = create<AuthState>()();
+          if (!isEmailConfirmed(u)) {
+            // Mantém coerência: sem e-mail confirmado → não autenticado
+            await supabase.auth.signOut();
+            set({ user: null, token: null, isAuthenticated: false });
+            return;
+          }
+
+          // Montar objeto User do app
+          const profile = await getUserProfile(u.id).catch(() => null);
+          const mapped: User = {
+            id: u.id,
+            email: u.email ?? '',
+            name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
+            type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+            profile: undefined
+          };
+
+          set({
+            user: mapped,
+            token: session.access_token,
+            isAuthenticated: true
+          });
+        } catch (e) {
+          console.error('initializeAuth error:', e);
+          set({ user: null, token: null, isAuthenticated: false });
+        }
+      },
+
+      signIn: async (email, password) => {
+        set({ loading: true, error: null });
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) {
+            let friendly = 'Erro ao fazer login';
+            if (error.message.includes('Invalid login credentials')) friendly = 'Email ou senha incorretos.';
+            if (error.message.includes('Email not confirmed')) friendly = 'Email não confirmado. Verifique sua caixa de entrada.';
+            if (error.message.includes('Too many requests')) friendly = 'Muitas tentativas. Tente mais tarde.';
+            useToastStore.getState().showToast(friendly, 'error');
+            set({ error: friendly, loading: false });
+            return;
+          }
+
+          const u = data.user;
+          // Bloqueia acesso se e-mail ainda não foi confirmado
+          if (!isEmailConfirmed(u)) {
+            await supabase.auth.signOut();
+            const msg = 'Email não confirmado. Verifique sua caixa de entrada e clique no link de confirmação.';
+            useToastStore.getState().showToast(msg, 'error');
+            set({ error: msg, loading: false, isAuthenticated: false, user: null, token: null });
+            return;
+          }
+
+          const session = data.session ?? (await supabase.auth.getSession()).data.session;
+          const profile = await getUserProfile(u.id).catch(() => null);
+          const mapped: User = {
+            id: u.id,
+            email: u.email ?? '',
+            name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
+            type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+            profile: undefined
+          };
+
+          set({
+            user: mapped,
+            token: session?.access_token ?? null,
+            isAuthenticated: true,
+            loading: false
+          });
+
+          useToastStore.getState().showToast('Login realizado com sucesso!', 'success');
+        } catch (e) {
+          console.error('signIn error:', e);
+          useToastStore.getState().showToast('Erro inesperado ao fazer login.', 'error');
+          set({ error: 'Erro inesperado', loading: false });
+        }
+      },
+
+      signUp: async (email, password, name, type) => {
+        set({ loading: true, error: null });
+        try {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${CONFIRM_REDIRECT_BASE}/auth/confirm`,
+              data: { full_name: name, user_type: type }
+            }
+          });
 
           // Aviso de confirmação sempre (mesmo se erro, para orientar usuário)
           useToastStore.getState().showToast('Conta criada! Confirme seu e-mail para acessar.', 'info');
@@ -69,35 +159,6 @@ export const useAuthStore = create<AuthState>()(
         } catch (e) {
           console.error('signUp error:', e);
           useToastStore.getState().showToast('Erro inesperado ao criar conta.', 'error');
-          set({ error: 'Erro inesperado', loading: false });
-        }
-      },
-
-      signInWithGoogle: async () => {
-        set({ loading: true, error: null });
-        try {
-          const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-              redirectTo: `${CONFIRM_REDIRECT_BASE}/auth/confirm`
-            }
-          });
-
-          if (error) {
-            const msg = 'Não foi possível iniciar o login com o Google. Tente novamente.';
-            useToastStore.getState().showToast(msg, 'error');
-            set({ error: msg, loading: false });
-            return;
-          }
-
-          if (data?.url) {
-            window.location.assign(data.url);
-          } else {
-            set({ loading: false });
-          }
-        } catch (e) {
-          console.error('signInWithGoogle error:', e);
-          useToastStore.getState().showToast('Erro inesperado ao conectar com o Google.', 'error');
           set({ error: 'Erro inesperado', loading: false });
         }
       },

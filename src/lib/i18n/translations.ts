@@ -17,8 +17,6 @@ export const translations = {
       settings: 'Settings',
       createaccount: "Create Account",
       dontHaveAccount: "Don't have an account? ",
-      continueWithGoogle: 'Continue with Google',
-      orContinue: 'or continue with',
       alreadyHaveAccount: "Already have an account? ",
       theme: {
         light: 'Light',
@@ -142,8 +140,6 @@ export const translations = {
       back: 'Voltar',
       settings: 'Configurações',
       createaccount: 'Criar conta',
-      continueWithGoogle: 'Continuar com o Google',
-      orContinue: 'ou continue com',
       dontHaveAccount: "Não tem uma conta? ",
       alreadyHaveAccount: "Já tem uma conta? ",
       theme: {
