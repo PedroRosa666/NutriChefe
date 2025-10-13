@@ -49,7 +49,7 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const u = session.user;
-          const useAuthStore = create<AuthState>()(
+          const useAuthStore = create<AuthState>()();
 
           // Aviso de confirmação sempre (mesmo se erro, para orientar usuário)
           useToastStore.getState().showToast('Conta criada! Confirme seu e-mail para acessar.', 'info');
