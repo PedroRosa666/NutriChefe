@@ -49,7 +49,7 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const u = session.user;
-          export const useAuthStore = create<AuthState>()(
+          const useAuthStore = create<AuthState>()(
             }
           });
 
