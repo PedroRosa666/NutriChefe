@@ -50,7 +50,6 @@ export const useAuthStore = create<AuthState>()(
 
           const u = session.user;
           const useAuthStore = create<AuthState>()(
-            }
           });
 
           // Aviso de confirmação sempre (mesmo se erro, para orientar usuário)
