@@ -142,6 +142,8 @@ export const translations = {
       back: 'Voltar',
       settings: 'Configurações',
       createaccount: 'Criar conta',
+      continueWithGoogle: 'Continuar com o Google',
+      orContinue: 'ou continue com',
       dontHaveAccount: "Não tem uma conta? ",
       alreadyHaveAccount: "Já tem uma conta? ",
       theme: {
