@@ -16,6 +16,7 @@ import { useTranslation } from './hooks/useTranslation';
 import { Plus } from 'lucide-react';
 import { Toast } from './components/common/Toast';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
+import LoadingGate from './components/common/LoadingGate';
 
 function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<number | null>(null);
@@ -74,11 +75,6 @@ function App() {
     }
   }, [setCategory, initialized]);
 
-  // Se for página de reset de senha, mostrar apenas essa página
-  if (isResetPasswordPage) {
-    return <ResetPasswordPage />;
-  }
-
   // Função para normalizar as chaves
   const normalizeKey = (key: string) => {
     return key.toLowerCase().replace(/\s+/g, '');
@@ -117,151 +113,116 @@ function App() {
 
   const selectedRecipeData = recipes.find(r => r.id === selectedRecipe);
 
-  // Mostrar loading inicial com design moderno
-  if (!initialized) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
-        <div className="text-center space-y-8 max-w-md">
-          {/* Logo animado */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/30 animate-pulse"></div>
-            </div>
-            <div className="relative flex items-center justify-center py-8">
-              <h1 className="text-5xl font-bold text-green-600 dark:text-green-400 tracking-tight">
-                NutriChef
-              </h1>
-            </div>
-          </div>
-
-          {/* Spinner e texto centralizados */}
-          <div className="flex flex-col items-center justify-center gap-4">
-            <LoadingSpinner size="lg" className="text-green-600 dark:text-green-400" />
-            <div className="space-y-2">
-              <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-                Carregando aplicação
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Preparando suas receitas favoritas...
-              </p>
-            </div>
-          </div>
-
-          {/* Barra de progresso decorativa */}
-          <div className="w-full max-w-xs mx-auto">
-            <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full animate-[shimmer_2s_ease-in-out_infinite]"
-                   style={{width: '60%'}}></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  // Se for página de reset de senha, mostrar apenas essa página (sem loading gate)
+  if (isResetPasswordPage) {
+    return <ResetPasswordPage />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <Header 
-        onProfileClick={() => setShowProfile(true)}
-        onAIMentoringClick={() => setShowAIMentoring(true)}
-      />
+    <LoadingGate initialized={initialized} minDurationMs={6000} appName="NutriChef">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+        <Header 
+          onProfileClick={() => setShowProfile(true)}
+          onAIMentoringClick={() => setShowAIMentoring(true)}
+        />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {showAIMentoring ? (
-          <AIMentoringPage onBack={() => setShowAIMentoring(false)} />
-        ) : showProfile ? (
-          <ProfilePage onBackToRecipes={() => setShowProfile(false)} />
-        ) : (
-          <>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-              <div className="flex-1">
-                <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">
-                  {t.home.title}
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 max-w-3xl text-sm sm:text-base">
-                  {t.home.subtitle}
-                </p>
-              </div>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {showAIMentoring ? (
+            <AIMentoringPage onBack={() => setShowAIMentoring(false)} />
+          ) : showProfile ? (
+            <ProfilePage onBackToRecipes={() => setShowProfile(false)} />
+          ) : (
+            <>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                <div className="flex-1">
+                  <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">
+                    {t.home.title}
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400 max-w-3xl text-sm sm:text-base">
+                    {t.home.subtitle}
+                  </p>
+                </div>
 
-              {isAuthenticated && isNutritionist() && (
-                <button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap text-sm sm:text-base"
-                >
-                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                  {t.home.createRecipe}
-                </button>
-              )}
-            </div>
-
-            {/* Filtros com layout melhorado */}
-            <div className="mb-8 space-y-4">
-              {/* Filtros de categoria - sempre em linha completa */}
-              <div className="w-full">
-                <CategoryFilter
-                  categories={CATEGORIES}
-                  selectedCategory={category}
-                  onSelectCategory={setCategory}
-                />
-              </div>
-              
-              {/* Filtros avançados - alinhados à direita em desktop, centralizados em mobile */}
-              <div className="flex justify-center sm:justify-end">
-                <AdvancedFilters />
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <LoadingSpinner size="lg" />
-              </div>
-            ) : filteredRecipes.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500 dark:text-gray-400 mb-4">{t.home.noRecipes}</p>
-                {recipes.length === 0 && !loading && (
+                {isAuthenticated && isNutritionist() && (
                   <button
-                    onClick={fetchRecipes}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap text-sm sm:text-base"
                   >
-                    Tentar novamente
+                    <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                    {t.home.createRecipe}
                   </button>
                 )}
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRecipes.map((recipe) => (
-                  <RecipeCard
-                    key={recipe.id}
-                    recipe={recipe}
-                    onClick={() => setSelectedRecipe(recipe.id)}
+
+              {/* Filtros com layout melhorado */}
+              <div className="mb-8 space-y-4">
+                {/* Filtros de categoria - sempre em linha completa */}
+                <div className="w-full">
+                  <CategoryFilter
+                    categories={CATEGORIES}
+                    selectedCategory={category}
+                    onSelectCategory={setCategory}
                   />
-                ))}
+                </div>
+                
+                {/* Filtros avançados - alinhados à direita em desktop, centralizados em mobile */}
+                <div className="flex justify-center sm:justify-end">
+                  <AdvancedFilters />
+                </div>
               </div>
-            )}
-          </>
+
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <LoadingSpinner size="lg" />
+                </div>
+              ) : filteredRecipes.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">{t.home.noRecipes}</p>
+                  {recipes.length === 0 && !loading && (
+                    <button
+                      onClick={fetchRecipes}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Tentar novamente
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredRecipes.map((recipe) => (
+                    <RecipeCard
+                      key={recipe.id}
+                      recipe={recipe}
+                      onClick={() => setSelectedRecipe(recipe.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </main>
+
+        {selectedRecipeData && (
+          <RecipeDetails
+            recipe={selectedRecipeData}
+            onClose={() => setSelectedRecipe(null)}
+          />
         )}
-      </main>
 
-      {selectedRecipeData && (
-        <RecipeDetails
-          recipe={selectedRecipeData}
-          onClose={() => setSelectedRecipe(null)}
+        <CreateRecipeForm
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
         />
-      )}
 
-      <CreateRecipeForm
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-      />
-
-      {message && (
-        <Toast
-          message={message}
-          type={type}
-          onClose={hideToast}
-        />
-      )}
-    </div>
+        {message && (
+          <Toast
+            message={message}
+            type={type}
+            onClose={hideToast}
+          />
+        )}
+      </div>
+    </LoadingGate>
   );
 }
 
