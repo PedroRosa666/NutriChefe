@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChefHat } from "lucide-react";
 
 /**
- * LoadingGate — ChefHat + letras claras + órbitas de alimentos AO REDOR do medalhão
+ * LoadingGate — medalhão com ChefHat, letras NC claras e
+ * ÓRBITAS DE ALIMENTOS GIRANDO EM VOLTA (fora) do medalhão.
  */
 export default function LoadingGate({
   initialized,
@@ -19,6 +20,7 @@ export default function LoadingGate({
   const [visible, setVisible] = useState(true);
   const startRef = useRef<number>(Date.now());
 
+  // -> controla permanência mínima
   useEffect(() => {
     if (!initialized) return;
     const elapsed = Date.now() - startRef.current;
@@ -27,6 +29,7 @@ export default function LoadingGate({
     return () => clearTimeout(t);
   }, [initialized, minDurationMs]);
 
+  // frases rotativas
   const phrases = useMemo(
     () => [
       "Preparando suas receitas favoritas…",
@@ -45,8 +48,36 @@ export default function LoadingGate({
     return () => clearInterval(i);
   }, [phrases.length]);
 
-  // partículas de fundo leve
-  const dots = 14;
+  // ====== MEDIÇÃO DO MEDALHÃO PARA CALCULAR ÓRBITAS EXTERNAS ======
+  const medalRef = useRef<HTMLDivElement>(null);
+  const [medalDiameter, setMedalDiameter] = useState<number>(0);
+
+  useEffect(() => {
+    const el = medalRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setMedalDiameter(Math.max(rect.width, rect.height));
+    };
+
+    // 1º cálculo
+    update();
+
+    // Observer pra responsividade
+    if ("ResizeObserver" in window) {
+      const ro = new ResizeObserver(() => update());
+      ro.observe(el);
+      return () => ro.disconnect();
+    } else {
+      // Fallback
+      window.addEventListener("resize", update);
+      return () => window.removeEventListener("resize", update);
+    }
+  }, []);
+
+  // partículas de fundo
+  const dots = 12;
   const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
   const vh = typeof window !== "undefined" ? window.innerHeight : 768;
   const seeds = useMemo(() => Array.from({ length: dots }, (_, i) => i), []);
@@ -67,81 +98,91 @@ export default function LoadingGate({
 
             <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
               <div className="relative mx-auto w-full max-w-xl text-center">
-                {/* MEDALHÃO */}
-                <div className="relative z-10 mx-auto mb-10 h-44 w-44 md:h-52 md:w-52">
-                  {/* Halo pulsante */}
-                  <motion.div
-                    className="absolute inset-0 rounded-full bg-gradient-to-tr from-emerald-400/30 via-green-500/20 to-cyan-400/25 blur-2xl"
-                    animate={{ opacity: [0.6, 0.85, 0.6], scale: [1, 1.03, 1] }}
-                    transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+                {/* ====== BLOCO CENTRAL: MEDALHÃO + ÓRBITAS EXTERNAS ====== */}
+                <div className="relative mx-auto mb-10 flex items-center justify-center">
+                  {/* ÓRBITAS (fora do medalhão) — posicionadas como irmãs absolutas, centradas */}
+                  <OrbitsOutside
+                    centerToRef={medalRef}
+                    medalDiameter={medalDiameter}
+                    rings={[
+                      {
+                        emojis: ["🥑", "🍅", "🥕", "🍋", "🥖", "🧀", "🌶️", "🥬"],
+                        radiusOffset: 16, // distância em px a partir da borda do medalhão
+                        durationSec: 14,
+                        direction: "cw",
+                        sizePattern: [22, 20],
+                      },
+                      {
+                        emojis: ["🍓", "🍍", "🍇", "🍄", "🍤", "🥚", "🧄", "🧅", "🍞", "🥔"],
+                        radiusOffset: 34,
+                        durationSec: 20,
+                        direction: "ccw",
+                        sizePattern: [20, 18, 16],
+                      },
+                    ]}
                   />
 
-                  {/* Disco principal */}
-                  <motion.div
-                    className="relative h-full w-full rounded-full bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 ring-1 ring-white/15 shadow-[0_0_45px_-10px_rgba(16,185,129,0.55)] overflow-visible"
-                    animate={{ rotate: [0, 360] }}
-                    transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
+                  {/* ===== MEDALHÃO ===== */}
+                  <div
+                    ref={medalRef}
+                    className="relative z-10 h-44 w-44 md:h-52 md:w-52"
                   >
-                    {/* Anel externo */}
+                    {/* Halo pulsante */}
                     <motion.div
-                      className="absolute -inset-1 rounded-full z-0"
-                      style={{
-                        background:
-                          "conic-gradient(from 0deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.85) 25%, rgba(6,182,212,.85) 50%, rgba(16,185,129,.85) 75%, rgba(16,185,129,0) 100%)",
-                      }}
+                      className="absolute inset-0 rounded-full bg-gradient-to-tr from-emerald-400/30 via-green-500/20 to-cyan-400/25 blur-2xl"
+                      animate={{ opacity: [0.6, 0.85, 0.6], scale: [1, 1.03, 1] }}
+                      transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+                    />
+
+                    {/* Disco principal */}
+                    <motion.div
+                      className="relative h-full w-full rounded-full bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 ring-1 ring-white/15 shadow-[0_0_45px_-10px_rgba(16,185,129,0.55)] overflow-visible"
                       animate={{ rotate: [0, 360] }}
-                      transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                    />
-
-                    {/* Fundo interno + brilho sweep */}
-                    <div className="absolute inset-[14%] rounded-full bg-black/10 backdrop-blur-[2px] ring-1 ring-white/10 overflow-hidden z-10">
-                      <div className="absolute inset-0 opacity-15 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.06)_0px,rgba(255,255,255,0.06)_1px,transparent_1px,transparent_3px)]" />
-                      <ShineSweep />
-                    </div>
-
-                    {/* Conteúdo central (ChefHat + NC) */}
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
-                      {/* Chapéu */}
+                      transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
+                    >
+                      {/* Anel externo */}
                       <motion.div
-                        initial={{ y: -6, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ duration: 1.0, ease: "easeOut" }}
-                      >
-                        <ChefHat size={52} className="text-white" />
-                      </motion.div>
+                        className="absolute -inset-1 rounded-full z-0"
+                        style={{
+                          background:
+                            "conic-gradient(from 0deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.85) 25%, rgba(6,182,212,.85) 50%, rgba(16,185,129,.85) 75%, rgba(16,185,129,0) 100%)",
+                        }}
+                        animate={{ rotate: [0, 360] }}
+                        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                      />
 
-                      {/* Letras claras: sem sombra escura */}
-                      <motion.div
-                        initial={{ scale: 0.96 }}
-                        animate={{ scale: [0.96, 1, 0.96] }}
-                        transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
-                        className="mt-1 font-extrabold tracking-tight text-5xl md:text-6xl"
-                      >
-                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
-                          N
-                        </span>
-                        <span className="mx-1.5 bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
-                          C
-                        </span>
-                      </motion.div>
-                    </div>
+                      {/* Fundo interno + shine sweep */}
+                      <div className="absolute inset-[14%] rounded-full bg-black/10 backdrop-blur-[2px] ring-1 ring-white/10 overflow-hidden z-10">
+                        <div className="absolute inset-0 opacity-15 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.06)_0px,rgba(255,255,255,0.06)_1px,transparent_1px,transparent_3px)]" />
+                        <ShineSweep />
+                      </div>
 
-                    {/* >>> ÓRBITAS AO REDOR DO MEDALHÃO (emojis) <<< */}
-                    <OrbitAroundMedal
-                      emojis={["🥑", "🍅", "🥕", "🍋", "🥖", "🧀", "🌶️", "🥬"]}
-                      radiusOffsetPx={10}    // bem colada na borda
-                      durationSec={14}       // mais rápida
-                      sizePattern={[22, 20]} // alterna tamanhos
-                      direction="cw"
-                    />
-                    <OrbitAroundMedal
-                      emojis={["🍓", "🍍", "🍇", "🍄", "🍤", "🥚", "🥔", "🧄", "🧅", "🍞"]}
-                      radiusOffsetPx={28}    // um pouco mais afastada
-                      durationSec={20}       // mais lenta
-                      sizePattern={[20, 18, 16]}
-                      direction="ccw"
-                    />
-                  </motion.div>
+                      {/* Conteúdo central (chapéu + NC claras) */}
+                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
+                        <motion.div
+                          initial={{ y: -6, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          transition={{ duration: 1.0, ease: "easeOut" }}
+                        >
+                          <ChefHat size={52} className="text-white" />
+                        </motion.div>
+
+                        <motion.div
+                          initial={{ scale: 0.96 }}
+                          animate={{ scale: [0.96, 1, 0.96] }}
+                          transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+                          className="mt-1 font-extrabold tracking-tight text-5xl md:text-6xl"
+                        >
+                          <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
+                            N
+                          </span>
+                          <span className="mx-1.5 bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
+                            C
+                          </span>
+                        </motion.div>
+                      </div>
+                    </motion.div>
+                  </div>
                 </div>
 
                 {/* TÍTULO */}
@@ -195,7 +236,7 @@ export default function LoadingGate({
                   }}
                   animate={{
                     y: ["0%", "-10%", "0%"],
-                    x: ["0%", "5%", "0%"],
+                    x: ["0%", "5%"],
                   }}
                   transition={{
                     duration: 6 + Math.random() * 6,
@@ -270,56 +311,83 @@ function ShineSweep() {
   );
 }
 
-/**
- * ÓRBITA AO REDOR DO MEDALHÃO
- * - Posicionada dentro do disco principal, porém usa container maior que o medalhão
- * - O raio é calculado como: 50% do medalhão + radiusOffsetPx
- * - direction: "cw" (horário) | "ccw" (anti-horário)
- */
-function OrbitAroundMedal({
+/** Componente que renderiza múltiplas órbitas FORA do medalhão */
+function OrbitsOutside({
+  centerToRef,
+  medalDiameter,
+  rings,
+}: {
+  centerToRef: React.RefObject<HTMLElement>;
+  medalDiameter: number; // em px (medido com getBoundingClientRect)
+  rings: Array<{
+    emojis: string[];
+    radiusOffset: number; // distância extra além da borda do medalhão (px)
+    durationSec: number;
+    direction: "cw" | "ccw";
+    sizePattern: number[];
+  }>;
+}) {
+  // centro da área do medalhão: usamos o mesmo container pai (position: relative)
+  // posicionamos as órbitas com left/top 50% em relação AO PAI,
+  // e alinhamos pelo translate(-50%, -50%) para coincidir com o centro do medalhão.
+  const radiusBase = Math.max(0, medalDiameter / 2); // raio real do medalhão
+
+  return (
+    <>
+      {rings.map((ring, idx) => (
+        <SingleOrbit
+          key={idx}
+          emojis={ring.emojis}
+          radiusPx={radiusBase + ring.radiusOffset}
+          durationSec={ring.durationSec}
+          direction={ring.direction}
+          sizePattern={ring.sizePattern}
+        />
+      ))}
+    </>
+  );
+}
+
+/** Uma órbita (animação circular) fora do medalhão */
+function SingleOrbit({
   emojis,
-  radiusOffsetPx = 300px,
-  durationSec = 16,
-  sizePattern = [20],
-  direction = "cw",
+  radiusPx,
+  durationSec,
+  direction,
+  sizePattern,
 }: {
   emojis: string[];
-  radiusOffsetPx?: number;
-  durationSec?: number;
-  sizePattern?: number[];
-  direction?: "cw" | "ccw";
+  radiusPx: number; // raio absoluto em px
+  durationSec: number;
+  direction: "cw" | "ccw";
+  sizePattern: number[];
 }) {
   const step = 360 / emojis.length;
 
   return (
     <motion.div
-      className="pointer-events-none absolute inset-0"
-      style={{
-        // container maior para a órbita ficar fora da borda
-        transform: "translate(-0%, -0%)",
-      }}
+      className="pointer-events-none absolute left-1/2 top-1/2 z-0"
       animate={{ rotate: direction === "cw" ? 360 : -360 }}
       transition={{ duration: durationSec, repeat: Infinity, ease: "linear" }}
+      style={{ transform: "translate(-50%, -50%)" }}
       aria-hidden
     >
       {emojis.map((emoji, i) => {
         const deg = i * step;
-        const radius = `calc(50% + ${radiusOffsetPx}px)`;
         const fontSize = sizePattern[i % sizePattern.length];
 
-        // cada item tem seu próprio "braço" rotacionado em deg, e o emoji fica no topo desse braço
         return (
           <div
             key={`${emoji}-${i}`}
-            className="absolute inset-0"
+            className="absolute"
             style={{
               transform: `rotate(${deg}deg)`,
             }}
           >
             <span
-              className="absolute left-1/2 top-1/2 select-none"
+              className="absolute left-0 top-0 select-none"
               style={{
-                transform: `translate(-50%, -50%) translateY(-${radius}) rotate(${
+                transform: `translateX(${radiusPx}px) rotate(${
                   direction === "cw" ? -deg : deg
                 }deg)`,
                 fontSize,
