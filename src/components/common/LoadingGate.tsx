@@ -74,57 +74,51 @@ export default function LoadingGate({
 
             {/* CONTENT */}
             <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
-              <div className="relative mx-auto w-full max-w-xl text-center">
-                {/* >>> Garfo & Faca gigantes em X (atrás do medalhão) <<< */}
-                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
-                  <ForkKnifeCrossBg />
-                </div>
-
+              <div className="mx-auto w-full max-w-xl text-center">
                 {/* LOGO / MEDALHÃO */}
-                <div className="relative z-10 mx-auto mb-10 h-40 w-40 md:h-48 md:w-48">
-                  {/* Halo suave (fundo) */}
-                  <div className="absolute inset-0 rounded-full blur-2xl bg-gradient-to-tr from-emerald-400/25 via-green-500/15 to-cyan-400/25" />
+                <div className="mx-auto mb-10 h-40 w-40 md:h-48 md:w-48 relative">
+                  {/* halo */}
+                  <div className="absolute inset-0 rounded-full blur-2xl bg-gradient-to-tr from-emerald-400/30 via-green-500/20 to-cyan-400/30" />
 
-                  {/* Disco base */}
+                  {/* disco com borda neon */}
                   <motion.div
-                    className="relative h-full w-full rounded-full bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 ring-1 ring-white/15 shadow-[0_0_40px_-10px_rgba(16,185,129,0.55)]"
+                    className="relative h-full w-full rounded-full bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 shadow-[0_0_40px_-10px_rgba(16,185,129,0.6)] ring-1 ring-white/20"
                     animate={{ rotate: [0, 360] }}
                     transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
                   >
-                    {/* Anel externo animado (atrás do conteúdo) */}
+                    {/* círculo interno com scanlines */}
+                    <div className="absolute inset-[14%] rounded-full bg-black/10 backdrop-blur-sm ring-1 ring-white/10 overflow-hidden">
+                      <div className="absolute inset-0 opacity-30 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.08)_0px,rgba(255,255,255,0.08)_1px,transparent_1px,transparent_3px)]" />
+
+                      {/* monograma N⚡C */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <motion.div
+                          initial={{ scale: 0.95 }}
+                          animate={{ scale: [0.95, 1, 0.95] }}
+                          transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+                          className="font-black tracking-tight text-4xl md:text-5xl"
+                        >
+                          <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white drop-shadow">
+                            N
+                          </span>
+                          <span className="mx-2 text-emerald-200">⚡</span>
+                          <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white drop-shadow">
+                            C
+                          </span>
+                        </motion.div>
+                      </div>
+                    </div>
+
+                    {/* anel externo animado */}
                     <motion.div
-                      className="absolute -inset-1 rounded-full z-0"
+                      className="absolute -inset-1 rounded-full"
                       style={{
                         background:
-                          "conic-gradient(from 0deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.85) 25%, rgba(6,182,212,.85) 50%, rgba(16,185,129,.85) 75%, rgba(16,185,129,0) 100%)",
+                          "conic-gradient(from 0deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.9) 25%, rgba(6,182,212,.9) 50%, rgba(16,185,129,.9) 75%, rgba(16,185,129,0) 100%)",
                       }}
                       animate={{ rotate: [0, 360] }}
                       transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                     />
-
-                    {/* Círculo interno com leve textura (não apaga o conteúdo) */}
-                    <div className="absolute inset-[14%] rounded-full bg-black/5 backdrop-blur-[1px] ring-1 ring-white/10 overflow-hidden z-10">
-                      {/* scanlines bem discretas */}
-                      <div className="absolute inset-0 opacity-20 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.06)_0px,rgba(255,255,255,0.06)_1px,transparent_1px,transparent_3px)]" />
-                    </div>
-
-                    {/* Letras N ⚡ C por cima */}
-                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                      <motion.div
-                        initial={{ scale: 0.95 }}
-                        animate={{ scale: [0.95, 1, 0.95] }}
-                        transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
-                        className="font-black tracking-tight text-4xl md:text-5xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]"
-                      >
-                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
-                          N
-                        </span>
-                        <span className="mx-2 text-emerald-50">⚡</span>
-                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
-                          C
-                        </span>
-                      </motion.div>
-                    </div>
                   </motion.div>
                 </div>
 
@@ -214,7 +208,7 @@ export default function LoadingGate({
       <style>{`
         /* ruído/grão suave */
         .noise { position: absolute; inset: -200%; background-image: url('data:image/svg+xml;utf8,${encodeURIComponent(
-          `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)" opacity="0.06"/></svg>`
+          `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.06"/></svg>`
         )}'); mix-blend-mode: overlay; opacity: .35; }
 
         /* grid animado sutil */
@@ -261,97 +255,5 @@ function IndeterminateProgress() {
         />
       </div>
     </div>
-  );
-}
-
-/** Ícone de plano de fundo — garfo e faca gigantes em X */
-/** Ícone de plano de fundo — garfo e faca em X (modelo clássico) */
-function ForkKnifeCrossBg() {
-  // Grande, clean e “com cara” de talher mesmo :)
-  return (
-    <svg
-      width="520"
-      height="520"
-      viewBox="0 0 520 520"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="opacity-30"
-      aria-hidden
-    >
-      <defs>
-        {/* Degradê combina com sua paleta emerald/cyan */}
-        <linearGradient id="utGrad" x1="80" y1="80" x2="440" y2="440" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#A7F3D0" />  {/* emerald-200 */}
-          <stop offset="55%" stopColor="#34D399" /> {/* emerald-400 */}
-          <stop offset="100%" stopColor="#22D3EE" />{/* cyan-400 */}
-        </linearGradient>
-      </defs>
-
-      {/* ===== FORK (garfo) ===== */}
-      <g transform="translate(260 260) rotate(-35) translate(-260 -260)">
-        {/* cabo */}
-        <path
-          d="M190 380 L190 190"
-          stroke="url(#utGrad)"
-          strokeWidth="14"
-          strokeLinecap="round"
-        />
-        {/* cabeça do garfo */}
-        <path
-          d="M170 190 Q190 175 210 190"
-          stroke="url(#utGrad)"
-          strokeWidth="12"
-          strokeLinecap="round"
-          fill="none"
-        />
-        {/* dentes (4 pontas) */}
-        <path d="M175 165 L175 190" stroke="url(#utGrad)" strokeWidth="10" strokeLinecap="round" />
-        <path d="M185 160 L185 190" stroke="url(#utGrad)" strokeWidth="10" strokeLinecap="round" />
-        <path d="M195 160 L195 190" stroke="url(#utGrad)" strokeWidth="10" strokeLinecap="round" />
-        <path d="M205 165 L205 190" stroke="url(#utGrad)" strokeWidth="10" strokeLinecap="round" />
-        {/* final do cabo arredondado */}
-        <circle cx="190" cy="380" r="7" fill="url(#utGrad)" />
-      </g>
-
-      {/* ===== KNIFE (faca) ===== */}
-      <g transform="translate(260 260) rotate(35) translate(-260 -260)">
-        {/* lâmina (chefe de cozinha, ponta curva) */}
-        <path
-          d="
-            M300 360 
-            L430 230 
-            Q450 210 430 190 
-            L300 320 
-            Z
-          "
-          fill="url(#utGrad)"
-          fillOpacity="0.55"
-          stroke="url(#utGrad)"
-          strokeWidth="6"
-          strokeLinejoin="round"
-        />
-        {/* fio da lâmina (linha brilhante) */}
-        <path
-          d="M305 352 L430 225"
-          stroke="white"
-          strokeOpacity="0.25"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        {/* cabo (pílula) */}
-        <rect
-          x="245"
-          y="338"
-          width="64"
-          height="26"
-          rx="13"
-          fill="url(#utGrad)"
-          fillOpacity="0.85"
-        />
-        {/* rebites do cabo */}
-        <circle cx="262" cy="351" r="3" fill="white" fillOpacity="0.55" />
-        <circle cx="292" cy="351" r="3" fill="white" fillOpacity="0.55" />
-      </g>
-    </svg>
   );
 }
