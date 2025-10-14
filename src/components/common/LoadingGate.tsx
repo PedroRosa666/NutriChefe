@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChefHat } from "lucide-react";
 
 /**
- * LoadingGate — Shine sweep + órbita luminosa
+ * LoadingGate — ChefHat + letras claras (sem sombra escura) + órbita de alimentos (emojis)
  */
 export default function LoadingGate({
   initialized,
@@ -45,7 +45,7 @@ export default function LoadingGate({
     return () => clearInterval(i);
   }, [phrases.length]);
 
-  // Partículas de fundo (ambiente)
+  // partículas de fundo leve
   const dots = 18;
   const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
   const vh = typeof window !== "undefined" ? window.innerHeight : 768;
@@ -67,9 +67,9 @@ export default function LoadingGate({
 
             <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
               <div className="relative mx-auto w-full max-w-xl text-center">
-                {/* ORBITA externa */}
+                {/* ÓRBITA DE ALIMENTOS (emojis) */}
                 <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[58%] z-0">
-                  <OrbitRing />
+                  <OrbitRingEmojis />
                 </div>
 
                 {/* MEDALHÃO */}
@@ -98,30 +98,29 @@ export default function LoadingGate({
                       transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                     />
 
-                    {/* Fundo interno + Shine */}
+                    {/* Fundo interno + brilho sweep */}
                     <div className="absolute inset-[14%] rounded-full bg-black/10 backdrop-blur-[2px] ring-1 ring-white/10 overflow-hidden z-10">
                       <div className="absolute inset-0 opacity-15 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.06)_0px,rgba(255,255,255,0.06)_1px,transparent_1px,transparent_3px)]" />
                       <ShineSweep />
                     </div>
 
-                    {/* Conteúdo central */}
+                    {/* Conteúdo central (ChefHat + NC) */}
                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
                       {/* Chapéu */}
                       <motion.div
                         initial={{ y: -6, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 1.0, ease: "easeOut" }}
-                        className="drop-shadow-[0_3px_16px_rgba(0,0,0,0.55)]"
                       >
                         <ChefHat size={52} className="text-white" />
                       </motion.div>
 
-                      {/* Letras mais nítidas */}
+                      {/* Letras claras: sem sombra escura */}
                       <motion.div
                         initial={{ scale: 0.96 }}
                         animate={{ scale: [0.96, 1, 0.96] }}
                         transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
-                        className="mt-1 font-extrabold tracking-tight text-5xl md:text-6xl [text-shadow:0_3px_20px_rgba(0,0,0,0.75)]"
+                        className="mt-1 font-extrabold tracking-tight text-5xl md:text-6xl"
                       >
                         <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
                           N
@@ -171,7 +170,7 @@ export default function LoadingGate({
               </div>
             </div>
 
-            {/* Partículas ambiente */}
+            {/* partículas ambiente */}
             <div className="pointer-events-none absolute inset-0 z-0">
               {seeds.map((i) => (
                 <motion.span
@@ -208,18 +207,11 @@ export default function LoadingGate({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* CSS auxiliar leve */}
-      <style>{`
-        .noise { position: absolute; inset: -200%; background-image: url('data:image/svg+xml;utf8,${encodeURIComponent(
-          `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)" opacity="0.06"/></svg>`
-        )}'); mix-blend-mode: overlay; opacity: .35; }
-      `}</style>
     </div>
   );
 }
 
-/** Fundo resumido */
+/** Fundo simples */
 function RadicalBackdrop() {
   return (
     <div aria-hidden className="absolute inset-0 -z-0">
@@ -230,7 +222,7 @@ function RadicalBackdrop() {
   );
 }
 
-/** Barra */
+/** Barra de progresso */
 function IndeterminateProgress() {
   return (
     <div className="mx-auto w-full max-w-md">
@@ -247,7 +239,7 @@ function IndeterminateProgress() {
   );
 }
 
-/** Brilho que varre diagonalmente o interior do medalhão (sobre o chapéu/letras) */
+/** Brilho diagonal que varre o interior do medalhão */
 function ShineSweep() {
   return (
     <motion.div
@@ -258,20 +250,23 @@ function ShineSweep() {
       style={{
         background:
           "linear-gradient(120deg, rgba(255,255,255,0) 35%, rgba(255,255,255,0.45) 50%, rgba(255,255,255,0) 65%)",
-        transform: "rotate(0.001deg)", // força re-render suave
+        transform: "rotate(0.001deg)",
         mixBlendMode: "screen",
         maskImage:
-          "radial-gradient(circle at 50% 50%, rgba(0,0,0,1) 52%, rgba(0,0,0,0.0) 64%)", // garante que o brilho fique mais concentrado no meio
+          "radial-gradient(circle at 50% 50%, rgba(0,0,0,1) 52%, rgba(0,0,0,0.0) 64%)",
       }}
     />
   );
 }
 
-/** Anel de órbita com pontos luminosos que giram em volta do medalhão */
-function OrbitRing() {
-  // posições angulares dos pontos (em graus)
-  const angles = [0, 36, 72, 108, 144, 180, 216, 252, 288, 324];
+/** Órbita de alimentos (emojis) girando ao redor do medalhão */
+function OrbitRingEmojis() {
   const radius = 120; // raio da órbita
+  const emojis = ["🥑", "🍅", "🥕", "🍋", "🥖", "🧀", "🌶️", "🥬", "🍇", "🍤"]; // ajuste como quiser
+  const angles = useMemo(() => {
+    const step = 360 / emojis.length;
+    return emojis.map((_, i) => i * step);
+  }, [emojis.length]);
 
   return (
     <motion.div
@@ -279,26 +274,26 @@ function OrbitRing() {
       animate={{ rotate: 360 }}
       transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
       style={{ width: radius * 2, height: radius * 2, marginLeft: -radius, marginTop: -radius }}
+      aria-hidden
     >
       {angles.map((deg, i) => {
         const rad = (deg * Math.PI) / 180;
         const x = radius + Math.cos(rad) * radius;
         const y = radius + Math.sin(rad) * radius * 0.8; // leve elipse
-        const size = i % 2 === 0 ? 10 : 7;
+        // tamanhos alternados
+        const fontSize = i % 3 === 0 ? 26 : i % 3 === 1 ? 22 : 18;
+
         return (
-          <div
+          <motion.span
             key={deg}
-            className="absolute rounded-full shadow-[0_0_18px_2px_rgba(16,185,129,0.45)]"
-            style={{
-              left: x - size / 2,
-              top: y - size / 2,
-              width: size,
-              height: size,
-              background:
-                "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.9) 0%, rgba(110,231,183,0.75) 45%, rgba(34,211,238,0.6) 100%)",
-              filter: "blur(0.2px)",
-            }}
-          />
+            className="absolute select-none"
+            style={{ left: x, top: y, translateX: "-50%", translateY: "-50%", fontSize }}
+            // wobble suave individual
+            animate={{ y: ["-2px", "2px", "-2px"], rotate: [0, 4, 0, -4, 0] }}
+            transition={{ duration: 2 + (i % 3) * 0.3, repeat: Infinity, ease: "easeInOut" }}
+          >
+            {emojis[i]}
+          </motion.span>
         );
       })}
     </motion.div>
