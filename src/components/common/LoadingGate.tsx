@@ -278,7 +278,7 @@ function ShineSweep() {
  */
 function OrbitAroundMedal({
   emojis,
-  radiusOffsetPx = 25,
+  radiusOffsetPx = 60,
   durationSec = 16,
   sizePattern = [20],
   direction = "cw",
