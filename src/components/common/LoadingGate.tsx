@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { UtensilsCrossed } from "lucide-react";
+import { ChefHat } from "lucide-react";
 
 /**
  * LoadingGate
- * - Splash “radical” com talheres reais, anel neon e tempo mínimo em tela
+ * - Splash “radical” com chapéu de chef no medalhão e letras mais nítidas
  */
 export default function LoadingGate({
   initialized,
@@ -20,7 +20,6 @@ export default function LoadingGate({
   const [visible, setVisible] = useState(true);
   const startRef = useRef<number>(Date.now());
 
-  // Permanência mínima na tela
   useEffect(() => {
     if (!initialized) return;
     const elapsed = Date.now() - startRef.current;
@@ -29,7 +28,6 @@ export default function LoadingGate({
     return () => clearTimeout(t);
   }, [initialized, minDurationMs]);
 
-  // Frases rotativas
   const phrases = useMemo(
     () => [
       "Preparando suas receitas favoritas…",
@@ -48,7 +46,6 @@ export default function LoadingGate({
     return () => clearInterval(i);
   }, [phrases.length]);
 
-  // Partículas
   const dots = 24;
   const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
   const vh = typeof window !== "undefined" ? window.innerHeight : 768;
@@ -66,29 +63,21 @@ export default function LoadingGate({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}
           >
-            {/* BACKGROUND LAYERS */}
             <RadicalBackdrop />
 
-            {/* CONTENT */}
             <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
               <div className="relative mx-auto w-full max-w-xl text-center">
-                {/* >>> Talheres reais em X (atrás do medalhão) <<< */}
-                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
-                  <BigUtensils />
-                </div>
-
-                {/* LOGO / MEDALHÃO */}
+                {/* MEDALHÃO */}
                 <div className="relative z-10 mx-auto mb-10 h-40 w-40 md:h-48 md:w-48">
-                  {/* Halo suave */}
+                  {/* Halo */}
                   <div className="absolute inset-0 rounded-full blur-2xl bg-gradient-to-tr from-emerald-400/25 via-green-500/15 to-cyan-400/25" />
 
-                  {/* Disco base */}
                   <motion.div
                     className="relative h-full w-full rounded-full bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 ring-1 ring-white/15 shadow-[0_0_40px_-10px_rgba(16,185,129,0.55)]"
                     animate={{ rotate: [0, 360] }}
                     transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
                   >
-                    {/* Anel externo animado (atrás do conteúdo) */}
+                    {/* Anel externo */}
                     <motion.div
                       className="absolute -inset-1 rounded-full z-0"
                       style={{
@@ -99,23 +88,36 @@ export default function LoadingGate({
                       transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                     />
 
-                    {/* Círculo interno com leve textura (não cobre o texto) */}
-                    <div className="absolute inset-[14%] rounded-full bg-black/5 backdrop-blur-[1px] ring-1 ring-white/10 overflow-hidden z-10">
-                      <div className="absolute inset-0 opacity-20 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.06)_0px,rgba(255,255,255,0.06)_1px,transparent_1px,transparent_3px)]" />
+                    {/* Fundo interno */}
+                    <div className="absolute inset-[14%] rounded-full bg-black/10 backdrop-blur-[2px] ring-1 ring-white/10 overflow-hidden z-10">
+                      <div className="absolute inset-0 opacity-15 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.06)_0px,rgba(255,255,255,0.06)_1px,transparent_1px,transparent_3px)]" />
                     </div>
 
-                    {/* Monograma central (NC) por cima */}
-                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                    {/* Letras + Chapéu de Chef */}
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
+                      {/* Chapéu */}
                       <motion.div
-                        initial={{ scale: 0.96 }}
-                        animate={{ scale: [0.96, 1, 0.96] }}
-                        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
-                        className="font-extrabold tracking-tight text-4xl md:text-5xl"
+                        initial={{ y: -6, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 1.2, ease: "easeOut" }}
                       >
-                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]">
+                        <ChefHat
+                          size={42}
+                          className="text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]"
+                        />
+                      </motion.div>
+
+                      {/* Letras */}
+                      <motion.div
+                        initial={{ scale: 0.95 }}
+                        animate={{ scale: [0.95, 1, 0.95] }}
+                        transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+                        className="mt-1 font-extrabold tracking-tight text-5xl md:text-6xl drop-shadow-[0_2px_15px_rgba(0,0,0,0.6)]"
+                      >
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
                           N
                         </span>
-                        <span className="mx-1.5 text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-emerald-100 drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]">
+                        <span className="mx-1.5 bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
                           C
                         </span>
                       </motion.div>
@@ -146,7 +148,6 @@ export default function LoadingGate({
                 {/* PROGRESS + FRASE */}
                 <div className="mt-10 space-y-4">
                   <IndeterminateProgress />
-
                   <motion.div
                     key={phraseIndex}
                     initial={{ y: 8, opacity: 0 }}
@@ -167,7 +168,7 @@ export default function LoadingGate({
               </div>
             </div>
 
-            {/* Partículas flutuantes */}
+            {/* Partículas */}
             <div className="pointer-events-none absolute inset-0 z-0">
               {seeds.map((i) => (
                 <motion.span
@@ -205,25 +206,19 @@ export default function LoadingGate({
         )}
       </AnimatePresence>
 
-      {/* estilos auxiliares inline (sem mexer no tailwind.config) */}
+      {/* estilos inline */}
       <style>{`
-        /* ruído/grão suave */
         .noise { position: absolute; inset: -200%; background-image: url('data:image/svg+xml;utf8,${encodeURIComponent(
-          `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.06"/></svg>`
+          `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)" opacity="0.06"/></svg>`
         )}'); mix-blend-mode: overlay; opacity: .35; }
-
-        /* grid animado sutil */
         .gridlines { background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px); background-size: 48px 48px, 48px 48px; animation: gridFloat 14s linear infinite; }
         @keyframes gridFloat { from { transform: translateY(0); } to { transform: translateY(-48px); } }
-
-        /* brilho pulsante da barra */
         @keyframes shimmerX { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
       `}</style>
     </div>
   );
 }
 
-/* Fundo estilizado */
 function RadicalBackdrop() {
   return (
     <div aria-hidden className="absolute inset-0 -z-0">
@@ -237,7 +232,6 @@ function RadicalBackdrop() {
   );
 }
 
-/* Barra indeterminada */
 function IndeterminateProgress() {
   return (
     <div className="mx-auto w-full max-w-md">
@@ -251,29 +245,5 @@ function IndeterminateProgress() {
         />
       </div>
     </div>
-  );
-}
-
-/* Talheres grandes reais (lucide-react) ao fundo */
-function BigUtensils() {
-  return (
-    <motion.div
-      initial={{ scale: 0.95, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className="relative"
-      aria-hidden
-    >
-      {/* Glow circular suave atrás dos talheres */}
-      <div className="absolute -inset-6 rounded-full blur-3xl bg-emerald-500/10" />
-      <UtensilsCrossed
-        // tamanho grandão
-        style={{ width: 520, height: 520 }}
-        className="opacity-30"
-        strokeWidth={1.75}
-      />
-      {/* contorno suave para dar “peso” */}
-      <div className="absolute inset-0 -z-10 rounded-full" />
-    </motion.div>
   );
 }
