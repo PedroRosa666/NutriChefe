@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChefHat } from "lucide-react";
 
 /**
- * LoadingGate — ChefHat + letras claras (sem sombra escura) + órbita de alimentos (emojis)
+ * LoadingGate — ChefHat + letras claras + órbitas de alimentos AO REDOR do medalhão
  */
 export default function LoadingGate({
   initialized,
@@ -46,7 +46,7 @@ export default function LoadingGate({
   }, [phrases.length]);
 
   // partículas de fundo leve
-  const dots = 18;
+  const dots = 14;
   const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
   const vh = typeof window !== "undefined" ? window.innerHeight : 768;
   const seeds = useMemo(() => Array.from({ length: dots }, (_, i) => i), []);
@@ -67,11 +67,6 @@ export default function LoadingGate({
 
             <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
               <div className="relative mx-auto w-full max-w-xl text-center">
-                {/* ÓRBITA DE ALIMENTOS (emojis) */}
-                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[58%] z-0">
-                  <OrbitRingEmojis />
-                </div>
-
                 {/* MEDALHÃO */}
                 <div className="relative z-10 mx-auto mb-10 h-44 w-44 md:h-52 md:w-52">
                   {/* Halo pulsante */}
@@ -130,6 +125,22 @@ export default function LoadingGate({
                         </span>
                       </motion.div>
                     </div>
+
+                    {/* >>> ÓRBITAS AO REDOR DO MEDALHÃO (emojis) <<< */}
+                    <OrbitAroundMedal
+                      emojis={["🥑", "🍅", "🥕", "🍋", "🥖", "🧀", "🌶️", "🥬"]}
+                      radiusOffsetPx={10}    // bem colada na borda
+                      durationSec={14}       // mais rápida
+                      sizePattern={[22, 20]} // alterna tamanhos
+                      direction="cw"
+                    />
+                    <OrbitAroundMedal
+                      emojis={["🍓", "🍍", "🍇", "🍄", "🍤", "🥚", "🥔", "🧄", "🧅", "🍞"]}
+                      radiusOffsetPx={28}    // um pouco mais afastada
+                      durationSec={20}       // mais lenta
+                      sizePattern={[20, 18, 16]}
+                      direction="ccw"
+                    />
                   </motion.div>
                 </div>
 
@@ -259,41 +270,65 @@ function ShineSweep() {
   );
 }
 
-/** Órbita de alimentos (emojis) girando ao redor do medalhão */
-function OrbitRingEmojis() {
-  const radius = 120; // raio da órbita
-  const emojis = ["🥑", "🍅", "🥕", "🍋", "🥖", "🧀", "🌶️", "🥬", "🍇", "🍤"]; // ajuste como quiser
-  const angles = useMemo(() => {
-    const step = 360 / emojis.length;
-    return emojis.map((_, i) => i * step);
-  }, [emojis.length]);
+/**
+ * ÓRBITA AO REDOR DO MEDALHÃO
+ * - Posicionada dentro do disco principal, porém usa container maior que o medalhão
+ * - O raio é calculado como: 50% do medalhão + radiusOffsetPx
+ * - direction: "cw" (horário) | "ccw" (anti-horário)
+ */
+function OrbitAroundMedal({
+  emojis,
+  radiusOffsetPx = 12,
+  durationSec = 16,
+  sizePattern = [20],
+  direction = "cw",
+}: {
+  emojis: string[];
+  radiusOffsetPx?: number;
+  durationSec?: number;
+  sizePattern?: number[];
+  direction?: "cw" | "ccw";
+}) {
+  const step = 360 / emojis.length;
 
   return (
     <motion.div
-      className="relative"
-      animate={{ rotate: 360 }}
-      transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-      style={{ width: radius * 2, height: radius * 2, marginLeft: -radius, marginTop: -radius }}
+      className="pointer-events-none absolute inset-0"
+      style={{
+        // container maior para a órbita ficar fora da borda
+        transform: "translate(-0%, -0%)",
+      }}
+      animate={{ rotate: direction === "cw" ? 360 : -360 }}
+      transition={{ duration: durationSec, repeat: Infinity, ease: "linear" }}
       aria-hidden
     >
-      {angles.map((deg, i) => {
-        const rad = (deg * Math.PI) / 180;
-        const x = radius + Math.cos(rad) * radius;
-        const y = radius + Math.sin(rad) * radius * 0.8; // leve elipse
-        // tamanhos alternados
-        const fontSize = i % 3 === 0 ? 26 : i % 3 === 1 ? 22 : 18;
+      {emojis.map((emoji, i) => {
+        const deg = i * step;
+        const radius = `calc(50% + ${radiusOffsetPx}px)`;
+        const fontSize = sizePattern[i % sizePattern.length];
 
+        // cada item tem seu próprio "braço" rotacionado em deg, e o emoji fica no topo desse braço
         return (
-          <motion.span
-            key={deg}
-            className="absolute select-none"
-            style={{ left: x, top: y, translateX: "-50%", translateY: "-50%", fontSize }}
-            // wobble suave individual
-            animate={{ y: ["-2px", "2px", "-2px"], rotate: [0, 4, 0, -4, 0] }}
-            transition={{ duration: 2 + (i % 3) * 0.3, repeat: Infinity, ease: "easeInOut" }}
+          <div
+            key={`${emoji}-${i}`}
+            className="absolute inset-0"
+            style={{
+              transform: `rotate(${deg}deg)`,
+            }}
           >
-            {emojis[i]}
-          </motion.span>
+            <span
+              className="absolute left-1/2 top-1/2 select-none"
+              style={{
+                transform: `translate(-50%, -50%) translateY(-${radius}) rotate(${
+                  direction === "cw" ? -deg : deg
+                }deg)`,
+                fontSize,
+                filter: "drop-shadow(0 0 6px rgba(16,185,129,0.45))",
+              }}
+            >
+              {emoji}
+            </span>
+          </div>
         );
       })}
     </motion.div>
