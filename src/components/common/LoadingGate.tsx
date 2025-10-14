@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChefHat } from "lucide-react";
 
 /**
- * LoadingGate — versão com fumaça densa saindo para fora do medalhão
+ * LoadingGate — Shine sweep + órbita luminosa
  */
 export default function LoadingGate({
   initialized,
@@ -45,6 +45,12 @@ export default function LoadingGate({
     return () => clearInterval(i);
   }, [phrases.length]);
 
+  // Partículas de fundo (ambiente)
+  const dots = 18;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 768;
+  const seeds = useMemo(() => Array.from({ length: dots }, (_, i) => i), []);
+
   return (
     <div className="min-h-screen">
       <AnimatePresence mode="wait">
@@ -61,16 +67,27 @@ export default function LoadingGate({
 
             <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
               <div className="relative mx-auto w-full max-w-xl text-center">
+                {/* ORBITA externa */}
+                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[58%] z-0">
+                  <OrbitRing />
+                </div>
+
                 {/* MEDALHÃO */}
                 <div className="relative z-10 mx-auto mb-10 h-44 w-44 md:h-52 md:w-52">
-                  <div className="absolute inset-0 rounded-full blur-2xl bg-gradient-to-tr from-emerald-400/30 via-green-500/20 to-cyan-400/25" />
+                  {/* Halo pulsante */}
+                  <motion.div
+                    className="absolute inset-0 rounded-full bg-gradient-to-tr from-emerald-400/30 via-green-500/20 to-cyan-400/25 blur-2xl"
+                    animate={{ opacity: [0.6, 0.85, 0.6], scale: [1, 1.03, 1] }}
+                    transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+                  />
 
+                  {/* Disco principal */}
                   <motion.div
                     className="relative h-full w-full rounded-full bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 ring-1 ring-white/15 shadow-[0_0_45px_-10px_rgba(16,185,129,0.55)] overflow-visible"
                     animate={{ rotate: [0, 360] }}
                     transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
                   >
-                    {/* ANEL EXTERNO */}
+                    {/* Anel externo */}
                     <motion.div
                       className="absolute -inset-1 rounded-full z-0"
                       style={{
@@ -81,27 +98,30 @@ export default function LoadingGate({
                       transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                     />
 
-                    {/* FUNDO INTERNO */}
-                    <div className="absolute inset-[14%] rounded-full bg-black/10 backdrop-blur-[2px] ring-1 ring-white/10 overflow-visible z-10">
-                      <Steam dense />
+                    {/* Fundo interno + Shine */}
+                    <div className="absolute inset-[14%] rounded-full bg-black/10 backdrop-blur-[2px] ring-1 ring-white/10 overflow-hidden z-10">
+                      <div className="absolute inset-0 opacity-15 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.06)_0px,rgba(255,255,255,0.06)_1px,transparent_1px,transparent_3px)]" />
+                      <ShineSweep />
                     </div>
 
-                    {/* CONTEÚDO CENTRAL */}
+                    {/* Conteúdo central */}
                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
+                      {/* Chapéu */}
                       <motion.div
                         initial={{ y: -6, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 1.0, ease: "easeOut" }}
-                        className="drop-shadow-[0_3px_14px_rgba(0,0,0,0.55)]"
+                        className="drop-shadow-[0_3px_16px_rgba(0,0,0,0.55)]"
                       >
                         <ChefHat size={52} className="text-white" />
                       </motion.div>
 
+                      {/* Letras mais nítidas */}
                       <motion.div
-                        initial={{ scale: 0.95 }}
-                        animate={{ scale: [0.95, 1, 0.95] }}
-                        transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
-                        className="mt-1 font-extrabold tracking-tight text-5xl md:text-6xl [text-shadow:0_3px_18px_rgba(0,0,0,0.7)]"
+                        initial={{ scale: 0.96 }}
+                        animate={{ scale: [0.96, 1, 0.96] }}
+                        transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+                        className="mt-1 font-extrabold tracking-tight text-5xl md:text-6xl [text-shadow:0_3px_20px_rgba(0,0,0,0.75)]"
                       >
                         <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
                           N
@@ -148,13 +168,33 @@ export default function LoadingGate({
                     {phrases[phraseIndex]}
                   </motion.div>
                 </div>
-
-                {/* DICA */}
-                <div className="mt-10 flex items-center justify-center gap-3 text-xs md:text-sm text-white/50">
-                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Aprimorando sabores com IA em tempo real…</span>
-                </div>
               </div>
+            </div>
+
+            {/* Partículas ambiente */}
+            <div className="pointer-events-none absolute inset-0 z-0">
+              {seeds.map((i) => (
+                <motion.span
+                  key={i}
+                  className="absolute h-1 w-1 rounded-full bg-emerald-300/60 shadow-[0_0_12px_2px_rgba(16,185,129,0.55)]"
+                  initial={{
+                    x: Math.random() * vw,
+                    y: Math.random() * vh,
+                    scale: Math.random() * 0.8 + 0.4,
+                    opacity: Math.random() * 0.7 + 0.2,
+                  }}
+                  animate={{
+                    y: ["0%", "-10%", "0%"],
+                    x: ["0%", "5%", "0%"],
+                  }}
+                  transition={{
+                    duration: 6 + Math.random() * 6,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  style={{ left: 0, top: 0 }}
+                />
+              ))}
             </div>
           </motion.div>
         ) : (
@@ -169,6 +209,7 @@ export default function LoadingGate({
         )}
       </AnimatePresence>
 
+      {/* CSS auxiliar leve */}
       <style>{`
         .noise { position: absolute; inset: -200%; background-image: url('data:image/svg+xml;utf8,${encodeURIComponent(
           `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)" opacity="0.06"/></svg>`
@@ -178,7 +219,7 @@ export default function LoadingGate({
   );
 }
 
-/** Fundo */
+/** Fundo resumido */
 function RadicalBackdrop() {
   return (
     <div aria-hidden className="absolute inset-0 -z-0">
@@ -206,52 +247,60 @@ function IndeterminateProgress() {
   );
 }
 
-/** Fumaça — mais intensa, larga e saindo pra fora do círculo */
-function Steam({ dense = false }: { dense?: boolean }) {
-  const puffCount = dense ? 12 : 6;
-  const puffs = useMemo(
-    () =>
-      Array.from({ length: puffCount }, (_, i) => ({
-        left: `${42 + Math.random() * 16}%`,
-        delay: i * 0.4,
-        size: 18 + Math.random() * 14,
-      })),
-    [dense]
+/** Brilho que varre diagonalmente o interior do medalhão (sobre o chapéu/letras) */
+function ShineSweep() {
+  return (
+    <motion.div
+      className="absolute -inset-8 pointer-events-none"
+      initial={{ opacity: 0.0 }}
+      animate={{ opacity: [0.0, 0.18, 0.0] }}
+      transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+      style={{
+        background:
+          "linear-gradient(120deg, rgba(255,255,255,0) 35%, rgba(255,255,255,0.45) 50%, rgba(255,255,255,0) 65%)",
+        transform: "rotate(0.001deg)", // força re-render suave
+        mixBlendMode: "screen",
+        maskImage:
+          "radial-gradient(circle at 50% 50%, rgba(0,0,0,1) 52%, rgba(0,0,0,0.0) 64%)", // garante que o brilho fique mais concentrado no meio
+      }}
+    />
   );
+}
+
+/** Anel de órbita com pontos luminosos que giram em volta do medalhão */
+function OrbitRing() {
+  // posições angulares dos pontos (em graus)
+  const angles = [0, 36, 72, 108, 144, 180, 216, 252, 288, 324];
+  const radius = 120; // raio da órbita
 
   return (
-    <div className="absolute inset-0 overflow-visible">
-      {puffs.map((p, i) => (
-        <motion.div
-          key={i}
-          initial={{ y: 24, opacity: 0, scale: 0.7, filter: "blur(2px)" }}
-          animate={{
-            y: -90 - Math.random() * 40, // sai pra fora do círculo
-            opacity: [0, 0.8, 0],
-            scale: 1.3,
-            filter: "blur(4px)",
-          }}
-          transition={{
-            duration: 3.4 + Math.random() * 1.2,
-            repeat: Infinity,
-            ease: "easeOut",
-            delay: p.delay,
-          }}
-          className="absolute bottom-[18%]"
-          style={{ left: p.left }}
-        >
+    <motion.div
+      className="relative"
+      animate={{ rotate: 360 }}
+      transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+      style={{ width: radius * 2, height: radius * 2, marginLeft: -radius, marginTop: -radius }}
+    >
+      {angles.map((deg, i) => {
+        const rad = (deg * Math.PI) / 180;
+        const x = radius + Math.cos(rad) * radius;
+        const y = radius + Math.sin(rad) * radius * 0.8; // leve elipse
+        const size = i % 2 === 0 ? 10 : 7;
+        return (
           <div
-            className="rounded-full opacity-80"
+            key={deg}
+            className="absolute rounded-full shadow-[0_0_18px_2px_rgba(16,185,129,0.45)]"
             style={{
-              width: `${p.size}px`,
-              height: `${p.size}px`,
+              left: x - size / 2,
+              top: y - size / 2,
+              width: size,
+              height: size,
               background:
-                "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 45%, rgba(255,255,255,0) 75%)",
-              mixBlendMode: "screen",
+                "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.9) 0%, rgba(110,231,183,0.75) 45%, rgba(34,211,238,0.6) 100%)",
+              filter: "blur(0.2px)",
             }}
           />
-        </motion.div>
-      ))}
-    </div>
+        );
+      })}
+    </motion.div>
   );
 }
