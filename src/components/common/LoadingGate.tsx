@@ -75,50 +75,57 @@ export default function LoadingGate({
             {/* CONTENT */}
             <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
               <div className="mx-auto w-full max-w-xl text-center">
-                {/* LOGO / MEDALHÃO */}
+                {/* LOGO / MEDALHÃO (revisado) */}
                 <div className="mx-auto mb-10 h-40 w-40 md:h-48 md:w-48 relative">
-                  {/* halo */}
-                  <div className="absolute inset-0 rounded-full blur-2xl bg-gradient-to-tr from-emerald-400/30 via-green-500/20 to-cyan-400/30" />
+                  {/* Halo suave (fundo) */}
+                  <div className="absolute inset-0 rounded-full blur-2xl bg-gradient-to-tr from-emerald-400/25 via-green-500/15 to-cyan-400/25" />
 
-                  {/* disco com borda neon */}
+                  {/* Disco base (camada baixa) */}
                   <motion.div
-                    className="relative h-full w-full rounded-full bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 shadow-[0_0_40px_-10px_rgba(16,185,129,0.6)] ring-1 ring-white/20"
+                    className="relative h-full w-full rounded-full bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 ring-1 ring-white/15 shadow-[0_0_40px_-10px_rgba(16,185,129,0.55)]"
                     animate={{ rotate: [0, 360] }}
                     transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
                   >
-                    {/* círculo interno com scanlines */}
-                    <div className="absolute inset-[14%] rounded-full bg-black/10 backdrop-blur-sm ring-1 ring-white/10 overflow-hidden">
-                      <div className="absolute inset-0 opacity-30 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.08)_0px,rgba(255,255,255,0.08)_1px,transparent_1px,transparent_3px)]" />
-
-                      {/* monograma N⚡C */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <motion.div
-                          initial={{ scale: 0.95 }}
-                          animate={{ scale: [0.95, 1, 0.95] }}
-                          transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
-                          className="font-black tracking-tight text-4xl md:text-5xl"
-                        >
-                          <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white drop-shadow">
-                            N
-                          </span>
-                          <span className="mx-2 text-emerald-200">⚡</span>
-                          <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white drop-shadow">
-                            C
-                          </span>
-                        </motion.div>
-                      </div>
-                    </div>
-
-                    {/* anel externo animado */}
+                    {/* Anel externo animado (atrás do conteúdo) */}
                     <motion.div
-                      className="absolute -inset-1 rounded-full"
+                      className="absolute -inset-1 rounded-full z-0"
                       style={{
                         background:
-                          "conic-gradient(from 0deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.9) 25%, rgba(6,182,212,.9) 50%, rgba(16,185,129,.9) 75%, rgba(16,185,129,0) 100%)",
+                          "conic-gradient(from 0deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.85) 25%, rgba(6,182,212,.85) 50%, rgba(16,185,129,.85) 75%, rgba(16,185,129,0) 100%)",
                       }}
                       animate={{ rotate: [0, 360] }}
                       transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                     />
+
+                    {/* Círculo interno com leve textura (não apaga o conteúdo) */}
+                    <div className="absolute inset-[14%] rounded-full bg-black/5 backdrop-blur-[1px] ring-1 ring-white/10 overflow-hidden z-10">
+                      {/* scanlines bem discretas */}
+                      <div className="absolute inset-0 opacity-20 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.06)_0px,rgba(255,255,255,0.06)_1px,transparent_1px,transparent_3px)]" />
+                    </div>
+
+                    {/* CONTEÚDO SUPERIOR (letras + garfo/faca) — acima de tudo */}
+                    <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                      {/* Letras N ⚡ C */}
+                      <motion.div
+                        initial={{ scale: 0.95 }}
+                        animate={{ scale: [0.95, 1, 0.95] }}
+                        transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+                        className="font-black tracking-tight text-4xl md:text-5xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]"
+                      >
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
+                          N
+                        </span>
+                        <span className="mx-2 text-emerald-50">⚡</span>
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
+                          C
+                        </span>
+                      </motion.div>
+
+                      {/* Garfo e Faca (SVG) — levemente abaixo das letras para compor */}
+                      <div className="absolute scale-90 md:scale-100 opacity-95 drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
+                        <ForkKnifeIcon />
+                      </div>
+                    </div>
                   </motion.div>
                 </div>
 
@@ -255,5 +262,49 @@ function IndeterminateProgress() {
         />
       </div>
     </div>
+  );
+}
+
+/** Ícone vetorial (garfo e faca cruzados) — sem libs */
+function ForkKnifeIcon() {
+  return (
+    <svg
+      width="84"
+      height="84"
+      viewBox="0 0 84 84"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="Garfo e Faca"
+    >
+      <defs>
+        <linearGradient id="utensilGrad" x1="0" y1="0" x2="84" y2="84" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FEF08A" />     {/* amarelo suave */}
+          <stop offset="60%" stopColor="#34D399" />    {/* emerald */}
+          <stop offset="100%" stopColor="#22D3EE" />   {/* cyan */}
+        </linearGradient>
+      </defs>
+
+      {/* faca */}
+      <path
+        d="M54 14c6 6 7 9 7 12 0 4-3 7-7 11L39 52c-2 2-6 2-8 0s-2-6 0-8l15-15c4-4 7-7 11-7 3 0 6 1 12 7"
+        stroke="url(#utensilGrad)"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.95"
+      />
+      {/* garfo */}
+      <path
+        d="M27 12v14m6-14v14m-12-9v9c0 4 2 6 4 8l23 23c2 2 2 6 0 8s-6 2-8 0L17 42c-4-4-6-6-6-10V17"
+        stroke="url(#utensilGrad)"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.95"
+      />
+      {/* brilho sutil */}
+      <circle cx="42" cy="42" r="38" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+    </svg>
   );
 }
