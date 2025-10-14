@@ -4,7 +4,7 @@ import { ChefHat } from "lucide-react";
 
 /**
  * LoadingGate
- * - Splash “radical” com chapéu de chef no medalhão e letras mais nítidas
+ * - Splash “radical” com chapéu de chef, letras nítidas e fumaça subindo
  */
 export default function LoadingGate({
   initialized,
@@ -88,31 +88,31 @@ export default function LoadingGate({
                       transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                     />
 
-                    {/* Fundo interno */}
+                    {/* Fundo interno (área visível para a fumaça) */}
                     <div className="absolute inset-[14%] rounded-full bg-black/10 backdrop-blur-[2px] ring-1 ring-white/10 overflow-hidden z-10">
                       <div className="absolute inset-0 opacity-15 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.06)_0px,rgba(255,255,255,0.06)_1px,transparent_1px,transparent_3px)]" />
+                      {/* Fumaça subindo atrás do chapéu */}
+                      <Steam />
                     </div>
 
-                    {/* Letras + Chapéu de Chef */}
+                    {/* Chapéu + Letras por cima de tudo */}
                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
                       {/* Chapéu */}
                       <motion.div
                         initial={{ y: -6, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
-                        transition={{ duration: 1.2, ease: "easeOut" }}
+                        transition={{ duration: 1.0, ease: "easeOut" }}
+                        className="drop-shadow-[0_3px_14px_rgba(0,0,0,0.55)]"
                       >
-                        <ChefHat
-                          size={42}
-                          className="text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]"
-                        />
+                        <ChefHat size={46} className="text-white" />
                       </motion.div>
 
-                      {/* Letras */}
+                      {/* Letras (mais nítidas) */}
                       <motion.div
                         initial={{ scale: 0.95 }}
                         animate={{ scale: [0.95, 1, 0.95] }}
                         transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
-                        className="mt-1 font-extrabold tracking-tight text-5xl md:text-6xl drop-shadow-[0_2px_15px_rgba(0,0,0,0.6)]"
+                        className="mt-1 font-extrabold tracking-tight text-5xl md:text-6xl [text-shadow:0_3px_18px_rgba(0,0,0,0.7)]"
                       >
                         <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white">
                           N
@@ -168,7 +168,7 @@ export default function LoadingGate({
               </div>
             </div>
 
-            {/* Partículas */}
+            {/* Partículas do fundo */}
             <div className="pointer-events-none absolute inset-0 z-0">
               {seeds.map((i) => (
                 <motion.span
@@ -206,7 +206,7 @@ export default function LoadingGate({
         )}
       </AnimatePresence>
 
-      {/* estilos inline */}
+      {/* estilos inline auxiliares */}
       <style>{`
         .noise { position: absolute; inset: -200%; background-image: url('data:image/svg+xml;utf8,${encodeURIComponent(
           `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)" opacity="0.06"/></svg>`
@@ -244,6 +244,53 @@ function IndeterminateProgress() {
           transition={{ duration: 5.2, repeat: Infinity, ease: [0.22, 1, 0.36, 1] }}
         />
       </div>
+    </div>
+  );
+}
+
+/** Fumaça (vapor) subindo por trás do chapéu, dentro do círculo interno */
+function Steam() {
+  // 6 “puffs” com posições horizontais diferentes e delays variados
+  const puffs = useMemo(
+    () =>
+      [
+        { left: "48%", delay: 0 },
+        { left: "40%", delay: 0.6 },
+        { left: "56%", delay: 1.1 },
+        { left: "44%", delay: 1.6 },
+        { left: "52%", delay: 2.1 },
+        { left: "60%", delay: 2.6 },
+      ] as const,
+    []
+  );
+
+  return (
+    <div className="absolute inset-0">
+      {puffs.map((p, i) => (
+        <motion.div
+          key={i}
+          initial={{ y: 28, opacity: 0, scale: 0.6, filter: "blur(2px)" }}
+          animate={{ y: -36, opacity: [0, 0.6, 0], scale: 1.1, filter: "blur(3.5px)" }}
+          transition={{ duration: 2.8, repeat: Infinity, ease: "easeOut", delay: p.delay }}
+          className="absolute bottom-[22%]"
+          style={{ left: p.left }}
+        >
+          {/* Puff com gradiente radial suave e blend para parecer vapor */}
+          <div className="relative">
+            <div className="h-6 w-6 rounded-full opacity-70"
+                 style={{
+                   background: "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.25) 45%, rgba(255,255,255,0.0) 70%)",
+                   mixBlendMode: "screen"
+                 }} />
+            {/* segundo blob pequeno para dar organicidade */}
+            <div className="absolute -left-2 -top-2 h-4 w-4 rounded-full opacity-60"
+                 style={{
+                   background: "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.0) 70%)",
+                   mixBlendMode: "screen"
+                 }} />
+          </div>
+        </motion.div>
+      ))}
     </div>
   );
 }
