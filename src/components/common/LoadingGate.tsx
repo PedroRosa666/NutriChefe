@@ -1,13 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { UtensilsCrossed } from "lucide-react";
 
 /**
  * LoadingGate
- * - Tela de loading “radical” com tempo mínimo em tela
- * - Props:
- *    - initialized: boolean (quando true, some após respeitar o minDurationMs)
- *    - minDurationMs?: number (padrão 4500ms)
- *    - appName?: string (padrão "NutriChef")
+ * - Splash “radical” com talheres reais, anel neon e tempo mínimo em tela
  */
 export default function LoadingGate({
   initialized,
@@ -74,51 +71,55 @@ export default function LoadingGate({
 
             {/* CONTENT */}
             <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
-              <div className="mx-auto w-full max-w-xl text-center">
-                {/* LOGO / MEDALHÃO */}
-                <div className="mx-auto mb-10 h-40 w-40 md:h-48 md:w-48 relative">
-                  {/* halo */}
-                  <div className="absolute inset-0 rounded-full blur-2xl bg-gradient-to-tr from-emerald-400/30 via-green-500/20 to-cyan-400/30" />
+              <div className="relative mx-auto w-full max-w-xl text-center">
+                {/* >>> Talheres reais em X (atrás do medalhão) <<< */}
+                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+                  <BigUtensils />
+                </div>
 
-                  {/* disco com borda neon */}
+                {/* LOGO / MEDALHÃO */}
+                <div className="relative z-10 mx-auto mb-10 h-40 w-40 md:h-48 md:w-48">
+                  {/* Halo suave */}
+                  <div className="absolute inset-0 rounded-full blur-2xl bg-gradient-to-tr from-emerald-400/25 via-green-500/15 to-cyan-400/25" />
+
+                  {/* Disco base */}
                   <motion.div
-                    className="relative h-full w-full rounded-full bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 shadow-[0_0_40px_-10px_rgba(16,185,129,0.6)] ring-1 ring-white/20"
+                    className="relative h-full w-full rounded-full bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 ring-1 ring-white/15 shadow-[0_0_40px_-10px_rgba(16,185,129,0.55)]"
                     animate={{ rotate: [0, 360] }}
                     transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
                   >
-                    {/* círculo interno com scanlines */}
-                    <div className="absolute inset-[14%] rounded-full bg-black/10 backdrop-blur-sm ring-1 ring-white/10 overflow-hidden">
-                      <div className="absolute inset-0 opacity-30 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.08)_0px,rgba(255,255,255,0.08)_1px,transparent_1px,transparent_3px)]" />
-
-                      {/* monograma N⚡C */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <motion.div
-                          initial={{ scale: 0.95 }}
-                          animate={{ scale: [0.95, 1, 0.95] }}
-                          transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
-                          className="font-black tracking-tight text-4xl md:text-5xl"
-                        >
-                          <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white drop-shadow">
-                            N
-                          </span>
-                          <span className="mx-2 text-emerald-200">⚡</span>
-                          <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white drop-shadow">
-                            C
-                          </span>
-                        </motion.div>
-                      </div>
-                    </div>
-
-                    {/* anel externo animado */}
+                    {/* Anel externo animado (atrás do conteúdo) */}
                     <motion.div
-                      className="absolute -inset-1 rounded-full"
+                      className="absolute -inset-1 rounded-full z-0"
                       style={{
                         background:
-                          "conic-gradient(from 0deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.9) 25%, rgba(6,182,212,.9) 50%, rgba(16,185,129,.9) 75%, rgba(16,185,129,0) 100%)",
+                          "conic-gradient(from 0deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.85) 25%, rgba(6,182,212,.85) 50%, rgba(16,185,129,.85) 75%, rgba(16,185,129,0) 100%)",
                       }}
                       animate={{ rotate: [0, 360] }}
                       transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                     />
+
+                    {/* Círculo interno com leve textura (não cobre o texto) */}
+                    <div className="absolute inset-[14%] rounded-full bg-black/5 backdrop-blur-[1px] ring-1 ring-white/10 overflow-hidden z-10">
+                      <div className="absolute inset-0 opacity-20 [background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.06)_0px,rgba(255,255,255,0.06)_1px,transparent_1px,transparent_3px)]" />
+                    </div>
+
+                    {/* Monograma central (NC) por cima */}
+                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+                      <motion.div
+                        initial={{ scale: 0.96 }}
+                        animate={{ scale: [0.96, 1, 0.96] }}
+                        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+                        className="font-extrabold tracking-tight text-4xl md:text-5xl"
+                      >
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]">
+                          N
+                        </span>
+                        <span className="mx-1.5 text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-emerald-100 drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]">
+                          C
+                        </span>
+                      </motion.div>
+                    </div>
                   </motion.div>
                 </div>
 
@@ -222,31 +223,26 @@ export default function LoadingGate({
   );
 }
 
+/* Fundo estilizado */
 function RadicalBackdrop() {
   return (
     <div aria-hidden className="absolute inset-0 -z-0">
-      {/* gradiente base */}
       <div className="absolute inset-0 bg-gradient-to-br from-emerald-900 via-[#0a1f1a] to-[#030a08]" />
-      {/* blobs */}
       <div className="absolute -top-24 -left-24 h-[42rem] w-[42rem] rounded-full bg-emerald-600/20 blur-3xl" />
       <div className="absolute -bottom-24 -right-24 h-[38rem] w-[38rem] rounded-full bg-teal-500/20 blur-3xl" />
-      {/* linhas de grade */}
       <div className="gridlines absolute inset-0 opacity-30" />
-      {/* ruído */}
       <div className="noise" />
-      {/* vinheta */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,transparent_55%,rgba(0,0,0,.5)_100%)]" />
     </div>
   );
 }
 
+/* Barra indeterminada */
 function IndeterminateProgress() {
   return (
     <div className="mx-auto w-full max-w-md">
       <div className="relative h-2 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
-        {/* trilho brilho */}
         <div className="absolute inset-0 -translate-x-full h-full bg-gradient-to-r from-transparent via-white/25 to-transparent animate-[shimmerX_1.8s_ease_infinite]" />
-        {/* barra principal */}
         <motion.div
           className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-300 to-teal-300 shadow-[0_0_20px_2px_rgba(110,231,183,0.45)]"
           initial={{ width: "8%" }}
@@ -255,5 +251,29 @@ function IndeterminateProgress() {
         />
       </div>
     </div>
+  );
+}
+
+/* Talheres grandes reais (lucide-react) ao fundo */
+function BigUtensils() {
+  return (
+    <motion.div
+      initial={{ scale: 0.95, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="relative"
+      aria-hidden
+    >
+      {/* Glow circular suave atrás dos talheres */}
+      <div className="absolute -inset-6 rounded-full blur-3xl bg-emerald-500/10" />
+      <UtensilsCrossed
+        // tamanho grandão
+        style={{ width: 520, height: 520 }}
+        className="opacity-30"
+        strokeWidth={1.75}
+      />
+      {/* contorno suave para dar “peso” */}
+      <div className="absolute inset-0 -z-10 rounded-full" />
+    </motion.div>
   );
 }
