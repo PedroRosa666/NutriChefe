@@ -9,51 +9,28 @@ import { ThemeSwitch } from './common/ThemeSwitch';
 import { LanguageSwitch } from './common/LanguageSwitch';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 
-export function Header() {
-  const navigate = useNavigate();
+interface HeaderProps {
+  onProfileClick: () => void;
+  onAIMentoringClick: () => void;
+}
 
+export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   const { user, isAuthenticated, signOut, isNutritionist } = useAuthStore();
   const { hasFeatureAccess } = useSubscriptionStore();
   const { searchQuery, setSearchQuery } = useFiltersStore();
   const t = useTranslation();
-
-  // Acesso à IA (nutricionista ou premium)
-  const hasAIAccess = isAuthenticated && (isNutritionist() || hasFeatureAccess('ai_mentoring'));
 
   const handleOpenAuth = (mode: 'signin' | 'signup') => {
     setAuthModalMode(mode);
     setIsAuthModalOpen(true);
   };
 
-  const goHome = () => {
-    navigate('/');
-    setIsMobileMenuOpen(false);
-  };
-
-  const goAI = () => {
-    // Se quiser bloquear quando não tiver acesso, substitua navigate('/ai')
-    // por handleOpenAuth('signin') ou por uma rota de upgrade.
-    navigate('/ai');
-    setIsMobileMenuOpen(false);
-  };
-
-  const goProfile = () => {
-    navigate('/profile');
-    setIsMobileMenuOpen(false);
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-    setIsMobileMenuOpen(false);
-  };
-
+  // Verificar se tem acesso à IA (nutricionista ou premium)
+  const hasAIAccess = isAuthenticated && (isNutritionist() || hasFeatureAccess('ai_mentoring'));
   return (
     <>
       <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50">
@@ -61,12 +38,10 @@ export function Header() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <motion.h1 
-                className="text-2xl font-bold text-green-600 dark:text-green-400 cursor-pointer select-none"
+                className="text-2xl font-bold text-green-600 dark:text-green-400 cursor-pointer"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                onClick={goHome}
-                title="Ir para Início"
               >
                 NutriChef
               </motion.h1>
@@ -98,7 +73,7 @@ export function Header() {
                   animate={{ opacity: 1 }}
                 >
                   <button
-                    onClick={goAI}
+                    onClick={onAIMentoringClick}
                     className={cn(
                       "flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors",
                       hasAIAccess
@@ -109,22 +84,18 @@ export function Header() {
                   >
                     <Bot className="w-4 h-4" />
                     <span className="hidden lg:inline">Mentoria IA</span>
-                    {!hasAIAccess && (
-                      <span className="text-xs bg-yellow-500 text-white px-1 rounded">Premium</span>
-                    )}
+                    {!hasAIAccess && <span className="text-xs bg-yellow-500 text-white px-1 rounded">Premium</span>}
                   </button>
-
                   <button
-                    onClick={goProfile}
+                    onClick={onProfileClick}
                     className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     <User className="w-4 h-4" />
                     <span>{user?.name}</span>
                   </button>
-
                   <button
-                    onClick={handleSignOut}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover-bg-red-900/20 transition-colors"
+                    onClick={signOut}
+                    className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>{t.common.signOut}</span>
@@ -158,8 +129,6 @@ export function Header() {
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                aria-expanded={isMobileMenuOpen}
-                aria-label="Menu"
               >
                 <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
               </button>
@@ -190,7 +159,10 @@ export function Header() {
                 {isAuthenticated ? (
                   <div className="space-y-3">
                     <button
-                      onClick={goAI}
+                      onClick={() => {
+                        onAIMentoringClick();
+                        setIsMobileMenuOpen(false);
+                      }}
                       className={cn(
                         "w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors",
                         hasAIAccess
@@ -200,21 +172,20 @@ export function Header() {
                     >
                       <Bot className="w-4 h-4" />
                       <span>Mentoria IA</span>
-                      {!hasAIAccess && (
-                        <span className="text-xs bg-yellow-500 text-white px-1 rounded">Premium</span>
-                      )}
+                      {!hasAIAccess && <span className="text-xs bg-yellow-500 text-white px-1 rounded">Premium</span>}
                     </button>
-
                     <button
-                      onClick={goProfile}
+                      onClick={() => {
+                        onProfileClick();
+                        setIsMobileMenuOpen(false);
+                      }}
                       className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     >
                       <User className="w-4 h-4" />
                       <span>{t.common.profile}</span>
                     </button>
-
                     <button
-                      onClick={handleSignOut}
+                      onClick={signOut}
                       className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
