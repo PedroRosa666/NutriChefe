@@ -179,6 +179,22 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                 </div>
               </div>
 
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/30">
+                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">
+                    <ChefHat className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    {t.recipe.ingredients}
+                  </h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {recipe.ingredients.map((ingredient, index) => (
+                      <li key={index} className="text-gray-600 dark:text-gray-300">{ingredient}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+
+
+              
               <div>
                 <div className="flex justify-between items-start">
                   <div>
