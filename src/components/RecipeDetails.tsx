@@ -460,6 +460,5 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
           onClose={() => setIsEditModalOpen(false)}
         />
       )}
-    </>
   );
 }
