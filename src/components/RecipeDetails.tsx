@@ -201,28 +201,28 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
                     </div>
 
-                    {/* Informações do Autor */}
+                    {/* Informações do Autor (um pouco menor) */}
                     <div className="bg-gray-50 dark:bg-gray-900/60 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
+                          <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
                             <User className="w-4 h-4 text-green-600 dark:text-green-400" />
                           </div>
                           <div>
-                            <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                            <h4 className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
                               Autor
                             </h4>
-                            <p className="text-base font-medium text-gray-900 dark:text-white">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
                               {recipe.authorName || 'Usuário'}
                             </p>
                           </div>
                         </div>
-                        <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-200">
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-200">
                           {recipe.authorType === 'Nutritionist' ? 'Nutricionista' : 'Cliente'}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                         <span className="inline-flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           Postado em
@@ -233,10 +233,10 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
                     </div>
 
-                    {/* Ingredientes na coluna esquerda */}
+                    {/* Ingredientes na coluna esquerda - MAIOR */}
                     <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                           {t.recipe.ingredients}
                         </h3>
                         <span className="text-sm text-gray-400">
@@ -248,7 +248,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         {recipe.ingredients.map((ingredient, index) => (
                           <li
                             key={index}
-                            className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed"
+                            className="text-base text-gray-600 dark:text-gray-300 leading-relaxed"
                           >
                             {ingredient}
                           </li>
@@ -262,11 +262,11 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     {/* Título + ações */}
                     <div className="flex justify-between items-start gap-3">
                       <div>
-                        <h2 className="text-3xl md:text-3xl font-bold text-gray-900 dark:text-white leading-snug">
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-snug">
                           {recipe.title}
                         </h2>
-                        <div className="mt-2 flex flex-wrap gap-2 items-center">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-3 py-1 text-sm font-medium">
+                        <div className="mt-3 flex flex-wrap gap-2 items-center">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-3 py-1 text-base font-medium">
                             <ChefHat className="w-4 h-4" />
                             {translatedCategory}
                           </span>
@@ -289,7 +289,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                           >
                             <Heart
                               className={cn(
-                                'w-4 h-4',
+                                'w-5 h-5',
                                 isFavorite && 'fill-current'
                               )}
                             />
@@ -317,7 +317,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     </div>
 
                     {/* Meta (tempo, dificuldade, rating) */}
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-300 border-y border-gray-100 dark:border-gray-800 py-3">
+                    <div className="flex flex-wrap items-center gap-3 text-base text-gray-500 dark:text-gray-300 border-y border-gray-100 dark:border-gray-800 py-3">
                       <div className="inline-flex items-center gap-1.5">
                         <Clock className="w-4 h-4" />
                         <span className="font-medium text-gray-700 dark:text-gray-200">
@@ -347,20 +347,20 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
                     </div>
 
-                    {/* Descrição */}
-                    <p className="text-base text-gray-600 dark:text-gray-300 leading-relaxed">
+                    {/* Descrição – maior */}
+                    <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
                       {recipe.description}
                     </p>
 
                     {/* Fatos nutricionais */}
                     <div className="bg-emerald-50/70 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800/60">
-                      <h3 className="text-base font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">
-                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15">
-                          <Star className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300" />
+                      <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15">
+                          <Star className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
                         </span>
                         {t.recipe.nutritionFacts}
                       </h3>
-                      <div className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-200">
+                      <div className="grid grid-cols-2 gap-2 text-base text-gray-700 dark:text-gray-200">
                         <div>
                           {t.profile.nutritionGoalsnames.calories}:{' '}
                           <span className="font-semibold">
@@ -396,14 +396,14 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
                     {/* Instruções */}
                     <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                      <h3 className="text-base font-semibold mb-2 text-gray-900 dark:text-white">
+                      <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
                         {t.recipe.instructions}
                       </h3>
                       <ol className="list-decimal list-inside space-y-2 max-h-64 overflow-y-auto pr-2">
                         {recipe.instructions.map((instruction, index) => (
                           <li
                             key={index}
-                            className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed"
+                            className="text-base text-gray-600 dark:text-gray-300 leading-relaxed"
                           >
                             {instruction}
                           </li>
@@ -415,8 +415,8 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
                 {/* ÁREA DE AVALIAÇÕES */}
                 <div className="mt-8 border-t border-gray-100 dark:border-gray-800 pt-6">
-                  <h3 className="text-base font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                    <Star className="w-4 h-4 text-yellow-400" />
+                  <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-400" />
                     {t.recipe.reviews} ({recipe.reviews.length})
                   </h3>
 
@@ -426,11 +426,11 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       onSubmit={handleAddReview}
                       className="mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700"
                     >
-                      <h4 className="text-base font-medium mb-3 text-gray-900 dark:text-white">
+                      <h4 className="text-lg font-medium mb-3 text-gray-900 dark:text-white">
                         Adicionar Avaliação
                       </h4>
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                        <span className="text-base text-gray-700 dark:text-gray-300">
                           {t.recipe.rating}:
                         </span>
                         {[1, 2, 3, 4, 5].map((star) => (
@@ -441,7 +441,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                               setNewReview((prev) => ({ ...prev, rating: star }))
                             }
                             className={cn(
-                              'text-2xl transition-colors',
+                              'text-3xl transition-colors',
                               star <= newReview.rating
                                 ? 'text-yellow-400'
                                 : 'text-gray-300'
@@ -461,12 +461,12 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         }
                         placeholder={t.recipe.writeReview}
                         className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg mb-2 text-base text-gray-900 dark:text-white bg-white dark:bg-gray-900"
-                        rows={3}
+                        rows={4}
                         required
                       />
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-emerald-600 text-white text-base rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+                        className="px-5 py-2.5 bg-emerald-600 text-white text-base rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
                       >
                         {t.recipe.submitReview}
                       </button>
@@ -480,7 +480,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700"
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-base font-medium text-gray-900 dark:text-white">
+                        <h4 className="text-lg font-medium text-gray-900 dark:text-white">
                           Editar Avaliação
                         </h4>
                         <button
@@ -492,7 +492,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         </button>
                       </div>
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                        <span className="text-base text-gray-700 dark:text-gray-300">
                           Avaliação:
                         </span>
                         {[1, 2, 3, 4, 5].map((star) => (
@@ -505,7 +505,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                               )
                             }
                             className={cn(
-                              'text-2xl transition-colors',
+                              'text-3xl transition-colors',
                               star <= editingReview.rating
                                 ? 'text-yellow-400'
                                 : 'text-gray-300'
@@ -524,20 +524,20 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         }
                         placeholder="Escreva sua avaliação..."
                         className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg mb-2 text-base text-gray-900 dark:text-white bg-white dark:bg-gray-900"
-                        rows={3}
+                        rows={4}
                         required
                       />
                       <div className="flex gap-2">
                         <button
                           type="submit"
-                          className="px-4 py-2 bg-blue-600 text-white text-base rounded-lg hover:bg-blue-700 transition-colors"
+                          className="px-5 py-2.5 bg-blue-600 text-white text-base rounded-lg hover:bg-blue-700 transition-colors"
                         >
                           Salvar Alterações
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditingReview(null)}
-                          className="px-4 py-2 bg-gray-200 text-gray-700 text-base rounded-lg hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+                          className="px-5 py-2.5 bg-gray-200 text-gray-700 text-base rounded-lg hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
                         >
                           Cancelar
                         </button>
@@ -546,7 +546,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   )}
 
                   {!isAuthenticated && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    <p className="text-base text-gray-500 dark:text-gray-400 mb-4">
                       {t.recipe.signInToReview}
                     </p>
                   )}
@@ -565,7 +565,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             className="border-b border-gray-100 dark:border-gray-800 pb-4 last:border-b-0 last:pb-0"
                           >
                             <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-base font-medium text-gray-900 dark:text-white">
+                              <span className="text-lg font-semibold text-gray-900 dark:text-white">
                                 {review.userName}
                               </span>
                               <div className="flex items-center gap-2">
@@ -574,7 +574,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                     <span
                                       key={i}
                                       className={cn(
-                                        'text-lg',
+                                        'text-xl',
                                         i < review.rating
                                           ? 'text-yellow-400'
                                           : 'text-gray-300'
@@ -610,7 +610,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                 )}
                               </div>
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-300 mb-0.5">
+                            <p className="text-base text-gray-600 dark:text-gray-300 mb-0.5">
                               {review.comment}
                             </p>
                             <span className="text-sm text-gray-400">
