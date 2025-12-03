@@ -177,7 +177,6 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     </div>
                   </div>
                 </div>
-              </div>
 
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/30">
                   <h3 className="font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">
@@ -190,6 +189,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     ))}
                   </ul>
                 </div>
+              </div>
 
 
 
