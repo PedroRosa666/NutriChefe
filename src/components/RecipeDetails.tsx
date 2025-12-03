@@ -190,7 +190,6 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     ))}
                   </ul>
                 </div>
-              </div>
 
 
 
