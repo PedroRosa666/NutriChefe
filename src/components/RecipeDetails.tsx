@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { Star, Clock, ChefHat, Heart, Edit, Trash2, User, Calendar, Edit2, X } from 'lucide-react';
+import {
+  Star,
+  Clock,
+  ChefHat,
+  Heart,
+  Edit,
+  Trash2,
+  User,
+  Calendar,
+  Edit2,
+  X,
+} from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useRecipesStore } from '../store/recipes';
 import { EditRecipeForm } from './recipe/EditRecipeForm';
@@ -14,38 +25,53 @@ interface RecipeDetailsProps {
 
 export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
-  const [editingReview, setEditingReview] = useState<{ id: string; rating: number; comment: string } | null>(null);
+  const [editingReview, setEditingReview] = useState<{
+    id: string;
+    rating: number;
+    comment: string;
+  } | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   const { user, isAuthenticated } = useAuthStore();
-  const { favoriteRecipes, addToFavorites, removeFromFavorites, addReview, updateReview, deleteReview, deleteRecipe } = useRecipesStore();
+  const {
+    favoriteRecipes,
+    addToFavorites,
+    removeFromFavorites,
+    addReview,
+    updateReview,
+    deleteReview,
+    deleteRecipe,
+  } = useRecipesStore();
   const t = useTranslation();
 
   const difficultyTranslations = t.recipe.difficultyLevels;
-  const translatedDifficulty = difficultyTranslations[recipe.difficulty as keyof typeof difficultyTranslations] || recipe.difficulty;
+  const translatedDifficulty =
+    difficultyTranslations[recipe.difficulty as keyof typeof difficultyTranslations] ||
+    recipe.difficulty;
 
   // Tradução de categoria
   const categoryTranslations = t.categories;
   const getCategoryTranslation = (category: string) => {
     const categoryMap: { [key: string]: keyof typeof categoryTranslations } = {
-      'vegan': 'vegan',
-      'lowCarb': 'lowCarb',
+      vegan: 'vegan',
+      lowCarb: 'lowCarb',
       'low carb': 'lowCarb',
-      'highProtein': 'highProtein',
+      highProtein: 'highProtein',
       'high protein': 'highProtein',
-      'glutenFree': 'glutenFree',
+      glutenFree: 'glutenFree',
       'gluten free': 'glutenFree',
-      'vegetarian': 'vegetarian'
+      vegetarian: 'vegetarian',
     };
 
     const normalizedCategory = category.toLowerCase().replace(/\s+/g, '');
-    const mappedKey = Object.keys(categoryMap).find(key => 
-      key.toLowerCase().replace(/\s+/g, '') === normalizedCategory
+    const mappedKey = Object.keys(categoryMap).find(
+      (key) => key.toLowerCase().replace(/\s+/g, '') === normalizedCategory,
     );
-    
+
     if (mappedKey) {
       return categoryTranslations[categoryMap[mappedKey]];
     }
-    
+
     const directKey = category as keyof typeof categoryTranslations;
     return categoryTranslations[directKey] || category;
   };
@@ -64,7 +90,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
         userName: user.name,
         rating: newReview.rating,
         comment: newReview.comment,
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
       });
       setNewReview({ rating: 5, comment: '' });
     } catch (error) {
@@ -79,7 +105,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
     try {
       await updateReview(editingReview.id, {
         rating: editingReview.rating,
-        comment: editingReview.comment
+        comment: editingReview.comment,
       });
       setEditingReview(null);
     } catch (error) {
@@ -115,7 +141,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -124,11 +150,13 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
     if (recipe.rating === 0 || !recipe.rating) {
       return 'Sem avaliações';
     }
-    return `${recipe.rating.toFixed(1)} (${recipe.reviews.length} ${recipe.reviews.length === 1 ? 'avaliação' : 'avaliações'})`;
+    return `${recipe.rating.toFixed(1)} (${recipe.reviews.length} ${
+      recipe.reviews.length === 1 ? 'avaliação' : 'avaliações'
+    })`;
   };
 
   // Verificar se o usuário já avaliou esta receita
-  const userReview = recipe.reviews.find(review => review.userId === user?.id);
+  const userReview = recipe.reviews.find((review) => review.userId === user?.id);
   const canAddReview = isAuthenticated && !userReview;
 
   return (
@@ -144,6 +172,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
             </button>
 
             <div className="grid md:grid-cols-2 gap-6">
+              {/* COLUNA ESQUERDA */}
               <div className="space-y-4 md:space-y-6">
                 <img
                   src={recipe.image}
@@ -151,7 +180,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   className="w-full h-64 object-cover rounded-lg"
                 />
 
-                {/* Informações do Autor - Posicionadas logo após a imagem */}
+                {/* Informações do Autor */}
                 <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
                   <h4 className="font-medium mb-2 text-gray-900 dark:text-white flex items-center gap-2 text-sm">
                     <User className="w-4 h-4 text-green-600 dark:text-green-400" />
@@ -160,7 +189,9 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   <div className="grid grid-cols-1 gap-2 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Nome:</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{recipe.authorName || 'Usuário'}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {recipe.authorName || 'Usuário'}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
@@ -173,146 +204,176 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         <Calendar className="w-3 h-3" />
                         Postado em:
                       </span>
-                      <span className="font-medium text-gray-900 dark:text-white">{formatDate(recipe.createdAt)}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {formatDate(recipe.createdAt)}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/30">
-                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">
-                    <ChefHat className="w-5 h-5 text-green-600 dark:text-green-400" />
+                {/* Ingredientes (na coluna esquerda) */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">
                     {t.recipe.ingredients}
                   </h3>
-                  <ul className="list-disc list-inside space-y-1">
+                  <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-300">
                     {recipe.ingredients.map((ingredient, index) => (
-                      <li key={index} className="text-gray-600 dark:text-gray-300">{ingredient}</li>
+                      <li key={index}>{ingredient}</li>
                     ))}
                   </ul>
                 </div>
               </div>
 
-              <div>
-                <div className="space-y-6">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h2 className="text-2xl font-bold mb-2">{recipe.title}</h2>
-                      <span className="inline-block bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium mb-4">
-                        {translatedCategory}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      {isAuthenticated && (
-                        <button
-                          onClick={() => isFavorite ? removeFromFavorites(recipe.id) : addToFavorites(recipe.id)}
-                          className={cn(
-                            "p-2 rounded-full",
-                            isFavorite ? "text-red-500" : "text-gray-400"
-                          )}
-                        >
-                          <Heart className={cn("w-5 h-5", isFavorite && "fill-current")} />
-                        </button>
-                      )}
-                      {isAuthor && (
-                        <>
-                          <button
-                            onClick={() => setIsEditModalOpen(true)}
-                            className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
-                            title="Editar receita"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={handleDelete}
-                            className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
-                            title="Excluir receita"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </>
-                      )}
-                    </div>
+              {/* COLUNA DIREITA */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2">{recipe.title}</h2>
+                    <span className="inline-block bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium mb-4">
+                      {translatedCategory}
+                    </span>
                   </div>
-
-                  <div className="flex items-center gap-4 text-sm text-gray-500 mb-4 dark:text-gray-300">
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>{recipe.prepTime}min</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <ChefHat className="w-4 h-4" />
-                      <span
+                  <div className="flex gap-2">
+                    {isAuthenticated && (
+                      <button
+                        onClick={() =>
+                          isFavorite
+                            ? removeFromFavorites(recipe.id)
+                            : addToFavorites(recipe.id)
+                        }
                         className={cn(
-                          "capitalize",
-                          recipe.difficulty === 'easy' && "text-green-500",
-                          recipe.difficulty === 'medium' && "text-yellow-500",
-                          recipe.difficulty === 'hard' && "text-red-500"
+                          'p-2 rounded-full',
+                          isFavorite ? 'text-red-500' : 'text-gray-400',
                         )}
                       >
-                        {translatedDifficulty}
-                      </span>
+                        <Heart
+                          className={cn('w-5 h-5', isFavorite && 'fill-current')}
+                        />
+                      </button>
+                    )}
+                    {isAuthor && (
+                      <>
+                        <button
+                          onClick={() => setIsEditModalOpen(true)}
+                          className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
+                          title="Editar receita"
+                        >
+                          <Edit className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={handleDelete}
+                          className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                          title="Excluir receita"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4 dark:text-gray-300">
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    <span>{recipe.prepTime}min</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <ChefHat className="w-4 h-4" />
+                    <span
+                      className={cn(
+                        'capitalize',
+                        recipe.difficulty === 'easy' && 'text-green-500',
+                        recipe.difficulty === 'medium' && 'text-yellow-500',
+                        recipe.difficulty === 'hard' && 'text-red-500',
+                      )}
+                    >
+                      {translatedDifficulty}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <span>{displayRating()}</span>
+                  </div>
+                </div>
+
+                <p className="text-gray-600 mb-4 dark:text-gray-300">
+                  {recipe.description}
+                </p>
+
+                {/* Fatos nutricionais */}
+                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-4">
+                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">
+                    {t.recipe.nutritionFacts}
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <div>
+                      {t.profile.nutritionGoalsnames.calories}:{' '}
+                      {formatNutritionValue(recipe.nutritionFacts.calories)} kcal
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span>{displayRating()}</span>
+                    <div>
+                      {t.profile.nutritionGoalsnames.protein}:{' '}
+                      {formatNutritionValue(recipe.nutritionFacts.protein)} g
+                    </div>
+                    <div>
+                      {t.profile.nutritionGoalsnames.carbs}:{' '}
+                      {formatNutritionValue(recipe.nutritionFacts.carbs)} g
+                    </div>
+                    <div>
+                      {t.profile.nutritionGoalsnames.fat}:{' '}
+                      {formatNutritionValue(recipe.nutritionFacts.fat)} g
+                    </div>
+                    <div>
+                      {t.profile.nutritionGoalsnames.fiber}:{' '}
+                      {formatNutritionValue(recipe.nutritionFacts.fiber)} g
                     </div>
                   </div>
+                </div>
 
-                  <p className="text-gray-600 mb-4 dark:text-gray-300">{recipe.description}</p>
-
-                  {/* Seção de fatos nutricionais com valores decimais formatados */}
-                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-4">
-                    <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">{t.recipe.nutritionFacts}</h3>
-                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
-                      <div>{t.profile.nutritionGoalsnames.calories}: {formatNutritionValue(recipe.nutritionFacts.calories)} kcal</div>
-                      <div>{t.profile.nutritionGoalsnames.protein}: {formatNutritionValue(recipe.nutritionFacts.protein)} g</div>
-                      <div>{t.profile.nutritionGoalsnames.carbs}: {formatNutritionValue(recipe.nutritionFacts.carbs)} g</div>
-                      <div>{t.profile.nutritionGoalsnames.fat}: {formatNutritionValue(recipe.nutritionFacts.fat)} g</div>
-                      <div>{t.profile.nutritionGoalsnames.fiber}: {formatNutritionValue(recipe.nutritionFacts.fiber)} g</div>
-                    </div>
-                  </div>
+                {/* Instruções (na coluna direita) */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">
+                    {t.recipe.instructions}
+                  </h3>
+                  <ol className="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-300">
+                    {recipe.instructions.map((instruction, index) => (
+                      <li key={index}>{instruction}</li>
+                    ))}
+                  </ol>
                 </div>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6 mt-6">
-              <div>
-                <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">{t.recipe.ingredients}</h3>
-                <ul className="list-disc list-inside space-y-1">
-                  {recipe.ingredients.map((ingredient, index) => (
-                    <li key={index} className="text-gray-600 dark:text-gray-300">{ingredient}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">{t.recipe.instructions}</h3>
-                <ol className="list-decimal list-inside space-y-2">
-                  {recipe.instructions.map((instruction, index) => (
-                    <li key={index} className="text-gray-600 dark:text-gray-300">{instruction}</li>
-                  ))}
-                </ol>
-              </div>
-            </div>
-
+            {/* ÁREA DE AVALIAÇÕES */}
             <div className="mt-8">
               <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">
                 {t.recipe.reviews} ({recipe.reviews.length})
               </h3>
-              
+
               {/* Formulário para adicionar nova avaliação */}
               {canAddReview && (
-                <form onSubmit={handleAddReview} className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <h4 className="font-medium mb-3 text-gray-900 dark:text-white">Adicionar Avaliação</h4>
+                <form
+                  onSubmit={handleAddReview}
+                  className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                >
+                  <h4 className="font-medium mb-3 text-gray-900 dark:text-white">
+                    Adicionar Avaliação
+                  </h4>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-gray-700 dark:text-gray-300">{t.recipe.rating}:</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      {t.recipe.rating}:
+                    </span>
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
                         type="button"
-                        onClick={() => setNewReview(prev => ({ ...prev, rating: star }))}
+                        onClick={() =>
+                          setNewReview((prev) => ({ ...prev, rating: star }))
+                        }
                         className={cn(
-                          "text-2xl transition-colors",
-                          star <= newReview.rating ? "text-yellow-400" : "text-gray-300"
+                          'text-2xl transition-colors',
+                          star <= newReview.rating
+                            ? 'text-yellow-400'
+                            : 'text-gray-300',
                         )}
                       >
                         ★
@@ -321,7 +382,12 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
                   <textarea
                     value={newReview.comment}
-                    onChange={(e) => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
+                    onChange={(e) =>
+                      setNewReview((prev) => ({
+                        ...prev,
+                        comment: e.target.value,
+                      }))
+                    }
                     placeholder={t.recipe.writeReview}
                     className="w-full p-2 border border-gray-300 rounded-lg mb-2 text-black"
                     rows={3}
@@ -338,9 +404,14 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
               {/* Formulário para editar avaliação */}
               {editingReview && (
-                <form onSubmit={handleUpdateReview} className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                <form
+                  onSubmit={handleUpdateReview}
+                  className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700"
+                >
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-gray-900 dark:text-white">Editar Avaliação</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-white">
+                      Editar Avaliação
+                    </h4>
                     <button
                       type="button"
                       onClick={() => setEditingReview(null)}
@@ -350,15 +421,23 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     </button>
                   </div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-gray-700 dark:text-gray-300">Avaliação:</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      Avaliação:
+                    </span>
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
                         type="button"
-                        onClick={() => setEditingReview(prev => prev ? { ...prev, rating: star } : null)}
+                        onClick={() =>
+                          setEditingReview((prev) =>
+                            prev ? { ...prev, rating: star } : null,
+                          )
+                        }
                         className={cn(
-                          "text-2xl transition-colors",
-                          star <= editingReview.rating ? "text-yellow-400" : "text-gray-300"
+                          'text-2xl transition-colors',
+                          star <= editingReview.rating
+                            ? 'text-yellow-400'
+                            : 'text-gray-300',
                         )}
                       >
                         ★
@@ -367,7 +446,11 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
                   <textarea
                     value={editingReview.comment}
-                    onChange={(e) => setEditingReview(prev => prev ? { ...prev, comment: e.target.value } : null)}
+                    onChange={(e) =>
+                      setEditingReview((prev) =>
+                        prev ? { ...prev, comment: e.target.value } : prev,
+                      )
+                    }
                     placeholder="Escreva sua avaliação..."
                     className="w-full p-2 border border-gray-300 rounded-lg mb-2 text-black"
                     rows={3}
@@ -392,27 +475,38 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
               )}
 
               {!isAuthenticated && (
-                <p className="text-gray-500 dark:text-gray-400 mb-4">{t.recipe.signInToReview}</p>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                  {t.recipe.signInToReview}
+                </p>
               )}
 
               <div className="space-y-4">
                 {recipe.reviews.length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400">{t.recipe.noReviews || 'Nenhuma avaliação ainda'}</p>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    {t.recipe.noReviews || 'Nenhuma avaliação ainda'}
+                  </p>
                 ) : (
                   recipe.reviews.map((review) => {
                     const isUserReview = user?.id === review.userId;
                     return (
-                      <div key={review.id} className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                      <div
+                        key={review.id}
+                        className="border-b border-gray-200 dark:border-gray-700 pb-4"
+                      >
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-gray-900 dark:text-white">{review.userName}</span>
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {review.userName}
+                          </span>
                           <div className="flex items-center gap-2">
                             <div className="flex items-center">
                               {[...Array(5)].map((_, i) => (
                                 <span
                                   key={i}
                                   className={cn(
-                                    "text-lg",
-                                    i < review.rating ? "text-yellow-400" : "text-gray-300"
+                                    'text-lg',
+                                    i < review.rating
+                                      ? 'text-yellow-400'
+                                      : 'text-gray-300',
                                   )}
                                 >
                                   ★
@@ -422,18 +516,22 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             {isUserReview && (
                               <div className="flex gap-1">
                                 <button
-                                  onClick={() => setEditingReview({
-                                    id: review.id,
-                                    rating: review.rating,
-                                    comment: review.comment
-                                  })}
+                                  onClick={() =>
+                                    setEditingReview({
+                                      id: review.id,
+                                      rating: review.rating,
+                                      comment: review.comment,
+                                    })
+                                  }
                                   className="p-1 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                                   title="Editar avaliação"
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteReview(review.id)}
+                                  onClick={() =>
+                                    handleDeleteReview(review.id)
+                                  }
                                   className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                                   title="Excluir avaliação"
                                 >
@@ -443,8 +541,12 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             )}
                           </div>
                         </div>
-                        <p className="text-gray-600 dark:text-gray-300">{review.comment}</p>
-                        <span className="text-sm text-gray-400">{review.date}</span>
+                        <p className="text-gray-600 dark:text-gray-300">
+                          {review.comment}
+                        </p>
+                        <span className="text-sm text-gray-400">
+                          {review.date}
+                        </span>
                       </div>
                     );
                   })
