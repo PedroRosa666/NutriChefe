@@ -226,7 +226,7 @@ export const translations = {
       Step:'Passo',
       example:'Exemplo: 2 xícaras de açucar',
       nutritionFacts: 'Informação Nutricional (Por porção)',
-      reviews: 'Avaliações',
+      reviews: 'Notas e avaliações',
       writeReview: 'Escreva sua avaliação...',
       submitReview: 'Enviar Avaliação',
       signInToReview: 'Faça login para deixar uma avaliação.',
