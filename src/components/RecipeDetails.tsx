@@ -46,8 +46,9 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
   const difficultyTranslations = t.recipe.difficultyLevels;
   const translatedDifficulty =
-    difficultyTranslations[recipe.difficulty as keyof typeof difficultyTranslations] ||
-    recipe.difficulty;
+    difficultyTranslations[
+      recipe.difficulty as keyof typeof difficultyTranslations
+    ] || recipe.difficulty;
 
   // Tradução de categoria
   const categoryTranslations = t.categories;
@@ -218,7 +219,9 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                           </div>
                         </div>
                         <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-200">
-                          {recipe.authorType === 'Nutritionist' ? 'Nutricionista' : 'Cliente'}
+                          {recipe.authorType === 'Nutritionist'
+                            ? 'Nutricionista'
+                            : 'Cliente'}
                         </span>
                       </div>
 
@@ -284,13 +287,13 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                               'p-2.5 rounded-full border text-base shadow-sm transition-all',
                               isFavorite
                                 ? 'border-red-300 bg-red-50 text-red-500 dark:border-red-700/60 dark:bg-red-900/30'
-                                : 'border-gray-200 bg-white text-gray-400 hover:text-red-500 hover:border-red-200 dark:bg-gray-900 dark:border-gray-700'
+                                : 'border-gray-200 bg-white text-gray-400 hover:text-red-500 hover:border-red-200 dark:bg-gray-900 dark:border-gray-700',
                             )}
                           >
                             <Heart
                               className={cn(
                                 'w-5 h-5',
-                                isFavorite && 'fill-current'
+                                isFavorite && 'fill-current',
                               )}
                             />
                           </button>
@@ -331,8 +334,9 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                           className={cn(
                             'font-medium capitalize',
                             recipe.difficulty === 'easy' && 'text-green-500',
-                            recipe.difficulty === 'medium' && 'text-yellow-500',
-                            recipe.difficulty === 'hard' && 'text-red-500'
+                            recipe.difficulty === 'medium' &&
+                              'text-yellow-500',
+                            recipe.difficulty === 'hard' && 'text-red-500',
                           )}
                         >
                           {translatedDifficulty}
@@ -364,19 +368,28 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         <div>
                           {t.profile.nutritionGoalsnames.calories}:{' '}
                           <span className="font-semibold">
-                            {formatNutritionValue(recipe.nutritionFacts.calories)} kcal
+                            {formatNutritionValue(
+                              recipe.nutritionFacts.calories,
+                            )}{' '}
+                            kcal
                           </span>
                         </div>
                         <div>
                           {t.profile.nutritionGoalsnames.protein}:{' '}
                           <span className="font-semibold">
-                            {formatNutritionValue(recipe.nutritionFacts.protein)} g
+                            {formatNutritionValue(
+                              recipe.nutritionFacts.protein,
+                            )}{' '}
+                            g
                           </span>
                         </div>
                         <div>
                           {t.profile.nutritionGoalsnames.carbs}:{' '}
                           <span className="font-semibold">
-                            {formatNutritionValue(recipe.nutritionFacts.carbs)} g
+                            {formatNutritionValue(
+                              recipe.nutritionFacts.carbs,
+                            )}{' '}
+                            g
                           </span>
                         </div>
                         <div>
@@ -388,7 +401,10 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         <div>
                           {t.profile.nutritionGoalsnames.fiber}:{' '}
                           <span className="font-semibold">
-                            {formatNutritionValue(recipe.nutritionFacts.fiber)} g
+                            {formatNutritionValue(
+                              recipe.nutritionFacts.fiber,
+                            )}{' '}
+                            g
                           </span>
                         </div>
                       </div>
@@ -422,7 +438,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       {t.recipe.reviews} ({recipe.reviews.length})
                     </h3>
 
-                    <span className="text-sm text-gray-400 dark:text-gray-500">
+                    <span className="text-sm text-gray-500 dark:text-gray-500">
                       {displayRating()}
                     </span>
                   </div>
@@ -431,14 +447,20 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   {canAddReview && (
                     <form
                       onSubmit={handleAddReview}
-                      className="rounded-xl bg-gray-900/50 border-l-4 border-emerald-500/80 p-4 space-y-3"
+                      className={cn(
+                        'rounded-xl p-4 space-y-3',
+                        // Modo claro
+                        'bg-emerald-50/80 shadow-sm ring-1 ring-emerald-100',
+                        // Modo escuro (mantido como estava, com barra verde)
+                        'dark:bg-gray-900/50 dark:ring-0 dark:border-l-4 dark:border-emerald-500/80',
+                      )}
                     >
-                      <h4 className="text-lg font-medium text-gray-100">
+                      <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                         Adicionar Avaliação
                       </h4>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-base text-gray-300">
+                        <span className="text-base text-gray-700 dark:text-gray-300">
                           {t.recipe.rating}:
                         </span>
                         {[1, 2, 3, 4, 5].map((star) => (
@@ -446,13 +468,16 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             key={star}
                             type="button"
                             onClick={() =>
-                              setNewReview((prev) => ({ ...prev, rating: star }))
+                              setNewReview((prev) => ({
+                                ...prev,
+                                rating: star,
+                              }))
                             }
                             className={cn(
                               'text-3xl transition-colors',
                               star <= newReview.rating
                                 ? 'text-yellow-400'
-                                : 'text-gray-600'
+                                : 'text-gray-300 dark:text-gray-600',
                             )}
                           >
                             ★
@@ -469,7 +494,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                           }))
                         }
                         placeholder={t.recipe.writeReview}
-                        className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-base text-gray-100 placeholder:text-gray-500"
+                        className="w-full p-3 rounded-lg text-base placeholder:text-gray-500 bg-white border border-gray-300 text-gray-900 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
                         rows={4}
                         required
                       />
@@ -487,23 +512,29 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   {editingReview && (
                     <form
                       onSubmit={handleUpdateReview}
-                      className="rounded-xl bg-blue-900/30 border border-blue-700/70 p-4 space-y-3"
+                      className={cn(
+                        'rounded-xl p-4 space-y-3',
+                        // claro
+                        'bg-blue-50/80 ring-1 ring-blue-200 shadow-sm',
+                        // escuro (como estava)
+                        'dark:bg-blue-900/30 dark:ring-0 dark:border dark:border-blue-700/70',
+                      )}
                     >
                       <div className="flex items-center justify-between">
-                        <h4 className="text-lg font-medium text-gray-100">
+                        <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                           Editar Avaliação
                         </h4>
                         <button
                           type="button"
                           onClick={() => setEditingReview(null)}
-                          className="text-gray-400 hover:text-gray-200"
+                          className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-base text-gray-300">
+                        <span className="text-base text-gray-700 dark:text-gray-300">
                           Avaliação:
                         </span>
                         {[1, 2, 3, 4, 5].map((star) => (
@@ -512,14 +543,14 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             type="button"
                             onClick={() =>
                               setEditingReview((prev) =>
-                                prev ? { ...prev, rating: star } : null
+                                prev ? { ...prev, rating: star } : null,
                               )
                             }
                             className={cn(
                               'text-3xl transition-colors',
                               star <= editingReview.rating
                                 ? 'text-yellow-400'
-                                : 'text-gray-600'
+                                : 'text-gray-300 dark:text-gray-600',
                             )}
                           >
                             ★
@@ -531,11 +562,11 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         value={editingReview.comment}
                         onChange={(e) =>
                           setEditingReview((prev) =>
-                            prev ? { ...prev, comment: e.target.value } : prev
+                            prev ? { ...prev, comment: e.target.value } : prev,
                           )
                         }
                         placeholder="Escreva sua avaliação..."
-                        className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-base text-gray-100 placeholder:text-gray-500"
+                        className="w-full p-3 rounded-lg text-base placeholder:text-gray-500 bg-white border border-gray-300 text-gray-900 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
                         rows={4}
                         required
                       />
@@ -550,7 +581,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         <button
                           type="button"
                           onClick={() => setEditingReview(null)}
-                          className="px-5 py-2.5 bg-gray-800 text-gray-200 text-base rounded-lg hover:bg-gray-700 transition-colors"
+                          className="px-5 py-2.5 text-base rounded-lg transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                         >
                           Cancelar
                         </button>
@@ -576,14 +607,20 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         return (
                           <div
                             key={review.id}
-                            className="rounded-xl bg-gray-900/50 border border-gray-800 p-4 flex flex-col gap-1"
+                            className={cn(
+                              'rounded-xl p-4 flex flex-col gap-1',
+                              // claro
+                              'bg-gray-50 shadow-sm ring-1 ring-gray-200',
+                              // escuro (como estava, sem barra verde aqui)
+                              'dark:bg-gray-900/50 dark:ring-0 dark:border dark:border-gray-800',
+                            )}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div>
-                                <p className="text-lg font-semibold text-gray-100">
+                                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                                   {review.userName}
                                 </p>
-                                <p className="text-base text-gray-300">
+                                <p className="text-base text-gray-700 dark:text-gray-300">
                                   {review.comment}
                                 </p>
                               </div>
@@ -597,7 +634,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                         'text-xl',
                                         i < review.rating
                                           ? 'text-yellow-400'
-                                          : 'text-gray-600'
+                                          : 'text-gray-300 dark:text-gray-600',
                                       )}
                                     >
                                       ★
@@ -615,14 +652,16 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                           comment: review.comment,
                                         })
                                       }
-                                      className="p-1.5 text-blue-400 hover:bg-blue-900/40 rounded transition-colors"
+                                      className="p-1.5 rounded transition-colors text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/40"
                                       title="Editar avaliação"
                                     >
                                       <Edit2 className="w-4 h-4" />
                                     </button>
                                     <button
-                                      onClick={() => handleDeleteReview(review.id)}
-                                      className="p-1.5 text-red-400 hover:bg-red-900/40 rounded transition-colors"
+                                      onClick={() =>
+                                        handleDeleteReview(review.id)
+                                      }
+                                      className="p-1.5 rounded transition-colors text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/40"
                                       title="Excluir avaliação"
                                     >
                                       <Trash2 className="w-4 h-4" />
@@ -632,7 +671,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                               </div>
                             </div>
 
-                            <span className="text-sm text-gray-500 mt-1">
+                            <span className="text-sm text-gray-500 dark:text-gray-500 mt-1">
                               {review.date}
                             </span>
                           </div>
