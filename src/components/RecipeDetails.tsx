@@ -413,8 +413,8 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
                 </div>
 
-                 {/* ÁREA DE AVALIAÇÕES – clara/escura */}
-                <div className="mt-10 space-y-6 border-t border-gray-200 dark:border-gray-800 pt-6">
+                {/* ÁREA DE AVALIAÇÕES – nova versão */}
+                <div className="mt-10 space-y-6 border-t border-gray-100 dark:border-gray-800 pt-6">
                   {/* título + resumo */}
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
@@ -422,7 +422,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       {t.recipe.reviews} ({recipe.reviews.length})
                     </h3>
 
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                    <span className="text-sm text-gray-400 dark:text-gray-500">
                       {displayRating()}
                     </span>
                   </div>
@@ -431,14 +431,14 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   {canAddReview && (
                     <form
                       onSubmit={handleAddReview}
-                      className="rounded-xl border p-4 space-y-3 bg-emerald-50/80 border-emerald-100 shadow-sm dark:bg-gray-900/60 dark:border-emerald-700/70"
+                      className="rounded-xl bg-gray-900/50 border-l-4 border-emerald-500/80 p-4 space-y-3"
                     >
-                      <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <h4 className="text-lg font-medium text-gray-100">
                         Adicionar Avaliação
                       </h4>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-base text-gray-700 dark:text-gray-300">
+                        <span className="text-base text-gray-300">
                           {t.recipe.rating}:
                         </span>
                         {[1, 2, 3, 4, 5].map((star) => (
@@ -452,7 +452,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                               'text-3xl transition-colors',
                               star <= newReview.rating
                                 ? 'text-yellow-400'
-                                : 'text-gray-300 dark:text-gray-600'
+                                : 'text-gray-600'
                             )}
                           >
                             ★
@@ -469,7 +469,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                           }))
                         }
                         placeholder={t.recipe.writeReview}
-                        className="w-full p-3 rounded-lg bg-white border border-gray-300 text-base text-gray-900 placeholder:text-gray-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                        className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-base text-gray-100 placeholder:text-gray-500"
                         rows={4}
                         required
                       />
@@ -487,23 +487,23 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   {editingReview && (
                     <form
                       onSubmit={handleUpdateReview}
-                      className="rounded-xl border p-4 space-y-3 bg-blue-50/80 border-blue-200 shadow-sm dark:bg-blue-900/30 dark:border-blue-700/80"
+                      className="rounded-xl bg-blue-900/30 border border-blue-700/70 p-4 space-y-3"
                     >
                       <div className="flex items-center justify-between">
-                        <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                        <h4 className="text-lg font-medium text-gray-100">
                           Editar Avaliação
                         </h4>
                         <button
                           type="button"
                           onClick={() => setEditingReview(null)}
-                          className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                          className="text-gray-400 hover:text-gray-200"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-base text-gray-700 dark:text-gray-300">
+                        <span className="text-base text-gray-300">
                           Avaliação:
                         </span>
                         {[1, 2, 3, 4, 5].map((star) => (
@@ -519,7 +519,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                               'text-3xl transition-colors',
                               star <= editingReview.rating
                                 ? 'text-yellow-400'
-                                : 'text-gray-300 dark:text-gray-600'
+                                : 'text-gray-600'
                             )}
                           >
                             ★
@@ -535,7 +535,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                           )
                         }
                         placeholder="Escreva sua avaliação..."
-                        className="w-full p-3 rounded-lg bg-white border border-gray-300 text-base text-gray-900 placeholder:text-gray-500 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
+                        className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-base text-gray-100 placeholder:text-gray-500"
                         rows={4}
                         required
                       />
@@ -550,7 +550,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         <button
                           type="button"
                           onClick={() => setEditingReview(null)}
-                          className="px-5 py-2.5 bg-gray-200 text-gray-700 text-base rounded-lg hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+                          className="px-5 py-2.5 bg-gray-800 text-gray-200 text-base rounded-lg hover:bg-gray-700 transition-colors"
                         >
                           Cancelar
                         </button>
@@ -576,14 +576,14 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         return (
                           <div
                             key={review.id}
-                            className="rounded-xl border p-4 flex flex-col gap-1 bg-gray-50 shadow-sm border-gray-200 dark:bg-gray-900/60 dark:border-gray-800"
+                            className="rounded-xl bg-gray-900/50 border border-gray-800 p-4 flex flex-col gap-1"
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div>
-                                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                <p className="text-lg font-semibold text-gray-100">
                                   {review.userName}
                                 </p>
-                                <p className="text-base text-gray-700 dark:text-gray-300">
+                                <p className="text-base text-gray-300">
                                   {review.comment}
                                 </p>
                               </div>
@@ -597,7 +597,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                         'text-xl',
                                         i < review.rating
                                           ? 'text-yellow-400'
-                                          : 'text-gray-300 dark:text-gray-600'
+                                          : 'text-gray-600'
                                       )}
                                     >
                                       ★
@@ -615,14 +615,14 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                           comment: review.comment,
                                         })
                                       }
-                                      className="p-1.5 text-blue-500 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded transition-colors"
+                                      className="p-1.5 text-blue-400 hover:bg-blue-900/40 rounded transition-colors"
                                       title="Editar avaliação"
                                     >
                                       <Edit2 className="w-4 h-4" />
                                     </button>
                                     <button
                                       onClick={() => handleDeleteReview(review.id)}
-                                      className="p-1.5 text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/40 rounded transition-colors"
+                                      className="p-1.5 text-red-400 hover:bg-red-900/40 rounded transition-colors"
                                       title="Excluir avaliação"
                                     >
                                       <Trash2 className="w-4 h-4" />
@@ -632,7 +632,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                               </div>
                             </div>
 
-                            <span className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                            <span className="text-sm text-gray-500 mt-1">
                               {review.date}
                             </span>
                           </div>
