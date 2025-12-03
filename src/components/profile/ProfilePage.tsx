@@ -22,6 +22,16 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
 
   const isClient = user?.type === 'Client';
 
+  const activityTitle = isClient
+    ? t.profile?.overviewClient || 'Minha atividade'
+    : t.profile?.overviewNutritionist || 'Minha atividade';
+
+  const activitySubtitle = isClient
+    ? t.profile?.overviewClientDescription ||
+      'Acompanhe seus favoritos, metas e impacto das suas escolhas no dia a dia.'
+    : t.profile?.overviewNutritionistDescription ||
+      'Veja o desempenho das suas receitas, avaliações dos clientes e sua presença na plataforma.';
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Top bar */}
@@ -58,14 +68,23 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
         {/* Card principal de perfil */}
         <ProfileCard />
 
-        {/* Dashboard + abas */}
-        <section className="space-y-8">
-          {/* Agora o dashboard cuida do próprio título "Resumo da sua atuação/jornada"
-              e dos cards de métricas. Sem card extra aqui. */}
+        {/* Minha atividade: métricas + abas */}
+        <section className="space-y-6">
+          {/* Título da seção */}
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50 sm:text-xl">
+              {activityTitle}
+            </h2>
+            <p className="max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+              {activitySubtitle}
+            </p>
+          </div>
+
+          {/* Dashboard (somente cards internos, sem retângulo externo) */}
           {isClient ? <ClientDashboard /> : <NutritionistDashboard />}
 
-          {/* Abas (Receitas, Favoritos, Metas) em um card separado */}
-          <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-6">
+          {/* Abas – ligeiramente separadas por uma linha bem discreta */}
+          <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
             <ProfileTabs />
           </div>
         </section>
