@@ -10,6 +10,13 @@ export function AIMentoringPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <AIMentoringPageComponent onBack={() => navigate('/')} />
       </div>
+              <button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 mb-6"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Voltar
+        </button>
     </div>
   );
 }
