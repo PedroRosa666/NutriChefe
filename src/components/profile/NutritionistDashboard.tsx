@@ -1,3 +1,4 @@
+import { Award, Users, BookOpen, TrendingUp } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -9,12 +10,21 @@ export function NutritionistDashboard() {
 
   if (!user || user.type !== 'Nutritionist') return null;
 
+  const profile = user.profile || {};
   const userRecipes = recipes.filter((recipe) => recipe.authorId === user.id);
+
+  const totalReviews = userRecipes.reduce(
+    (acc, recipe) => acc + recipe.reviews.length,
+    0,
+  );
+  const averageRating =
+    userRecipes.reduce((acc, recipe) => acc + recipe.rating, 0) /
+      (userRecipes.length || 1) || 0;
 
   return (
     <section className="mt-10 space-y-6">
-      {/* Título único da seção */}
-      <div>
+      {/* Título ÚNICO */}
+      <header>
         <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">
           {t.profile.performanceSummary || 'Resumo da sua atuação'}
         </h2>
@@ -22,9 +32,60 @@ export function NutritionistDashboard() {
           Veja o desempenho das suas receitas, avaliações dos clientes e sua
           presença na plataforma.
         </p>
+      </header>
+
+      {/* GRID DE MÉTRICAS – logo abaixo do resumo */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-emerald-500/20 bg-gray-50 px-5 py-4 shadow-sm dark:border-emerald-500/30 dark:bg-gray-900/60">
+          <div className="mb-2 flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-emerald-500" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+              {t.profile.publishedRecipes}
+            </h3>
+          </div>
+          <p className="text-2xl font-bold text-emerald-500">
+            {userRecipes.length}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-500/20 bg-gray-50 px-5 py-4 shadow-sm dark:border-emerald-500/30 dark:bg-gray-900/60">
+          <div className="mb-2 flex items-center gap-2">
+            <Users className="h-5 w-5 text-emerald-500" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+              {t.profile.totalReviews}
+            </h3>
+          </div>
+          <p className="text-2xl font-bold text-emerald-500">
+            {totalReviews}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-500/20 bg-gray-50 px-5 py-4 shadow-sm dark:border-emerald-500/30 dark:bg-gray-900/60">
+          <div className="mb-2 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-emerald-500" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+              {t.profile.averageRating}
+            </h3>
+          </div>
+          <p className="text-2xl font-bold text-emerald-500">
+            {averageRating.toFixed(1)}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-500/20 bg-gray-50 px-5 py-4 shadow-sm dark:border-emerald-500/30 dark:bg-gray-900/60">
+          <div className="mb-2 flex items-center gap-2">
+            <Award className="h-5 w-5 text-emerald-500" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+              {t.profile.experience}
+            </h3>
+          </div>
+          <p className="text-2xl font-bold text-emerald-500">
+            {profile.experience || 'N/A'}
+          </p>
+        </div>
       </div>
 
-      {/* Apenas minhas receitas – sem cards de métricas duplicados */}
+      {/* Minhas receitas (sem outro título de resumo) */}
       <div className="rounded-2xl border border-gray-100 bg-white px-5 py-5 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
         <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-white">
           {t.profile.myRecipes}
