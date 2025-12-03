@@ -23,7 +23,7 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
   const isClient = user?.type === 'Client';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Top bar */}
       <div className="mb-6 flex items-center justify-between gap-4">
         {onBackToRecipes && (
@@ -48,7 +48,7 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">
           {profileTitle}
         </h1>
-        <p className="max-w-2xl text-sm sm:text-base text-slate-500 dark:text-slate-400">
+        <p className="max-w-2xl text-sm text-slate-500 dark:text-slate-400 sm:text-base">
           {profileSubtitle}
         </p>
       </header>
@@ -60,24 +60,11 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
 
         {/* Dashboard + abas */}
         <section className="space-y-8">
-          <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-6">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-50 sm:text-xl">
-              {isClient
-                ? t.profile?.overviewClient || 'Resumo da sua jornada'
-                : t.profile?.overviewNutritionist || 'Resumo da sua atuação'}
-            </h2>
-            <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
-              {isClient
-                ? t.profile?.overviewClientDescription ||
-                  'Acompanhe seus favoritos, metas e o impacto das suas escolhas no dia a dia.'
-                : t.profile?.overviewNutritionistDescription ||
-                  'Veja o desempenho das suas receitas, avaliações dos clientes e sua presença na plataforma.'}
-            </p>
+          {/* Agora o dashboard cuida do próprio título "Resumo da sua atuação/jornada"
+              e dos cards de métricas. Sem card extra aqui. */}
+          {isClient ? <ClientDashboard /> : <NutritionistDashboard />}
 
-            {isClient ? <ClientDashboard /> : <NutritionistDashboard />}
-          </div>
-
-          {/* Abas (Receitas, Favoritos, Metas) */}
+          {/* Abas (Receitas, Favoritos, Metas) em um card separado */}
           <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-6">
             <ProfileTabs />
           </div>
