@@ -10,6 +10,8 @@ import {
   Calendar,
   Edit2,
   X,
+  ListChecks,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useRecipesStore } from '../store/recipes';
