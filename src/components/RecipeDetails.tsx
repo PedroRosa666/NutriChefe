@@ -145,6 +145,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-4">
+                <div className="space-y-4 md:space-y-6">
                 <img
                   src={recipe.image}
                   alt={recipe.title}
