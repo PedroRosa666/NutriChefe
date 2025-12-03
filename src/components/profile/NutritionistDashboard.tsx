@@ -1,4 +1,3 @@
-import { Award, Users, BookOpen, TrendingUp } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -10,19 +9,11 @@ export function NutritionistDashboard() {
 
   if (!user || user.type !== 'Nutritionist') return null;
 
-  const profile = user.profile || {};
   const userRecipes = recipes.filter((recipe) => recipe.authorId === user.id);
-  const totalReviews = userRecipes.reduce(
-    (acc, recipe) => acc + recipe.reviews.length,
-    0,
-  );
-  const averageRating =
-    userRecipes.reduce((acc, recipe) => acc + recipe.rating, 0) /
-      (userRecipes.length || 1) || 0;
 
   return (
-    <section className="mt-8 space-y-6">
-      {/* Título da seção (sem repetir dados pessoais) */}
+    <section className="mt-10 space-y-6">
+      {/* Título único da seção */}
       <div>
         <h2 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">
           {t.profile.performanceSummary || 'Resumo da sua atuação'}
@@ -33,74 +24,7 @@ export function NutritionistDashboard() {
         </p>
       </div>
 
-      {/* Cards de métricas – sem card “pai” envolvendo tudo */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
-              <BookOpen className="h-5 w-5 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                {t.profile.publishedRecipes}
-              </p>
-              <p className="mt-1 text-2xl font-semibold text-emerald-500">
-                {userRecipes.length}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
-              <Users className="h-5 w-5 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                {t.profile.totalReviews}
-              </p>
-              <p className="mt-1 text-2xl font-semibold text-emerald-500">
-                {totalReviews}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
-              <TrendingUp className="h-5 w-5 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                {t.profile.averageRating}
-              </p>
-              <p className="mt-1 text-2xl font-semibold text-emerald-500">
-                {averageRating.toFixed(1)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/10">
-              <Award className="h-5 w-5 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                {t.profile.experience}
-              </p>
-              <p className="mt-1 text-2xl font-semibold text-emerald-500">
-                {profile.experience || 'N/A'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Últimas receitas – card único, sem outro card dentro */}
+      {/* Apenas minhas receitas – sem cards de métricas duplicados */}
       <div className="rounded-2xl border border-gray-100 bg-white px-5 py-5 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
         <h3 className="mb-3 text-base font-semibold text-gray-900 dark:text-white">
           {t.profile.myRecipes}
