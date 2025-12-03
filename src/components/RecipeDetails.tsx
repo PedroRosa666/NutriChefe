@@ -196,7 +196,9 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {recipe.authorType === 'Nutritionist' ? 'Nutricionista' : 'Cliente'}
+                        {recipe.authorType === 'Nutritionist'
+                          ? 'Nutricionista'
+                          : 'Cliente'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -211,14 +213,19 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
                 </div>
 
-                {/* Ingredientes (na coluna esquerda) */}
-                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                {/* Ingredientes na coluna esquerda */}
+                <div className="bg-white dark:bg-gray-900/40 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                   <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">
                     {t.recipe.ingredients}
                   </h3>
-                  <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-300">
+                  <ul className="list-disc list-inside space-y-1">
                     {recipe.ingredients.map((ingredient, index) => (
-                      <li key={index}>{ingredient}</li>
+                      <li
+                        key={index}
+                        className="text-gray-600 dark:text-gray-300"
+                      >
+                        {ingredient}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -272,7 +279,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4 dark:text-gray-300">
+                <div className="flex items-center gap-4 text-sm text-gray-500 mb-2 dark:text-gray-300">
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
                     <span>{recipe.prepTime}min</span>
@@ -296,12 +303,12 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
                 </div>
 
-                <p className="text-gray-600 mb-4 dark:text-gray-300">
+                <p className="text-gray-600 dark:text-gray-300">
                   {recipe.description}
                 </p>
 
                 {/* Fatos nutricionais */}
-                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-4">
+                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
                   <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">
                     {t.recipe.nutritionFacts}
                   </h3>
@@ -329,14 +336,19 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
                 </div>
 
-                {/* Instruções (na coluna direita) */}
-                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                {/* Instruções na coluna direita */}
+                <div className="bg-white dark:bg-gray-900/40 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                   <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">
                     {t.recipe.instructions}
                   </h3>
-                  <ol className="list-decimal list-inside space-y-2 text-gray-600 dark:text-gray-300">
+                  <ol className="list-decimal list-inside space-y-2">
                     {recipe.instructions.map((instruction, index) => (
-                      <li key={index}>{instruction}</li>
+                      <li
+                        key={index}
+                        className="text-gray-600 dark:text-gray-300"
+                      >
+                        {instruction}
+                      </li>
                     ))}
                   </ol>
                 </div>
@@ -529,9 +541,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                   <Edit2 className="w-3 h-3" />
                                 </button>
                                 <button
-                                  onClick={() =>
-                                    handleDeleteReview(review.id)
-                                  }
+                                  onClick={() => handleDeleteReview(review.id)}
                                   className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                                   title="Excluir avaliação"
                                 >
