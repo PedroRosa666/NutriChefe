@@ -19,34 +19,34 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
 
   // Para dificuldade
   const difficultyTranslations = t.recipe.difficultyLevels;
-  const translatedDifficulty = difficultyTranslations[recipe.difficulty as keyof typeof difficultyTranslations] || recipe.difficulty;
+  const translatedDifficulty =
+    difficultyTranslations[recipe.difficulty as keyof typeof difficultyTranslations] ||
+    recipe.difficulty;
 
   // Para categorias - mapear corretamente
   const categoryTranslations = t.categories;
-  
-  // Função para mapear categoria do banco para chave de tradução
+
   const getCategoryTranslation = (category: string) => {
     const categoryMap: { [key: string]: keyof typeof categoryTranslations } = {
-      'vegan': 'vegan',
-      'lowCarb': 'lowCarb',
+      vegan: 'vegan',
+      lowCarb: 'lowCarb',
       'low carb': 'lowCarb',
-      'highProtein': 'highProtein',
+      highProtein: 'highProtein',
       'high protein': 'highProtein',
-      'glutenFree': 'glutenFree',
+      glutenFree: 'glutenFree',
       'gluten free': 'glutenFree',
-      'vegetarian': 'vegetarian'
+      vegetarian: 'vegetarian',
     };
 
     const normalizedCategory = category.toLowerCase().replace(/\s+/g, '');
-    const mappedKey = Object.keys(categoryMap).find(key => 
-      key.toLowerCase().replace(/\s+/g, '') === normalizedCategory
+    const mappedKey = Object.keys(categoryMap).find(
+      (key) => key.toLowerCase().replace(/\s+/g, '') === normalizedCategory,
     );
-    
+
     if (mappedKey) {
       return categoryTranslations[categoryMap[mappedKey]];
     }
-    
-    // Fallback para categorias diretas
+
     const directKey = category as keyof typeof categoryTranslations;
     return categoryTranslations[directKey] || category;
   };
@@ -56,9 +56,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
 
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isAuthenticated) {
-      return;
-    }
+    if (!isAuthenticated) return;
 
     try {
       if (isFavorite) {
@@ -82,63 +80,100 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
   return (
     <div
       onClick={() => navigate(`/receita/${recipe.id}`)}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer flex flex-col h-full"
+      className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white/90 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-emerald-400/70 hover:shadow-xl dark:border-gray-800 dark:bg-gray-900/90"
     >
-      <div className="relative">
+      {/* Imagem + overlays */}
+      <div className="relative overflow-hidden">
         <img
           src={recipe.image}
           alt={recipe.title}
-          className="w-full h-48 object-cover"
+          className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+            target.src =
+              'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
           }}
         />
-        <span className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-          {translatedCategory}
+
+        {/* Gradiente sutil por cima da imagem */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+        {/* Categoria (canto inferior esquerdo) */}
+        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/65 px-3 py-1 text-xs font-medium text-white backdrop-blur">
+          <ChefHat className="h-3.5 w-3.5 text-emerald-300" />
+          <span className="truncate max-w-[130px]">{translatedCategory}</span>
         </span>
+
+        {/* Rating pequeno em cima da imagem */}
+        <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-yellow-300 backdrop-blur">
+          <Star className="h-3 w-3 fill-yellow-300 text-yellow-300" />
+          <span className="text-[11px]">{displayRating()}</span>
+        </div>
+
+        {/* Botão de favorito */}
         {isAuthenticated && (
           <button
             onClick={handleFavoriteClick}
             className={cn(
-              "absolute top-4 left-4 p-2 rounded-full bg-white dark:bg-gray-800 shadow-md transition-colors",
-              isFavorite ? "text-red-500" : "text-gray-400 hover:text-red-500"
+              'absolute top-3 right-3 inline-flex h-8 w-8 items-center justify-center rounded-full border text-gray-400 shadow-md transition-all',
+              'bg-white/95 border-gray-200 hover:border-rose-200 dark:bg-gray-900/90 dark:border-gray-700',
+              isFavorite
+                ? 'text-rose-500 border-rose-200 dark:border-rose-700/70'
+                : 'hover:text-rose-500',
             )}
           >
-            <Heart className={cn("w-5 h-5", isFavorite && "fill-current")} />
+            <Heart
+              className={cn(
+                'h-4 w-4',
+                isFavorite && 'fill-current',
+              )}
+            />
           </button>
         )}
       </div>
-      
-      {/* Conteúdo principal que cresce */}
-      <div className="p-6 flex flex-col flex-grow">
-        <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white line-clamp-2">
+
+      {/* Conteúdo principal */}
+      <div className="flex flex-grow flex-col p-4 md:p-5">
+        <h3 className="mb-1 line-clamp-2 text-lg font-semibold leading-snug text-gray-900 dark:text-white">
           {recipe.title}
         </h3>
-        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3 flex-grow">
+
+        <p className="mb-4 flex-grow line-clamp-3 text-sm text-gray-600 dark:text-gray-300">
           {recipe.description}
         </p>
 
-        {/* Informações fixas no rodapé */}
-        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 flex-shrink-0" />
-            <span className="whitespace-nowrap">{recipe.prepTime}min</span>
+        {/* Linha de informações */}
+        <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-3 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-4 w-4 flex-shrink-0" />
+            <span className="whitespace-nowrap font-medium text-gray-700 dark:text-gray-200">
+              {recipe.prepTime}min
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <ChefHat className="w-4 h-4 flex-shrink-0" />
-            <span className={cn(
-              "capitalize whitespace-nowrap",
-              recipe.difficulty === 'easy' && "text-green-500",
-              recipe.difficulty === 'medium' && "text-yellow-500",
-              recipe.difficulty === 'hard' && "text-red-500"
-            )}>
+
+          <div className="hidden h-4 w-px bg-gray-200 dark:bg-gray-700 sm:block" />
+
+          <div className="flex items-center gap-1.5">
+            <ChefHat className="h-4 w-4 flex-shrink-0" />
+            <span
+              className={cn(
+                'whitespace-nowrap text-xs font-semibold capitalize',
+                recipe.difficulty === 'easy' && 'text-emerald-500',
+                recipe.difficulty === 'medium' && 'text-yellow-500',
+                recipe.difficulty === 'hard' && 'text-red-500',
+              )}
+            >
               {translatedDifficulty}
             </span>
           </div>
-          <div className="flex items-center gap-1">
-            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 flex-shrink-0" />
-            <span className="whitespace-nowrap text-xs">{displayRating()}</span>
+
+          <div className="hidden h-4 w-px bg-gray-200 dark:bg-gray-700 sm:block" />
+
+          <div className="flex items-center gap-1.5">
+            <Star className="h-4 w-4 flex-shrink-0 fill-yellow-400 text-yellow-400" />
+            <span className="whitespace-nowrap text-xs font-medium">
+              {displayRating()}
+            </span>
           </div>
         </div>
       </div>
