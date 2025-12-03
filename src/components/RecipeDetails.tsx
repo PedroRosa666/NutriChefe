@@ -416,9 +416,11 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
                     {/* Instruções */}
                     <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                      <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
-                        {t.recipe.instructions}
-                      </h3>
+                      <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">
+                          <UtensilsCrossed className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
+                              {t.recipe.instructions}
+                                  </h3>
+
                       <ol className="list-decimal list-inside space-y-2 max-h-64 overflow-y-auto pr-2">
                         {recipe.instructions.map((instruction, index) => (
                           <li
