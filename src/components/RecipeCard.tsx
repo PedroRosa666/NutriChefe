@@ -80,7 +80,13 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
   return (
     <div
       onClick={() => navigate(`/receita/${recipe.id}`)}
-      className="group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white/90 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-emerald-400/70 hover:shadow-xl dark:border-gray-800 dark:bg-gray-900/90"
+      className="
+        group relative flex h-full cursor-pointer flex-col overflow-hidden 
+        rounded-2xl border shadow-lg transition-all duration-200 
+        hover:-translate-y-1 hover:shadow-emerald-500/20 hover:border-emerald-400/70
+        bg-slate-50 border-slate-200 
+        dark:bg-slate-800/80 dark:border-slate-700
+      "
     >
       {/* Imagem + overlays */}
       <div className="relative overflow-hidden">
@@ -99,13 +105,13 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
         {/* Categoria (canto inferior esquerdo) */}
-        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/65 px-3 py-1 text-xs font-medium text-white backdrop-blur">
+        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-slate-900/70 px-3 py-1 text-xs font-medium text-white backdrop-blur shadow-sm">
           <ChefHat className="h-3.5 w-3.5 text-emerald-300" />
           <span className="truncate max-w-[130px]">{translatedCategory}</span>
         </span>
 
         {/* Rating pequeno em cima da imagem */}
-        <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-yellow-300 backdrop-blur">
+        <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-medium text-yellow-300 backdrop-blur shadow-sm">
           <Star className="h-3 w-3 fill-yellow-300 text-yellow-300" />
           <span className="text-[11px]">{displayRating()}</span>
         </div>
@@ -116,10 +122,9 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
             onClick={handleFavoriteClick}
             className={cn(
               'absolute top-3 right-3 inline-flex h-8 w-8 items-center justify-center rounded-full border text-gray-400 shadow-md transition-all',
-              'bg-white/95 border-gray-200 hover:border-rose-200 dark:bg-gray-900/90 dark:border-gray-700',
-              isFavorite
-                ? 'text-rose-500 border-rose-200 dark:border-rose-700/70'
-                : 'hover:text-rose-500',
+              'bg-slate-50/90 border-slate-200 hover:border-rose-200 hover:text-rose-500',
+              'dark:bg-slate-900/90 dark:border-slate-700',
+              isFavorite && 'text-rose-500 border-rose-300 dark:border-rose-700',
             )}
           >
             <Heart
@@ -143,7 +148,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         </p>
 
         {/* Linha de informações */}
-        <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-3 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+        <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-gray-500 dark:border-slate-700 dark:text-gray-400">
           <div className="flex items-center gap-1.5">
             <Clock className="h-4 w-4 flex-shrink-0" />
             <span className="whitespace-nowrap font-medium text-gray-700 dark:text-gray-200">
@@ -151,7 +156,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
             </span>
           </div>
 
-          <div className="hidden h-4 w-px bg-gray-200 dark:bg-gray-700 sm:block" />
+          <div className="hidden h-4 w-px bg-slate-200 dark:bg-slate-600 sm:block" />
 
           <div className="flex items-center gap-1.5">
             <ChefHat className="h-4 w-4 flex-shrink-0" />
@@ -167,7 +172,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
             </span>
           </div>
 
-          <div className="hidden h-4 w-px bg-gray-200 dark:bg-gray-700 sm:block" />
+          <div className="hidden h-4 w-px bg-slate-200 dark:bg-slate-600 sm:block" />
 
           <div className="flex items-center gap-1.5">
             <Star className="h-4 w-4 flex-shrink-0 fill-yellow-400 text-yellow-400" />
