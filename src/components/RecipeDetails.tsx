@@ -195,6 +195,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
               
               <div>
+                <div className="space-y-6">
                 <div className="flex justify-between items-start">
                   <div>
                     <h2 className="text-2xl font-bold mb-2">{recipe.title}</h2>
