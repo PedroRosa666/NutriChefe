@@ -633,4 +633,3 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
         );
       })
     )}
-  </div>
