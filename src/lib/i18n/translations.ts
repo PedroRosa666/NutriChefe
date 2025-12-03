@@ -242,7 +242,7 @@ export const translations = {
       },
       CreateNewRecipe: 'Criar nova receita',
       CreateRecipe: 'Criar receita',
-      rating:'Avalie essa receita',
+      rating:'Classifique essa receita',
       noReviews:'Sem Avaliações',
     },
   },
