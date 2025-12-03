@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Clock, ChefHat, Star, Heart } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useRecipesStore } from '../store/recipes';
@@ -8,10 +9,10 @@ import type { Recipe } from '../types/recipe';
 
 interface RecipeCardProps {
   recipe: Recipe;
-  onClick: () => void;
 }
 
-export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
+export function RecipeCard({ recipe }: RecipeCardProps) {
+  const navigate = useNavigate();
   const { favoriteRecipes, addToFavorites, removeFromFavorites } = useRecipesStore();
   const { isAuthenticated } = useAuthStore();
   const t = useTranslation();
@@ -80,7 +81,7 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
 
   return (
     <div
-      onClick={onClick}
+      onClick={() => navigate(`/receita/${recipe.id}`)}
       className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer flex flex-col h-full"
     >
       <div className="relative">

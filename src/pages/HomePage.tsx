@@ -4,7 +4,6 @@ import { Header } from '../components/Header';
 import { RecipeCard } from '../components/RecipeCard';
 import { CategoryFilter } from '../components/CategoryFilter';
 import { AdvancedFilters } from '../components/filters/AdvancedFilters';
-import { RecipeDetails } from '../components/RecipeDetails';
 import { CreateRecipeForm } from '../components/CreateRecipeForm';
 import { useFiltersStore } from '../store/filters';
 import { useRecipesStore } from '../store/recipes';
@@ -14,11 +13,9 @@ import { useTranslation } from '../hooks/useTranslation';
 import { Plus } from 'lucide-react';
 import { Toast } from '../components/common/Toast';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import LoadingGate from '../components/common/LoadingGate';
 
 export function HomePage() {
   const navigate = useNavigate();
-  const [selectedRecipe, setSelectedRecipe] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
@@ -93,8 +90,6 @@ export function HomePage() {
     return matchesCategory && matchesSearch && matchesDifficulty && matchesRating && matchesTime;
   });
 
-  const selectedRecipeData = recipes.find(r => r.id === selectedRecipe);
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <Header
@@ -160,19 +155,11 @@ export function HomePage() {
                 <RecipeCard
                   key={recipe.id}
                   recipe={recipe}
-                  onClick={() => setSelectedRecipe(recipe.id)}
                 />
               ))}
             </div>
           )}
         </main>
-
-        {selectedRecipeData && (
-          <RecipeDetails
-            recipe={selectedRecipeData}
-            onClose={() => setSelectedRecipe(null)}
-          />
-        )}
 
         <CreateRecipeForm
           isOpen={isCreateModalOpen}
