@@ -171,7 +171,8 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
               ×
             </button>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            {/* GRID PRINCIPAL COM LARGURAS CUSTOMIZADAS (DO DIFF) */}
+            <div className="grid gap-6 md:grid-cols-[280px,1fr] lg:grid-cols-[320px,1fr]">
               {/* COLUNA ESQUERDA */}
               <div className="space-y-4 md:space-y-6">
                 <img
@@ -212,27 +213,10 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     </div>
                   </div>
                 </div>
-
-                {/* Ingredientes na coluna esquerda */}
-                <div className="bg-white dark:bg-gray-900/40 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">
-                    {t.recipe.ingredients}
-                  </h3>
-                  <ul className="list-disc list-inside space-y-1">
-                    {recipe.ingredients.map((ingredient, index) => (
-                      <li
-                        key={index}
-                        className="text-gray-600 dark:text-gray-300"
-                      >
-                        {ingredient}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
               </div>
 
               {/* COLUNA DIREITA */}
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="flex justify-between items-start">
                   <div>
                     <h2 className="text-2xl font-bold mb-2">{recipe.title}</h2>
@@ -279,7 +263,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 text-sm text-gray-500 mb-2 dark:text-gray-300">
+                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4 dark:text-gray-300">
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
                     <span>{recipe.prepTime}min</span>
@@ -303,11 +287,11 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
                 </div>
 
-                <p className="text-gray-600 dark:text-gray-300">
+                <p className="text-gray-600 mb-4 dark:text-gray-300">
                   {recipe.description}
                 </p>
 
-                {/* Fatos nutricionais */}
+                {/* Seção de fatos nutricionais com valores decimais formatados */}
                 <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
                   <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">
                     {t.recipe.nutritionFacts}
@@ -335,27 +319,45 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     </div>
                   </div>
                 </div>
-
-                {/* Instruções na coluna direita */}
-                <div className="bg-white dark:bg-gray-900/40 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">
-                    {t.recipe.instructions}
-                  </h3>
-                  <ol className="list-decimal list-inside space-y-2">
-                    {recipe.instructions.map((instruction, index) => (
-                      <li
-                        key={index}
-                        className="text-gray-600 dark:text-gray-300"
-                      >
-                        {instruction}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
               </div>
             </div>
 
-            {/* ÁREA DE AVALIAÇÕES */}
+            {/* INGREDIENTES + INSTRUÇÕES ABAIXO EM 2 COLUNAS */}
+            <div className="grid md:grid-cols-2 gap-6 mt-6">
+              <div>
+                <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">
+                  {t.recipe.ingredients}
+                </h3>
+                <ul className="list-disc list-inside space-y-1">
+                  {recipe.ingredients.map((ingredient, index) => (
+                    <li
+                      key={index}
+                      className="text-gray-600 dark:text-gray-300"
+                    >
+                      {ingredient}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-2 text-gray-900 dark:text-white">
+                  {t.recipe.instructions}
+                </h3>
+                <ol className="list-decimal list-inside space-y-2">
+                  {recipe.instructions.map((instruction, index) => (
+                    <li
+                      key={index}
+                      className="text-gray-600 dark:text-gray-300"
+                    >
+                      {instruction}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+
+            {/* AVALIAÇÕES */}
             <div className="mt-8">
               <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">
                 {t.recipe.reviews} ({recipe.reviews.length})
