@@ -97,7 +97,7 @@ export const translations = {
       ingredients: 'Ingredients',
       instructions: 'Instructions',
       nutritionFacts: 'Nutrition Facts (Per Serving)',
-      reviews: 'Reviews',
+      reviews: 'Notes and ratings',
       writeReview: 'Write your review...',
       submitReview: 'Submit Review',
       signInToReview: 'Please sign in to leave a review.',
