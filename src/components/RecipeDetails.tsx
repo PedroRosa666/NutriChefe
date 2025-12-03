@@ -414,222 +414,227 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                 </div>
 
                 {/* ÁREA DE AVALIAÇÕES */}
-<div className="mt-10 space-y-6">
-  {/* título da seção */}
-  <div className="flex items-center justify-between">
-    <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-      <Star className="w-5 h-5 text-yellow-400" />
-      {t.recipe.reviews} ({recipe.reviews.length})
-    </h3>
+                <div className="mt-8 border-t border-gray-100 dark:border-gray-800 pt-6">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-400" />
+                    {t.recipe.reviews} ({recipe.reviews.length})
+                  </h3>
 
-    <span className="text-sm text-gray-400 dark:text-gray-500">
-      {displayRating()}
-    </span>
-  </div>
-
-  {/* Formulário para adicionar nova avaliação – sem “caixote dentro de caixote” */}
-  {canAddReview && (
-    <form
-      onSubmit={handleAddReview}
-      className="rounded-xl bg-gray-900/50 border-l-4 border-emerald-500/80 p-4 space-y-3"
-    >
-      <h4 className="text-lg font-medium text-gray-100">
-        Adicionar Avaliação
-      </h4>
-
-      <div className="flex items-center gap-2">
-        <span className="text-base text-gray-300">
-          {t.recipe.rating}:
-        </span>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={() =>
-              setNewReview((prev) => ({ ...prev, rating: star }))
-            }
-            className={cn(
-              'text-3xl transition-colors',
-              star <= newReview.rating ? 'text-yellow-400' : 'text-gray-600'
-            )}
-          >
-            ★
-          </button>
-        ))}
-      </div>
-
-      <textarea
-        value={newReview.comment}
-        onChange={(e) =>
-          setNewReview((prev) => ({
-            ...prev,
-            comment: e.target.value,
-          }))
-        }
-        placeholder={t.recipe.writeReview}
-        className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-base text-gray-100 placeholder:text-gray-500"
-        rows={4}
-        required
-      />
-
-      <button
-        type="submit"
-        className="inline-flex px-5 py-2.5 bg-emerald-600 text-white text-base rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
-      >
-        {t.recipe.submitReview}
-      </button>
-    </form>
-  )}
-
-  {/* Formulário para editar avaliação */}
-  {editingReview && (
-    <form
-      onSubmit={handleUpdateReview}
-      className="rounded-xl bg-blue-900/30 border border-blue-700/70 p-4 space-y-3"
-    >
-      <div className="flex items-center justify-between">
-        <h4 className="text-lg font-medium text-gray-100">
-          Editar Avaliação
-        </h4>
-        <button
-          type="button"
-          onClick={() => setEditingReview(null)}
-          className="text-gray-400 hover:text-gray-200"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <span className="text-base text-gray-300">Avaliação:</span>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={() =>
-              setEditingReview((prev) =>
-                prev ? { ...prev, rating: star } : null
-              )
-            }
-            className={cn(
-              'text-3xl transition-colors',
-              star <= editingReview.rating
-                ? 'text-yellow-400'
-                : 'text-gray-600'
-            )}
-          >
-            ★
-          </button>
-        ))}
-      </div>
-
-      <textarea
-        value={editingReview.comment}
-        onChange={(e) =>
-          setEditingReview((prev) =>
-            prev ? { ...prev, comment: e.target.value } : prev
-          )
-        }
-        placeholder="Escreva sua avaliação..."
-        className="w-full p-3 rounded-lg bg-gray-900 border border-gray-700 text-base text-gray-100 placeholder:text-gray-500"
-        rows={4}
-        required
-      />
-
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          className="px-5 py-2.5 bg-blue-600 text-white text-base rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Salvar Alterações
-        </button>
-        <button
-          type="button"
-          onClick={() => setEditingReview(null)}
-          className="px-5 py-2.5 bg-gray-800 text-gray-200 text-base rounded-lg hover:bg-gray-700 transition-colors"
-        >
-          Cancelar
-        </button>
-      </div>
-    </form>
-  )}
-
-  {!isAuthenticated && (
-    <p className="text-base text-gray-500 dark:text-gray-400">
-      {t.recipe.signInToReview}
-    </p>
-  )}
-
-  {/* Lista de avaliações como “cartõezinhos” */}
-  <div className="space-y-3">
-    {recipe.reviews.length === 0 ? (
-      <p className="text-base text-gray-500 dark:text-gray-400">
-        {t.recipe.noReviews || 'Nenhuma avaliação ainda'}
-      </p>
-    ) : (
-      recipe.reviews.map((review) => {
-        const isUserReview = user?.id === review.userId;
-        return (
-          <div
-            key={review.id}
-            className="rounded-xl bg-gray-900/50 border border-gray-800 p-4 flex flex-col gap-1"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-lg font-semibold text-gray-100">
-                  {review.userName}
-                </p>
-                <p className="text-base text-gray-300">
-                  {review.comment}
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <span
-                      key={i}
-                      className={cn(
-                        'text-xl',
-                        i < review.rating
-                          ? 'text-yellow-400'
-                          : 'text-gray-600'
-                      )}
+                  {/* Formulário para adicionar nova avaliação */}
+                  {canAddReview && (
+                    <form
+                      onSubmit={handleAddReview}
+                      className="mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700"
                     >
-                      ★
-                    </span>
-                  ))}
-                </div>
-                {isUserReview && (
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() =>
-                        setEditingReview({
-                          id: review.id,
-                          rating: review.rating,
-                          comment: review.comment,
-                        })
-                      }
-                      className="p-1.5 text-blue-400 hover:bg-blue-900/40 rounded transition-colors"
-                      title="Editar avaliação"
+                      <h4 className="text-lg font-medium mb-3 text-gray-900 dark:text-white">
+                        Adicionar Avaliação
+                      </h4>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-base text-gray-700 dark:text-gray-300">
+                          {t.recipe.rating}:
+                        </span>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() =>
+                              setNewReview((prev) => ({ ...prev, rating: star }))
+                            }
+                            className={cn(
+                              'text-3xl transition-colors',
+                              star <= newReview.rating
+                                ? 'text-yellow-400'
+                                : 'text-gray-300'
+                            )}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        value={newReview.comment}
+                        onChange={(e) =>
+                          setNewReview((prev) => ({
+                            ...prev,
+                            comment: e.target.value,
+                          }))
+                        }
+                        placeholder={t.recipe.writeReview}
+                        className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg mb-2 text-base text-gray-900 dark:text-white bg-white dark:bg-gray-900"
+                        rows={4}
+                        required
+                      />
+                      <button
+                        type="submit"
+                        className="px-5 py-2.5 bg-emerald-600 text-white text-base rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
+                      >
+                        {t.recipe.submitReview}
+                      </button>
+                    </form>
+                  )}
+
+                  {/* Formulário para editar avaliação */}
+                  {editingReview && (
+                    <form
+                      onSubmit={handleUpdateReview}
+                      className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700"
                     >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteReview(review.id)}
-                      className="p-1.5 text-red-400 hover:bg-red-900/40 rounded transition-colors"
-                      title="Excluir avaliação"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                          Editar Avaliação
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => setEditingReview(null)}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-base text-gray-700 dark:text-gray-300">
+                          Avaliação:
+                        </span>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() =>
+                              setEditingReview((prev) =>
+                                prev ? { ...prev, rating: star } : null
+                              )
+                            }
+                            className={cn(
+                              'text-3xl transition-colors',
+                              star <= editingReview.rating
+                                ? 'text-yellow-400'
+                                : 'text-gray-300'
+                            )}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        value={editingReview.comment}
+                        onChange={(e) =>
+                          setEditingReview((prev) =>
+                            prev ? { ...prev, comment: e.target.value } : prev
+                          )
+                        }
+                        placeholder="Escreva sua avaliação..."
+                        className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg mb-2 text-base text-gray-900 dark:text-white bg-white dark:bg-gray-900"
+                        rows={4}
+                        required
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          className="px-5 py-2.5 bg-blue-600 text-white text-base rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Salvar Alterações
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingReview(null)}
+                          className="px-5 py-2.5 bg-gray-200 text-gray-700 text-base rounded-lg hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {!isAuthenticated && (
+                    <p className="text-base text-gray-500 dark:text-gray-400 mb-4">
+                      {t.recipe.signInToReview}
+                    </p>
+                  )}
+
+                  <div className="space-y-4">
+                    {recipe.reviews.length === 0 ? (
+                      <p className="text-base text-gray-500 dark:text-gray-400">
+                        {t.recipe.noReviews || 'Nenhuma avaliação ainda'}
+                      </p>
+                    ) : (
+                      recipe.reviews.map((review) => {
+                        const isUserReview = user?.id === review.userId;
+                        return (
+                          <div
+                            key={review.id}
+                            className="border-b border-gray-100 dark:border-gray-800 pb-4 last:border-b-0 last:pb-0"
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                                {review.userName}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center">
+                                  {[...Array(5)].map((_, i) => (
+                                    <span
+                                      key={i}
+                                      className={cn(
+                                        'text-xl',
+                                        i < review.rating
+                                          ? 'text-yellow-400'
+                                          : 'text-gray-300'
+                                      )}
+                                    >
+                                      ★
+                                    </span>
+                                  ))}
+                                </div>
+                                {isUserReview && (
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={() =>
+                                        setEditingReview({
+                                          id: review.id,
+                                          rating: review.rating,
+                                          comment: review.comment,
+                                        })
+                                      }
+                                      className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                                      title="Editar avaliação"
+                                    >
+                                      <Edit2 className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteReview(review.id)}
+                                      className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                                      title="Excluir avaliação"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-base text-gray-600 dark:text-gray-300 mb-0.5">
+                              {review.comment}
+                            </p>
+                            <span className="text-sm text-gray-400">
+                              {review.date}
+                            </span>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
-
-            <span className="text-sm text-gray-500 mt-1">
-              {review.date}
-            </span>
           </div>
-        );
-      })
-    )}
+        </div>
+      </div>
+
+      {isEditModalOpen && (
+        <EditRecipeForm
+          recipe={recipe}
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+        />
+      )}
+    </>
+  );
+}
