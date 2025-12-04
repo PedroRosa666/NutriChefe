@@ -15,19 +15,19 @@ export function PremiumUpgrade() {
   const t = useTranslation();
   const { showToast } = useToastStore();
 
-  // ===== Hooks DEVEM ficar dentro do componente =====
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<{ id: string } | null>(null);
 
-  // carrega usuário logado (para evitar token inválido)
+  // carrega usuário logado
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user ? { id: data.user.id } : null));
+    supabase.auth.getUser().then(({ data }) =>
+      setUser(data.user ? { id: data.user.id } : null)
+    );
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ? { id: session.user.id } : null);
     });
     return () => {
-      // unsubscribe (se a lib suportar)
       // @ts-ignore
       sub?.subscription?.unsubscribe?.();
     };
@@ -39,71 +39,70 @@ export function PremiumUpgrade() {
       .then((ps) => setPlans(ps || []))
       .catch((e) => {
         console.error(e);
-        // seu Toast espera string
-        showToast('Erro ao carregar planos');
+        showToast(t.premium.loadPlansError);
       });
-  }, [showToast]);
+  }, [showToast, t.premium.loadPlansError]);
 
-  // Prefere um plano que tenha stripe_price_id; senão, pega o primeiro mesmo
   const primaryPlan = useMemo(
-    () => (plans.find((p) => (p as any).stripe_price_id) ?? plans[0] ?? null),
+    () => plans.find((p) => (p as any).stripe_price_id) ?? plans[0] ?? null,
     [plans]
   );
 
-  // Formatação de preço (BRL) com fallback 19,90 se vier 0/undefined
   const priceNumber =
     primaryPlan && typeof primaryPlan.price === 'number' && primaryPlan.price > 0
       ? primaryPlan.price
       : FALLBACK_DISPLAY_PRICE;
 
-  const priceBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(priceNumber);
+  const priceBRL = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(priceNumber);
+
   const billing = primaryPlan?.billing_period || 'monthly';
 
   const features = [
     {
       icon: <Bot className="w-5 h-5" />,
-      title: 'Mentoria IA Ilimitada',
-      description: 'Chat 24/7 com IA especializada em nutrição'
+      title: t.premium.features.mentoringUnlimitedTitle,
+      description: t.premium.features.mentoringUnlimitedDescription,
     },
     {
       icon: <MessageCircle className="w-5 h-5" />,
-      title: 'Consultas Personalizadas',
-      description: 'IA configurada pelo seu nutricionista'
+      title: t.premium.features.personalizedConsultationsTitle,
+      description: t.premium.features.personalizedConsultationsDescription,
     },
     {
       icon: <Star className="w-5 h-5" />,
-      title: 'Recomendações Inteligentes',
-      description: 'Sugestões de receitas baseadas no seu perfil'
+      title: t.premium.features.smartRecommendationsTitle,
+      description: t.premium.features.smartRecommendationsDescription,
     },
     {
       icon: <Zap className="w-5 h-5" />,
-      title: 'Suporte Prioritário',
-      description: 'Atendimento rápido e especializado'
-    }
+      title: t.premium.features.prioritySupportTitle,
+      description: t.premium.features.prioritySupportDescription,
+    },
   ];
 
   const handleSubscribe = async () => {
     try {
       setLoading(true);
 
-      // precisa estar logado
       if (!user) {
-        showToast('Faça login para assinar');
-        // ajuste a rota caso sua tela de login seja outra
+        showToast(t.premium.loginRequired);
         window.location.href = '/login';
         return;
       }
 
-      // Usa o price do plano se existir; senão, fallback
-      const priceIdToUse = (primaryPlan as any)?.stripe_price_id || FALLBACK_STRIPE_PRICE_ID;
+      const priceIdToUse =
+        (primaryPlan as any)?.stripe_price_id || FALLBACK_STRIPE_PRICE_ID;
 
       await startCheckout({
-        planId: primaryPlan?.id,   // ajuda o backend a vincular quando existir
+        planId: primaryPlan?.id,
         priceId: priceIdToUse,
       });
     } catch (e: any) {
       console.error(e);
-      showToast(e?.message || 'Não foi possível iniciar o checkout');
+      showToast(e?.message || t.premium.checkoutErrorGeneric);
     } finally {
       setLoading(false);
     }
@@ -116,6 +115,7 @@ export function PremiumUpgrade() {
         animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl p-8 text-center border border-purple-200 dark:border-purple-700"
       >
+        {/* ícone topo */}
         <div className="flex justify-center mb-6">
           <div className="relative">
             <div className="p-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full">
@@ -123,7 +123,7 @@ export function PremiumUpgrade() {
             </div>
             <motion.div
               animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
               className="absolute -top-2 -right-2"
             >
               <Sparkles className="w-6 h-6 text-yellow-500" />
@@ -131,21 +131,25 @@ export function PremiumUpgrade() {
           </div>
         </div>
 
+        {/* título / descrição */}
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-          Desbloqueie a Mentoria IA
+          {t.premium.title}
         </h1>
 
         <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
-          Para ter acesso ilimitado à nossa Mentoria IA e outras funcionalidades exclusivas,
-          assine o nosso <span className="font-semibold text-purple-600 dark:text-purple-400">Plano Premium</span>!
+          {t.premium.descriptionPrefix}
+          <span className="font-semibold text-purple-600 dark:text-purple-400">
+            {t.premium.planName}
+          </span>
+          {t.premium.descriptionSuffix}
         </p>
 
-        {/* Card de preço + benefícios (8 itens em duas colunas alinhadas) */}
+        {/* Card de preço + benefícios */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-8 border border-purple-200 dark:border-purple-700">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Crown className="w-6 h-6 text-purple-600" />
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Plano Premium
+              {t.premium.planName}
             </h2>
           </div>
 
@@ -154,10 +158,12 @@ export function PremiumUpgrade() {
             <span className="text-4xl font-bold text-purple-600 dark:text-purple-400">
               {priceBRL}
             </span>
-            <span className="text-gray-600 dark:text-gray-400 ml-2">/ {billing === 'monthly' ? 'mês' : billing}</span>
+            <span className="text-gray-600 dark:text-gray-400 ml-2">
+              / {billing === 'monthly' ? t.premium.perMonthLabel : billing}
+            </span>
           </div>
 
-          {/* Benefícios — 8 itens (4 de cada lado, alinhados no topo) */}
+          {/* Benefícios */}
           <div className="rounded-xl border border-purple-100 dark:border-purple-900/40 bg-white/70 dark:bg-white/5 backdrop-blur p-4 md:p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               {/* Coluna esquerda */}
@@ -165,54 +171,54 @@ export function PremiumUpgrade() {
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
                   <span className="text-gray-700 dark:text-gray-300">
-                    Acesso a <span className="font-medium">nutricionistas certificados</span>
+                    {t.premium.benefits.accessNutritionists}
                   </span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
                   <span className="text-gray-700 dark:text-gray-300">
-                    <span className="font-medium">WhatsApp direto</span> com nutricionistas
+                    {t.premium.benefits.whatsappDirect}
                   </span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
                   <span className="text-gray-700 dark:text-gray-300">
-                    <span className="font-medium">Metas personalizadas</span> e periodização
+                    {t.premium.benefits.personalizedGoals}
                   </span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
                   <span className="text-gray-700 dark:text-gray-300">
-                    <span className="font-medium">Planos alimentares</span> ajustados ao seu perfil
+                    {t.premium.benefits.mealPlans}
                   </span>
                 </li>
               </ul>
 
-              {/* Coluna direita (com divisor como borda à esquerda) */}
+              {/* Coluna direita */}
               <div className="md:pl-6 md:border-l md:border-purple-200/60 dark:md:border-purple-900/40">
                 <ul className="space-y-3">
                   <li className="flex items-center gap-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
                     <span className="text-gray-700 dark:text-gray-300">
-                      <span className="font-medium">Acompanhamento semanal</span> e ajustes contínuos
+                      {t.premium.benefits.weeklyFollowup}
                     </span>
                   </li>
                   <li className="flex items-center gap-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
                     <span className="text-gray-700 dark:text-gray-300">
-                      <span className="font-medium">Relatórios de progresso</span> com gráficos
+                      {t.premium.benefits.progressReports}
                     </span>
                   </li>
                   <li className="flex items-center gap-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
                     <span className="text-gray-700 dark:text-gray-300">
-                      <span className="font-medium">Receitas premium</span> exclusivas
+                      {t.premium.benefits.premiumRecipes}
                     </span>
                   </li>
                   <li className="flex items-center gap-3">
                     <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
                     <span className="text-gray-700 dark:text-gray-300">
-                      <span className="font-medium">Comunidade VIP</span> e desafios mensais
+                      {t.premium.benefits.vipCommunity}
                     </span>
                   </li>
                 </ul>
@@ -220,6 +226,7 @@ export function PremiumUpgrade() {
             </div>
           </div>
 
+          {/* Botão CTA */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -228,11 +235,11 @@ export function PremiumUpgrade() {
             className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Crown className="w-5 h-5" />
-            {loading ? 'Iniciando...' : 'Assinar Plano Premium'}
+            {loading ? t.premium.ctaLoading : t.premium.ctaSubscribe}
           </motion.button>
         </div>
 
-        {/* Grid de features animadas (se quiser manter também) */}
+        {/* Grid de features animadas */}
         <div className="grid md:grid-cols-2 gap-6 mb-2">
           {features.map((feature, index) => (
             <motion.div
@@ -258,7 +265,7 @@ export function PremiumUpgrade() {
         </div>
 
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Cancele a qualquer momento • Sem compromisso • Suporte 24/7
+          {t.premium.footerNote}
         </p>
       </motion.div>
     </div>
