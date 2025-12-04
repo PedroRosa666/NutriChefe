@@ -3,10 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, ChevronDown } from 'lucide-react';
 import { useSettingsStore } from '../../store/settings';
 import type { Language } from '../../lib/i18n/translations';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export function LanguageSwitch() {
   const { language, setLanguage } = useSettingsStore();
   const [isOpen, setIsOpen] = useState(false);
+  const t = useTranslation();
+
+  // string traduzida
+  const selectedLabel = t.common?.selected || 'Selecionado';
 
   // Agora usamos URL de SVG em vez de emoji
   const languages: { value: Language; label: string; flagUrl: string }[] = [
@@ -22,7 +27,8 @@ export function LanguageSwitch() {
     },
   ];
 
-  const currentLanguage = languages.find((lang) => lang.value === language) ?? languages[0];
+  const currentLanguage =
+    languages.find((lang) => lang.value === language) ?? languages[0];
 
   return (
     <div className="relative">
@@ -44,7 +50,7 @@ export function LanguageSwitch() {
             />
           </span>
 
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:block">
+          <span className="hidden text-sm font-medium text-gray-700 dark:text-gray-300 sm:block">
             {currentLanguage.label}
           </span>
         </div>
@@ -52,7 +58,7 @@ export function LanguageSwitch() {
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
         </motion.div>
       </motion.button>
 
@@ -74,7 +80,7 @@ export function LanguageSwitch() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-50"
+              className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
             >
               {languages.map((lang, index) => (
                 <motion.button
@@ -83,10 +89,10 @@ export function LanguageSwitch() {
                     setLanguage(lang.value);
                     setIsOpen(false);
                   }}
-                  className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors ${
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
                     language === lang.value
                       ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                      : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
                   }`}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -106,14 +112,14 @@ export function LanguageSwitch() {
                     <span className="font-medium">{lang.label}</span>
                     {language === lang.value && (
                       <span className="text-xs text-green-600 dark:text-green-400">
-                        Selecionado
+                        {selectedLabel}
                       </span>
                     )}
                   </div>
 
                   {language === lang.value && (
                     <motion.div
-                      className="ml-auto w-2 h-2 bg-green-500 rounded-full"
+                      className="ml-auto h-2 w-2 rounded-full bg-green-500"
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ delay: 0.1 }}
