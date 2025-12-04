@@ -106,7 +106,7 @@ export function LanguageSwitch() {
                     <span className="font-medium">{lang.label}</span>
                     {language === lang.value && (
                       <span className="text-xs text-green-600 dark:text-green-400">
-                        Selecionado
+                        {t.common.select}
                       </span>
                     )}
                   </div>
