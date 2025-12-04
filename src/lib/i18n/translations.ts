@@ -126,6 +126,7 @@ export const translations = {
 
   pt: {
     common: {
+      select:"Selecionado",
       search: 'Buscar receitas...',
       signIn: 'Entrar',
       signUp: 'Cadastrar',
