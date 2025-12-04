@@ -162,6 +162,7 @@ export const translations = {
   // --------------------------------------------
   pt: {
     common: {
+      forgotPassword: 'Esqueci minha senha',
       selected: "Selecionado",
       search: 'Buscar receitas...',
       signIn: 'Entrar',
