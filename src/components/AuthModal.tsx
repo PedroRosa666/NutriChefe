@@ -160,21 +160,21 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                   />
                 </div>
 
-                {/* Tipo de usuário */}
+                {/* Tipo de usuário - layout igual Entrar/Cadastrar */}
                 <div className="space-y-1.5">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
                     {t.profile.accountType}
                   </label>
 
-                  <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1.5 text-xs dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex rounded-full bg-slate-100 p-1.5 text-xs dark:bg-slate-800">
                     <button
                       type="button"
                       onClick={() => setUserType('Client')}
                       className={cn(
-                        'px-4 py-1.5 rounded-full font-medium transition-all',
+                        'flex-1 rounded-full px-3 py-1.5 font-medium transition-all',
                         userType === 'Client'
-                          ? 'bg-emerald-500 text-white shadow'
-                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50'
+                          ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-50'
+                          : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'
                       )}
                     >
                       {t.profile.client}
@@ -184,10 +184,10 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                       type="button"
                       onClick={() => setUserType('Nutritionist')}
                       className={cn(
-                        'px-4 py-1.5 rounded-full font-medium transition-all',
+                        'flex-1 rounded-full px-3 py-1.5 font-medium transition-all',
                         userType === 'Nutritionist'
-                          ? 'bg-emerald-500 text-white shadow'
-                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50'
+                          ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-50'
+                          : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'
                       )}
                     >
                       {t.profile.nutricionist}
