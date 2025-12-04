@@ -97,15 +97,15 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">
                 NutriChef
               </span>
-              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
                 {isSignup ? t.common.createaccount : t.common.signIn}
               </h2>
             </div>
           </div>
 
-          {/* Abas levemente menores */}
+          {/* Abas levemente maiores (fonte maior) */}
           <div className="px-6 pb-3">
-            <div className="flex rounded-full bg-slate-100 p-1.5 text-xs dark:bg-slate-800">
+            <div className="flex rounded-full bg-slate-100 p-1.5 text-sm dark:bg-slate-800">
               <button
                 type="button"
                 onClick={() => setMode('signin')}
@@ -155,7 +155,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                     value={name}
                     autoComplete="name"
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-slate-900 shadow-sm outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
                     required
                   />
                 </div>
@@ -166,7 +166,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                     {t.profile.accountType}
                   </label>
 
-                  <div className="flex rounded-full bg-slate-100 p-1.5 text-xs dark:bg-slate-800">
+                  <div className="flex rounded-full bg-slate-100 p-1.5 text-sm dark:bg-slate-800">
                     <button
                       type="button"
                       onClick={() => setUserType('Client')}
@@ -212,7 +212,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-slate-900 shadow-sm outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
                 required
               />
             </div>
@@ -232,7 +232,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                 autoComplete={isSignup ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-slate-900 shadow-sm outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
                 required
               />
             </div>
@@ -242,7 +242,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
                   {t.common.forgotPassword}
                 </button>
@@ -254,7 +254,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               type="submit"
               disabled={loading}
               className={cn(
-                'mt-2 inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:cursor-not-allowed disabled:bg-emerald-400',
+                'mt-2 inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:cursor-not-allowed disabled:bg-emerald-400',
                 loading && 'opacity-80'
               )}
             >
@@ -266,7 +266,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
             </button>
 
             {/* Footer de alternância */}
-            <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-3 text-center text-sm text-slate-500 dark:text-slate-400">
               {mode === 'signin'
                 ? t.common.dontHaveAccount
                 : t.common.alreadyHaveAccount}
