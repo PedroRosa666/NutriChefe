@@ -24,7 +24,6 @@ export const translations = {
         dark: 'Dark',
         system: 'System'
       },
-      // nova chave usada em alguns componentes
       close: 'Close',
     },
     buttons: {
@@ -33,23 +32,20 @@ export const translations = {
       Favorites: 'Favorites',
       Nutrition_goal: 'Nutrition Goals',
     },
-    filters: {
-      advanced: 'Advanced Filters',
-      minRating: 'Minimum Rating',
-      clearAll: 'Clear All Filters',
-      prepTime: {
-        quick: 'Quick (≤15 min)',
-        medium: 'Medium (≤30 min)',
-        long: 'Long (>30 min)'
-      }
-    },
-    home: {
-      title: 'Discover Healthy Recipes',
-      subtitle: 'Find and share nutritious recipes that match your dietary preferences.',
-      createRecipe: 'Create Recipe',
-      noRecipes: 'No recipes found. Try adjusting your filters, or log in to see the recipes.',
-    },
+    // ...
     profile: {
+      // 👇 NOVAS CHAVES
+      title: 'My profile',
+      subtitle:
+        'View your personal information, goals, and activity within the platform.',
+      overviewClient: 'My activity',
+      overviewClientDescription:
+        'Track your favorites, goals, and the impact of your daily choices.',
+      overviewNutritionist: 'My activity',
+      overviewNutritionistDescription:
+        'See the performance of your recipes, client reviews, and your presence on the platform.',
+
+      // 👇 JÁ EXISTENTES
       myRecipes: 'My Recipes',
       favorites: 'Favorites',
       nutritionGoals: 'Nutrition Goals',
@@ -82,60 +78,7 @@ export const translations = {
         fiber: 'Fiber',
       },
     },
-    categories: {
-      all: 'All',
-      vegan: 'Vegan',
-      lowCarb: 'Low Carb',
-      highProtein: 'High Protein',
-      glutenFree: 'Gluten Free',
-      vegetarian: 'Vegetarian',
-    },
-    recipe: {
-      recipeTitle: "Title",
-      recipeImageURL: "Image URL",
-      recipeDescription: "Description",
-      prepTime: 'Preparation Time',
-      difficulty: 'Difficulty',
-      recipeCategory: "Category",
-      ingredients: 'Ingredients',
-      instructions: 'Instructions',
-      nutritionFacts: 'Nutrition Facts (Per Serving)',
-      reviews: 'Notes and ratings',
-      writeReview: 'Write your review...',
-      submitReview: 'Submit Review',
-      signInToReview: 'Please sign in to leave a review.',
-      addIngredient: 'Add Ingredient',
-      addStep: 'Add Step',
-      step: 'Step',
-      Step: 'Step',
-      example: '"2 cups flour"',
-      perServing: 'per serving',
-      deleteConfirm: 'Are you sure you want to delete this recipe?',
-      share: 'Share Recipe',
-      edit: 'Edit Recipe',
-      delete: 'Delete Recipe',
-      difficultyLevels: {
-        easy: 'Easy',
-        medium: 'Medium',
-        hard: 'Hard'
-      },
-      CreateNewRecipe: 'Create new recipe',
-      CreateRecipe: 'Create recipe',
-      rating: 'Rating',
-      noReviews: 'No reviews',
-
-      // **NOVAS CHAVES** usadas no RecipeDetails / UI
-      details: 'Recipe details',
-      recipe: 'Recipe',
-      author: 'Author',
-      authorFallbackName: 'User',
-      postedOn: 'Posted on',
-      reviewSingular: 'review',
-      reviewPlural: 'reviews',
-      deleteReviewConfirm: 'Are you sure you want to delete this review?',
-      addReviewTitle: 'Add review',
-      editReviewTitle: 'Edit review',
-    },
+    // ...
   },
 
   pt: {
@@ -163,7 +106,6 @@ export const translations = {
         dark: 'Escuro',
         system: 'Sistema'
       },
-      // igual ao en.common.close
       close: 'Fechar',
     },
     buttons: {
@@ -172,23 +114,20 @@ export const translations = {
       Favorites: 'Favoritos',
       Nutrition_goal: 'Metas Nutricionais',
     },
-    filters: {
-      advanced: 'Filtros Avançados',
-      minRating: 'Avaliação Mínima',
-      clearAll: 'Limpar Todos os Filtros',
-      prepTime: {
-        quick: 'Rápido (≤15 min)',
-        medium: 'Médio (≤30 min)',
-        long: 'Longo (>30 min)'
-      }
-    },
-    home: {
-      title: 'Descubra Receitas Saudáveis',
-      subtitle: 'Encontre e compartilhe receitas nutritivas que combinam com suas preferências alimentares.',
-      createRecipe: 'Criar Receita',
-      noRecipes: 'Nenhuma receita encontrada. Tente ajustar seus filtros ou faça login para ver as receitas.',
-    },
+    // ...
     profile: {
+      // 👇 NOVAS CHAVES
+      title: 'Meu perfil',
+      subtitle:
+        'Veja suas informações pessoais, metas e atividades dentro da plataforma.',
+      overviewClient: 'Minha atividade',
+      overviewClientDescription:
+        'Acompanhe seus favoritos, metas e impacto das suas escolhas no dia a dia.',
+      overviewNutritionist: 'Minha atividade',
+      overviewNutritionistDescription:
+        'Veja o desempenho das suas receitas, avaliações dos clientes e sua presença na plataforma.',
+
+      // 👇 JÁ EXISTENTES
       myRecipes: 'Minhas Receitas',
       favorites: 'Favoritos',
       nutritionGoals: 'Metas Nutricionais',
@@ -221,60 +160,7 @@ export const translations = {
         fiber: 'Fibra',
       },
     },
-    categories: {
-      all: 'Todas',
-      vegan: 'Vegana',
-      lowCarb: 'Baixo Carboidrato',
-      highProtein: 'Rica em Proteína',
-      glutenFree: 'Sem Glúten',
-      vegetarian: 'Vegetariana',
-    },
-    recipe: {
-      recipeTitle: "Titulo",
-      recipeImageURL: "URL da imagem",
-      recipeDescription: "Descrição",
-      prepTime: 'Tempo de Preparo',
-      difficulty: 'Dificuldade',
-      recipeCategory: "Categoria",
-      ingredients: 'Ingredientes',
-      addIngredient: 'Adicionar Ingrediente',
-      instructions: 'Modo de Preparo',
-      addStep: 'Adicionar Passo',
-      step: 'Passo a passo',
-      Step: 'Passo',
-      example: 'Exemplo: 2 xícaras de açucar',
-      nutritionFacts: 'Informação Nutricional (Por porção)',
-      reviews: 'Notas e avaliações',
-      writeReview: 'Compartilhe sua opinião',
-      submitReview: 'Enviar Avaliação',
-      signInToReview: 'Faça login para deixar uma avaliação.',
-      perServing: 'por porção',
-      deleteConfirm: 'Tem certeza que deseja excluir esta receita?',
-      share: 'Compartilhar Receita',
-      edit: 'Editar Receita',
-      delete: 'Excluir Receita',
-      difficultyLevels: {
-        easy: 'Fácil',
-        medium: 'Médio',
-        hard: 'Difícil'
-      },
-      CreateNewRecipe: 'Criar nova receita',
-      CreateRecipe: 'Criar receita',
-      rating: 'Classifique essa receita',
-      noReviews: 'Sem Avaliações',
-
-      // **NOVAS CHAVES** usadas no RecipeDetails / UI
-      details: 'Detalhes da receita',
-      recipe: 'Receita',
-      author: 'Autor',
-      authorFallbackName: 'Usuário',
-      postedOn: 'Postado em',
-      reviewSingular: 'avaliação',
-      reviewPlural: 'avaliações',
-      deleteReviewConfirm: 'Tem certeza que deseja excluir esta avaliação?',
-      addReviewTitle: 'Adicionar avaliação',
-      editReviewTitle: 'Editar avaliação',
-    },
+    // ...
   },
 };
 
