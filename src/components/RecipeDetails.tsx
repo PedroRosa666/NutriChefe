@@ -531,7 +531,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     >
                       <div className="flex items-center justify-between">
                         <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                          {t.recipe.editReview || 'Editar Avaliação'}
+                          {t.recipe.editReviewTitle}
                         </h4>
                         <button
                           type="button"
