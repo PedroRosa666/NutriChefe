@@ -608,7 +608,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   <div className="space-y-3">
                     {recipe.reviews.length === 0 ? (
                       <p className="text-base text-gray-500 dark:text-gray-400">
-                        {t.recipe.noReview}
+                        {t.recipe.noReviews}
                       </p>
                     ) : (
                       recipe.reviews.map((review) => {
