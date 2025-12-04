@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, Leaf } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { ForgotPasswordModal } from './auth/ForgotPasswordModal';
 import { cn } from '../lib/utils';
@@ -26,16 +26,19 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
 
   const { signIn, signUp } = useAuthStore();
 
-  // === 🔧 Sincroniza o modo sempre que o modal abrir ===
+  // Sincroniza o modo sempre que o modal abrir
   useEffect(() => {
     if (!isOpen) return;
-    // 1) se a prop vier, respeita a prop
+
     let nextMode: 'signin' | 'signup' = initialMode;
-    // 2) senão, usa o último modo persistido (se existir)
+
     try {
       const persisted = localStorage.getItem(AUTH_MODE_KEY) as 'signin' | 'signup' | null;
       if (!initialMode && persisted) nextMode = persisted;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
+
     setMode(nextMode);
   }, [isOpen, initialMode]);
 
@@ -43,10 +46,11 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   useEffect(() => {
     try {
       localStorage.setItem(AUTH_MODE_KEY, mode);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [mode]);
 
-  // Abas
   const isSignup = mode === 'signup';
 
   if (!isOpen) return null;
@@ -74,24 +78,78 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 relative">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white/95 shadow-2xl dark:bg-slate-900/95 border border-slate-100/70 dark:border-slate-800">
+          {/* Botão fechar */}
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+            className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
           >
-            <X className="w-6 h-6" />
+            <X className="h-5 w-5" />
+            <span className="sr-only">{t.common.close}</span>
           </button>
 
-          <h2 className="sr-only">
-            {isSignup ? t.common.createaccount : t.common.signIn}
-          </h2>
+          {/* Header com ícone e título */}
+          <div className="flex flex-col items-center gap-3 px-6 pt-8 pb-4 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300">
+              <Leaf className="h-6 w-6" />
+            </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">
+                NutriChef
+              </p>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
+                {isSignup ? t.common.createaccount : t.common.signIn}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {isSignup
+                  ? t.common.dontHaveAccount
+                  : t.common.alreadyHaveAccount}
+              </p>
+            </div>
+
+            {/* Abas Sign In / Sign Up */}
+            <div className="mt-2 flex w-full rounded-full bg-slate-100 p-1 text-xs dark:bg-slate-800">
+              <button
+                type="button"
+                onClick={() => setMode('signin')}
+                className={cn(
+                  'flex-1 rounded-full px-3 py-2 font-medium transition-all',
+                  mode === 'signin'
+                    ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-50'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'
+                )}
+              >
+                {t.common.signIn}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('signup')}
+                className={cn(
+                  'flex-1 rounded-full px-3 py-2 font-medium transition-all',
+                  mode === 'signup'
+                    ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-50'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'
+                )}
+              >
+                {t.common.signUp}
+              </button>
+            </div>
+          </div>
+
+          {/* Formulário */}
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4 border-t border-slate-100 px-6 pb-6 pt-4 dark:border-slate-800"
+          >
             {isSignup && (
               <>
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">
+                <div className="space-y-1">
+                  <label
+                    htmlFor="name"
+                    className="block text-sm font-medium text-slate-700 dark:text-slate-100"
+                  >
                     {t.profile.name}
                   </label>
                   <input
@@ -99,84 +157,101 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                     id="name"
                     name="name"
                     value={name}
+                    autoComplete="name"
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
                     required
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
                     {t.profile.accountType}
                   </label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
                       onClick={() => setUserType('Client')}
                       className={cn(
-                        'px-4 py-2 rounded-lg border-2 transition-colors dark:bg-white dark:text-black',
+                        'flex flex-col items-start gap-1 rounded-xl border px-3 py-2 text-left text-sm transition-all dark:bg-slate-900',
                         userType === 'Client'
-                          ? 'border-green-500 bg-green-50 dark:bg-green-50 text-green-700 dark:text-green-700'
-                          : 'border-gray-200 hover:border-green-200'
+                          ? 'border-emerald-500 bg-emerald-50/80 text-emerald-800 shadow-sm dark:bg-emerald-900/30 dark:text-emerald-100'
+                          : 'border-slate-200 hover:border-emerald-200 dark:border-slate-700 dark:hover:border-emerald-500/60'
                       )}
                     >
-                      {t.profile.client}
+                      <span className="font-semibold">{t.profile.client}</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {t.home?.title}
+                      </span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setUserType('Nutritionist')}
                       className={cn(
-                        'px-4 py-2 rounded-lg border-2 transition-colors dark:bg-white dark:text-black',
+                        'flex flex-col items-start gap-1 rounded-xl border px-3 py-2 text-left text-sm transition-all dark:bg-slate-900',
                         userType === 'Nutritionist'
-                          ? 'border-green-500 bg-green-50 dark:bg-green-50 text-green-700 dark:text-green-700'
-                          : 'border-gray-200 hover:border-green-200'
+                          ? 'border-emerald-500 bg-emerald-50/80 text-emerald-800 shadow-sm dark:bg-emerald-900/30 dark:text-emerald-100'
+                          : 'border-slate-200 hover:border-emerald-200 dark:border-slate-700 dark:hover:border-emerald-500/60'
                       )}
                     >
-                      {t.profile.nutricionist}
+                      <span className="font-semibold">
+                        {t.profile.nutricionist}
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {t.profile.statistics}
+                      </span>
                     </button>
                   </div>
                 </div>
               </>
             )}
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">
-                Email
+            <div className="space-y-1">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-slate-700 dark:text-slate-100"
+              >
+                {t.profile.email}
               </label>
               <input
                 type="email"
                 id="email"
                 name="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
                 required
               />
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">
+            <div className="space-y-1">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-slate-700 dark:text-slate-100"
+              >
                 {t.profile.password}
               </label>
               <input
                 type="password"
                 id="password"
                 name="password"
+                autoComplete={isSignup ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-black"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
                 required
               />
             </div>
 
             {mode === 'signin' && (
-              <div className="text-right">
+              <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-sm text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 font-medium"
+                  className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
-                  Esqueci minha senha
+                  {t.common.forgotPassword}
                 </button>
               </div>
             )}
@@ -185,27 +260,31 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               type="submit"
               disabled={loading}
               className={cn(
-                'w-full py-2 rounded-lg text-white font-medium transition-colors',
-                loading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700'
+                'mt-2 inline-flex w-full items-center justify-center rounded-xl border border-transparent bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-emerald-400 dark:focus-visible:ring-offset-slate-900',
+                loading && 'opacity-80'
               )}
             >
-              {loading ? t.common.loading : mode === 'signin' ? t.common.signIn : t.common.signUp}
+              {loading
+                ? t.common.loading
+                : mode === 'signin'
+                ? t.common.signIn
+                : t.common.signUp}
             </button>
-          </form>
 
-          {/* Troca rápida no rodapé (mantida) */}
-          <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-300">
-            {mode === 'signin' ? t.common.dontHaveAccount : t.common.alreadyHaveAccount}
-            <button
-              type="button"
-              onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-              className="text-green-600 hover:text-green-700 font-medium ml-1"
-            >
-              {mode === 'signin' ? t.common.signUp : t.common.signIn}
-            </button>
-          </p>
+            {/* Rodapé com alternância extra */}
+            <p className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400">
+              {mode === 'signin'
+                ? t.common.dontHaveAccount
+                : t.common.alreadyHaveAccount}
+              <button
+                type="button"
+                onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+                className="ml-1 font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+              >
+                {mode === 'signin' ? t.common.signUp : t.common.signIn}
+              </button>
+            </p>
+          </form>
         </div>
       </div>
 
