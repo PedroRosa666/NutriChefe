@@ -8,12 +8,21 @@ export function LanguageSwitch() {
   const { language, setLanguage } = useSettingsStore();
   const [isOpen, setIsOpen] = useState(false);
 
-  const languages: { value: Language; label: string; flag: string }[] = [
-    { value: 'en', label: 'English', flag: '🇺🇸' },
-    { value: 'pt', label: 'Português', flag: '🇧🇷' },
+  // Agora usamos URL de SVG em vez de emoji
+  const languages: { value: Language; label: string; flagUrl: string }[] = [
+    {
+      value: 'en',
+      label: 'English',
+      flagUrl: 'https://flagcdn.com/us.svg',
+    },
+    {
+      value: 'pt',
+      label: 'Português',
+      flagUrl: 'https://flagcdn.com/br.svg',
+    },
   ];
 
-  const currentLanguage = languages.find(lang => lang.value === language);
+  const currentLanguage = languages.find((lang) => lang.value === language) ?? languages[0];
 
   return (
     <div className="relative">
@@ -25,9 +34,18 @@ export function LanguageSwitch() {
       >
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-          <span className="text-lg">{currentLanguage?.flag}</span>
+
+          {/* Bandeira atual */}
+          <span className="relative inline-flex h-5 w-7 overflow-hidden rounded-sm ring-1 ring-gray-200 dark:ring-gray-700">
+            <img
+              src={currentLanguage.flagUrl}
+              alt={currentLanguage.label}
+              className="h-full w-full object-cover"
+            />
+          </span>
+
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:block">
-            {currentLanguage?.label}
+            {currentLanguage.label}
           </span>
         </div>
         <motion.div
@@ -49,7 +67,7 @@ export function LanguageSwitch() {
               className="fixed inset-0 z-40"
               onClick={() => setIsOpen(false)}
             />
-            
+
             {/* Dropdown */}
             <motion.div
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -75,7 +93,15 @@ export function LanguageSwitch() {
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ x: 4 }}
                 >
-                  <span className="text-xl">{lang.flag}</span>
+                  {/* Bandeira na lista */}
+                  <span className="relative inline-flex h-6 w-8 overflow-hidden rounded-sm ring-1 ring-gray-200 dark:ring-gray-700">
+                    <img
+                      src={lang.flagUrl}
+                      alt={lang.label}
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+
                   <div className="flex flex-col">
                     <span className="font-medium">{lang.label}</span>
                     {language === lang.value && (
@@ -84,6 +110,7 @@ export function LanguageSwitch() {
                       </span>
                     )}
                   </div>
+
                   {language === lang.value && (
                     <motion.div
                       className="ml-auto w-2 h-2 bg-green-500 rounded-full"
