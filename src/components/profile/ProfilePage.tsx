@@ -15,22 +15,20 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
   const t = useTranslation();
 
   const BackToRecipes = t.buttons.BackToRecipes;
-  const profileTitle = t.profile?.title || 'Meu perfil';
-  const profileSubtitle =
-    t.profile?.subtitle ||
-    'Veja suas informações pessoais, metas e atividades dentro da plataforma.';
 
   const isClient = user?.type === 'Client';
 
+  // Agora tudo vem do arquivo de traduções
+  const profileTitle = t.profile?.title;
+  const profileSubtitle = t.profile?.subtitle;
+
   const activityTitle = isClient
-    ? t.profile?.overviewClient || 'Minha atividade'
-    : t.profile?.overviewNutritionist || 'Minha atividade';
+    ? t.profile?.overviewClient
+    : t.profile?.overviewNutritionist;
 
   const activitySubtitle = isClient
-    ? t.profile?.overviewClientDescription ||
-      'Acompanhe seus favoritos, metas e impacto das suas escolhas no dia a dia.'
-    : t.profile?.overviewNutritionistDescription ||
-      'Veja o desempenho das suas receitas, avaliações dos clientes e sua presença na plataforma.';
+    ? t.profile?.overviewClientDescription
+    : t.profile?.overviewNutritionistDescription;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
