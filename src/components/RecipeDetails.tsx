@@ -116,7 +116,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
   };
 
   const handleDeleteReview = async (reviewId: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta avaliação?')) {
+    if (window.confirm(t.recipe.deleteReviewConfirm || 'Tem certeza que deseja excluir esta avaliação?')) {
       try {
         await deleteReview(reviewId);
       } catch (error) {
@@ -126,7 +126,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
   };
 
   const handleDelete = async () => {
-    if (window.confirm('Tem certeza que deseja excluir esta receita?')) {
+    if (window.confirm(t.recipe.deleteConfirm)) {
       await deleteRecipe(recipe.id);
       onClose();
     }
@@ -147,15 +147,24 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
     });
   };
 
-  // Função para exibir rating ou "Sem avaliações"
+  // Função para exibir rating com tradução
   const displayRating = () => {
-    if (recipe.rating === 0 || !recipe.rating) {
-      return 'Sem avaliações';
+    const noReviewsLabel = t.recipe.noReviews || 'Sem avaliações';
+    const reviewSingular = t.recipe.reviewSingular || 'avaliação';
+    const reviewPlural = t.recipe.reviewPlural || 'avaliações';
+
+    if (recipe.rating === 0 || !recipe.rating || recipe.reviews.length === 0) {
+      return noReviewsLabel;
     }
-    return `${recipe.rating.toFixed(1)} (${recipe.reviews.length} ${
-      recipe.reviews.length === 1 ? 'avaliação' : 'avaliações'
-    })`;
+
+    const label = recipe.reviews.length === 1 ? reviewSingular : reviewPlural;
+    return `${recipe.rating.toFixed(1)} (${recipe.reviews.length} ${label})`;
   };
+
+  const ingredientsCountLabel =
+    recipe.ingredients.length === 1
+      ? t.recipe.ingredientsCountSingular || 'item'
+      : t.recipe.ingredientsCountPlural || 'itens';
 
   // Verificar se o usuário já avaliou esta receita
   const userReview = recipe.reviews.find((review) => review.userId === user?.id);
@@ -179,7 +188,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                 <button
                   onClick={onClose}
                   className="inline-flex items-center justify-center rounded-full p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  aria-label="Fechar"
+                  aria-label={t.common.close || 'Fechar'}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -203,7 +212,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
                     </div>
 
-                    {/* Informações do Autor (um pouco menor) */}
+                    {/* Informações do Autor */}
                     <div className="bg-gray-50 dark:bg-gray-900/60 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
@@ -212,7 +221,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                           </div>
                           <div>
                             <h4 className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                              Autor
+                              {t.recipe.author || 'Autor'}
                             </h4>
                             <p className="text-sm font-medium text-gray-900 dark:text-white">
                               {recipe.authorName || 'Usuário'}
@@ -221,15 +230,15 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                         </div>
                         <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-200">
                           {recipe.authorType === 'Nutritionist'
-                            ? 'Nutricionista'
-                            : 'Cliente'}
+                            ? t.profile.nutricionist
+                            : t.profile.client}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                         <span className="inline-flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          Postado em
+                          {t.recipe.postedOn || 'Postado em'}
                         </span>
                         <span className="font-medium text-gray-700 dark:text-gray-200">
                           {formatDate(recipe.createdAt)}
@@ -237,17 +246,16 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
                     </div>
 
-                    {/* Ingredientes na coluna esquerda - MAIOR */}
+                    {/* Ingredientes */}
                     <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                           <UtensilsCrossed className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
-                              {t.recipe.ingredients}
-                                </h3>
+                          {t.recipe.ingredients}
+                        </h3>
 
                         <span className="text-sm text-gray-400">
-                          {recipe.ingredients.length}{' '}
-                          {recipe.ingredients.length === 1 ? 'item' : 'itens'}
+                          {recipe.ingredients.length} {ingredientsCountLabel}
                         </span>
                       </div>
                       <ul className="list-disc list-inside space-y-1.5">
@@ -306,14 +314,14 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             <button
                               onClick={() => setIsEditModalOpen(true)}
                               className="p-2.5 rounded-full border border-blue-200 bg-blue-50 text-blue-500 hover:bg-blue-100 shadow-sm transition-colors dark:bg-blue-900/30 dark:border-blue-700/60 dark:hover:bg-blue-900/50"
-                              title="Editar receita"
+                              title={t.recipe.edit}
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={handleDelete}
                               className="p-2.5 rounded-full border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 shadow-sm transition-colors dark:bg-red-900/30 dark:border-red-700/60 dark:hover:bg-red-900/50"
-                              title="Excluir receita"
+                              title={t.recipe.delete}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -354,7 +362,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
                     </div>
 
-                    {/* Descrição – maior */}
+                    {/* Descrição */}
                     <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
                       {recipe.description}
                     </p>
@@ -416,9 +424,9 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     {/* Instruções */}
                     <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                       <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">
-                          <UtensilsCrossed className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
-                              {t.recipe.instructions}
-                                  </h3>
+                        <UtensilsCrossed className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
+                        {t.recipe.instructions}
+                      </h3>
 
                       <ol className="list-decimal list-inside space-y-2 max-h-64 overflow-y-auto pr-2">
                         {recipe.instructions.map((instruction, index) => (
@@ -434,7 +442,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
                 </div>
 
-                {/* ÁREA DE AVALIAÇÕES – nova versão */}
+                {/* ÁREA DE AVALIAÇÕES */}
                 <div className="mt-10 space-y-6 border-t border-gray-100 dark:border-gray-800 pt-6">
                   {/* título + resumo */}
                   <div className="flex items-center justify-between">
@@ -454,14 +462,12 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       onSubmit={handleAddReview}
                       className={cn(
                         'rounded-xl p-4 space-y-3',
-                        // Modo claro
                         'bg-emerald-50/80 shadow-sm ring-1 ring-emerald-100',
-                        // Modo escuro (mantido como estava, com barra verde)
                         'dark:bg-gray-900/50 dark:ring-0 dark:border-l-4 dark:border-emerald-500/80',
                       )}
                     >
                       <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        Adicionar Avaliação
+                        {t.recipe.addReview || 'Adicionar Avaliação'}
                       </h4>
 
                       <div className="flex items-center gap-2">
@@ -519,15 +525,13 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       onSubmit={handleUpdateReview}
                       className={cn(
                         'rounded-xl p-4 space-y-3',
-                        // claro
                         'bg-blue-50/80 ring-1 ring-blue-200 shadow-sm',
-                        // escuro (como estava)
                         'dark:bg-blue-900/30 dark:ring-0 dark:border dark:border-blue-700/70',
                       )}
                     >
                       <div className="flex items-center justify-between">
                         <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                          Editar Avaliação
+                          {t.recipe.editReview || 'Editar Avaliação'}
                         </h4>
                         <button
                           type="button"
@@ -540,7 +544,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
                       <div className="flex items-center gap-2">
                         <span className="text-base text-gray-700 dark:text-gray-300">
-                          Avaliação:
+                          {t.recipe.reviewLabel || 'Avaliação:'}
                         </span>
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
@@ -570,7 +574,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             prev ? { ...prev, comment: e.target.value } : prev,
                           )
                         }
-                        placeholder="Escreva sua avaliação..."
+                        placeholder={t.recipe.writeReview}
                         className="w-full p-3 rounded-lg text-base placeholder:text-gray-500 bg-white border border-gray-300 text-gray-900 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
                         rows={4}
                         required
@@ -581,14 +585,14 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                           type="submit"
                           className="px-5 py-2.5 bg-blue-600 text-white text-base rounded-lg hover:bg-blue-700 transition-colors"
                         >
-                          Salvar Alterações
+                          {t.common.save}
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditingReview(null)}
                           className="px-5 py-2.5 text-base rounded-lg transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                         >
-                          Cancelar
+                          {t.common.cancel}
                         </button>
                       </div>
                     </form>
@@ -614,9 +618,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             key={review.id}
                             className={cn(
                               'rounded-xl p-4 flex flex-col gap-1',
-                              // claro
                               'bg-gray-50 shadow-sm ring-1 ring-gray-200',
-                              // escuro (como estava, sem barra verde aqui)
                               'dark:bg-gray-900/50 dark:ring-0 dark:border dark:border-gray-800',
                             )}
                           >
@@ -658,7 +660,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                         })
                                       }
                                       className="p-1.5 rounded transition-colors text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/40"
-                                      title="Editar avaliação"
+                                      title={t.recipe.editReview || 'Editar avaliação'}
                                     >
                                       <Edit2 className="w-4 h-4" />
                                     </button>
@@ -667,7 +669,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                         handleDeleteReview(review.id)
                                       }
                                       className="p-1.5 rounded transition-colors text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/40"
-                                      title="Excluir avaliação"
+                                      title={t.recipe.deleteReview || 'Excluir avaliação'}
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
