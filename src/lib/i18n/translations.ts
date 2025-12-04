@@ -54,18 +54,14 @@ export const translations = {
     },
 
     profile: {
-      // ---- NOVAS CHAVES DO PROFILE PAGE ----
       title: 'My profile',
       subtitle: 'View your personal information, goals, and activity within the platform.',
-
       overviewClient: 'My activity',
       overviewClientDescription:
         'Track your favorites, goals, and the impact of your daily choices.',
-
       overviewNutritionist: 'My activity',
       overviewNutritionistDescription:
         'See the performance of your recipes, client reviews, and your presence on the platform.',
-      // -----------------------------------------
 
       myRecipes: 'My Recipes',
       favorites: 'Favorites',
@@ -91,7 +87,6 @@ export const translations = {
       nutricionist: "Nutritionist",
       client: "Client",
       saveGoals: "Save goals",
-
       nutritionGoalsnames: {
         calories: 'Calories',
         protein: 'Protein',
@@ -143,7 +138,6 @@ export const translations = {
       CreateRecipe: 'Create recipe',
       rating: 'Rating',
       noReviews: 'No reviews',
-
       details: 'Recipe details',
       recipe: 'Recipe',
       author: 'Author',
@@ -155,11 +149,32 @@ export const translations = {
       addReviewTitle: 'Add review',
       editReviewTitle: 'Edit review',
     },
+
+    aiChat: {
+      welcomeTitle: 'Welcome to AI Mentoring!',
+      welcomeDescription:
+        'Your intelligent nutrition assistant is ready to help with recipes, nutrition tips, how to use the platform and much more. Start a conversation now!',
+      limitedModeNoticeTitle: 'Notice:',
+      limitedModeNoticeBody:
+        'The AI is currently running in limited mode. For the full experience, configure the Gemini API key.',
+      examples: {
+        recipesTitle: '🍽️ Recipes',
+        recipesExample: '"Show me healthy cake recipes"',
+        tipsTitle: '💡 Tips',
+        tipsExample: '"How can I improve my diet?"',
+        helpTitle: '❓ Help',
+        helpExample: '"How do I save recipes to favorites?"',
+      },
+      startConversationButton: 'Start conversation',
+      headerSubtitle: 'Nutrition assistant • Online',
+      typing: 'Typing...',
+      inputPlaceholder: 'Type your question about nutrition...',
+      disclaimer:
+        'AI can make mistakes. Always consult your nutritionist for personalized guidance.',
+      limitedModeSuffix: ' • Running in limited mode.',
+    },
   },
 
-  // --------------------------------------------
-  // ---------------- PORTUGUÊS ------------------
-  // --------------------------------------------
   pt: {
     common: {
       forgotPassword: 'Esqueci minha senha',
@@ -215,18 +230,14 @@ export const translations = {
     },
 
     profile: {
-      // ---- NOVAS CHAVES DO PROFILE PAGE ----
       title: 'Meu perfil',
       subtitle: 'Veja suas informações pessoais, metas e atividades dentro da plataforma.',
-
       overviewClient: 'Minha atividade',
       overviewClientDescription:
         'Acompanhe seus favoritos, metas e impacto das suas escolhas no dia a dia.',
-
       overviewNutritionist: 'Minha atividade',
       overviewNutritionistDescription:
         'Veja o desempenho das suas receitas, avaliações dos clientes e sua presença na plataforma.',
-      // -----------------------------------------
 
       myRecipes: 'Minhas Receitas',
       favorites: 'Favoritos',
@@ -252,7 +263,6 @@ export const translations = {
       nutricionist: "Nutricionista",
       client: "Cliente",
       saveGoals: "Salvar metas",
-
       nutritionGoalsnames: {
         calories: 'Calorias',
         protein: 'Proteína',
@@ -304,7 +314,6 @@ export const translations = {
       CreateRecipe: 'Criar receita',
       rating: 'Classifique essa receita',
       noReviews: 'Sem Avaliações',
-
       details: 'Detalhes da receita',
       recipe: 'Receita',
       author: 'Autor',
@@ -315,6 +324,30 @@ export const translations = {
       deleteReviewConfirm: 'Tem certeza que deseja excluir esta avaliação?',
       addReviewTitle: 'Adicionar avaliação',
       editReviewTitle: 'Editar avaliação',
+    },
+
+    aiChat: {
+      welcomeTitle: 'Bem-vindo à Mentoria IA!',
+      welcomeDescription:
+        'Sua assistente de nutrição inteligente está pronta para ajudar com receitas, dicas alimentares, uso da plataforma e muito mais. Inicie uma conversa agora!',
+      limitedModeNoticeTitle: 'Aviso:',
+      limitedModeNoticeBody:
+        'A IA está funcionando em modo limitado. Para uma experiência completa, configure a chave da API do Gemini.',
+      examples: {
+        recipesTitle: '🍽️ Receitas',
+        recipesExample: '"Me mostre receitas de bolo fit"',
+        tipsTitle: '💡 Dicas',
+        tipsExample: '"Como posso melhorar minha alimentação?"',
+        helpTitle: '❓ Ajuda',
+        helpExample: '"Como salvo receitas nos favoritos?"',
+      },
+      startConversationButton: 'Iniciar conversa',
+      headerSubtitle: 'Assistente de Nutrição • Online',
+      typing: 'Digitando...',
+      inputPlaceholder: 'Digite sua pergunta sobre nutrição...',
+      disclaimer:
+        'A IA pode cometer erros. Sempre consulte seu nutricionista para orientações personalizadas.',
+      limitedModeSuffix: ' • Funcionando em modo limitado.',
     },
   },
 };
