@@ -608,7 +608,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   <div className="space-y-3">
                     {recipe.reviews.length === 0 ? (
                       <p className="text-base text-gray-500 dark:text-gray-400">
-                        {t.recipe.noReviews || 'Nenhuma avaliação ainda'}
+                        {t.recipe.noReview}
                       </p>
                     ) : (
                       recipe.reviews.map((review) => {
@@ -660,7 +660,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                         })
                                       }
                                       className="p-1.5 rounded transition-colors text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/40"
-                                      title={t.recipe.editReview || 'Editar avaliação'}
+                                      title={t.recipe.editReview}
                                     >
                                       <Edit2 className="w-4 h-4" />
                                     </button>
@@ -669,7 +669,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                         handleDeleteReview(review.id)
                                       }
                                       className="p-1.5 rounded transition-colors text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/40"
-                                      title={t.recipe.deleteReview || 'Excluir avaliação'}
+                                      title={t.recipe.deleteReview}
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
