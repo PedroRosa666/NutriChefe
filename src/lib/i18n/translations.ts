@@ -1,6 +1,8 @@
 export const translations = {
   en: {
     common: {
+      forgotPassword: 'Forgot my password',
+
       selected: "Selected",
       search: 'Search for recipes...',
       signIn: 'Sign In',
