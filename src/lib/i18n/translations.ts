@@ -1,7 +1,7 @@
 export const translations = {
   en: {
     common: {
-      select:"Selected",
+      selected:"Selected",
       search: 'Search for recipes...',
       signIn: 'Sign In',
       signUp: 'Sign Up',
