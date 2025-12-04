@@ -69,11 +69,15 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
     }
   };
 
-  // Função para exibir rating ou "Sem avaliações"
+  // Função para exibir rating ou texto "Sem avaliações" com tradução
   const displayRating = () => {
-    if (recipe.rating === 0 || !recipe.rating) {
-      return 'Sem avaliações';
+    const noReviewsLabel =
+      t.recipes?.noReviews || t.recipe?.noReviews || 'Sem avaliações';
+
+    if (recipe.rating === 0 || !recipe.rating || recipe.reviews?.length === 0) {
+      return noReviewsLabel;
     }
+
     return recipe.rating.toFixed(1);
   };
 
@@ -89,19 +93,17 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       "
     >
       {/* Imagem + overlays */}
-<div className="relative overflow-hidden rounded-2xl">
-  <img
-    src={recipe.image}
-    alt={recipe.title}
-    className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-    onError={(e) => {
-      const target = e.target as HTMLImageElement;
-      target.src =
-        'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
-    }}
-  />
-
-
+      <div className="relative overflow-hidden rounded-2xl">
+        <img
+          src={recipe.image}
+          alt={recipe.title}
+          className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src =
+              'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+          }}
+        />
 
         {/* Gradiente sutil por cima da imagem */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
