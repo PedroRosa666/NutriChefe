@@ -14,24 +14,23 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
   const { user } = useAuthStore();
   const t = useTranslation();
 
-  // Buttons
   const BackToRecipes = t.buttons.BackToRecipes;
+  const profileTitle = t.profile?.title || 'Meu perfil';
+  const profileSubtitle =
+    t.profile?.subtitle ||
+    'Veja suas informações pessoais, metas e atividades dentro da plataforma.';
 
-  // Titles
-  const profileTitle = t.profile?.title;
-  const profileSubtitle = t.profile?.subtitle;
-
-  // User type
   const isClient = user?.type === 'Client';
 
-  // Activity section titles
   const activityTitle = isClient
-    ? t.profile?.overviewClient
-    : t.profile?.overviewNutritionist;
+    ? t.profile?.overviewClient || 'Minha atividade'
+    : t.profile?.overviewNutritionist || 'Minha atividade';
 
   const activitySubtitle = isClient
-    ? t.profile?.overviewClientDescription
-    : t.profile?.overviewNutritionistDescription;
+    ? t.profile?.overviewClientDescription ||
+      'Acompanhe seus favoritos, metas e impacto das suas escolhas no dia a dia.'
+    : t.profile?.overviewNutritionistDescription ||
+      'Veja o desempenho das suas receitas, avaliações dos clientes e sua presença na plataforma.';
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -54,7 +53,7 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
         )}
       </div>
 
-      {/* Header */}
+      {/* Header de página */}
       <header className="mb-8 space-y-2">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 sm:text-3xl">
           {profileTitle}
@@ -64,14 +63,14 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
         </p>
       </header>
 
-      {/* Main content */}
+      {/* Conteúdo principal */}
       <div className="space-y-10">
-        {/* Profile card */}
+        {/* Card principal de perfil */}
         <ProfileCard />
 
-        {/* Activity: metrics + tabs */}
+        {/* Minha atividade: métricas + abas */}
         <section className="space-y-6">
-          {/* Section title */}
+          {/* Título da seção */}
           <div className="flex flex-col gap-1">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50 sm:text-xl">
               {activityTitle}
@@ -81,10 +80,10 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
             </p>
           </div>
 
-          {/* Dashboard */}
+          {/* Dashboard (somente cards internos, sem retângulo externo) */}
           {isClient ? <ClientDashboard /> : <NutritionistDashboard />}
 
-          {/* Tabs */}
+          {/* Abas – ligeiramente separadas por uma linha bem discreta */}
           <div className="border-t border-slate-100 pt-6 dark:border-slate-800">
             <ProfileTabs />
           </div>
