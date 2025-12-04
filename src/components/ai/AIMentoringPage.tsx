@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/auth';
 import { useSubscriptionStore } from '../../store/subscription';
 import { AIChatInterface } from './AIChatInterface';
 import { PremiumUpgrade } from './PremiumUpgrade';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface AIMentoringPageProps {
   onBack: () => void;
@@ -12,6 +13,7 @@ interface AIMentoringPageProps {
 export function AIMentoringPage({ onBack }: AIMentoringPageProps) {
   const { user, isNutritionist } = useAuthStore();
   const { hasFeatureAccess } = useSubscriptionStore();
+  const t = useTranslation();
 
   // Verifica acesso
   const hasAIAccess =
@@ -19,7 +21,6 @@ export function AIMentoringPage({ onBack }: AIMentoringPageProps) {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
       {/* Botão de voltar */}
       <button
         onClick={onBack}
@@ -37,7 +38,7 @@ export function AIMentoringPage({ onBack }: AIMentoringPageProps) {
             group-hover:-translate-x-1
           "
         />
-        <span className="tracking-wide">Voltar</span>
+        <span className="tracking-wide">{t.common.back}</span>
       </button>
 
       {/* Conteúdo principal */}
