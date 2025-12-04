@@ -467,7 +467,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       )}
                     >
                       <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        {t.recipe.addReview || 'Adicionar Avaliação'}
+                        {t.recipe.addReview}
                       </h4>
 
                       <div className="flex items-center gap-2">
