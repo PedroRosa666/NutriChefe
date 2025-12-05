@@ -52,7 +52,10 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
     }));
   };
 
-  const removeArrayItem = (field: 'ingredients' | 'instructions', index: number) => {
+  const removeArrayItem = (
+    field: 'ingredients' | 'instructions',
+    index: number
+  ) => {
     setEditedRecipe((prev) => ({
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index),
@@ -84,14 +87,16 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
   const addIngredient = t.recipe.addIngredient;
   const addStep = t.recipe.addStep;
 
-  const translatedCategories = (Object.keys(t.categories) as CategoryKey[]).map((key) => ({
-    value: key,
-    label: t.categories[key],
-  }));
+  const translatedCategories = (Object.keys(t.categories) as CategoryKey[]).map(
+    (key) => ({
+      value: key,
+      label: t.categories[key],
+    })
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white/95 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl">
         {/* Botão fechar */}
         <button
           onClick={onClose}
@@ -101,29 +106,22 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
           <span className="sr-only">{t.common.close}</span>
         </button>
 
-        {/* Header */}
-        <div className="border-b border-slate-100 dark:border-slate-800 px-6 pt-5 pb-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-50">
-                {editRecipe}
-              </h2>
-              <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                {t.recipe.details}
-              </p>
-            </div>
-            <span className="hidden sm:inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
-              {t.categories[editedRecipe.category as CategoryKey] ?? t.categories.all}
-            </span>
-          </div>
+        {/* Header simples */}
+        <div className="px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-50">
+            {editRecipe}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {t.recipe.details}
+          </p>
         </div>
 
-        {/* Form */}
+        {/* Formulário */}
         <form onSubmit={handleSubmit} className="px-6 pb-6 pt-4 space-y-6 text-sm">
-          {/* Linha 1: título + imagem */}
+          {/* Título / Imagem */}
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
                 {title}
               </label>
               <input
@@ -132,13 +130,13 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                 onChange={(e) =>
                   setEditedRecipe((prev) => ({ ...prev, title: e.target.value }))
                 }
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-xs outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
                 {imageURL}
               </label>
               <input
@@ -147,7 +145,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                 onChange={(e) =>
                   setEditedRecipe((prev) => ({ ...prev, image: e.target.value }))
                 }
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-xs outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 required
               />
             </div>
@@ -155,7 +153,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
 
           {/* Descrição */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
               {description}
             </label>
             <textarea
@@ -163,16 +161,16 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
               onChange={(e) =>
                 setEditedRecipe((prev) => ({ ...prev, description: e.target.value }))
               }
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-xs outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
               rows={3}
               required
             />
           </div>
 
-          {/* Linha 2: tempo / dificuldade / categoria */}
+          {/* Tempo / dificuldade / categoria */}
           <div className="grid gap-5 md:grid-cols-3">
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
                 {prepTime}
               </label>
               <input
@@ -184,14 +182,14 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                     prepTime: Number(e.target.value),
                   }))
                 }
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-xs outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 min={1}
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
                 {difficulty}
               </label>
               <select
@@ -202,7 +200,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                     difficulty: e.target.value as Recipe['difficulty'],
                   }))
                 }
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-xs outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 required
               >
                 <option value="easy">{t.recipe.difficultyLevels.easy}</option>
@@ -212,7 +210,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
                 {category}
               </label>
               <select
@@ -220,7 +218,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                 onChange={(e) =>
                   setEditedRecipe((prev) => ({ ...prev, category: e.target.value }))
                 }
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-xs outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 required
               >
                 {translatedCategories.map((cat) => (
@@ -233,17 +231,17 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
           </div>
 
           {/* Ingredientes */}
-          <div className="rounded-xl border border-slate-100 bg-slate-50/70 dark:bg-slate-900/40 dark:border-slate-800 p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-300">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-slate-800 dark:text-slate-100">
                 {ingredients}
-              </label>
+              </h3>
               <button
                 type="button"
                 onClick={() => addArrayItem('ingredients')}
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+                className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-4 h-4" />
                 {addIngredient}
               </button>
             </div>
@@ -257,14 +255,14 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                     onChange={(e) =>
                       handleArrayInput('ingredients', index, e.target.value)
                     }
-                    className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                    className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                     placeholder={t.recipe.example}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => removeArrayItem('ingredients', index)}
-                    className="inline-flex items-center justify-center rounded-lg border border-red-100 bg-red-50 px-2 text-red-500 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+                    className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:border-slate-700 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
@@ -274,17 +272,17 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
           </div>
 
           {/* Modo de preparo */}
-          <div className="rounded-xl border border-slate-100 bg-slate-50/70 dark:bg-slate-900/40 dark:border-slate-800 p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-300">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-slate-800 dark:text-slate-100">
                 {instructions}
-              </label>
+              </h3>
               <button
                 type="button"
                 onClick={() => addArrayItem('instructions')}
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+                className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-4 h-4" />
                 {addStep}
               </button>
             </div>
@@ -298,14 +296,14 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                     onChange={(e) =>
                       handleArrayInput('instructions', index, e.target.value)
                     }
-                    className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                    className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                     placeholder={`${t.recipe.Step} ${index + 1}`}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => removeArrayItem('instructions', index)}
-                    className="inline-flex items-center justify-center rounded-lg border border-red-100 bg-red-50 px-2 text-red-500 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+                    className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:border-slate-700 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
@@ -315,8 +313,8 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
           </div>
 
           {/* Valores nutricionais */}
-          <div className="rounded-xl border border-slate-100 bg-slate-50/70 dark:bg-slate-900/40 dark:border-slate-800 p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-300 mb-3">
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-slate-800 dark:text-slate-100">
               {nutritionFacts}
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -336,7 +334,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                       onChange={(e) =>
                         handleNutritionChange(key, e.target.value)
                       }
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                       placeholder="0.00"
                       required
                     />
@@ -352,7 +350,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
               type="submit"
               disabled={loading}
               className={cn(
-                'inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-400',
+                'inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-400',
                 loading && 'opacity-80'
               )}
             >
