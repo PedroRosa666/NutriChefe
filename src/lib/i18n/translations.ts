@@ -28,6 +28,12 @@ export const translations = {
       close: 'Close',
     },
 
+    header: {
+      aiMentoring: 'AI Mentoring',
+      aiMentoringPremium: 'AI Mentoring (Premium)',
+      premiumBadge: 'Premium',
+    },
+
     buttons: {
       BackToRecipes: 'Back to Recipes',
       My_recipes: 'My recipes',
@@ -248,6 +254,12 @@ export const translations = {
         system: 'Sistema',
       },
       close: 'Fechar',
+    },
+
+    header: {
+      aiMentoring: 'Mentoria IA',
+      aiMentoringPremium: 'Mentoria IA (Premium)',
+      premiumBadge: 'Premium',
     },
 
     buttons: {
