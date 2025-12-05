@@ -108,20 +108,20 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
 
         {/* Header simples */}
         <div className="px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <h2 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-50">
+          <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-50">
             {editRecipe}
           </h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-base text-slate-500 dark:text-slate-400">
             {t.recipe.details}
           </p>
         </div>
 
         {/* Formulário */}
-        <form onSubmit={handleSubmit} className="px-6 pb-6 pt-4 space-y-6 text-sm">
+        <form onSubmit={handleSubmit} className="px-6 pb-6 pt-4 space-y-6 text-base">
           {/* Título / Imagem */}
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
+              <label className="block text-base font-medium text-slate-700 dark:text-slate-100">
                 {title}
               </label>
               <input
@@ -130,13 +130,13 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                 onChange={(e) =>
                   setEditedRecipe((prev) => ({ ...prev, title: e.target.value }))
                 }
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
+              <label className="block text-base font-medium text-slate-700 dark:text-slate-100">
                 {imageURL}
               </label>
               <input
@@ -145,7 +145,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                 onChange={(e) =>
                   setEditedRecipe((prev) => ({ ...prev, image: e.target.value }))
                 }
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 required
               />
             </div>
@@ -153,7 +153,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
 
           {/* Descrição */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
+            <label className="block text-base font-medium text-slate-700 dark:text-slate-100">
               {description}
             </label>
             <textarea
@@ -161,7 +161,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
               onChange={(e) =>
                 setEditedRecipe((prev) => ({ ...prev, description: e.target.value }))
               }
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
               rows={3}
               required
             />
@@ -170,7 +170,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
           {/* Tempo / dificuldade / categoria */}
           <div className="grid gap-5 md:grid-cols-3">
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
+              <label className="block text-base font-medium text-slate-700 dark:text-slate-100">
                 {prepTime}
               </label>
               <input
@@ -182,14 +182,14 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                     prepTime: Number(e.target.value),
                   }))
                 }
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 min={1}
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
+              <label className="block text-base font-medium text-slate-700 dark:text-slate-100">
                 {difficulty}
               </label>
               <select
@@ -200,7 +200,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                     difficulty: e.target.value as Recipe['difficulty'],
                   }))
                 }
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 required
               >
                 <option value="easy">{t.recipe.difficultyLevels.easy}</option>
@@ -210,7 +210,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
+              <label className="block text-base font-medium text-slate-700 dark:text-slate-100">
                 {category}
               </label>
               <select
@@ -218,7 +218,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                 onChange={(e) =>
                   setEditedRecipe((prev) => ({ ...prev, category: e.target.value }))
                 }
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                 required
               >
                 {translatedCategories.map((cat) => (
@@ -233,13 +233,13 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
           {/* Ingredientes */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-slate-800 dark:text-slate-100">
+              <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">
                 {ingredients}
               </h3>
               <button
                 type="button"
                 onClick={() => addArrayItem('ingredients')}
-                className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 <Plus className="w-4 h-4" />
                 {addIngredient}
@@ -255,7 +255,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                     onChange={(e) =>
                       handleArrayInput('ingredients', index, e.target.value)
                     }
-                    className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+                    className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                     placeholder={t.recipe.example}
                     required
                   />
@@ -274,13 +274,13 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
           {/* Modo de preparo */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-slate-800 dark:text-slate-100">
+              <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">
                 {instructions}
               </h3>
               <button
                 type="button"
                 onClick={() => addArrayItem('instructions')}
-                className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 <Plus className="w-4 h-4" />
                 {addStep}
@@ -296,7 +296,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                     onChange={(e) =>
                       handleArrayInput('instructions', index, e.target.value)
                     }
-                    className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+                    className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                     placeholder={`${t.recipe.Step} ${index + 1}`}
                     required
                   />
@@ -314,7 +314,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
 
           {/* Valores nutricionais */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-slate-800 dark:text-slate-100">
+            <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">
               {nutritionFacts}
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -323,7 +323,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                   key as keyof typeof t.profile.nutritionGoalsnames;
                 return (
                   <div key={key} className="space-y-1.5">
-                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-200">
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-200">
                       {t.profile.nutritionGoalsnames[nutritionKey]}
                     </label>
                     <input
@@ -334,7 +334,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                       onChange={(e) =>
                         handleNutritionChange(key, e.target.value)
                       }
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50"
                       placeholder="0.00"
                       required
                     />
@@ -350,7 +350,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
               type="submit"
               disabled={loading}
               className={cn(
-                'inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-400',
+                'inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-400',
                 loading && 'opacity-80'
               )}
             >
