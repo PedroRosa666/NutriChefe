@@ -19,7 +19,6 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   const { user, isAuthenticated, signOut, isNutritionist } = useAuthStore();
   const { hasFeatureAccess } = useSubscriptionStore();
   const { searchQuery, setSearchQuery } = useFiltersStore();
@@ -31,17 +30,14 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
   };
 
   // Verificar se tem acesso à IA (nutricionista ou premium)
-  const hasAIAccess =
-    isAuthenticated && (isNutritionist() || hasFeatureAccess('ai_mentoring'));
-
+  const hasAIAccess = isAuthenticated && (isNutritionist() || hasFeatureAccess('ai_mentoring'));
   return (
     <>
       <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
             <div className="flex items-center">
-              <motion.h1
+              <motion.h1 
                 className="text-2xl font-bold text-green-600 dark:text-green-400 cursor-pointer"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -50,8 +46,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                 NutriChef
               </motion.h1>
             </div>
-
-            {/* Campo de busca (desktop) */}
+            
             <div className="hidden md:block flex-1 max-w-2xl mx-8">
               <div className="relative">
                 <input
@@ -65,7 +60,6 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
               </div>
             </div>
 
-            {/* Ações (desktop) */}
             <div className="hidden md:flex items-center space-x-4">
               <div className="flex items-center gap-4 border-r border-gray-200 dark:border-gray-600 pr-4 mr-4">
                 <ThemeSwitch />
@@ -73,38 +67,25 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
               </div>
 
               {isAuthenticated ? (
-                <motion.div
+                <motion.div 
                   className="flex items-center space-x-4"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                 >
-                  {/* Botão Mentoria IA */}
                   <button
                     onClick={onAIMentoringClick}
                     className={cn(
-                      'flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors',
+                      "flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors",
                       hasAIAccess
-                        ? 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                        : 'text-gray-400 dark:text-gray-500'
+                        ? "text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                        : "text-gray-400 dark:text-gray-500"
                     )}
-                    title={
-                      hasAIAccess
-                        ? t.header.aiMentoring
-                        : t.header.aiMentoringPremium
-                    }
+                    title={hasAIAccess ? "Mentoria IA" : "Mentoria IA (Premium)"}
                   >
                     <Bot className="w-4 h-4" />
-                    <span className="hidden lg:inline">
-                      {t.header.aiMentoring}
-                    </span>
-                    {!hasAIAccess && (
-                      <span className="text-xs bg-yellow-500 text-white px-1 rounded">
-                        {t.header.premiumBadge}
-                      </span>
-                    )}
+                    <span className="hidden lg:inline">Mentoria IA</span>
+                    {!hasAIAccess && <span className="text-xs bg-yellow-500 text-white px-1 rounded">Premium</span>}
                   </button>
-
-                  {/* Perfil */}
                   <button
                     onClick={onProfileClick}
                     className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -112,8 +93,6 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                     <User className="w-4 h-4" />
                     <span>{user?.name}</span>
                   </button>
-
-                  {/* Sair */}
                   <button
                     onClick={signOut}
                     className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -144,11 +123,10 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
               )}
             </div>
 
-            {/* Área direita (mobile) */}
             <div className="md:hidden flex items-center gap-4">
               <ThemeSwitch />
               <LanguageSwitch />
-              <button
+              <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
               >
@@ -158,7 +136,6 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
           </div>
         </div>
 
-        {/* Menu mobile */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div
@@ -168,7 +145,6 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
               className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
               <div className="px-4 py-3 space-y-3">
-                {/* Busca mobile */}
                 <div className="relative">
                   <input
                     type="text"
@@ -182,29 +158,22 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
 
                 {isAuthenticated ? (
                   <div className="space-y-3">
-                    {/* Mentoria IA mobile */}
                     <button
                       onClick={() => {
                         onAIMentoringClick();
                         setIsMobileMenuOpen(false);
                       }}
                       className={cn(
-                        'w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors',
+                        "w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors",
                         hasAIAccess
-                          ? 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                          : 'text-gray-400 dark:text-gray-500'
+                          ? "text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                          : "text-gray-400 dark:text-gray-500"
                       )}
                     >
                       <Bot className="w-4 h-4" />
-                      <span>{t.header.aiMentoring}</span>
-                      {!hasAIAccess && (
-                        <span className="text-xs bg-yellow-500 text-white px-1 rounded">
-                          {t.header.premiumBadge}
-                        </span>
-                      )}
+                      <span>Mentoria IA</span>
+                      {!hasAIAccess && <span className="text-xs bg-yellow-500 text-white px-1 rounded">Premium</span>}
                     </button>
-
-                    {/* Perfil mobile */}
                     <button
                       onClick={() => {
                         onProfileClick();
@@ -215,8 +184,6 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                       <User className="w-4 h-4" />
                       <span>{t.common.profile}</span>
                     </button>
-
-                    {/* Sair mobile */}
                     <button
                       onClick={signOut}
                       className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
