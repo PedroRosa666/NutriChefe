@@ -13,53 +13,28 @@ export function CategoryFilter({
   onSelectCategory,
 }: CategoryFilterProps) {
   const t = useTranslation();
+
+  // Obtenha o objeto de tradução de categorias
   const categoryTranslations = t.categories;
 
   return (
-    <div
-      className={cn(
-        "inline-flex items-center flex-wrap gap-2",
-        "rounded-full border border-gray-200 bg-white/90 px-4 py-2",
-        "shadow-sm backdrop-blur-sm",
-        "dark:border-gray-700 dark:bg-gray-900/80"
-      )}
-    >
+    <div className="flex flex-wrap gap-2">
       {categories.map((categoryKey) => {
-        const translatedCategory =
-          categoryTranslations[categoryKey as keyof typeof categoryTranslations] ||
-          categoryKey;
-
-        const isSelected = selectedCategory === categoryKey;
+        // Obtenha a tradução da categoria
+        const translatedCategory = categoryTranslations[categoryKey as keyof typeof categoryTranslations] || categoryKey;
 
         return (
           <button
             key={categoryKey}
-            type="button"
             onClick={() => onSelectCategory(categoryKey)}
-            aria-pressed={isSelected}
             className={cn(
-              "relative px-2 py-1",
-              "rounded-full",
-              "text-base md:text-lg font-medium",
-              "transition-all duration-150 outline-none",
-              "text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white",
-              isSelected && [
-                "text-emerald-700 dark:text-emerald-300",
-                "bg-emerald-50/90 dark:bg-emerald-500/10",
-              ]
+              "px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap",
+              selectedCategory === categoryKey
+                ? "bg-green-500 text-white shadow-md transform scale-105"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 hover:scale-105"
             )}
           >
             {translatedCategory}
-
-            {isSelected && (
-              <span
-                className={cn(
-                  "pointer-events-none absolute left-4 right-4 -bottom-1",
-                  "h-1 rounded-full",
-                  "bg-gradient-to-r from-emerald-400 to-green-500"
-                )}
-              />
-            )}
           </button>
         );
       })}
