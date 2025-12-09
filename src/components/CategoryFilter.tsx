@@ -18,67 +18,53 @@ export function CategoryFilter({
   return (
     <div
       className={cn(
-        "w-full max-w-xs",
-        "rounded-2xl border border-gray-200 bg-white/90",
-        "p-3 sm:p-4",
-        "shadow-sm",
-        "dark:border-gray-700 dark:bg-gray-900/90"
+        "inline-flex items-center flex-wrap gap-1",
+        "rounded-full border border-gray-200 bg-white/80 px-2 py-1",
+        "shadow-sm backdrop-blur-sm",
+        "dark:border-gray-700 dark:bg-gray-900/80"
       )}
     >
-      {/* Cabeçalho opcional do bloco de filtros */}
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-          Filtros
-        </h3>
-        {/* pode remover essa badge se não curtir */}
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-          Categorias
-        </span>
-      </div>
+      {categories.map((categoryKey) => {
+        const translatedCategory =
+          categoryTranslations[categoryKey as keyof typeof categoryTranslations] ||
+          categoryKey;
 
-      <div className="space-y-1">
-        {categories.map((categoryKey) => {
-          const translatedCategory =
-            categoryTranslations[categoryKey as keyof typeof categoryTranslations] ||
-            categoryKey;
+        const isSelected = selectedCategory === categoryKey;
 
-          const isSelected = selectedCategory === categoryKey;
+        return (
+          <button
+            key={categoryKey}
+            type="button"
+            onClick={() => onSelectCategory(categoryKey)}
+            aria-pressed={isSelected}
+            className={cn(
+              "relative px-3 py-1",
+              "text-sm md:text-[15px] font-medium",
+              "transition-all duration-150 outline-none",
+              "text-gray-600 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white",
+              // tira qualquer borda/forma forte, só texto
+              // estado selecionado: highlight verde suave
+              isSelected && [
+                "text-emerald-700 dark:text-emerald-300",
+                "bg-emerald-50/80 dark:bg-emerald-500/10",
+                "rounded-full",
+              ]
+            )}
+          >
+            {translatedCategory}
 
-          return (
-            <button
-              key={categoryKey}
-              type="button"
-              onClick={() => onSelectCategory(categoryKey)}
-              aria-pressed={isSelected}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-xl px-2.5 py-2",
-                "text-sm md:text-[15px] font-medium",
-                "transition-colors duration-150 outline-none",
-                // estado base
-                "text-gray-600 hover:bg-gray-100",
-                "dark:text-gray-200 dark:hover:bg-gray-800",
-                // selecionado
-                isSelected && [
-                  "bg-gray-900/90 text-white shadow-sm",
-                  "dark:bg-gray-100 dark:text-gray-900"
-                ]
-              )}
-            >
-              {/* Indicador lateral */}
+            {isSelected && (
               <span
                 className={cn(
-                  "h-6 w-1 rounded-full bg-transparent",
-                  isSelected && "bg-emerald-400"
+                  "pointer-events-none absolute left-2 right-2 -bottom-0.5",
+                  "h-0.5 rounded-full",
+                  "bg-gradient-to-r from-emerald-400 to-green-500"
                 )}
               />
-
-              <span className="flex-1 text-left">
-                {translatedCategory}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
