@@ -19,12 +19,11 @@ export function CategoryFilter({
     <div
       className={cn(
         "w-full",
-        "rounded-xl border bg-white/80 px-4 py-3 shadow-sm",
-        "backdrop-blur-sm",
-        "dark:bg-gray-900/80 dark:border-gray-700"
+        "rounded-xl border border-gray-200/80 bg-gray-50/80 px-3 py-2",
+        "dark:border-gray-700 dark:bg-gray-900/80"
       )}
     >
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-2">
         {categories.map((categoryKey) => {
           const translatedCategory =
             categoryTranslations[categoryKey as keyof typeof categoryTranslations] ||
@@ -39,15 +38,18 @@ export function CategoryFilter({
               onClick={() => onSelectCategory(categoryKey)}
               aria-pressed={isSelected}
               className={cn(
-                "relative pb-1.5 outline-none",
-                "text-sm md:text-base font-medium tracking-tight",
-                "transition-all duration-200",
-                "border-b-2 border-transparent",
-                "text-gray-600 hover:text-gray-900 hover:border-gray-300",
-                "dark:text-gray-300 dark:hover:text-gray-50 dark:hover:border-gray-500",
+                "px-3 py-1.5",
+                "rounded-md",
+                "text-sm md:text-[15px] font-medium",
+                "transition-colors duration-150",
+                "outline-none",
+                // estado padrão
+                "text-gray-600 hover:bg-gray-200/60",
+                "dark:text-gray-200 dark:hover:bg-gray-700/60",
+                // estado selecionado (só muda cor de fundo/texto)
                 isSelected && [
-                  "text-green-600 dark:text-green-400",
-                  "border-green-500"
+                  "bg-gray-900 text-white",
+                  "dark:bg-white dark:text-gray-900"
                 ]
               )}
             >
