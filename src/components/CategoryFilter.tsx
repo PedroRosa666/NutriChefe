@@ -18,8 +18,8 @@ export function CategoryFilter({
   return (
     <div
       className={cn(
-        "inline-flex items-center flex-wrap gap-1",
-        "rounded-full border border-gray-200 bg-white/80 px-2 py-1",
+        "inline-flex items-center flex-wrap gap-2",
+        "rounded-full border border-gray-200 bg-white/90 px-4 py-2",
         "shadow-sm backdrop-blur-sm",
         "dark:border-gray-700 dark:bg-gray-900/80"
       )}
@@ -38,16 +38,14 @@ export function CategoryFilter({
             onClick={() => onSelectCategory(categoryKey)}
             aria-pressed={isSelected}
             className={cn(
-              "relative px-3 py-1",
-              "text-sm md:text-[15px] font-medium",
+              "relative px-4 py-2",
+              "rounded-full",
+              "text-base md:text-lg font-medium",
               "transition-all duration-150 outline-none",
-              "text-gray-600 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white",
-              // tira qualquer borda/forma forte, só texto
-              // estado selecionado: highlight verde suave
+              "text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white",
               isSelected && [
                 "text-emerald-700 dark:text-emerald-300",
-                "bg-emerald-50/80 dark:bg-emerald-500/10",
-                "rounded-full",
+                "bg-emerald-50/90 dark:bg-emerald-500/10",
               ]
             )}
           >
@@ -56,8 +54,8 @@ export function CategoryFilter({
             {isSelected && (
               <span
                 className={cn(
-                  "pointer-events-none absolute left-2 right-2 -bottom-0.5",
-                  "h-0.5 rounded-full",
+                  "pointer-events-none absolute left-4 right-4 -bottom-1",
+                  "h-1 rounded-full",
                   "bg-gradient-to-r from-emerald-400 to-green-500"
                 )}
               />
