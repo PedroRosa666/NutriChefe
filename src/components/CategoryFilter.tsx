@@ -38,7 +38,7 @@ export function CategoryFilter({
             onClick={() => onSelectCategory(categoryKey)}
             aria-pressed={isSelected}
             className={cn(
-              "relative px-2 py-2",
+              "relative px-2 py-1",
               "rounded-full",
               "text-base md:text-lg font-medium",
               "transition-all duration-150 outline-none",
