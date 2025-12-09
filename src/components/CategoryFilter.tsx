@@ -13,28 +13,41 @@ export function CategoryFilter({
   onSelectCategory,
 }: CategoryFilterProps) {
   const t = useTranslation();
-
-  // Obtenha o objeto de tradução de categorias
   const categoryTranslations = t.categories;
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-4 border-b border-gray-200 dark:border-gray-700 pb-2">
       {categories.map((categoryKey) => {
-        // Obtenha a tradução da categoria
-        const translatedCategory = categoryTranslations[categoryKey as keyof typeof categoryTranslations] || categoryKey;
+        const translatedCategory =
+          categoryTranslations[categoryKey as keyof typeof categoryTranslations] ||
+          categoryKey;
+
+        const isSelected = selectedCategory === categoryKey;
 
         return (
           <button
             key={categoryKey}
+            type="button"
             onClick={() => onSelectCategory(categoryKey)}
+            aria-pressed={isSelected}
             className={cn(
-              "px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap",
-              selectedCategory === categoryKey
-                ? "bg-green-500 text-white shadow-md transform scale-105"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 hover:scale-105"
+              "relative text-xs sm:text-sm font-medium transition-all duration-200",
+              "pb-1 outline-none",
+              "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100",
+              isSelected && [
+                "text-green-600 dark:text-green-400",
+              ]
             )}
           >
             {translatedCategory}
+
+            {/* Indicador embaixo, só quando selecionado */}
+            {isSelected && (
+              <span
+                className="pointer-events-none absolute left-0 right-0 -bottom-0.5 h-0.5
+                           rounded-full bg-gradient-to-r from-green-500 to-emerald-500"
+              />
+            )}
           </button>
         );
       })}
