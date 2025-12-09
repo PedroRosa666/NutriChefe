@@ -16,41 +16,46 @@ export function CategoryFilter({
   const categoryTranslations = t.categories;
 
   return (
-    <div className="flex flex-wrap gap-4 border-b border-gray-200 dark:border-gray-700 pb-2">
-      {categories.map((categoryKey) => {
-        const translatedCategory =
-          categoryTranslations[categoryKey as keyof typeof categoryTranslations] ||
-          categoryKey;
+    <div
+      className={cn(
+        "w-full",
+        "rounded-xl border bg-white/80 px-4 py-3 shadow-sm",
+        "backdrop-blur-sm",
+        "dark:bg-gray-900/80 dark:border-gray-700"
+      )}
+    >
+      <div className="flex flex-wrap gap-4">
+        {categories.map((categoryKey) => {
+          const translatedCategory =
+            categoryTranslations[categoryKey as keyof typeof categoryTranslations] ||
+            categoryKey;
 
-        const isSelected = selectedCategory === categoryKey;
+          const isSelected = selectedCategory === categoryKey;
 
-        return (
-          <button
-            key={categoryKey}
-            type="button"
-            onClick={() => onSelectCategory(categoryKey)}
-            aria-pressed={isSelected}
-            className={cn(
-              "relative text-xs sm:text-sm font-medium transition-all duration-200",
-              "pb-1 outline-none",
-              "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100",
-              isSelected && [
-                "text-green-600 dark:text-green-400",
-              ]
-            )}
-          >
-            {translatedCategory}
-
-            {/* Indicador embaixo, só quando selecionado */}
-            {isSelected && (
-              <span
-                className="pointer-events-none absolute left-0 right-0 -bottom-0.5 h-0.5
-                           rounded-full bg-gradient-to-r from-green-500 to-emerald-500"
-              />
-            )}
-          </button>
-        );
-      })}
+          return (
+            <button
+              key={categoryKey}
+              type="button"
+              onClick={() => onSelectCategory(categoryKey)}
+              aria-pressed={isSelected}
+              className={cn(
+                "relative pb-1.5 outline-none",
+                "text-sm md:text-base font-medium tracking-tight",
+                "transition-all duration-200",
+                "border-b-2 border-transparent",
+                "text-gray-600 hover:text-gray-900 hover:border-gray-300",
+                "dark:text-gray-300 dark:hover:text-gray-50 dark:hover:border-gray-500",
+                isSelected && [
+                  "text-green-600 dark:text-green-400",
+                  "border-green-500"
+                ]
+              )}
+            >
+              {translatedCategory}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
