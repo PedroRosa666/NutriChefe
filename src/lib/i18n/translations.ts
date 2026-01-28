@@ -1,0 +1,449 @@
+export const translations = {
+  en: {
+    common: {
+      forgotPassword: 'Forgot my password',
+      selected: 'Selected',
+      search: 'Search for recipes...',
+      signIn: 'Sign In',
+      signUp: 'Sign Up',
+      signOut: 'Sign Out',
+      profile: 'Profile',
+      darkMode: 'Dark Mode',
+      language: 'Language',
+      loading: 'Loading...',
+      save: 'Save',
+      cancel: 'Cancel',
+      delete: 'Delete',
+      edit: 'Edit',
+      back: 'Back',
+      settings: 'Settings',
+      createaccount: 'Create Account',
+      dontHaveAccount: "Don't have an account? ",
+      alreadyHaveAccount: 'Already have an account? ',
+      theme: {
+        light: 'Light',
+        dark: 'Dark',
+        system: 'System',
+      },
+      close: 'Close',
+    },
+
+    buttons: {
+      BackToRecipes: 'Back to Recipes',
+      My_recipes: 'My recipes',
+      Favorites: 'Favorites',
+      Nutrition_goal: 'Nutrition Goals',
+    },
+
+    filters: {
+      advanced: 'Advanced Filters',
+      minRating: 'Minimum Rating',
+      clearAll: 'Clear All Filters',
+      prepTime: {
+        quick: 'Quick (≤15 min)',
+        medium: 'Medium (≤30 min)',
+        long: 'Long (>30 min)',
+      },
+    },
+
+    home: {
+      title: 'Discover Healthy Recipes',
+      subtitle:
+        'Find and share nutritious recipes that match your dietary preferences.',
+      createRecipe: 'Create Recipe',
+      noRecipes:
+        'No recipes found. Try adjusting your filters, or log in to see more.',
+    },
+
+    profile: {
+      title: 'My profile',
+      subtitle:
+        'View your personal information, goals, and activity within the platform.',
+      overviewClient: 'My activity',
+      overviewClientDescription:
+        'Track your favorites, goals, and the impact of your daily choices.',
+      overviewNutritionist: 'My activity',
+      overviewNutritionistDescription:
+        'See the performance of your recipes, client reviews, and your presence on the platform.',
+
+      myRecipes: 'My Recipes',
+      favorites: 'Favorites',
+      nutritionGoals: 'Nutrition Goals',
+      settings: 'Settings',
+      noRecipesYet: "You haven't published any recipes yet.",
+      noFavorites: "You haven't saved any recipes as favorites yet.",
+      statistics: 'Statistics',
+      publishedRecipes: 'Published Recipes',
+      totalReviews: 'Total Reviews',
+      averageRating: 'Average Rating',
+      experience: 'Experience',
+      healthGoals: 'Health Goals',
+      dietaryPreferences: 'Dietary Preferences',
+      allergies: 'Allergies',
+      dailyGoals: 'Daily Goals',
+      recentFavorites: 'Recent Favorites',
+      personalInfo: 'Personal Information',
+      accountType: 'Account Type',
+      email: 'Email',
+      name: 'Name',
+      password: 'Password',
+      nutricionist: 'Nutritionist',
+      client: 'Client',
+      saveGoals: 'Save goals',
+      nutritionGoalsnames: {
+        calories: 'Calories',
+        protein: 'Protein',
+        carbs: 'Carbs',
+        fat: 'Fat',
+        fiber: 'Fiber',
+      },
+    },
+
+    categories: {
+      all: 'All',
+      vegan: 'Vegan',
+      lowCarb: 'Low Carb',
+      highProtein: 'High Protein',
+      glutenFree: 'Gluten Free',
+      vegetarian: 'Vegetarian',
+    },
+
+    recipe: {
+      recipeTitle: 'Title',
+      recipeImageURL: 'Image URL',
+      recipeDescription: 'Description',
+      prepTime: 'Preparation Time',
+      difficulty: 'Difficulty',
+      recipeCategory: 'Category',
+      ingredients: 'Ingredients',
+      instructions: 'Instructions',
+      nutritionFacts: 'Nutrition Facts (Per Serving)',
+      reviews: 'Notes and ratings',
+      writeReview: 'Write your review...',
+      submitReview: 'Submit Review',
+      signInToReview: 'Please sign in to leave a review.',
+      addIngredient: 'Add Ingredient',
+      addStep: 'Add Step',
+      step: 'Step',
+      Step: 'Step',
+      example: '"2 cups flour"',
+      perServing: 'per serving',
+      deleteConfirm: 'Are you sure you want to delete this recipe?',
+      share: 'Share Recipe',
+      edit: 'Edit Recipe',
+      delete: 'Delete Recipe',
+      difficultyLevels: {
+        easy: 'Easy',
+        medium: 'Medium',
+        hard: 'Hard',
+      },
+      CreateNewRecipe: 'Create new recipe',
+      CreateRecipe: 'Create recipe',
+      rating: 'Rating',
+      noReviews: 'No reviews',
+      details: 'Recipe details',
+      recipe: 'Recipe',
+      author: 'Author',
+      authorFallbackName: 'User',
+      postedOn: 'Posted on',
+      reviewSingular: 'review',
+      reviewPlural: 'reviews',
+      deleteReviewConfirm: 'Are you sure you want to delete this review?',
+      addReviewTitle: 'Add review',
+      editReviewTitle: 'Edit review',
+    },
+
+    aiChat: {
+      welcomeTitle: 'Welcome to AI Mentoring!',
+      welcomeDescription:
+        'Your intelligent nutrition assistant is ready to help with recipes, nutrition tips, how to use the platform and much more. Start a conversation now!',
+      limitedModeNoticeTitle: 'Notice:',
+      limitedModeNoticeBody:
+        'The AI is currently running in limited mode. For the full experience, configure the Gemini API key.',
+      examples: {
+        recipesTitle: '🍽️ Recipes',
+        recipesExample: '"Show me healthy cake recipes"',
+        tipsTitle: '💡 Tips',
+        tipsExample: '"How can I improve my diet?"',
+        helpTitle: '❓ Help',
+        helpExample: '"How do I save recipes to favorites?"',
+      },
+      startConversationButton: 'Start conversation',
+      headerSubtitle: 'Nutrition assistant • Online',
+      typing: 'Typing...',
+      inputPlaceholder: 'Type your question about nutrition...',
+      disclaimer:
+        'AI can make mistakes. Always consult your nutritionist for personalized guidance.',
+      limitedModeSuffix: ' • Running in limited mode.',
+    },
+
+    premium: {
+      title: 'Unlock AI Mentoring',
+      descriptionPrefix:
+        'To get unlimited access to our AI Mentoring and other exclusive features, subscribe to our ',
+      planName: 'Premium Plan',
+      descriptionSuffix: '!',
+      perMonthLabel: 'month',
+
+      features: {
+        mentoringUnlimitedTitle: 'Unlimited AI mentoring',
+        mentoringUnlimitedDescription:
+          '24/7 chat with a nutrition-focused AI assistant.',
+        personalizedConsultationsTitle: 'Personalized consultations',
+        personalizedConsultationsDescription:
+          'AI configured and guided by your nutritionist.',
+        smartRecommendationsTitle: 'Smart recommendations',
+        smartRecommendationsDescription:
+          'Recipe suggestions tailored to your profile.',
+        prioritySupportTitle: 'Priority support',
+        prioritySupportDescription:
+          'Fast and specialized support whenever you need it.',
+      },
+
+      benefits: {
+        accessNutritionists: 'Access to certified nutritionists',
+        whatsappDirect: 'Direct WhatsApp contact with nutritionists',
+        personalizedGoals: 'Personalized goals and periodization',
+        mealPlans: 'Meal plans adjusted to your profile',
+        weeklyFollowup: 'Weekly follow-up and continuous adjustments',
+        progressReports: 'Progress reports with charts',
+        premiumRecipes: 'Exclusive premium recipes',
+        vipCommunity: 'VIP community and monthly challenges',
+      },
+
+      ctaSubscribe: 'Subscribe to Premium Plan',
+      ctaLoading: 'Starting...',
+      footerNote: 'Cancel anytime • No commitment • 24/7 support',
+
+      loginRequired: 'Sign in to subscribe',
+      loadPlansError: 'Error loading plans',
+      checkoutErrorGeneric: 'Unable to start checkout',
+    },
+  },
+
+  pt: {
+    common: {
+      forgotPassword: 'Esqueci minha senha',
+      selected: 'Selecionado',
+      search: 'Buscar receitas...',
+      signIn: 'Entrar',
+      signUp: 'Cadastrar',
+      signOut: 'Sair',
+      profile: 'Perfil',
+      darkMode: 'Modo Escuro',
+      language: 'Idioma',
+      loading: 'Carregando...',
+      save: 'Salvar',
+      cancel: 'Cancelar',
+      delete: 'Excluir',
+      edit: 'Editar',
+      back: 'Voltar',
+      settings: 'Configurações',
+      createaccount: 'Criar conta',
+      dontHaveAccount: 'Não tem uma conta? ',
+      alreadyHaveAccount: 'Já tem uma conta? ',
+      theme: {
+        light: 'Claro',
+        dark: 'Escuro',
+        system: 'Sistema',
+      },
+      close: 'Fechar',
+    },
+
+    buttons: {
+      BackToRecipes: 'Voltar para as receitas',
+      My_recipes: 'Minhas receitas',
+      Favorites: 'Favoritos',
+      Nutrition_goal: 'Metas Nutricionais',
+    },
+
+    filters: {
+      advanced: 'Filtros Avançados',
+      minRating: 'Avaliação Mínima',
+      clearAll: 'Limpar Todos os Filtros',
+      prepTime: {
+        quick: 'Rápido (≤15 min)',
+        medium: 'Médio (≤30 min)',
+        long: 'Longo (>30 min)',
+      },
+    },
+
+    home: {
+      title: 'Descubra Receitas Saudáveis',
+      subtitle:
+        'Encontre e compartilhe receitas nutritivas que combinam com suas preferências alimentares.',
+      createRecipe: 'Criar Receita',
+      noRecipes:
+        'Nenhuma receita encontrada. Tente ajustar seus filtros ou faça login para ver mais.',
+    },
+
+    profile: {
+      title: 'Meu perfil',
+      subtitle:
+        'Veja suas informações pessoais, metas e atividades dentro da plataforma.',
+      overviewClient: 'Minha atividade',
+      overviewClientDescription:
+        'Acompanhe seus favoritos, metas e impacto das suas escolhas no dia a dia.',
+      overviewNutritionist: 'Minha atividade',
+      overviewNutritionistDescription:
+        'Veja o desempenho das suas receitas, avaliações dos clientes e sua presença na plataforma.',
+
+      myRecipes: 'Minhas Receitas',
+      favorites: 'Favoritos',
+      nutritionGoals: 'Metas Nutricionais',
+      settings: 'Configurações',
+      noRecipesYet: 'Você ainda não publicou nenhuma receita.',
+      noFavorites:
+        'Você ainda não salvou nenhuma receita como favorita.',
+      statistics: 'Estatísticas',
+      publishedRecipes: 'Receitas Publicadas',
+      totalReviews: 'Total de Avaliações',
+      averageRating: 'Avaliação Média',
+      experience: 'Experiência',
+      healthGoals: 'Objetivos de Saúde',
+      dietaryPreferences: 'Preferências Alimentares',
+      allergies: 'Alergias',
+      dailyGoals: 'Metas Diárias',
+      recentFavorites: 'Favoritos Recentes',
+      personalInfo: 'Informações Pessoais',
+      accountType: 'Tipo de Conta',
+      email: 'Email',
+      name: 'Nome completo',
+      password: 'Senha',
+      nutricionist: 'Nutricionista',
+      client: 'Cliente',
+      saveGoals: 'Salvar metas',
+      nutritionGoalsnames: {
+        calories: 'Calorias',
+        protein: 'Proteína',
+        carbs: 'Carboidratos',
+        fat: 'Gordura',
+        fiber: 'Fibra',
+      },
+    },
+
+    categories: {
+      all: 'Todas',
+      vegan: 'Vegana',
+      lowCarb: 'Baixo Carboidrato',
+      highProtein: 'Rica em Proteína',
+      glutenFree: 'Sem Glúten',
+      vegetarian: 'Vegetariana',
+    },
+
+    recipe: {
+      recipeTitle: 'Titulo',
+      recipeImageURL: 'URL da imagem',
+      recipeDescription: 'Descrição',
+      prepTime: 'Tempo de Preparo',
+      difficulty: 'Dificuldade',
+      recipeCategory: 'Categoria',
+      ingredients: 'Ingredientes',
+      addIngredient: 'Adicionar Ingrediente',
+      instructions: 'Modo de Preparo',
+      addStep: 'Adicionar Passo',
+      step: 'Passo a passo',
+      Step: 'Passo',
+      example: 'Exemplo: 2 xícaras de açucar',
+      nutritionFacts: 'Informação Nutricional (Por porção)',
+      reviews: 'Notas e avaliações',
+      writeReview: 'Compartilhe sua opinião',
+      submitReview: 'Enviar Avaliação',
+      signInToReview: 'Faça login para deixar uma avaliação.',
+      perServing: 'por porção',
+      deleteConfirm: 'Tem certeza que deseja excluir esta receita?',
+      share: 'Compartilhar Receita',
+      edit: 'Editar Receita',
+      delete: 'Excluir Receita',
+      difficultyLevels: {
+        easy: 'Fácil',
+        medium: 'Médio',
+        hard: 'Difícil',
+      },
+      CreateNewRecipe: 'Criar nova receita',
+      CreateRecipe: 'Criar receita',
+      rating: 'Classifique essa receita',
+      noReviews: 'Sem Avaliações',
+      details: 'Detalhes da receita',
+      recipe: 'Receita',
+      author: 'Autor',
+      authorFallbackName: 'Usuário',
+      postedOn: 'Postado em',
+      reviewSingular: 'avaliação',
+      reviewPlural: 'avaliações',
+      deleteReviewConfirm:
+        'Tem certeza que deseja excluir esta avaliação?',
+      addReviewTitle: 'Adicionar avaliação',
+      editReviewTitle: 'Editar avaliação',
+    },
+
+    aiChat: {
+      welcomeTitle: 'Bem-vindo à Mentoria IA!',
+      welcomeDescription:
+        'Sua assistente de nutrição inteligente está pronta para ajudar com receitas, dicas alimentares, uso da plataforma e muito mais. Inicie uma conversa agora!',
+      limitedModeNoticeTitle: 'Aviso:',
+      limitedModeNoticeBody:
+        'A IA está funcionando em modo limitado. Para uma experiência completa, configure a chave da API do Gemini.',
+      examples: {
+        recipesTitle: '🍽️ Receitas',
+        recipesExample: '"Me mostre receitas de bolo fit"',
+        tipsTitle: '💡 Dicas',
+        tipsExample: '"Como posso melhorar minha alimentação?"',
+        helpTitle: '❓ Ajuda',
+        helpExample: '"Como salvo receitas nos favoritos?"',
+      },
+      startConversationButton: 'Iniciar conversa',
+      headerSubtitle: 'Assistente de Nutrição • Online',
+      typing: 'Digitando...',
+      inputPlaceholder: 'Digite sua pergunta sobre nutrição...',
+      disclaimer:
+        'A IA pode cometer erros. Sempre consulte seu nutricionista para orientações personalizadas.',
+      limitedModeSuffix: ' • Funcionando em modo limitado.',
+    },
+
+    premium: {
+      title: 'Desbloqueie a Mentoria IA',
+      descriptionPrefix:
+        'Para ter acesso ilimitado à nossa Mentoria IA e outras funcionalidades exclusivas, assine o nosso ',
+      planName: 'Plano Premium',
+      descriptionSuffix: '!',
+      perMonthLabel: 'mês',
+
+      features: {
+        mentoringUnlimitedTitle: 'Mentoria IA ilimitada',
+        mentoringUnlimitedDescription:
+          'Chat 24/7 com IA especializada em nutrição.',
+        personalizedConsultationsTitle: 'Consultas personalizadas',
+        personalizedConsultationsDescription:
+          'IA configurada e orientada pelo seu nutricionista.',
+        smartRecommendationsTitle: 'Recomendações inteligentes',
+        smartRecommendationsDescription:
+          'Sugestões de receitas baseadas no seu perfil.',
+        prioritySupportTitle: 'Suporte prioritário',
+        prioritySupportDescription:
+          'Atendimento rápido e especializado.',
+      },
+
+      benefits: {
+        accessNutritionists: 'Acesso a nutricionistas certificados',
+        whatsappDirect: 'WhatsApp direto com nutricionistas',
+        personalizedGoals: 'Metas personalizadas e periodização',
+        mealPlans: 'Planos alimentares ajustados ao seu perfil',
+        weeklyFollowup: 'Acompanhamento semanal e ajustes contínuos',
+        progressReports: 'Relatórios de progresso com gráficos',
+        premiumRecipes: 'Receitas premium exclusivas',
+        vipCommunity: 'Comunidade VIP e desafios mensais',
+      },
+
+      ctaSubscribe: 'Assinar Plano Premium',
+      ctaLoading: 'Iniciando...',
+      footerNote: 'Cancele a qualquer momento • Sem compromisso • Suporte 24/7',
+
+      loginRequired: 'Faça login para assinar',
+      loadPlansError: 'Erro ao carregar planos',
+      checkoutErrorGeneric: 'Não foi possível iniciar o checkout',
+    },
+  },
+};
+
+export type Language = keyof typeof translations;

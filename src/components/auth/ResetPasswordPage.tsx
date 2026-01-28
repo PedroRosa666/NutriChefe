@@ -1,0 +1,361 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Shield, Loader2 } from 'lucide-react';
+import { validateRecoveryToken, updatePassword } from '../../services/database';
+import { supabase } from '../../lib/supabase';
+import { cn } from '../../lib/utils';
+
+export function ResetPasswordPage() {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [error, setError] = useState('');
+  const [validToken, setValidToken] = useState(false);
+
+  useEffect(() => {
+    // Verificar se há um token de recuperação válido na URL
+    const checkToken = async () => {
+      try {
+        console.log('Checking recovery token...');
+        const result = await validateRecoveryToken();
+        
+        if (!result.valid) {
+          setStatus('error');
+          setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
+          setValidToken(false);
+        } else {
+          console.log('Valid recovery token found');
+          setValidToken(true);
+        }
+      } catch (err) {
+        console.error('Token validation error:', err);
+        setStatus('error');
+        setError('Erro ao validar link de recuperação. Tente novamente.');
+        setValidToken(false);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    checkToken();
+  }, []);
+
+  const validatePassword = (pwd: string) => {
+    const errors = [];
+    
+    if (pwd.length < 6) {
+      errors.push('A senha deve ter pelo menos 6 caracteres');
+    }
+    if (!/(?=.*[a-z])/.test(pwd)) {
+      errors.push('A senha deve conter pelo menos uma letra minúscula');
+    }
+    if (!/(?=.*[A-Z])/.test(pwd)) {
+      errors.push('A senha deve conter pelo menos uma letra maiúscula');
+    }
+    if (!/(?=.*\d)/.test(pwd)) {
+      errors.push('A senha deve conter pelo menos um número');
+    }
+    
+    return errors;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    // Validações
+    const passwordErrors = validatePassword(password);
+    if (passwordErrors.length > 0) {
+      setError(passwordErrors[0]);
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      console.log('Updating password...');
+      
+      // Atualizar a senha
+      await updatePassword(password);
+      
+      console.log('Password updated successfully');
+      setStatus('success');
+      
+      // Fazer logout para limpar a sessão de recuperação após um delay
+      setTimeout(async () => {
+        await supabase.auth.signOut();
+        // Redirecionar para login após 3 segundos
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 3000);
+      }, 1000);
+      
+    } catch (err: any) {
+      console.error('Password reset error:', err);
+      setError(err.message || 'Erro inesperado. Tente novamente.');
+      setStatus('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getPasswordStrength = (pwd: string) => {
+    let strength = 0;
+    if (pwd.length >= 6) strength++;
+    if (pwd.match(/[a-z]/)) strength++;
+    if (pwd.match(/[A-Z]/)) strength++;
+    if (pwd.match(/[0-9]/)) strength++;
+    if (pwd.match(/[^a-zA-Z0-9]/)) strength++;
+    return strength;
+  };
+
+  const passwordStrength = getPasswordStrength(password);
+  const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500'];
+  const strengthLabels = ['Muito fraca', 'Fraca', 'Regular', 'Boa', 'Forte'];
+
+  // Loading inicial
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-8 text-center"
+        >
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-green-600" />
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            Verificando link de recuperação...
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Aguarde enquanto validamos seu link de recuperação.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-8 text-center"
+        >
+          <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-6">
+            <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Senha redefinida com sucesso!
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Sua senha foi alterada com sucesso. Você será redirecionado para a página de login em alguns segundos.
+          </p>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
+            <motion.div
+              className="bg-green-600 h-2 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: '100%' }}
+              transition={{ duration: 3 }}
+            />
+          </div>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+          >
+            Ir para login agora
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (status === 'error' || !validToken) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-8 text-center"
+        >
+          <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-6">
+            <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Link inválido ou expirado
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            {error || 'Este link de recuperação é inválido ou expirou. Solicite um novo link de recuperação.'}
+          </p>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+          >
+            Voltar ao login
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-8"
+      >
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+            <Lock className="w-6 h-6 text-green-600 dark:text-green-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Nova senha
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Digite sua nova senha segura
+            </p>
+          </div>
+        </div>
+
+        {/* Dicas de segurança */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+          <div className="flex items-start gap-2">
+            <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                Dicas para uma senha segura:
+              </h3>
+              <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                <li>• Pelo menos 6 caracteres</li>
+                <li>• Combine letras maiúsculas e minúsculas</li>
+                <li>• Inclua números e símbolos</li>
+                <li>• Evite informações pessoais</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Nova senha
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
+                placeholder="Digite sua nova senha"
+                required
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                disabled={loading}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            
+            {password && (
+              <div className="mt-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div
+                      className={cn(
+                        "h-2 rounded-full transition-all duration-300",
+                        strengthColors[Math.max(0, passwordStrength - 1)]
+                      )}
+                      style={{ width: `${(passwordStrength / 5) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                    {strengthLabels[Math.max(0, passwordStrength - 1)]}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Confirmar senha
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
+                placeholder="Confirme sua nova senha"
+                required
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                disabled={loading}
+              >
+                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            
+            {confirmPassword && password !== confirmPassword && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                As senhas não coincidem
+              </p>
+            )}
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || password !== confirmPassword || passwordStrength < 3}
+            className={cn(
+              "w-full py-2.5 rounded-lg text-white font-medium transition-colors flex items-center justify-center gap-2",
+              loading || password !== confirmPassword || passwordStrength < 3
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+            )}
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {loading ? 'Redefinindo...' : 'Redefinir senha'}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => window.location.href = '/'}
+            className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+            disabled={loading}
+          >
+            Voltar ao login
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}

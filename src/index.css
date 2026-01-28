@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply antialiased;
+    font-size: clamp(14px, 2vw, 16px);
+    line-height: 1.6;
+  }
+
+  h1 {
+    font-size: clamp(24px, 5vw, 48px);
+  }
+
+  h2 {
+    font-size: clamp(20px, 4vw, 36px);
+  }
+
+  h3 {
+    font-size: clamp(18px, 3vw, 28px);
+  }
+
+  p {
+    font-size: clamp(14px, 2vw, 16px);
+  }
+}
+
+@layer utilities {
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .safe-area-top {
+    padding-top: safe-area-inset-top;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: safe-area-inset-bottom;
+  }
+
+  .container-responsive {
+    width: 100%;
+    padding: clamp(1rem, 4vw, 2rem);
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+.recipe-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.recipe-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.recipe-card-footer {
+  margin-top: auto;
+}
