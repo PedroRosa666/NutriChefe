@@ -1,9 +1,9 @@
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { RecipeCard } from '../RecipeCard';
 import { NutritionGoalsForm } from '../nutrition/NutritionGoalsForm';
+import { NutritionDiary } from '../nutrition/NutritionDiary';
 import { useTranslation } from '../../hooks/useTranslation';
 
 interface TabProps {
@@ -27,24 +27,9 @@ function Tab({ active, onClick, children }: TabProps) {
   );
 }
 
-type ProfileTabKey = 'recipes' | 'favorites' | 'nutrition';
-
-function isValidTab(tab: string | null): tab is ProfileTabKey {
-  return tab === 'recipes' || tab === 'favorites' || tab === 'nutrition';
-}
-
 export function ProfileTabs() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab');
-  const [activeTab, setActiveTab] = React.useState<ProfileTabKey>(
-    isValidTab(initialTab) ? initialTab : 'favorites',
-  );
-
-  React.useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (isValidTab(tab) && tab !== activeTab) setActiveTab(tab);
-  }, [searchParams, activeTab]);
-
+  const [activeTab, setActiveTab] =
+    React.useState<'recipes' | 'favorites' | 'nutrition'>('recipes');
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
   const t = useTranslation();
@@ -60,26 +45,28 @@ export function ProfileTabs() {
 
   const isNutritionist = user?.type === 'Nutritionist';
 
-  const handleTab = (tab: ProfileTabKey) => {
-    setActiveTab(tab);
-    const next = new URLSearchParams(searchParams);
-    next.set('tab', tab);
-    setSearchParams(next, { replace: true });
-  };
-
   return (
     <div className="space-y-6">
       {/* Barra de abas */}
       <div className="inline-flex rounded-full border border-slate-100 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
         {isNutritionist && (
-          <Tab active={activeTab === 'recipes'} onClick={() => handleTab('recipes')}>
+          <Tab
+            active={activeTab === 'recipes'}
+            onClick={() => setActiveTab('recipes')}
+          >
             {MyRecipes}
           </Tab>
         )}
-        <Tab active={activeTab === 'favorites'} onClick={() => handleTab('favorites')}>
+        <Tab
+          active={activeTab === 'favorites'}
+          onClick={() => setActiveTab('favorites')}
+        >
           {Favorites}
         </Tab>
-        <Tab active={activeTab === 'nutrition'} onClick={() => handleTab('nutrition')}>
+        <Tab
+          active={activeTab === 'nutrition'}
+          onClick={() => setActiveTab('nutrition')}
+        >
           {Nutrition_goal}
         </Tab>
       </div>
@@ -113,8 +100,13 @@ export function ProfileTabs() {
         )}
 
         {activeTab === 'nutrition' && (
-          <div className="mx-auto max-w-md rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-5">
-            <NutritionGoalsForm />
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-5">
+              <NutritionGoalsForm />
+            </div>
+            {!isNutritionist && (
+              <NutritionDiary />
+            )}
           </div>
         )}
       </div>
