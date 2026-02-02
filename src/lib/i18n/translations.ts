@@ -84,7 +84,8 @@ export const translations = {
       dailyGoals: 'Daily Goals',
       viewDiaryAndGoals: 'View diary & goals',
       remaining: 'Remaining',
-      progressBasedOnDiary: 'Progress is calculated from what you log in your food diary.',
+      progressBasedOnDiary:
+        'Progress is calculated from what you log in your food diary.',
       diaryTitle: 'Food diary',
       addToDiary: 'Add to diary',
       addToDiaryHelper: 'Log this recipe to track your daily goals.',
@@ -267,7 +268,6 @@ export const translations = {
       createaccount: 'Criar conta',
       dontHaveAccount: 'Não tem uma conta? ',
       alreadyHaveAccount: 'Já tem uma conta? ',
-      close: 'Fechar',
       theme: {
         light: 'Claro',
         dark: 'Escuro',
@@ -318,8 +318,7 @@ export const translations = {
       nutritionGoals: 'Metas Nutricionais',
       settings: 'Configurações',
       noRecipesYet: 'Você ainda não publicou nenhuma receita.',
-      noFavorites:
-        'Você ainda não salvou nenhuma receita como favorita.',
+      noFavorites: 'Você ainda não salvou nenhuma receita como favorita.',
       statistics: 'Estatísticas',
       publishedRecipes: 'Receitas Publicadas',
       totalReviews: 'Total de Avaliações',
