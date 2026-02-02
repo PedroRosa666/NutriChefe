@@ -271,8 +271,7 @@ export const translations = {
         light: 'Claro',
         dark: 'Escuro',
         system: 'Sistema',
-      }
-      close: 'Fechar',
+      },
     },
 
     buttons: {
