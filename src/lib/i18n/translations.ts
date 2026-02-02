@@ -97,6 +97,17 @@ export const translations = {
         fat: 'Fat',
         fiber: 'Fiber',
       },
+
+editGoals: 'Edit goals',
+favoritesHelper: 'Recipes you saved for quick access.',
+avgBasedOnFavorites: 'Average based on your favorites.',
+addFavoritesToSeeStats: 'Add favorites to see averages here.',
+avgPrepTimeHelper: 'Average preparation time (favorites).',
+addHealthGoals: 'Add health goals to personalize your experience.',
+viewAll: 'View all',
+discoverRecipes: 'Discover recipes',
+publishToGetReviews: 'Publish recipes to start receiving reviews.',
+publishFirstRecipe: 'Publish your first recipe to appear here.',
     },
 
     categories: {
@@ -320,6 +331,17 @@ export const translations = {
         fat: 'Gordura',
         fiber: 'Fibra',
       },
+
+editGoals: 'Editar metas',
+favoritesHelper: 'Receitas salvas para acesso rápido.',
+avgBasedOnFavorites: 'Média baseada nos seus favoritos.',
+addFavoritesToSeeStats: 'Adicione favoritos para ver as médias aqui.',
+avgPrepTimeHelper: 'Tempo médio de preparo (favoritos).',
+addHealthGoals: 'Adicione objetivos de saúde para personalizar sua experiência.',
+viewAll: 'Ver tudo',
+discoverRecipes: 'Descobrir receitas',
+publishToGetReviews: 'Publique receitas para começar a receber avaliações.',
+publishFirstRecipe: 'Publique sua primeira receita para aparecer aqui.',
     },
 
     categories: {
