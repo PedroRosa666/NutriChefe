@@ -11,9 +11,13 @@ import {
   Edit2,
   X,
   UtensilsCrossed,
+  PlusCircle,
+  Check,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useRecipesStore } from '../store/recipes';
+import { useNutritionTrackingStore } from '../store/nutrition-tracking';
+import { useToastStore } from '../store/toast';
 import { EditRecipeForm } from './recipe/EditRecipeForm';
 import type { Recipe } from '../types/recipe';
 import { cn } from '../lib/utils';
@@ -33,6 +37,16 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
   } | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [logServings, setLogServings] = useState(1);
+  const [logDate, setLogDate] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
+
   const { user, isAuthenticated } = useAuthStore();
   const {
     favoriteRecipes,
@@ -43,6 +57,8 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
     deleteReview,
     deleteRecipe,
   } = useRecipesStore();
+  const { addRecipeToLog } = useNutritionTrackingStore();
+  const { showToast } = useToastStore();
   const t = useTranslation();
 
   const difficultyTranslations = t.recipe.difficultyLevels;
@@ -307,6 +323,15 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                                 isFavorite && 'fill-current',
                               )}
                             />
+                          </button>
+                        )}
+                        {user?.type === 'Client' && (
+                          <button
+                            onClick={() => setIsLogModalOpen(true)}
+                            className="p-2.5 border rounded-xl transition-all duration-200 border-gray-200 bg-white text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700"
+                            title={t.profile.addToDiary ?? 'Adicionar ao diário'}
+                          >
+                            <PlusCircle className="w-5 h-5" />
                           </button>
                         )}
                         {isAuthor && (
@@ -692,6 +717,84 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
           </div>
         </div>
       </div>
+
+
+      {isLogModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-900">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {t.profile.addToDiary ?? 'Adicionar ao diário'}
+                </h3>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  {t.profile.addToDiaryHelper ?? 'Registre esta receita no seu dia para acompanhar as metas.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsLogModalOpen(false)}
+                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                aria-label={t.common.close ?? 'Fechar'}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                  {t.profile.date ?? 'Data'}
+                </label>
+                <input
+                  type="date"
+                  value={logDate}
+                  onChange={(e) => setLogDate(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                  {t.profile.servings ?? 'Porções'}
+                </label>
+                <input
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  value={logServings}
+                  onChange={(e) => setLogServings(Math.max(0.1, Number(e.target.value) || 1))}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {t.profile.perServingHint ?? 'Os valores nutricionais são multiplicados pelas porções.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsLogModalOpen(false)}
+                className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900"
+              >
+                {t.common.cancel ?? 'Cancelar'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  addRecipeToLog(recipe, logServings, logDate);
+                  showToast(t.profile.loggedToDiary ?? 'Adicionado ao diário.', 'success');
+                  setIsLogModalOpen(false);
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                <Check className="h-4 w-4" />
+                {t.profile.confirmAdd ?? 'Adicionar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isEditModalOpen && (
         <EditRecipeForm
