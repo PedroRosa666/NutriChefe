@@ -5,19 +5,6 @@ import { getUserProfile } from '../services/database';
 import { useToastStore } from './toast';
 import type { User, UserType } from '../types/user';
 
-// Define URL segura de redirecionamento para confirmação de e-mail
-// 1) Usa VITE_AUTH_REDIRECT_URL se existir
-// 2) Se origem conter domínios webcontainer/credentialless, usa localhost:5173 (dev)
-// 3) Caso contrário, usa window.location.origin
-const _origin = (import.meta.env.VITE_AUTH_REDIRECT_URL as string) || window.location.origin;
-const _unsafe = /webcontainer-api\.io|credentialless|\.local-credentialless\./.test(_origin);
-const CONFIRM_REDIRECT_BASE = _unsafe ? 'http://localhost:5173' : _origin;
-
-function isEmailConfirmed(u: any): boolean {
-  // GoTrue v2 expõe uma destas chaves
-  return Boolean(u?.email_confirmed_at || u?.confirmed_at);
-}
-
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -52,12 +39,6 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const u = session.user;
-          if (!isEmailConfirmed(u)) {
-            // Mantém coerência: sem e-mail confirmado → não autenticado
-            await supabase.auth.signOut();
-            set({ user: null, token: null, isAuthenticated: false });
-            return;
-          }
 
           // Montar objeto User do app
           const profile = await getUserProfile(u.id).catch(() => null);
@@ -95,14 +76,6 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const u = data.user;
-          // Bloqueia acesso se e-mail ainda não foi confirmado
-          if (!isEmailConfirmed(u)) {
-            await supabase.auth.signOut();
-            const msg = 'Email não confirmado. Verifique sua caixa de entrada e clique no link de confirmação.';
-            useToastStore.getState().showToast(msg, 'error');
-            set({ error: msg, loading: false, isAuthenticated: false, user: null, token: null });
-            return;
-          }
 
           const session = data.session ?? (await supabase.auth.getSession()).data.session;
           const profile = await getUserProfile(u.id).catch(() => null);
@@ -136,13 +109,10 @@ export const useAuthStore = create<AuthState>()(
             email,
             password,
             options: {
-              emailRedirectTo: `${CONFIRM_REDIRECT_BASE}/auth/confirm`,
+              // Confirmação de e-mail desativada no app (e idealmente também no painel do Supabase)
               data: { full_name: name, user_type: type }
             }
           });
-
-          // Aviso de confirmação sempre (mesmo se erro, para orientar usuário)
-          useToastStore.getState().showToast('Conta criada! Confirme seu e-mail para acessar.', 'info');
 
           if (error) {
             let friendly = 'Erro ao criar conta';
@@ -154,7 +124,33 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
 
-          // Não autentica imediatamente — exige confirmação de email
+          const u = data.user;
+          const session = data.session ?? (await supabase.auth.getSession()).data.session;
+
+          // Se o Supabase estiver com "Confirm email" DESLIGADO, normalmente já vem session aqui
+          if (u && session?.access_token) {
+            const profile = await getUserProfile(u.id).catch(() => null);
+            const mapped: User = {
+              id: u.id,
+              email: u.email ?? '',
+              name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
+              type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+              profile: undefined
+            };
+
+            set({
+              user: mapped,
+              token: session.access_token,
+              isAuthenticated: true,
+              loading: false
+            });
+
+            useToastStore.getState().showToast('Conta criada com sucesso!', 'success');
+            return;
+          }
+
+          // Fallback: conta criada, mas sem sessão (geralmente indica que o Supabase ainda exige confirmação)
+          useToastStore.getState().showToast('Conta criada com sucesso! Agora faça login.', 'success');
           set({ loading: false });
         } catch (e) {
           console.error('signUp error:', e);
