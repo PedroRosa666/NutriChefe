@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { RecipeCard } from '../RecipeCard';
@@ -26,9 +27,24 @@ function Tab({ active, onClick, children }: TabProps) {
   );
 }
 
+type ProfileTabKey = 'recipes' | 'favorites' | 'nutrition';
+
+function isValidTab(tab: string | null): tab is ProfileTabKey {
+  return tab === 'recipes' || tab === 'favorites' || tab === 'nutrition';
+}
+
 export function ProfileTabs() {
-  const [activeTab, setActiveTab] =
-    React.useState<'recipes' | 'favorites' | 'nutrition'>('recipes');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = React.useState<ProfileTabKey>(
+    isValidTab(initialTab) ? initialTab : 'favorites',
+  );
+
+  React.useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (isValidTab(tab) && tab !== activeTab) setActiveTab(tab);
+  }, [searchParams, activeTab]);
+
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
   const t = useTranslation();
@@ -44,28 +60,26 @@ export function ProfileTabs() {
 
   const isNutritionist = user?.type === 'Nutritionist';
 
+  const handleTab = (tab: ProfileTabKey) => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    setSearchParams(next, { replace: true });
+  };
+
   return (
     <div className="space-y-6">
       {/* Barra de abas */}
       <div className="inline-flex rounded-full border border-slate-100 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
         {isNutritionist && (
-          <Tab
-            active={activeTab === 'recipes'}
-            onClick={() => setActiveTab('recipes')}
-          >
+          <Tab active={activeTab === 'recipes'} onClick={() => handleTab('recipes')}>
             {MyRecipes}
           </Tab>
         )}
-        <Tab
-          active={activeTab === 'favorites'}
-          onClick={() => setActiveTab('favorites')}
-        >
+        <Tab active={activeTab === 'favorites'} onClick={() => handleTab('favorites')}>
           {Favorites}
         </Tab>
-        <Tab
-          active={activeTab === 'nutrition'}
-          onClick={() => setActiveTab('nutrition')}
-        >
+        <Tab active={activeTab === 'nutrition'} onClick={() => handleTab('nutrition')}>
           {Nutrition_goal}
         </Tab>
       </div>
