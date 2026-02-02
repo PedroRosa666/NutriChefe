@@ -29,7 +29,7 @@ function Tab({ active, onClick, children }: TabProps) {
 
 export function ProfileTabs() {
   const [activeTab, setActiveTab] =
-    React.useState<'recipes' | 'favorites' | 'nutrition'>('recipes');
+    React.useState<'recipes' | 'favorites' | 'nutrition'>('favorites');
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
   const t = useTranslation();
@@ -44,6 +44,18 @@ export function ProfileTabs() {
   const Nutrition_goal = t.buttons.Nutrition_goal;
 
   const isNutritionist = user?.type === 'Nutritionist';
+
+  // Guard invalid tabs per role.
+  // - Nutritionist: recipes | favorites
+  // - Client: favorites | nutrition
+  React.useEffect(() => {
+    if (isNutritionist) {
+      if (activeTab === 'nutrition') setActiveTab('recipes');
+      return;
+    }
+
+    if (activeTab === 'recipes') setActiveTab('favorites');
+  }, [isNutritionist, activeTab]);
 
   return (
     <div className="space-y-6">
@@ -63,12 +75,14 @@ export function ProfileTabs() {
         >
           {Favorites}
         </Tab>
-        <Tab
-          active={activeTab === 'nutrition'}
-          onClick={() => setActiveTab('nutrition')}
-        >
-          {Nutrition_goal}
-        </Tab>
+        {!isNutritionist && (
+          <Tab
+            active={activeTab === 'nutrition'}
+            onClick={() => setActiveTab('nutrition')}
+          >
+            {Nutrition_goal}
+          </Tab>
+        )}
       </div>
 
       {/* Conteúdo das abas */}
@@ -99,14 +113,12 @@ export function ProfileTabs() {
           </div>
         )}
 
-        {activeTab === 'nutrition' && (
+        {activeTab === 'nutrition' && !isNutritionist && (
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-5">
               <NutritionGoalsForm />
             </div>
-            {!isNutritionist && (
-              <NutritionDiary />
-            )}
+            <NutritionDiary />
           </div>
         )}
       </div>
