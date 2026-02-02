@@ -267,6 +267,7 @@ export const translations = {
       createaccount: 'Criar conta',
       dontHaveAccount: 'Não tem uma conta? ',
       alreadyHaveAccount: 'Já tem uma conta? ',
+      close: 'Fechar',
       theme: {
         light: 'Claro',
         dark: 'Escuro',
