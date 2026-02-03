@@ -1,30 +1,35 @@
-import { User, Mail, ChefHat, Heart, Star } from 'lucide-react';
+import { User, Mail, ChefHat, Heart, TrendingUp, Clock } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
+import { useNutritionGoalsStore } from '../../store/nutrition-goals';
+import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export function ProfileCard() {
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
+  const { goals } = useNutritionGoalsStore();
+  const { entries } = useNutritionTrackingStore();
   const t = useTranslation();
 
   if (!user) return null;
 
   const userRecipes = recipes.filter((r) => r.authorId === user.id);
   const totalFavorites = recipes.filter((r) => favoriteRecipes.includes(r.id)).length;
-
   const isNutritionist = user.type === 'Nutritionist';
+  const hasGoals = Object.keys(goals).length > 0;
+  const trackingDays = new Set(entries.map(e => e.date)).size;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 flex flex-col sm:flex-row sm:items-center gap-6">
-      
+
       {/* Avatar */}
       <div className="flex items-center justify-center h-20 w-20 rounded-full bg-emerald-100 dark:bg-emerald-900/40 shadow-inner">
         <User className="h-10 w-10 text-emerald-700 dark:text-emerald-300" />
       </div>
 
       {/* Infos */}
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 space-y-3">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
           {user.name}
         </h2>
@@ -41,9 +46,9 @@ export function ProfileCard() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {isNutritionist && (
+        {/* Stats for Nutritionist */}
+        {isNutritionist && (
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-2 gap-4">
             <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3 text-center border border-emerald-100 dark:border-emerald-800/60">
               <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">
                 {userRecipes.length}
@@ -52,32 +57,56 @@ export function ProfileCard() {
                 {t.profile.publishedRecipes}
               </span>
             </div>
-          )}
 
-          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3 text-center border border-emerald-100 dark:border-emerald-800/60">
-            <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">
-              {totalFavorites}
-            </p>
-            <span className="text-xs text-slate-600 dark:text-slate-400">
-              {t.profile.favorites}
-            </span>
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3 text-center border border-emerald-100 dark:border-emerald-800/60">
+              <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">
+                {totalFavorites}
+              </p>
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                {t.profile.favorites}
+              </span>
+            </div>
           </div>
+        )}
 
-          <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3 text-center border border-emerald-100 dark:border-emerald-800/60">
-            <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-1">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              {userRecipes.length > 0
-                ? (
-                    userRecipes.reduce((acc, r) => acc + r.rating, 0) /
-                    userRecipes.length
-                  ).toFixed(1)
-                : '—'}
-            </p>
-            <span className="text-xs text-slate-600 dark:text-slate-400">
-              {t.profile.averageRating}
-            </span>
+        {/* Stats for Client */}
+        {!isNutritionist && (
+          <div className="mt-4 grid grid-cols-3 gap-4">
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3 text-center border border-emerald-100 dark:border-emerald-800/60">
+              <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-1">
+                <Heart className="h-4 w-4" />
+                {totalFavorites}
+              </p>
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                {t.profile.favorites}
+              </span>
+            </div>
+
+            {hasGoals && (
+              <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 p-3 text-center border border-blue-100 dark:border-blue-800/60">
+                <p className="text-lg font-semibold text-blue-700 dark:text-blue-300 flex items-center justify-center gap-1">
+                  <TrendingUp className="h-4 w-4" />
+                  {Object.keys(goals).length}
+                </p>
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  Metas ativas
+                </span>
+              </div>
+            )}
+
+            {trackingDays > 0 && (
+              <div className="rounded-xl bg-purple-50 dark:bg-purple-900/20 p-3 text-center border border-purple-100 dark:border-purple-800/60">
+                <p className="text-lg font-semibold text-purple-700 dark:text-purple-300 flex items-center justify-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  {trackingDays}
+                </p>
+                <span className="text-xs text-slate-600 dark:text-slate-400">
+                  Dias rastreados
+                </span>
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
