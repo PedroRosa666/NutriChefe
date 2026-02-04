@@ -153,12 +153,12 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         </p>
 
         {/* Linha de informações */}
-        <div className="mt-auto grid grid-cols-2 gap-3 border-t border-gray-100 dark:border-slate-700 pt-4">
-          <div className="flex items-center gap-2">
+        <div className="mt-auto grid grid-cols-2 border-t border-gray-100 dark:border-slate-700 pt-4">
+          <div className="flex flex-col items-center justify-center gap-2">
             <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
               <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col items-center">
               <span className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Tempo</span>
               <span className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
                 {recipe.prepTime}min
@@ -166,7 +166,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="relative flex flex-col items-center justify-center gap-2 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-gray-200 dark:before:bg-slate-600">
             <div className={cn(
               "flex items-center justify-center w-9 h-9 rounded-lg",
               recipe.difficulty === 'easy' && 'bg-emerald-50 dark:bg-emerald-900/20',
@@ -180,7 +180,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
                 recipe.difficulty === 'hard' && 'text-red-600 dark:text-red-400',
               )} />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col items-center">
               <span className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Nível</span>
               <span
                 className={cn(
