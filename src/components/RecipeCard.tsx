@@ -86,8 +86,8 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       onClick={() => navigate(`/receita/${recipe.id}`)}
       className="
         group relative flex h-full cursor-pointer flex-col overflow-hidden
-        rounded-2xl border-2 shadow-sm transition-all duration-300
-        hover:-translate-y-2 hover:shadow-2xl hover:shadow-emerald-500/15 hover:border-emerald-400
+        rounded-xl border shadow-sm transition-all duration-200
+        hover:-translate-y-1 hover:shadow-lg hover:border-emerald-300
         bg-white border-gray-200
         dark:bg-slate-800 dark:border-slate-700
       "
@@ -97,7 +97,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         <img
           src={recipe.image}
           alt={recipe.title}
-          className="h-56 w-full object-cover transition-all duration-500 group-hover:scale-110 group-hover:brightness-110"
+          className="h-52 w-full object-cover transition-transform duration-300 group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src =
@@ -105,19 +105,19 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           }}
         />
 
-        {/* Gradiente por cima da imagem */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+        {/* Gradiente suave por cima da imagem */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
         {/* Categoria (canto inferior esquerdo) */}
-        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 px-3 py-1.5 text-xs font-semibold shadow-lg backdrop-blur-sm border border-white/20">
-          <ChefHat className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-lg bg-white/90 dark:bg-slate-900/90 px-3 py-1.5 text-xs font-medium shadow-md backdrop-blur-sm">
+          <ChefHat className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
           <span className="truncate max-w-[130px] text-gray-900 dark:text-white">{translatedCategory}</span>
         </span>
 
         {/* Rating em cima da imagem */}
-        <div className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-bold text-amber-900 shadow-lg">
-          <Star className="h-3.5 w-3.5 fill-amber-900" />
-          <span>{displayRating()}</span>
+        <div className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-lg bg-white/90 dark:bg-slate-900/90 px-2.5 py-1 text-xs font-semibold shadow-md backdrop-blur-sm">
+          <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+          <span className="text-gray-900 dark:text-white">{displayRating()}</span>
         </div>
 
         {/* Botão de favorito */}
@@ -125,16 +125,16 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           <button
             onClick={handleFavoriteClick}
             className={cn(
-              'absolute top-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-all duration-300 backdrop-blur-sm',
-              'bg-white/95 dark:bg-slate-900/95 border-2',
+              'absolute top-3 right-3 inline-flex h-8 w-8 items-center justify-center rounded-lg shadow-md transition-all duration-200 backdrop-blur-sm',
+              'bg-white/90 dark:bg-slate-900/90',
               isFavorite
-                ? 'text-rose-500 border-rose-400 scale-110'
-                : 'text-gray-400 dark:text-gray-500 border-white/20 hover:border-rose-300 hover:text-rose-500 hover:scale-110',
+                ? 'text-rose-500'
+                : 'text-gray-400 dark:text-gray-500 hover:text-rose-500',
             )}
           >
             <Heart
               className={cn(
-                'h-5 w-5 transition-all',
+                'h-4 w-4 transition-all',
                 isFavorite && 'fill-current',
               )}
             />
@@ -144,7 +144,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
 
       {/* Conteúdo principal */}
       <div className="flex flex-grow flex-col p-5">
-        <h3 className="mb-2 line-clamp-2 text-xl font-bold leading-tight text-gray-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+        <h3 className="mb-2 line-clamp-2 text-lg font-semibold leading-snug text-gray-900 dark:text-white">
           {recipe.title}
         </h3>
 
@@ -153,27 +153,25 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         </p>
 
         {/* Linha de informações */}
-        <div className="mt-auto flex items-center justify-between border-t-2 border-gray-100 dark:border-slate-700 pt-4 gap-3">
+        <div className="mt-auto grid grid-cols-2 gap-3 border-t border-gray-100 dark:border-slate-700 pt-4">
           <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30">
+            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
               <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs text-gray-500 dark:text-gray-400 leading-none">Tempo</span>
-              <span className="text-sm font-bold text-gray-900 dark:text-white leading-none mt-0.5">
+              <span className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Tempo</span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
                 {recipe.prepTime}min
               </span>
             </div>
           </div>
 
-          <div className="h-10 w-px bg-gray-200 dark:bg-slate-600" />
-
           <div className="flex items-center gap-2">
             <div className={cn(
-              "flex items-center justify-center w-8 h-8 rounded-full",
-              recipe.difficulty === 'easy' && 'bg-emerald-50 dark:bg-emerald-900/30',
-              recipe.difficulty === 'medium' && 'bg-amber-50 dark:bg-amber-900/30',
-              recipe.difficulty === 'hard' && 'bg-red-50 dark:bg-red-900/30',
+              "flex items-center justify-center w-9 h-9 rounded-lg",
+              recipe.difficulty === 'easy' && 'bg-emerald-50 dark:bg-emerald-900/20',
+              recipe.difficulty === 'medium' && 'bg-amber-50 dark:bg-amber-900/20',
+              recipe.difficulty === 'hard' && 'bg-red-50 dark:bg-red-900/20',
             )}>
               <ChefHat className={cn(
                 "h-4 w-4",
@@ -183,10 +181,10 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               )} />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs text-gray-500 dark:text-gray-400 leading-none">Nível</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Nível</span>
               <span
                 className={cn(
-                  'text-sm font-bold capitalize leading-none mt-0.5',
+                  'text-sm font-semibold capitalize leading-tight',
                   recipe.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
                   recipe.difficulty === 'medium' && 'text-amber-600 dark:text-amber-400',
                   recipe.difficulty === 'hard' && 'text-red-600 dark:text-red-400',
