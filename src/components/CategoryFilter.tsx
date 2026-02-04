@@ -27,7 +27,7 @@ export function CategoryFilter({
   const categoryTranslations = t.categories;
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <>
       {categories.map((categoryKey) => {
         const translatedCategory = categoryTranslations[categoryKey as keyof typeof categoryTranslations] || categoryKey;
         const Icon = categoryIcons[categoryKey] || UtensilsCrossed;
@@ -60,6 +60,6 @@ export function CategoryFilter({
           </motion.button>
         );
       })}
-    </div>
+    </>
   );
 }

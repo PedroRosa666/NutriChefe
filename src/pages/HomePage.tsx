@@ -121,14 +121,14 @@ export function HomePage() {
 
           <div className="mb-8">
             <div className="bg-white dark:bg-slate-800/30 rounded-xl p-4 sm:p-5 border border-slate-100 dark:border-slate-700/50">
-              <div className="flex items-center justify-end mb-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <CategoryFilter
+                  categories={CATEGORIES}
+                  selectedCategory={category}
+                  onSelectCategory={setCategory}
+                />
                 <AdvancedFilters />
               </div>
-              <CategoryFilter
-                categories={CATEGORIES}
-                selectedCategory={category}
-                onSelectCategory={setCategory}
-              />
             </div>
           </div>
 
