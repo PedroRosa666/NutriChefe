@@ -32,7 +32,7 @@ export function HomePage() {
   const { message, type, hideToast } = useToastStore();
   const t = useTranslation();
 
-  const CATEGORIES = ['all', 'vegan', 'lowCarb', 'highProtein', 'glutenFree', 'vegetarian'];
+  const CATEGORIES = ['all', 'vegan', 'lowCarb', 'highProtein', 'glutenFree'];
 
   useEffect(() => {
     const initialize = async () => {
@@ -119,21 +119,19 @@ export function HomePage() {
             )}
           </div>
 
-          <div className="mb-8 space-y-4">
+          <div className="mb-8">
             <div className="bg-white dark:bg-slate-800/30 rounded-xl p-4 sm:p-5 border border-slate-100 dark:border-slate-700/50">
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center justify-between gap-3 mb-3">
                 <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                  Filtros
                 </h3>
+                <AdvancedFilters />
               </div>
               <CategoryFilter
                 categories={CATEGORIES}
                 selectedCategory={category}
                 onSelectCategory={setCategory}
               />
-            </div>
-
-            <div className="flex justify-center sm:justify-end">
-              <AdvancedFilters />
             </div>
           </div>
 
