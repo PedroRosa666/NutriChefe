@@ -127,7 +127,9 @@ export function HomePage() {
                   selectedCategory={category}
                   onSelectCategory={setCategory}
                 />
-                <AdvancedFilters />
+                <div className="ml-auto">
+                  <AdvancedFilters />
+                </div>
               </div>
             </div>
           </div>
