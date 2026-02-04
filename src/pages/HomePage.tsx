@@ -119,8 +119,14 @@ export function HomePage() {
             )}
           </div>
 
-          <div className="mb-8 space-y-4">
-            <div className="w-full">
+          <div className="mb-8 space-y-5">
+            <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1 h-5 bg-gradient-to-b from-emerald-500 to-emerald-600 rounded-full" />
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide">
+                  Categorias
+                </h3>
+              </div>
               <CategoryFilter
                 categories={CATEGORIES}
                 selectedCategory={category}
