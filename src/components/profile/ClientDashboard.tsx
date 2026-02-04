@@ -10,7 +10,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 export function ClientDashboard() {
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
-  const { goals } = useNutritionGoalsStore();
+  const { goals, activeGoals } = useNutritionGoalsStore();
   const { getTotalsForDate, entries } = useNutritionTrackingStore();
   const t = useTranslation();
 
@@ -104,6 +104,8 @@ export function ClientDashboard() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {(['calories', 'protein', 'carbs', 'fat', 'fiber'] as const).map((key) => {
+              if (!activeGoals.includes(key)) return null;
+
               const goal = goals[key] ?? 0;
               const value = todayTotals[key] ?? 0;
               const pct = goal > 0 ? Math.min(1, value / goal) : 0;

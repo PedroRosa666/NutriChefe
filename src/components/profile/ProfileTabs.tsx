@@ -3,6 +3,7 @@ import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { RecipeCard } from '../RecipeCard';
 import { NutritionGoalsForm } from '../nutrition/NutritionGoalsForm';
+import { ActiveGoalsSelector } from '../nutrition/ActiveGoalsSelector';
 import { NutritionDiary } from '../nutrition/NutritionDiary';
 import { useTranslation } from '../../hooks/useTranslation';
 
@@ -114,11 +115,14 @@ export function ProfileTabs() {
         )}
 
         {activeTab === 'nutrition' && !isNutritionist && (
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-5">
-              <NutritionGoalsForm />
+          <div className="space-y-6">
+            <ActiveGoalsSelector />
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-5">
+                <NutritionGoalsForm />
+              </div>
+              <NutritionDiary />
             </div>
-            <NutritionDiary />
           </div>
         )}
       </div>
