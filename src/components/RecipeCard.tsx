@@ -153,38 +153,50 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         </p>
 
         {/* Linha de informações */}
-        <div className="mt-auto grid grid-cols-2 border-t border-gray-100 dark:border-slate-700 pt-4">
-          <div className="flex flex-col items-center justify-center gap-2">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
-              <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        <div className="mt-auto grid grid-cols-3 border-t border-gray-100 dark:border-slate-700 pt-3">
+          <div className="flex flex-col items-center justify-center gap-1.5">
+            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+              <Clock className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Tempo</span>
-              <span className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Tempo</span>
+              <span className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">
                 {recipe.prepTime}min
               </span>
             </div>
           </div>
 
-          <div className="relative flex flex-col items-center justify-center gap-2 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-gray-200 dark:before:bg-slate-600">
+          <div className="relative flex flex-col items-center justify-center gap-1.5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-gray-200 dark:before:bg-slate-600 after:absolute after:right-0 after:top-0 after:bottom-0 after:w-px after:bg-gray-200 dark:after:bg-slate-600">
+            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+              <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Avaliação</span>
+              <span className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">
+                {displayRating()}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center gap-1.5">
             <div className={cn(
-              "flex items-center justify-center w-9 h-9 rounded-lg",
+              "flex items-center justify-center w-7 h-7 rounded-lg",
               recipe.difficulty === 'easy' && 'bg-emerald-50 dark:bg-emerald-900/20',
               recipe.difficulty === 'medium' && 'bg-amber-50 dark:bg-amber-900/20',
               recipe.difficulty === 'hard' && 'bg-red-50 dark:bg-red-900/20',
             )}>
               <ChefHat className={cn(
-                "h-4 w-4",
+                "h-3.5 w-3.5",
                 recipe.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
                 recipe.difficulty === 'medium' && 'text-amber-600 dark:text-amber-400',
                 recipe.difficulty === 'hard' && 'text-red-600 dark:text-red-400',
               )} />
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-xs text-gray-500 dark:text-gray-400 leading-tight">Nível</span>
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Nível</span>
               <span
                 className={cn(
-                  'text-sm font-semibold capitalize leading-tight',
+                  'text-xs font-semibold capitalize leading-tight',
                   recipe.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
                   recipe.difficulty === 'medium' && 'text-amber-600 dark:text-amber-400',
                   recipe.difficulty === 'hard' && 'text-red-600 dark:text-red-400',
