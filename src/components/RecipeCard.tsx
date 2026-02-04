@@ -85,19 +85,19 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
     <div
       onClick={() => navigate(`/receita/${recipe.id}`)}
       className="
-        group relative flex h-full cursor-pointer flex-col overflow-hidden 
-        rounded-2xl border shadow-lg transition-all duration-200 
-        hover:-translate-y-1 hover:shadow-emerald-500/20 hover:border-emerald-400/70
-        bg-slate-50 border-slate-200 
-        dark:bg-slate-800/80 dark:border-slate-700
+        group relative flex h-full cursor-pointer flex-col overflow-hidden
+        rounded-2xl border-2 shadow-sm transition-all duration-300
+        hover:-translate-y-2 hover:shadow-2xl hover:shadow-emerald-500/15 hover:border-emerald-400
+        bg-white border-gray-200
+        dark:bg-slate-800 dark:border-slate-700
       "
     >
       {/* Imagem + overlays */}
-      <div className="relative overflow-hidden rounded-2xl">
+      <div className="relative overflow-hidden">
         <img
           src={recipe.image}
           alt={recipe.title}
-          className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className="h-56 w-full object-cover transition-all duration-500 group-hover:scale-110 group-hover:brightness-110"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src =
@@ -105,19 +105,19 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           }}
         />
 
-        {/* Gradiente sutil por cima da imagem */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        {/* Gradiente por cima da imagem */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
         {/* Categoria (canto inferior esquerdo) */}
-        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-slate-900/70 px-3 py-1 text-xs font-medium text-white backdrop-blur shadow-sm">
-          <ChefHat className="h-3.5 w-3.5 text-emerald-300" />
-          <span className="truncate max-w-[130px]">{translatedCategory}</span>
+        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 px-3 py-1.5 text-xs font-semibold shadow-lg backdrop-blur-sm border border-white/20">
+          <ChefHat className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <span className="truncate max-w-[130px] text-gray-900 dark:text-white">{translatedCategory}</span>
         </span>
 
-        {/* Rating pequeno em cima da imagem */}
-        <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-medium text-yellow-300 backdrop-blur shadow-sm">
-          <Star className="h-3 w-3 fill-yellow-300 text-yellow-300" />
-          <span className="text-[11px]">{displayRating()}</span>
+        {/* Rating em cima da imagem */}
+        <div className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-bold text-amber-900 shadow-lg">
+          <Star className="h-3.5 w-3.5 fill-amber-900" />
+          <span>{displayRating()}</span>
         </div>
 
         {/* Botão de favorito */}
@@ -125,15 +125,16 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           <button
             onClick={handleFavoriteClick}
             className={cn(
-              'absolute top-3 right-3 inline-flex h-8 w-8 items-center justify-center rounded-full border text-gray-400 shadow-md transition-all',
-              'bg-slate-50/90 border-slate-200 hover:border-rose-200 hover:text-rose-500',
-              'dark:bg-slate-900/90 dark:border-slate-700',
-              isFavorite && 'text-rose-500 border-rose-300 dark:border-rose-700',
+              'absolute top-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full shadow-lg transition-all duration-300 backdrop-blur-sm',
+              'bg-white/95 dark:bg-slate-900/95 border-2',
+              isFavorite
+                ? 'text-rose-500 border-rose-400 scale-110'
+                : 'text-gray-400 dark:text-gray-500 border-white/20 hover:border-rose-300 hover:text-rose-500 hover:scale-110',
             )}
           >
             <Heart
               className={cn(
-                'h-4 w-4',
+                'h-5 w-5 transition-all',
                 isFavorite && 'fill-current',
               )}
             />
@@ -142,47 +143,58 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       </div>
 
       {/* Conteúdo principal */}
-      <div className="flex flex-grow flex-col p-4 md:p-5">
-        <h3 className="mb-1 line-clamp-2 text-lg font-semibold leading-snug text-gray-900 dark:text-white">
+      <div className="flex flex-grow flex-col p-5">
+        <h3 className="mb-2 line-clamp-2 text-xl font-bold leading-tight text-gray-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
           {recipe.title}
         </h3>
 
-        <p className="mb-4 flex-grow line-clamp-3 text-sm text-gray-600 dark:text-gray-300">
+        <p className="mb-4 flex-grow line-clamp-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
           {recipe.description}
         </p>
 
         {/* Linha de informações */}
-        <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-gray-500 dark:border-slate-700 dark:text-gray-400">
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-4 w-4 flex-shrink-0" />
-            <span className="whitespace-nowrap font-medium text-gray-700 dark:text-gray-200">
-              {recipe.prepTime}min
-            </span>
+        <div className="mt-auto flex items-center justify-between border-t-2 border-gray-100 dark:border-slate-700 pt-4 gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30">
+              <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-gray-500 dark:text-gray-400 leading-none">Tempo</span>
+              <span className="text-sm font-bold text-gray-900 dark:text-white leading-none mt-0.5">
+                {recipe.prepTime}min
+              </span>
+            </div>
           </div>
 
-          <div className="hidden h-4 w-px bg-slate-200 dark:bg-slate-600 sm:block" />
+          <div className="h-10 w-px bg-gray-200 dark:bg-slate-600" />
 
-          <div className="flex items-center gap-1.5">
-            <ChefHat className="h-4 w-4 flex-shrink-0" />
-            <span
-              className={cn(
-                'whitespace-nowrap text-xs font-semibold capitalize',
-                recipe.difficulty === 'easy' && 'text-emerald-500',
-                recipe.difficulty === 'medium' && 'text-yellow-500',
-                recipe.difficulty === 'hard' && 'text-red-500',
-              )}
-            >
-              {translatedDifficulty}
-            </span>
-          </div>
-
-          <div className="hidden h-4 w-px bg-slate-200 dark:bg-slate-600 sm:block" />
-
-          <div className="flex items-center gap-1.5">
-            <Star className="h-4 w-4 flex-shrink-0 fill-yellow-400 text-yellow-400" />
-            <span className="whitespace-nowrap text-xs font-medium">
-              {displayRating()}
-            </span>
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              "flex items-center justify-center w-8 h-8 rounded-full",
+              recipe.difficulty === 'easy' && 'bg-emerald-50 dark:bg-emerald-900/30',
+              recipe.difficulty === 'medium' && 'bg-amber-50 dark:bg-amber-900/30',
+              recipe.difficulty === 'hard' && 'bg-red-50 dark:bg-red-900/30',
+            )}>
+              <ChefHat className={cn(
+                "h-4 w-4",
+                recipe.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
+                recipe.difficulty === 'medium' && 'text-amber-600 dark:text-amber-400',
+                recipe.difficulty === 'hard' && 'text-red-600 dark:text-red-400',
+              )} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-gray-500 dark:text-gray-400 leading-none">Nível</span>
+              <span
+                className={cn(
+                  'text-sm font-bold capitalize leading-none mt-0.5',
+                  recipe.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
+                  recipe.difficulty === 'medium' && 'text-amber-600 dark:text-amber-400',
+                  recipe.difficulty === 'hard' && 'text-red-600 dark:text-red-400',
+                )}
+              >
+                {translatedDifficulty}
+              </span>
+            </div>
           </div>
         </div>
       </div>

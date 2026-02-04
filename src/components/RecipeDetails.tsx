@@ -188,99 +188,104 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto z-50">
-        <div className="min-h-screen flex items-center justify-center p-4">
-          <div className="relative max-w-5xl w-full">
-            <div className="absolute -top-10 right-0 hidden md:block text-sm uppercase tracking-[0.2em] text-gray-300 dark:text-gray-500">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md overflow-y-auto z-50">
+        <div className="min-h-screen flex items-center justify-center p-4 py-8">
+          <div className="relative max-w-6xl w-full">
+            <div className="absolute -top-10 right-0 hidden md:block text-sm uppercase tracking-[0.2em] text-gray-300 dark:text-gray-400 font-medium">
               {t.recipe.details || 'Detalhes da receita'}
             </div>
 
-            <div className="bg-white/95 dark:bg-gray-900/95 rounded-2xl shadow-2xl border border-gray-200/80 dark:border-gray-700/70 overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
               {/* Cabeçalho com botão de fechar */}
-              <div className="flex items-center justify-between px-6 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800">
-                <span className="text-sm font-medium uppercase tracking-[0.25em] text-gray-400 dark:text-gray-500">
+              <div className="flex items-center justify-between px-6 md:px-8 pt-5 pb-4 border-b-2 border-gray-100 dark:border-gray-800 bg-gradient-to-r from-emerald-50/50 to-transparent dark:from-emerald-900/10">
+                <span className="text-sm font-bold uppercase tracking-[0.25em] text-gray-600 dark:text-gray-400">
                   {t.recipe.recipe || 'Receita'}
                 </span>
                 <button
                   onClick={onClose}
-                  className="inline-flex items-center justify-center rounded-full p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="inline-flex items-center justify-center rounded-full p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
                   aria-label={t.common.close || 'Fechar'}
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <div className="px-6 pb-6 pt-2">
+              <div className="px-6 md:px-8 pb-8 pt-6">
                 {/* GRID PRINCIPAL */}
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-2 gap-8">
                   {/* COLUNA ESQUERDA */}
-                  <div className="space-y-4 md:space-y-6">
+                  <div className="space-y-6">
                     <div className="relative group">
                       <img
                         src={recipe.image}
                         alt={recipe.title}
-                        className="w-full h-64 object-cover rounded-xl shadow-sm border border-gray-200/80 dark:border-gray-700/70"
+                        className="w-full h-72 object-cover rounded-2xl shadow-lg border-2 border-gray-200 dark:border-gray-700"
                       />
-                      <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/40 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 text-sm text-white backdrop-blur">
-                        <ChefHat className="w-4 h-4 text-green-400" />
-                        <span className="font-medium">{translatedCategory}</span>
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+                      <div className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-white/95 dark:bg-gray-900/95 px-4 py-2 text-sm font-bold shadow-xl backdrop-blur-sm border border-white/20">
+                        <ChefHat className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-gray-900 dark:text-white">{translatedCategory}</span>
                       </div>
                     </div>
 
                     {/* Informações do Autor */}
-                    <div className="bg-gray-50 dark:bg-gray-900/60 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
-                            <User className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/10 p-5 rounded-2xl border-2 border-emerald-100 dark:border-emerald-800/50 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 dark:bg-emerald-600 shadow-md">
+                            <User className="w-6 h-6 text-white" />
                           </div>
                           <div>
-                            <h4 className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                            <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-700 dark:text-emerald-400 mb-1">
                               {t.recipe.author || 'Autor'}
                             </h4>
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            <p className="text-lg font-bold text-gray-900 dark:text-white">
                               {recipe.authorName || 'Usuário'}
                             </p>
                           </div>
                         </div>
-                        <span className="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-200">
+                        <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-700">
                           {recipe.authorType === 'Nutritionist'
                             ? t.profile.nutricionist
                             : t.profile.client}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                        <span className="inline-flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                      <div className="flex items-center justify-between text-sm text-emerald-700 dark:text-emerald-300 bg-white/50 dark:bg-black/20 rounded-lg px-3 py-2">
+                        <span className="inline-flex items-center gap-2 font-medium">
+                          <Calendar className="w-4 h-4" />
                           {t.recipe.postedOn || 'Postado em'}
                         </span>
-                        <span className="font-medium text-gray-700 dark:text-gray-200">
+                        <span className="font-bold">
                           {formatDate(recipe.createdAt)}
                         </span>
                       </div>
                     </div>
 
                     {/* Ingredientes */}
-                    <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                          <UtensilsCrossed className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
+                    <div className="bg-white dark:bg-gray-900 p-5 rounded-2xl border-2 border-gray-200 dark:border-gray-700 shadow-md">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30">
+                            <UtensilsCrossed className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                          </div>
                           {t.recipe.ingredients}
                         </h3>
 
-                        <span className="text-sm text-gray-400">
+                        <span className="text-sm font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
                           {recipe.ingredients.length} {ingredientsCountLabel}
                         </span>
                       </div>
-                      <ul className="list-disc list-inside space-y-1.5">
+                      <ul className="space-y-2.5">
                         {recipe.ingredients.map((ingredient, index) => (
                           <li
                             key={index}
-                            className="text-base text-gray-600 dark:text-gray-300 leading-relaxed"
+                            className="flex items-start gap-3 text-base text-gray-700 dark:text-gray-200 leading-relaxed"
                           >
-                            {ingredient}
+                            <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold mt-0.5">
+                              {index + 1}
+                            </span>
+                            <span className="flex-1">{ingredient}</span>
                           </li>
                         ))}
                       </ul>
@@ -288,16 +293,16 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   </div>
 
                   {/* COLUNA DIREITA */}
-                  <div className="space-y-4 md:space-y-5">
+                  <div className="space-y-6">
                     {/* Título + ações */}
                     <div className="flex justify-between items-start gap-3">
                       <div>
-                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-snug">
+                        <h2 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white leading-tight mb-4">
                           {recipe.title}
                         </h2>
-                        <div className="mt-3 flex flex-wrap gap-2 items-center">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-3 py-1 text-base font-medium">
-                            <ChefHat className="w-4 h-4" />
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 text-white px-4 py-2 text-base font-bold shadow-lg">
+                            <ChefHat className="w-5 h-5" />
                             {translatedCategory}
                           </span>
                         </div>
@@ -356,110 +361,141 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     </div>
 
                     {/* Meta (tempo, dificuldade, rating) */}
-                    <div className="flex flex-wrap items-center gap-3 text-base text-gray-500 dark:text-gray-300 border-y border-gray-100 dark:border-gray-800 py-3">
-                      <div className="inline-flex items-center gap-1.5">
-                        <Clock className="w-4 h-4" />
-                        <span className="font-medium text-gray-700 dark:text-gray-200">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/10 p-4 rounded-xl border-2 border-blue-100 dark:border-blue-800/50 shadow-sm">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          <span className="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">Tempo</span>
+                        </div>
+                        <span className="text-2xl font-black text-blue-900 dark:text-blue-100">
                           {recipe.prepTime}min
                         </span>
                       </div>
-                      <div className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
-                      <div className="inline-flex items-center gap-1.5">
-                        <ChefHat className="w-4 h-4" />
-                        <span
-                          className={cn(
-                            'font-medium capitalize',
-                            recipe.difficulty === 'easy' && 'text-green-500',
-                            recipe.difficulty === 'medium' &&
-                              'text-yellow-500',
-                            recipe.difficulty === 'hard' && 'text-red-500',
-                          )}
-                        >
+
+                      <div className={cn(
+                        "p-4 rounded-xl border-2 shadow-sm",
+                        recipe.difficulty === 'easy' && 'bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/10 border-emerald-100 dark:border-emerald-800/50',
+                        recipe.difficulty === 'medium' && 'bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/10 border-amber-100 dark:border-amber-800/50',
+                        recipe.difficulty === 'hard' && 'bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/10 border-red-100 dark:border-red-800/50',
+                      )}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <ChefHat className={cn(
+                            "w-5 h-5",
+                            recipe.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
+                            recipe.difficulty === 'medium' && 'text-amber-600 dark:text-amber-400',
+                            recipe.difficulty === 'hard' && 'text-red-600 dark:text-red-400',
+                          )} />
+                          <span className={cn(
+                            "text-xs font-bold uppercase tracking-wide",
+                            recipe.difficulty === 'easy' && 'text-emerald-700 dark:text-emerald-300',
+                            recipe.difficulty === 'medium' && 'text-amber-700 dark:text-amber-300',
+                            recipe.difficulty === 'hard' && 'text-red-700 dark:text-red-300',
+                          )}>Nível</span>
+                        </div>
+                        <span className={cn(
+                          "text-lg font-black capitalize",
+                          recipe.difficulty === 'easy' && 'text-emerald-900 dark:text-emerald-100',
+                          recipe.difficulty === 'medium' && 'text-amber-900 dark:text-amber-100',
+                          recipe.difficulty === 'hard' && 'text-red-900 dark:text-red-100',
+                        )}>
                           {translatedDifficulty}
                         </span>
                       </div>
-                      <div className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
-                      <div className="inline-flex items-center gap-1.5">
-                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-medium text-gray-700 dark:text-gray-200">
+
+                      <div className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/10 p-4 rounded-xl border-2 border-amber-100 dark:border-amber-800/50 shadow-sm">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Star className="w-5 h-5 text-amber-600 dark:text-amber-400 fill-amber-600 dark:fill-amber-400" />
+                          <span className="text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Rating</span>
+                        </div>
+                        <span className="text-2xl font-black text-amber-900 dark:text-amber-100">
                           {displayRating()}
                         </span>
                       </div>
                     </div>
 
                     {/* Descrição */}
-                    <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
-                      {recipe.description}
-                    </p>
+                    <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700">
+                      <p className="text-lg text-gray-700 dark:text-gray-200 leading-relaxed">
+                        {recipe.description}
+                      </p>
+                    </div>
 
                     {/* Fatos nutricionais */}
-                    <div className="bg-emerald-50/70 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800/60">
-                      <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15">
-                          <Star className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
-                        </span>
+                    <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/10 p-5 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800/50 shadow-md">
+                      <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 dark:bg-emerald-600 shadow-md">
+                          <Star className="w-5 h-5 text-white" />
+                        </div>
                         {t.recipe.nutritionFacts}
                       </h3>
-                      <div className="grid grid-cols-2 gap-2 text-base text-gray-700 dark:text-gray-200">
-                        <div>
-                          {t.profile.nutritionGoalsnames.calories}:{' '}
-                          <span className="font-semibold">
-                            {formatNutritionValue(
-                              recipe.nutritionFacts.calories,
-                            )}{' '}
-                            kcal
-                          </span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white/70 dark:bg-black/20 p-3 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+                          <div className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-1">
+                            {t.profile.nutritionGoalsnames.calories}
+                          </div>
+                          <div className="text-2xl font-black text-emerald-900 dark:text-emerald-100">
+                            {formatNutritionValue(recipe.nutritionFacts.calories)}
+                            <span className="text-sm font-bold ml-1">kcal</span>
+                          </div>
                         </div>
-                        <div>
-                          {t.profile.nutritionGoalsnames.protein}:{' '}
-                          <span className="font-semibold">
-                            {formatNutritionValue(
-                              recipe.nutritionFacts.protein,
-                            )}{' '}
-                            g
-                          </span>
+                        <div className="bg-white/70 dark:bg-black/20 p-3 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+                          <div className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-1">
+                            {t.profile.nutritionGoalsnames.protein}
+                          </div>
+                          <div className="text-2xl font-black text-emerald-900 dark:text-emerald-100">
+                            {formatNutritionValue(recipe.nutritionFacts.protein)}
+                            <span className="text-sm font-bold ml-1">g</span>
+                          </div>
                         </div>
-                        <div>
-                          {t.profile.nutritionGoalsnames.carbs}:{' '}
-                          <span className="font-semibold">
-                            {formatNutritionValue(
-                              recipe.nutritionFacts.carbs,
-                            )}{' '}
-                            g
-                          </span>
+                        <div className="bg-white/70 dark:bg-black/20 p-3 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+                          <div className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-1">
+                            {t.profile.nutritionGoalsnames.carbs}
+                          </div>
+                          <div className="text-2xl font-black text-emerald-900 dark:text-emerald-100">
+                            {formatNutritionValue(recipe.nutritionFacts.carbs)}
+                            <span className="text-sm font-bold ml-1">g</span>
+                          </div>
                         </div>
-                        <div>
-                          {t.profile.nutritionGoalsnames.fat}:{' '}
-                          <span className="font-semibold">
-                            {formatNutritionValue(recipe.nutritionFacts.fat)} g
-                          </span>
+                        <div className="bg-white/70 dark:bg-black/20 p-3 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+                          <div className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-1">
+                            {t.profile.nutritionGoalsnames.fat}
+                          </div>
+                          <div className="text-2xl font-black text-emerald-900 dark:text-emerald-100">
+                            {formatNutritionValue(recipe.nutritionFacts.fat)}
+                            <span className="text-sm font-bold ml-1">g</span>
+                          </div>
                         </div>
-                        <div>
-                          {t.profile.nutritionGoalsnames.fiber}:{' '}
-                          <span className="font-semibold">
-                            {formatNutritionValue(
-                              recipe.nutritionFacts.fiber,
-                            )}{' '}
-                            g
-                          </span>
+                        <div className="bg-white/70 dark:bg-black/20 p-3 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+                          <div className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-1">
+                            {t.profile.nutritionGoalsnames.fiber}
+                          </div>
+                          <div className="text-2xl font-black text-emerald-900 dark:text-emerald-100">
+                            {formatNutritionValue(recipe.nutritionFacts.fiber)}
+                            <span className="text-sm font-bold ml-1">g</span>
+                          </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Instruções */}
-                    <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                      <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">
-                        <UtensilsCrossed className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
+                    <div className="bg-white dark:bg-gray-900 p-5 rounded-2xl border-2 border-gray-200 dark:border-gray-700 shadow-md">
+                      <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+                        <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30">
+                          <UtensilsCrossed className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
                         {t.recipe.instructions}
                       </h3>
 
-                      <ol className="list-decimal list-inside space-y-2 max-h-64 overflow-y-auto pr-2">
+                      <ol className="space-y-3 max-h-80 overflow-y-auto pr-2">
                         {recipe.instructions.map((instruction, index) => (
                           <li
                             key={index}
-                            className="text-base text-gray-600 dark:text-gray-300 leading-relaxed"
+                            className="flex items-start gap-3 text-base text-gray-700 dark:text-gray-200 leading-relaxed"
                           >
-                            {instruction}
+                            <span className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-bold mt-0.5">
+                              {index + 1}
+                            </span>
+                            <span className="flex-1">{instruction}</span>
                           </li>
                         ))}
                       </ol>
