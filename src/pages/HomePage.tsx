@@ -123,7 +123,6 @@ export function HomePage() {
             <div className="bg-white dark:bg-slate-800/30 rounded-xl p-4 sm:p-5 border border-slate-100 dark:border-slate-700/50">
               <div className="flex items-center gap-2 mb-3">
                 <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide">
-                  Categorias
                 </h3>
               </div>
               <CategoryFilter
