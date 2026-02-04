@@ -119,11 +119,10 @@ export function HomePage() {
             )}
           </div>
 
-          <div className="mb-8 space-y-5">
-            <div className="bg-white dark:bg-slate-800/50 rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-1 h-5 bg-gradient-to-b from-emerald-500 to-emerald-600 rounded-full" />
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide">
+          <div className="mb-8 space-y-4">
+            <div className="bg-white dark:bg-slate-800/30 rounded-xl p-4 sm:p-5 border border-slate-100 dark:border-slate-700/50">
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                   Categorias
                 </h3>
               </div>

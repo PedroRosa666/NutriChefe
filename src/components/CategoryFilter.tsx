@@ -27,7 +27,7 @@ export function CategoryFilter({
   const categoryTranslations = t.categories;
 
   return (
-    <div className="flex flex-wrap gap-2.5">
+    <div className="flex flex-wrap gap-2">
       {categories.map((categoryKey) => {
         const translatedCategory = categoryTranslations[categoryKey as keyof typeof categoryTranslations] || categoryKey;
         const Icon = categoryIcons[categoryKey] || UtensilsCrossed;
@@ -38,33 +38,25 @@ export function CategoryFilter({
             key={categoryKey}
             onClick={() => onSelectCategory(categoryKey)}
             className={cn(
-              "group relative px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 whitespace-nowrap shadow-sm",
+              "group relative px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap",
               "flex items-center gap-2",
               isSelected
-                ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30"
-                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-md"
+                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
+                : "bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
             )}
-            whileHover={{ scale: 1.05, y: -2 }}
+            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            transition={{ duration: 0.2 }}
           >
             <Icon
               className={cn(
-                "w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all duration-300",
+                "w-3.5 h-3.5 sm:w-4 sm:h-4 transition-colors duration-200",
                 isSelected
-                  ? "text-white"
-                  : "text-emerald-500 dark:text-emerald-400 group-hover:scale-110"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-slate-400 dark:text-slate-500"
               )}
             />
             <span>{translatedCategory}</span>
-            {isSelected && (
-              <motion.div
-                layoutId="categoryIndicator"
-                className="absolute inset-0 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600"
-                style={{ zIndex: -1 }}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
           </motion.button>
         );
       })}
