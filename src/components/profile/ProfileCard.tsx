@@ -8,7 +8,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 export function ProfileCard() {
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
-  const { goals } = useNutritionGoalsStore();
+  const { goals, activeGoals } = useNutritionGoalsStore();
   const { entries } = useNutritionTrackingStore();
   const t = useTranslation();
 
@@ -17,7 +17,7 @@ export function ProfileCard() {
   const userRecipes = recipes.filter((r) => r.authorId === user.id);
   const totalFavorites = recipes.filter((r) => favoriteRecipes.includes(r.id)).length;
   const isNutritionist = user.type === 'Nutritionist';
-  const hasGoals = Object.keys(goals).length > 0;
+  const hasGoals = activeGoals.length > 0;
   const trackingDays = new Set(entries.map(e => e.date)).size;
 
   return (
@@ -86,7 +86,7 @@ export function ProfileCard() {
               <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 p-3 text-center border border-blue-100 dark:border-blue-800/60">
                 <p className="text-lg font-semibold text-blue-700 dark:text-blue-300 flex items-center justify-center gap-1">
                   <TrendingUp className="h-4 w-4" />
-                  {Object.keys(goals).length}
+                  {activeGoals.length}
                 </p>
                 <span className="text-xs text-slate-600 dark:text-slate-400">
                   Metas ativas
