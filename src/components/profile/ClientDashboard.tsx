@@ -79,7 +79,7 @@ export function ClientDashboard() {
         <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm dark:border-emerald-900/40 dark:bg-slate-900/60">
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
             <Target className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
-            <span>Metas Ativas</span>
+            <span>{t.labels.activeGoals}</span>
           </div>
           <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             {activeGoals.length}

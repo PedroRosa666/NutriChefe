@@ -80,11 +80,11 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                         ? "text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                         : "text-gray-400 dark:text-gray-500"
                     )}
-                    title={hasAIAccess ? "Mentoria IA" : "Mentoria IA (Premium)"}
+                    title={hasAIAccess ? t.labels.aiMentoring : `${t.labels.aiMentoring} (${t.labels.premium})`}
                   >
                     <Bot className="w-4 h-4" />
-                    <span className="hidden lg:inline">Mentoria IA</span>
-                    {!hasAIAccess && <span className="text-xs bg-yellow-500 text-white px-1 rounded">Premium</span>}
+                    <span className="hidden lg:inline">{t.labels.aiMentoring}</span>
+                    {!hasAIAccess && <span className="text-xs bg-yellow-500 text-white px-1 rounded">{t.labels.premium}</span>}
                   </button>
                   <button
                     onClick={onProfileClick}
@@ -171,8 +171,8 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                       )}
                     >
                       <Bot className="w-4 h-4" />
-                      <span>Mentoria IA</span>
-                      {!hasAIAccess && <span className="text-xs bg-yellow-500 text-white px-1 rounded">Premium</span>}
+                      <span>{t.labels.aiMentoring}</span>
+                      {!hasAIAccess && <span className="text-xs bg-yellow-500 text-white px-1 rounded">{t.labels.premium}</span>}
                     </button>
                     <button
                       onClick={() => {

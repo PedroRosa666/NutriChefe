@@ -159,7 +159,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               <Clock className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Tempo</span>
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">{t.labels.time}</span>
               <span className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">
                 {recipe.prepTime}min
               </span>
@@ -171,7 +171,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Avaliação</span>
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">{t.labels.rating}</span>
               <span className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">
                 {displayRating()}
               </span>
@@ -193,7 +193,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               )} />
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">Nível</span>
+              <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight">{t.labels.level}</span>
               <span
                 className={cn(
                   'text-xs font-semibold capitalize leading-tight',

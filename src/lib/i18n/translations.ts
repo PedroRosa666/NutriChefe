@@ -36,6 +36,15 @@ export const translations = {
       Nutrition_goal: 'Nutrition Goals',
     },
 
+    labels: {
+      time: 'Time',
+      rating: 'Rating',
+      level: 'Level',
+      aiMentoring: 'AI Mentoring',
+      premium: 'Premium',
+      activeGoals: 'Active Goals',
+    },
+
     filters: {
       advanced: 'Advanced Filters',
       minRating: 'Minimum Rating',
@@ -280,6 +289,15 @@ export const translations = {
       My_recipes: 'Minhas receitas',
       Favorites: 'Favoritos',
       Nutrition_goal: 'Metas Nutricionais',
+    },
+
+    labels: {
+      time: 'Tempo',
+      rating: 'Avaliação',
+      level: 'Nível',
+      aiMentoring: 'Mentoria IA',
+      premium: 'Premium',
+      activeGoals: 'Metas Ativas',
     },
 
     filters: {

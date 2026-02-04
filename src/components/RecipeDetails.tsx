@@ -365,7 +365,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-800/30">
                         <div className="flex items-center gap-1.5 mb-1">
                           <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Tempo</span>
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.labels.time}</span>
                         </div>
                         <span className="text-xl font-bold text-gray-900 dark:text-white">
                           {recipe.prepTime}min
@@ -385,7 +385,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             recipe.difficulty === 'medium' && 'text-amber-600 dark:text-amber-400',
                             recipe.difficulty === 'hard' && 'text-red-600 dark:text-red-400',
                           )} />
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Nível</span>
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.labels.level}</span>
                         </div>
                         <span className={cn(
                           "text-base font-bold capitalize",
@@ -400,7 +400,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       <div className="bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-lg border border-amber-100 dark:border-amber-800/30">
                         <div className="flex items-center gap-1.5 mb-1">
                           <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Rating</span>
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.labels.rating}</span>
                         </div>
                         <span className="text-xl font-bold text-gray-900 dark:text-white">
                           {displayRating()}
