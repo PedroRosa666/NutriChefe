@@ -4,6 +4,7 @@ import { StorageService } from '../../services/storage';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { supabase } from '../../lib/supabase';
+import { ImageCropModal } from './ImageCropModal';
 
 interface AvatarUploadProps {
   currentAvatarUrl?: string | null;
@@ -27,6 +28,8 @@ export function AvatarUpload({
 }: AvatarUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentAvatarUrl || null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, updateProfile } = useAuthStore();
   const { showToast } = useToastStore();
@@ -36,15 +39,43 @@ export function AvatarUpload({
     if (!file || !user) return;
 
     try {
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('Arquivo muito grande. O tamanho máximo é 10MB.', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+        setShowCropModal(true);
+      };
+      reader.readAsDataURL(file);
+    } catch (error: any) {
+      console.error('Error reading file:', error);
+      showToast(error.message || 'Erro ao ler arquivo', 'error');
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    if (!user) return;
+
+    try {
       setIsUploading(true);
+      setShowCropModal(false);
+
+      const croppedFile = new File([croppedBlob], 'avatar.jpg', { type: 'image/jpeg' });
 
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result as string);
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(croppedFile);
 
-      const avatarUrl = await StorageService.uploadAvatar(user.id, file);
+      const avatarUrl = await StorageService.uploadAvatar(user.id, croppedFile);
 
       const { error } = await supabase
         .from('profiles')
@@ -66,10 +97,13 @@ export function AvatarUpload({
       setPreviewUrl(currentAvatarUrl || null);
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setSelectedImage(null);
     }
+  };
+
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setSelectedImage(null);
   };
 
   const handleRemoveAvatar = async () => {
@@ -114,66 +148,76 @@ export function AvatarUpload({
   };
 
   return (
-    <div className="relative inline-block">
-      <div className={`${sizeClasses[size]} rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white font-bold shadow-lg relative group`}>
-        {previewUrl ? (
+    <>
+      <div className="relative inline-block">
+        <div className={`${sizeClasses[size]} rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white font-bold shadow-lg relative group`}>
+          {previewUrl ? (
+            <>
+              <img
+                src={previewUrl}
+                alt="Avatar"
+                className="w-full h-full object-cover"
+              />
+              {editable && (
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <Camera className="w-6 h-6 text-white" />
+                </div>
+              )}
+            </>
+          ) : (
+            <span className={size === 'sm' ? 'text-xs' : size === 'md' ? 'text-sm' : size === 'xl' ? 'text-3xl' : 'text-xl'}>
+              {getInitials()}
+            </span>
+          )}
+
+          {isUploading && (
+            <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-white animate-spin" />
+            </div>
+          )}
+        </div>
+
+        {editable && (
           <>
-            <img
-              src={previewUrl}
-              alt="Avatar"
-              className="w-full h-full object-cover"
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+              onChange={handleFileSelect}
+              className="hidden"
+              disabled={isUploading}
             />
-            {editable && (
-              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                <Camera className="w-6 h-6 text-white" />
-              </div>
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="absolute bottom-0 right-0 p-2 bg-emerald-500 text-white rounded-full shadow-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Alterar foto"
+            >
+              <Upload className="w-4 h-4" />
+            </button>
+
+            {previewUrl && (
+              <button
+                onClick={handleRemoveAvatar}
+                disabled={isUploading}
+                className="absolute top-0 right-0 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Remover foto"
+              >
+                <X className="w-3 h-3" />
+              </button>
             )}
           </>
-        ) : (
-          <span className={size === 'sm' ? 'text-xs' : size === 'md' ? 'text-sm' : size === 'xl' ? 'text-3xl' : 'text-xl'}>
-            {getInitials()}
-          </span>
-        )}
-
-        {isUploading && (
-          <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 text-white animate-spin" />
-          </div>
         )}
       </div>
 
-      {editable && (
-        <>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-            onChange={handleFileSelect}
-            className="hidden"
-            disabled={isUploading}
-          />
-
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="absolute bottom-0 right-0 p-2 bg-emerald-500 text-white rounded-full shadow-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Alterar foto"
-          >
-            <Upload className="w-4 h-4" />
-          </button>
-
-          {previewUrl && (
-            <button
-              onClick={handleRemoveAvatar}
-              disabled={isUploading}
-              className="absolute top-0 right-0 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Remover foto"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          )}
-        </>
+      {showCropModal && selectedImage && (
+        <ImageCropModal
+          imageSrc={selectedImage}
+          onComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
       )}
-    </div>
+    </>
   );
 }
