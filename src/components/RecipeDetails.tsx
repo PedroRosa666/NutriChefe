@@ -417,7 +417,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                           <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
                           <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.labels.rating}</span>
                         </div>
-                        <span className="text-xl font-bold text-gray-900 dark:text-white">
+                        <span className="text-base sm:text-xl font-bold text-gray-900 dark:text-white break-words leading-tight">
                           {displayRating()}
                         </span>
                       </div>
