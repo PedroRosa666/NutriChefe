@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Save } from 'lucide-react';
+import { Save, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
@@ -23,7 +24,11 @@ export function EditProfessionalProfile() {
   const { user } = useAuthStore();
   const { showToast } = useToastStore();
   const t = useTranslation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [formData, setFormData] = useState({
     professional_bio: '',
     specializations: [] as string[],
@@ -81,6 +86,9 @@ export function EditProfessionalProfile() {
       }
     } catch (error) {
       console.error('Error loading profile:', error);
+      showToast('Erro ao carregar perfil', 'error');
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -89,6 +97,7 @@ export function EditProfessionalProfile() {
     if (!user) return;
 
     setLoading(true);
+    setJustSaved(false);
     try {
       const { error } = await supabase
         .from('profiles')
@@ -121,7 +130,13 @@ export function EditProfessionalProfile() {
 
       if (error) throw error;
 
+      setHasChanges(false);
+      setJustSaved(true);
       showToast(t.nutritionists.editProfile.saved, 'success');
+
+      setTimeout(() => {
+        setJustSaved(false);
+      }, 3000);
     } catch (error) {
       console.error('Error updating profile:', error);
       showToast(t.nutritionists.editProfile.error, 'error');
@@ -137,10 +152,33 @@ export function EditProfessionalProfile() {
         ? prev.specializations.filter(s => s !== spec)
         : [...prev.specializations, spec],
     }));
+    setHasChanges(true);
   };
+
+  const handleFieldChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setHasChanges(true);
+  };
+
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {justSaved && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center gap-3">
+          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <p className="text-sm font-medium text-green-800 dark:text-green-200">
+            {t.nutritionists.editProfile.saved}
+          </p>
+        </div>
+      )}
+
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           {t.nutritionists.editProfile.professionalInfo}
@@ -153,7 +191,7 @@ export function EditProfessionalProfile() {
             </label>
             <textarea
               value={formData.professional_bio}
-              onChange={(e) => setFormData({ ...formData, professional_bio: e.target.value })}
+              onChange={(e) => handleFieldChange('professional_bio', e.target.value)}
               rows={4}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
               placeholder={t.nutritionists.editProfile.fields.bioPlaceholder}
@@ -190,7 +228,7 @@ export function EditProfessionalProfile() {
             <input
               type="text"
               value={formData.education}
-              onChange={(e) => setFormData({ ...formData, education: e.target.value })}
+              onChange={(e) => handleFieldChange('education', e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
               placeholder={t.nutritionists.editProfile.fields.educationPlaceholder}
             />
@@ -202,7 +240,7 @@ export function EditProfessionalProfile() {
             </label>
             <textarea
               value={formData.certifications}
-              onChange={(e) => setFormData({ ...formData, certifications: e.target.value })}
+              onChange={(e) => handleFieldChange('certifications', e.target.value)}
               rows={3}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
               placeholder={t.nutritionists.editProfile.fields.certificationsPlaceholder}
@@ -217,7 +255,7 @@ export function EditProfessionalProfile() {
               type="number"
               min="0"
               value={formData.years_of_experience}
-              onChange={(e) => setFormData({ ...formData, years_of_experience: parseInt(e.target.value) || 0 })}
+              onChange={(e) => handleFieldChange('years_of_experience', parseInt(e.target.value) || 0)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -228,7 +266,7 @@ export function EditProfessionalProfile() {
             </label>
             <textarea
               value={formData.approach}
-              onChange={(e) => setFormData({ ...formData, approach: e.target.value })}
+              onChange={(e) => handleFieldChange('approach', e.target.value)}
               rows={4}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
               placeholder={t.nutritionists.editProfile.fields.approachPlaceholder}
@@ -253,7 +291,7 @@ export function EditProfessionalProfile() {
                 min="0"
                 step="0.01"
                 value={formData.consultation_price}
-                onChange={(e) => setFormData({ ...formData, consultation_price: parseFloat(e.target.value) || 0 })}
+                onChange={(e) => handleFieldChange('consultation_price', parseFloat(e.target.value) || 0)}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -267,7 +305,7 @@ export function EditProfessionalProfile() {
                 min="15"
                 step="15"
                 value={formData.consultation_duration}
-                onChange={(e) => setFormData({ ...formData, consultation_duration: parseInt(e.target.value) || 60 })}
+                onChange={(e) => handleFieldChange('consultation_duration', parseInt(e.target.value) || 60)}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -278,7 +316,7 @@ export function EditProfessionalProfile() {
               type="checkbox"
               id="accepts_insurance"
               checked={formData.accepts_health_insurance}
-              onChange={(e) => setFormData({ ...formData, accepts_health_insurance: e.target.checked })}
+              onChange={(e) => handleFieldChange('accepts_health_insurance', e.target.checked)}
               className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
             />
             <label htmlFor="accepts_insurance" className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -293,7 +331,7 @@ export function EditProfessionalProfile() {
               </label>
               <textarea
                 value={formData.health_insurances}
-                onChange={(e) => setFormData({ ...formData, health_insurances: e.target.value })}
+                onChange={(e) => handleFieldChange('health_insurances', e.target.value)}
                 rows={3}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
                 placeholder={t.nutritionists.editProfile.fields.insurancesPlaceholder}
@@ -316,7 +354,7 @@ export function EditProfessionalProfile() {
             <input
               type="tel"
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={(e) => handleFieldChange('phone', e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -328,7 +366,7 @@ export function EditProfessionalProfile() {
             <input
               type="tel"
               value={formData.whatsapp}
-              onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+              onChange={(e) => handleFieldChange('whatsapp', e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -340,7 +378,7 @@ export function EditProfessionalProfile() {
             <input
               type="text"
               value={formData.instagram}
-              onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+              onChange={(e) => handleFieldChange('instagram', e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
               placeholder="@seuusuario"
             />
@@ -353,7 +391,7 @@ export function EditProfessionalProfile() {
             <input
               type="url"
               value={formData.website}
-              onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+              onChange={(e) => handleFieldChange('website', e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -365,7 +403,7 @@ export function EditProfessionalProfile() {
             <input
               type="text"
               value={formData.clinic_address}
-              onChange={(e) => setFormData({ ...formData, clinic_address: e.target.value })}
+              onChange={(e) => handleFieldChange('clinic_address', e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -383,7 +421,7 @@ export function EditProfessionalProfile() {
               type="checkbox"
               id="accepting_clients"
               checked={formData.accepting_new_clients}
-              onChange={(e) => setFormData({ ...formData, accepting_new_clients: e.target.checked })}
+              onChange={(e) => handleFieldChange('accepting_new_clients', e.target.checked)}
               className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
             />
             <label htmlFor="accepting_clients" className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -402,7 +440,7 @@ export function EditProfessionalProfile() {
                   name="visibility"
                   value="public"
                   checked={formData.profile_visibility === 'public'}
-                  onChange={(e) => setFormData({ ...formData, profile_visibility: e.target.value })}
+                  onChange={(e) => handleFieldChange('profile_visibility', e.target.value)}
                   className="text-emerald-600 focus:ring-emerald-500"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -415,7 +453,7 @@ export function EditProfessionalProfile() {
                   name="visibility"
                   value="private"
                   checked={formData.profile_visibility === 'private'}
-                  onChange={(e) => setFormData({ ...formData, profile_visibility: e.target.value })}
+                  onChange={(e) => handleFieldChange('profile_visibility', e.target.value)}
                   className="text-emerald-600 focus:ring-emerald-500"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -427,14 +465,37 @@ export function EditProfessionalProfile() {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          {t.common.cancel}
+        </button>
+
         <button
           type="submit"
-          disabled={loading}
-          className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={loading || !hasChanges}
+          className={cn(
+            "flex items-center gap-2 px-6 py-3 font-medium rounded-lg transition-colors",
+            loading || !hasChanges
+              ? "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+              : "bg-emerald-600 hover:bg-emerald-700 text-white"
+          )}
         >
-          <Save className="h-5 w-5" />
-          {loading ? t.common.loading : t.nutritionists.editProfile.save}
+          {loading ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              {t.common.loading}
+            </>
+          ) : (
+            <>
+              <Save className="h-5 w-5" />
+              {t.nutritionists.editProfile.save}
+            </>
+          )}
         </button>
       </div>
     </form>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Star, MapPin, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { User, Star, MapPin, Clock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
@@ -99,6 +99,14 @@ export function NutritionistsPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <button
+          onClick={() => navigate('/')}
+          className="mb-6 flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          {t.common.back}
+        </button>
+
         <div className="mb-12 text-center">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             {t.nutritionists.title}
