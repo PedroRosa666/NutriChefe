@@ -232,8 +232,23 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
-                            <User className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                          <div className="h-10 w-10 rounded-lg overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-md">
+                            {recipe.authorAvatarUrl ? (
+                              <img
+                                src={recipe.authorAvatarUrl}
+                                alt={recipe.authorName || 'Autor'}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-white font-bold text-sm">
+                                {recipe.authorName
+                                  ?.split(' ')
+                                  .map((n) => n[0])
+                                  .slice(0, 2)
+                                  .join('')
+                                  .toUpperCase() || '?'}
+                              </span>
+                            )}
                           </div>
                           <div>
                             <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-0.5">
