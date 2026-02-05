@@ -132,6 +132,7 @@ export function EditProfessionalProfile() {
 
       if (error) throw error;
 
+      console.log('✅ Perfil salvo com sucesso!');
       setHasChanges(false);
       setJustSaved(true);
       showToast(t.nutritionists.editProfile.saved, 'success');
@@ -176,9 +177,9 @@ export function EditProfessionalProfile() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} className="space-y-8 relative">
       {justSaved && (
-        <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-600 rounded-xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-600 rounded-xl p-4 flex items-center justify-between shadow-lg animate-slideDown relative z-50">
           <div className="flex items-center gap-3">
             <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
               <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -190,7 +191,8 @@ export function EditProfessionalProfile() {
           <button
             type="button"
             onClick={() => setJustSaved(false)}
-            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 transition-colors"
+            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 transition-colors flex-shrink-0"
+            aria-label="Fechar mensagem"
           >
             <X className="h-5 w-5" />
           </button>
@@ -198,7 +200,7 @@ export function EditProfessionalProfile() {
       )}
 
       {showError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-600 rounded-xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-600 rounded-xl p-4 flex items-center justify-between shadow-lg animate-slideDown relative z-50">
           <div className="flex items-center gap-3">
             <div className="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
               <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
@@ -210,7 +212,8 @@ export function EditProfessionalProfile() {
           <button
             type="button"
             onClick={() => setShowError(false)}
-            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors"
+            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors flex-shrink-0"
+            aria-label="Fechar mensagem"
           >
             <X className="h-5 w-5" />
           </button>
