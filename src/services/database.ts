@@ -471,148 +471,49 @@ export async function getFavorites(userId: string) {
   return favoriteIds;
 }
 
-// Função para verificar se email existe (para recuperação de senha)
 export async function checkEmailExists(email: string): Promise<boolean> {
   try {
-    console.log('Checking if email exists:', email);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('email')
       .eq('email', email.toLowerCase().trim())
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      if (error.code === 'PGRST116') { // No rows returned
-        console.log('Email not found in profiles table');
-        return false;
-      }
-      console.error('Error checking email:', error);
-      return false;
-    }
-
-    console.log('Email found in profiles table:', !!data);
     return !!data;
-  } catch (error) {
-    console.error('Error checking email existence:', error);
+  } catch {
     return false;
   }
 }
 
-// Funções para recuperação de senha
 export async function sendPasswordResetEmail(email: string): Promise<void> {
-  console.log('Sending password reset email to:', email);
-  
   const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
     redirectTo: `${window.location.origin}/reset-password`,
   });
 
   if (error) {
-    console.error('Error sending password reset email:', error);
-    
-    // Mapear erros específicos para mensagens amigáveis
-    if (error.message.includes('Email rate limit exceeded')) {
-      throw new Error('Muitas tentativas de recuperação. Aguarde alguns minutos antes de tentar novamente.');
-    } else if (error.message.includes('For security purposes')) {
-      throw new Error('Por motivos de segurança, aguarde alguns minutos antes de solicitar outro email.');
-    } else if (error.message.includes('Invalid email')) {
-      throw new Error('Email inválido. Verifique o formato do email.');
-    } else if (error.message.includes('User not found')) {
-      throw new Error('Email não encontrado. Verifique se o email está correto ou crie uma conta.');
+    if (error.message.includes('Email rate limit exceeded') || error.message.includes('For security purposes')) {
+      throw new Error('Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.');
     }
-    
-    throw new Error('Erro ao enviar email de recuperação. Tente novamente em alguns minutos.');
+    if (error.message.includes('Invalid email')) {
+      throw new Error('Email invalido.');
+    }
+    throw new Error('Erro ao enviar email de recuperacao. Tente novamente.');
   }
-  
-  console.log('Password reset email sent successfully');
 }
 
 export async function updatePassword(newPassword: string): Promise<void> {
-  console.log('Updating user password');
-  
-  const { error } = await supabase.auth.updateUser({
-    password: newPassword
-  });
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
 
   if (error) {
-    console.error('Error updating password:', error);
-    
-    if (error.message.includes('session_not_found')) {
-      throw new Error('Sessão expirada. Solicite um novo link de recuperação.');
-    } else if (error.message.includes('same_password')) {
+    if (error.message.includes('same_password')) {
       throw new Error('A nova senha deve ser diferente da senha atual.');
-    } else if (error.message.includes('Password should be at least')) {
+    }
+    if (error.message.includes('Password should be at least')) {
       throw new Error('A senha deve ter pelo menos 6 caracteres.');
     }
-    
+    if (error.message.includes('session_not_found') || error.message.includes('Auth session missing')) {
+      throw new Error('Sessao expirada. Solicite um novo link de recuperacao.');
+    }
     throw new Error('Erro ao atualizar senha. Tente novamente.');
-  }
-  
-  console.log('Password updated successfully');
-}
-
-async function verifyPasswordResetToken(): Promise<boolean> {
-  try {
-    console.log('Verifying password reset token');
-    
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
-    if (error) {
-      console.error('Error getting session:', error);
-      return false;
-    }
-
-    if (!session) {
-      console.log('No session found');
-      return false;
-    }
-
-    // Verificar se é uma sessão de recuperação de senha
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const type = hashParams.get('type');
-    const accessToken = hashParams.get('access_token');
-    
-    console.log('Token verification - type:', type, 'has access token:', !!accessToken);
-    
-    return type === 'recovery' && !!accessToken;
-  } catch (error) {
-    console.error('Error verifying password reset token:', error);
-    return false;
-  }
-}
-
-// Função para validar token de recuperação e obter usuário
-export async function validateRecoveryToken(): Promise<{ valid: boolean; user?: any }> {
-  try {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const type = hashParams.get('type');
-
-    if (!accessToken || type !== 'recovery') {
-      return { valid: false };
-    }
-
-    // Verificar se o token é válido
-    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
-    
-    if (error || !user) {
-      console.error('Invalid recovery token:', error);
-      return { valid: false };
-    }
-
-    // Definir a sessão com o token de recuperação
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: hashParams.get('refresh_token') || ''
-    });
-
-    if (sessionError) {
-      console.error('Error setting session:', sessionError);
-      return { valid: false };
-    }
-
-    return { valid: true, user };
-  } catch (error) {
-    console.error('Error validating recovery token:', error);
-    return { valid: false };
   }
 }
