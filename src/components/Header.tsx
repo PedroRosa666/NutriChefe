@@ -201,7 +201,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                     <Bot className="w-4 h-4" />
                     <span className="hidden xl:inline">{t.labels.aiMentoring}</span>
                     {!hasAIAccess && (
-                      <span className="absolute -top-1 -right-1 text-[10px] bg-yellow-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                      <span className="absolute -top-2 -right-2 text-[9px] bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2 py-0.5 rounded-full font-bold shadow-md uppercase tracking-wider">
                         {t.labels.premium}
                       </span>
                     )}
@@ -328,7 +328,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                       <Bot className="w-4 h-4" />
                       <span className="text-sm font-medium">{t.labels.aiMentoring}</span>
                       {!hasAIAccess && (
-                        <span className="ml-auto text-xs bg-yellow-500 text-white px-2 py-0.5 rounded-full font-bold">
+                        <span className="ml-auto text-[10px] bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2.5 py-1 rounded-full font-bold shadow-md uppercase tracking-wider">
                           {t.labels.premium}
                         </span>
                       )}
