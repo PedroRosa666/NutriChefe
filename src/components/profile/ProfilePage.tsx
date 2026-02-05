@@ -4,7 +4,9 @@ import { ProfileTabs } from './ProfileTabs';
 import { ClientDashboard } from './ClientDashboard';
 import { NutritionistDashboard } from './NutritionistDashboard';
 import { useAuthStore } from '../../store/auth';
+import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
+import { Toast } from '../common/Toast';
 
 interface ProfilePageProps {
   onBackToRecipes?: () => void;
@@ -12,6 +14,7 @@ interface ProfilePageProps {
 
 export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
   const { user } = useAuthStore();
+  const { message, type, hideToast } = useToastStore();
   const t = useTranslation();
 
   const BackToRecipes = t.buttons.BackToRecipes;
@@ -87,6 +90,14 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
           </div>
         </section>
       </div>
+
+      {message && (
+        <Toast
+          message={message}
+          type={type}
+          onClose={hideToast}
+        />
+      )}
     </div>
   );
 }
