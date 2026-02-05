@@ -15,5 +15,6 @@ export interface User {
   email: string;
   name: string;
   type: UserType;
+  avatar_url?: string | null;
   profile?: UserProfile;
 }

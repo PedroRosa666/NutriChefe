@@ -16,6 +16,7 @@ interface AuthState {
   signUp: (email: string, password: string, name: string, type: UserType) => Promise<void>;
   signOut: () => Promise<void>;
   initializeAuth: () => Promise<void>;
+  updateProfile: (updates: Partial<User>) => Promise<void>;
   clearError: () => void;
   isNutritionist: () => boolean;
 }
@@ -47,6 +48,7 @@ export const useAuthStore = create<AuthState>()(
             email: u.email ?? '',
             name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
             type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+            avatar_url: profile?.avatar_url || null,
             profile: undefined
           };
 
@@ -84,6 +86,7 @@ export const useAuthStore = create<AuthState>()(
             email: u.email ?? '',
             name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
             type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+            avatar_url: profile?.avatar_url || null,
             profile: undefined
           };
 
@@ -168,6 +171,18 @@ export const useAuthStore = create<AuthState>()(
           console.error('signOut error:', e);
           useToastStore.getState().showToast('Logout realizado', 'info');
         }
+      },
+
+      updateProfile: async (updates) => {
+        const currentUser = get().user;
+        if (!currentUser) return;
+
+        set({
+          user: {
+            ...currentUser,
+            ...updates
+          }
+        });
       },
 
       clearError: () => set({ error: null }),

@@ -1,10 +1,11 @@
-import { User, Mail, ChefHat, Heart, TrendingUp, Clock, Crown } from 'lucide-react';
+import { Mail, ChefHat, Heart, TrendingUp, Clock, Crown } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useSubscriptionStore } from '../../store/subscription';
 import { useTranslation } from '../../hooks/useTranslation';
+import { AvatarUpload } from '../common/AvatarUpload';
 
 export function ProfileCard() {
   const { user } = useAuthStore();
@@ -27,8 +28,12 @@ export function ProfileCard() {
     <div className="rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 flex flex-col sm:flex-row sm:items-center gap-6">
 
       {/* Avatar */}
-      <div className="flex items-center justify-center h-20 w-20 rounded-full bg-emerald-100 dark:bg-emerald-900/40 shadow-inner">
-        <User className="h-10 w-10 text-emerald-700 dark:text-emerald-300" />
+      <div className="flex-shrink-0">
+        <AvatarUpload
+          currentAvatarUrl={user.avatar_url}
+          size="xl"
+          editable={true}
+        />
       </div>
 
       {/* Infos */}

@@ -27,6 +27,7 @@ interface DatabaseRecipe {
   profiles?: {
     full_name: string;
     user_type: string;
+    avatar_url?: string | null;
   };
   reviews?: Array<{
     id: string;
@@ -90,6 +91,7 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
     authorId: dbRecipe.author_id,
     authorName: dbRecipe.profiles?.full_name,
     authorType: dbRecipe.profiles?.user_type as 'Nutritionist' | 'Client',
+    authorAvatarUrl: dbRecipe.profiles?.avatar_url || null,
     createdAt: dbRecipe.created_at,
     updatedAt: dbRecipe.updated_at
   };
@@ -180,7 +182,7 @@ export async function createRecipe(recipe: Omit<Recipe, 'id' | 'rating' | 'revie
     }])
     .select(`
       *,
-      profiles!recipes_author_id_fkey(full_name, user_type),
+      profiles!recipes_author_id_fkey(full_name, user_type, avatar_url),
       reviews(
         id,
         rating,
@@ -229,7 +231,7 @@ export async function updateRecipe(recipeId: number, updates: Partial<Recipe>) {
     .eq('id', uuid)
     .select(`
       *,
-      profiles!recipes_author_id_fkey(full_name, user_type),
+      profiles!recipes_author_id_fkey(full_name, user_type, avatar_url),
       reviews(
         id,
         rating,
@@ -269,7 +271,7 @@ export async function getRecipes() {
     .from('recipes')
     .select(`
       *,
-      profiles!recipes_author_id_fkey(full_name, user_type),
+      profiles!recipes_author_id_fkey(full_name, user_type, avatar_url),
       reviews(
         id,
         rating,
@@ -307,7 +309,7 @@ async function getRecipeById(recipeId: number) {
     .from('recipes')
     .select(`
       *,
-      profiles!recipes_author_id_fkey(full_name, user_type),
+      profiles!recipes_author_id_fkey(full_name, user_type, avatar_url),
       reviews(
         id,
         rating,

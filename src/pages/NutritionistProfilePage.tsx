@@ -44,6 +44,7 @@ interface NutritionistFullProfile {
   website: string;
   clinic_address: string;
   accepting_new_clients: boolean;
+  avatar_url?: string | null;
 }
 
 export function NutritionistProfilePage() {
@@ -97,6 +98,7 @@ export function NutritionistProfilePage() {
         website: profileData.website || '',
         clinic_address: profileData.clinic_address || '',
         accepting_new_clients: profileData.accepting_new_clients ?? true,
+        avatar_url: profileData.avatar_url || null,
       });
 
       const { data: recipesData } = await supabase
@@ -153,8 +155,16 @@ export function NutritionistProfilePage() {
           <div className="p-8">
             <div className="flex flex-col md:flex-row gap-6 items-start mb-8">
               <div className="flex-shrink-0">
-                <div className="flex items-center justify-center w-32 h-32 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/40 dark:to-teal-900/40 shadow-lg">
-                  <User className="h-16 w-16 text-emerald-600 dark:text-emerald-400" />
+                <div className="flex items-center justify-center w-32 h-32 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 shadow-lg overflow-hidden">
+                  {profile.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={profile.full_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="h-16 w-16 text-white" />
+                  )}
                 </div>
               </div>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, ChefHat, Star, Heart } from 'lucide-react';
+import { Clock, ChefHat, Star, Heart, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useRecipesStore } from '../store/recipes';
 import { useAuthStore } from '../store/auth';
@@ -207,6 +207,31 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
             </div>
           </div>
         </div>
+
+        {/* Author info */}
+        {recipe.authorName && (
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-700 flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+              {recipe.authorAvatarUrl ? (
+                <img
+                  src={recipe.authorAvatarUrl}
+                  alt={recipe.authorName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-4 h-4" />
+              )}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {t.recipe.by || 'Por'}
+              </span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                {recipe.authorName}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

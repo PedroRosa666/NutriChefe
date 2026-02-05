@@ -18,6 +18,7 @@ interface NutritionistProfile {
   accepting_new_clients: boolean;
   published_recipes_count: number;
   average_rating: number;
+  avatar_url?: string | null;
 }
 
 export function NutritionistsPage() {
@@ -79,6 +80,7 @@ export function NutritionistsPage() {
             accepting_new_clients: profile.accepting_new_clients ?? true,
             published_recipes_count: recipesCount || 0,
             average_rating: avgRating,
+            avatar_url: profile.avatar_url || null,
           };
         })
       );
@@ -135,8 +137,16 @@ export function NutritionistsPage() {
                 <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-24"></div>
 
                 <div className="p-6 -mt-12">
-                  <div className="flex items-center justify-center w-20 h-20 rounded-full bg-white dark:bg-gray-800 mx-auto mb-4 shadow-lg border-4 border-white dark:border-gray-800">
-                    <User className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+                  <div className="flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 mx-auto mb-4 shadow-lg border-4 border-white dark:border-gray-800 overflow-hidden">
+                    {nutritionist.avatar_url ? (
+                      <img
+                        src={nutritionist.avatar_url}
+                        alt={nutritionist.full_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-10 w-10 text-white" />
+                    )}
                   </div>
 
                   <h3 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-2">
