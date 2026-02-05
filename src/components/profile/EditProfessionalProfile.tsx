@@ -154,12 +154,36 @@ export function EditProfessionalProfile() {
   };
 
   const toggleSpecialization = (spec: string) => {
-    setFormData(prev => ({
-      ...prev,
-      specializations: prev.specializations.includes(spec)
-        ? prev.specializations.filter(s => s !== spec)
-        : [...prev.specializations, spec],
-    }));
+    const translatedValue = t.nutritionists.specializations[spec as keyof typeof t.nutritionists.specializations];
+
+    setFormData(prev => {
+      const hasSpec = prev.specializations.some(s => {
+        const specKey = SPECIALIZATIONS_OPTIONS.find(key =>
+          t.nutritionists.specializations[key as keyof typeof t.nutritionists.specializations] === s ||
+          key === s
+        );
+        return specKey === spec;
+      });
+
+      if (hasSpec) {
+        return {
+          ...prev,
+          specializations: prev.specializations.filter(s => {
+            const specKey = SPECIALIZATIONS_OPTIONS.find(key =>
+              t.nutritionists.specializations[key as keyof typeof t.nutritionists.specializations] === s ||
+              key === s
+            );
+            return specKey !== spec;
+          }),
+        };
+      } else {
+        return {
+          ...prev,
+          specializations: [...prev.specializations, translatedValue],
+        };
+      }
+    });
+
     setHasChanges(true);
   };
 
@@ -260,21 +284,31 @@ export function EditProfessionalProfile() {
               {t.nutritionists.editProfile.fields.specializations}
             </label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {SPECIALIZATIONS_OPTIONS.map((spec) => (
-                <button
-                  key={spec}
-                  type="button"
-                  onClick={() => toggleSpecialization(spec)}
-                  className={cn(
-                    "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                    formData.specializations.includes(spec)
-                      ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-2 border-transparent hover:border-gray-300"
-                  )}
-                >
-                  {t.nutritionists.specializations[spec as keyof typeof t.nutritionists.specializations]}
-                </button>
-              ))}
+              {SPECIALIZATIONS_OPTIONS.map((spec) => {
+                const isSelected = formData.specializations.some(s => {
+                  const specKey = SPECIALIZATIONS_OPTIONS.find(key =>
+                    t.nutritionists.specializations[key as keyof typeof t.nutritionists.specializations] === s ||
+                    key === s
+                  );
+                  return specKey === spec;
+                });
+
+                return (
+                  <button
+                    key={spec}
+                    type="button"
+                    onClick={() => toggleSpecialization(spec)}
+                    className={cn(
+                      "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                      isSelected
+                        ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-2 border-transparent hover:border-gray-300"
+                    )}
+                  >
+                    {t.nutritionists.specializations[spec as keyof typeof t.nutritionists.specializations]}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

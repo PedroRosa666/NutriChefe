@@ -4,6 +4,8 @@ import { User, Star, MapPin, Clock, CheckCircle, XCircle, ArrowLeft } from 'luci
 import { supabase } from '../lib/supabase';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
+import { getSpecializationTranslation } from '../lib/i18n/translations';
+import { useSettingsStore } from '../store/settings';
 
 interface NutritionistProfile {
   id: string;
@@ -23,6 +25,7 @@ export function NutritionistsPage() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const t = useTranslation();
+  const { language } = useSettingsStore();
 
   useEffect(() => {
     loadNutritionists();
@@ -144,7 +147,7 @@ export function NutritionistsPage() {
                     {nutritionist.years_of_experience > 0 && (
                       <div className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
                         <Clock className="h-4 w-4" />
-                        {nutritionist.years_of_experience} anos
+                        {nutritionist.years_of_experience} {language === 'pt' ? 'anos' : 'years'}
                       </div>
                     )}
                     {nutritionist.average_rating > 0 && (
@@ -162,7 +165,7 @@ export function NutritionistsPage() {
                           key={idx}
                           className="px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium rounded-full"
                         >
-                          {spec}
+                          {getSpecializationTranslation(spec, language)}
                         </span>
                       ))}
                     </div>

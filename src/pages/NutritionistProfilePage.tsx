@@ -21,6 +21,8 @@ import { supabase } from '../lib/supabase';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
 import type { Recipe } from '../types/recipe';
+import { getSpecializationTranslation } from '../lib/i18n/translations';
+import { useSettingsStore } from '../store/settings';
 
 interface NutritionistFullProfile {
   id: string;
@@ -48,6 +50,7 @@ export function NutritionistProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const t = useTranslation();
+  const { language } = useSettingsStore();
   const [profile, setProfile] = useState<NutritionistFullProfile | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [averageRating, setAverageRating] = useState(0);
@@ -216,7 +219,7 @@ export function NutritionistProfilePage() {
                         key={idx}
                         className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-sm font-medium rounded-full"
                       >
-                        {spec}
+                        {getSpecializationTranslation(spec, language)}
                       </span>
                     ))}
                   </div>

@@ -700,3 +700,35 @@ export const translations = {
 };
 
 export type Language = keyof typeof translations;
+
+export function getSpecializationTranslation(spec: string, language: Language): string {
+  const specMap: Record<string, keyof typeof translations.en.nutritionists.specializations> = {
+    'Sports Nutrition': 'sports',
+    'Nutrição Esportiva': 'sports',
+    'Clinical Nutrition': 'clinical',
+    'Nutrição Clínica': 'clinical',
+    'Weight Loss': 'weightLoss',
+    'Emagrecimento': 'weightLoss',
+    'Women\'s Health': 'womensHealth',
+    'Saúde da Mulher': 'womensHealth',
+    'Pediatric Nutrition': 'pediatric',
+    'Nutrição Pediátrica': 'pediatric',
+    'Geriatric Nutrition': 'geriatric',
+    'Nutrição Geriátrica': 'geriatric',
+    'Vegetarian/Vegan': 'vegetarian',
+    'Vegetariano/Vegano': 'vegetarian',
+    'Diabetes Management': 'diabetes',
+    'Controle de Diabetes': 'diabetes',
+    'Cardiovascular Health': 'cardiovascular',
+    'Saúde Cardiovascular': 'cardiovascular',
+    'Gastrointestinal Health': 'gastrointestinal',
+    'Saúde Gastrointestinal': 'gastrointestinal',
+  };
+
+  const key = specMap[spec];
+  if (key) {
+    return translations[language].nutritionists.specializations[key];
+  }
+
+  return spec;
+}
