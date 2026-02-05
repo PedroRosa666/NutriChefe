@@ -197,7 +197,6 @@ export function ClientDashboard() {
                   </p>
                   <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                     <span>★ {recipe.rating.toFixed(1)}</span>
-                    <span>•</span>
                     <span>{recipe.prepTime}min</span>
                   </div>
                 </div>
