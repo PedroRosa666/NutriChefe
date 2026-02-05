@@ -153,60 +153,86 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         </p>
 
         {/* Linha de informações */}
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-gray-100 dark:border-slate-700 pt-4">
-          <div className="flex flex-col items-center gap-2 flex-1">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-900/20 shadow-sm">
-              <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t.labels.time}</span>
-              <span className="text-sm font-bold text-gray-900 dark:text-white">
-                {recipe.prepTime}min
-              </span>
-            </div>
-          </div>
+<div className="mt-auto flex items-center justify-between gap-3 border-t border-gray-100 dark:border-slate-700 pt-2">
+  
+  {/* Tempo */}
+  <div className="flex flex-col items-center gap-1 flex-1">
+    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-900/20 shadow-sm">
+      <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+    </div>
 
-          <div className="flex flex-col items-center gap-2 flex-1">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-900/20 shadow-sm">
-              <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-            </div>
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t.labels.rating}</span>
-              <span className="text-sm font-bold text-gray-900 dark:text-white">
-                {displayRating()}
-              </span>
-            </div>
-          </div>
+    <div className="flex flex-col items-center gap-0 leading-tight">
+      <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        {t.labels.time}
+      </span>
+      <span className="text-sm font-bold text-gray-900 dark:text-white">
+        {recipe.prepTime}min
+      </span>
+    </div>
+  </div>
 
-          <div className="flex flex-col items-center gap-2 flex-1">
-            <div className={cn(
-              "flex items-center justify-center w-9 h-9 rounded-xl shadow-sm bg-gradient-to-br",
-              recipe.difficulty === 'easy' && 'from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-900/20',
-              recipe.difficulty === 'medium' && 'from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-900/20',
-              recipe.difficulty === 'hard' && 'from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-900/20',
-            )}>
-              <ChefHat className={cn(
-                "h-4 w-4",
-                recipe.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
-                recipe.difficulty === 'medium' && 'text-orange-600 dark:text-orange-400',
-                recipe.difficulty === 'hard' && 'text-red-600 dark:text-red-400',
-              )} />
-            </div>
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t.labels.level}</span>
-              <span
-                className={cn(
-                  'text-sm font-bold capitalize',
-                  recipe.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
-                  recipe.difficulty === 'medium' && 'text-orange-600 dark:text-orange-400',
-                  recipe.difficulty === 'hard' && 'text-red-600 dark:text-red-400',
-                )}
-              >
-                {translatedDifficulty}
-              </span>
-            </div>
-          </div>
-        </div>
+  {/* Rating */}
+  <div className="flex flex-col items-center gap-1 flex-1">
+    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-900/20 shadow-sm">
+      <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+    </div>
+
+    <div className="flex flex-col items-center gap-0 leading-tight">
+      <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        {t.labels.rating}
+      </span>
+      <span className="text-sm font-bold text-gray-900 dark:text-white">
+        {displayRating()}
+      </span>
+    </div>
+  </div>
+
+  {/* Dificuldade */}
+  <div className="flex flex-col items-center gap-1 flex-1">
+    <div
+      className={cn(
+        "flex items-center justify-center w-8 h-8 rounded-lg shadow-sm bg-gradient-to-br",
+        recipe.difficulty === "easy" &&
+          "from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-900/20",
+        recipe.difficulty === "medium" &&
+          "from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-900/20",
+        recipe.difficulty === "hard" &&
+          "from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-900/20"
+      )}
+    >
+      <ChefHat
+        className={cn(
+          "h-3.5 w-3.5",
+          recipe.difficulty === "easy" &&
+            "text-emerald-600 dark:text-emerald-400",
+          recipe.difficulty === "medium" &&
+            "text-orange-600 dark:text-orange-400",
+          recipe.difficulty === "hard" &&
+            "text-red-600 dark:text-red-400"
+        )}
+      />
+    </div>
+
+    <div className="flex flex-col items-center gap-0 leading-tight">
+      <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        {t.labels.level}
+      </span>
+      <span
+        className={cn(
+          "text-sm font-bold capitalize",
+          recipe.difficulty === "easy" &&
+            "text-emerald-600 dark:text-emerald-400",
+          recipe.difficulty === "medium" &&
+            "text-orange-600 dark:text-orange-400",
+          recipe.difficulty === "hard" &&
+            "text-red-600 dark:text-red-400"
+        )}
+      >
+        {translatedDifficulty}
+      </span>
+    </div>
+  </div>
+</div>
 
         {/* Author info */}
         {recipe.authorName && (
