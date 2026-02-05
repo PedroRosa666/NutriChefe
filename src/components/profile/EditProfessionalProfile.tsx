@@ -20,6 +20,43 @@ const SPECIALIZATIONS_OPTIONS = [
   'gastrointestinal',
 ];
 
+const normalizeSpecialization = (spec: string): string => {
+  const specMap: Record<string, string> = {
+    'sports': 'sports',
+    'Sports Nutrition': 'sports',
+    'Nutrição Esportiva': 'sports',
+    'clinical': 'clinical',
+    'Clinical Nutrition': 'clinical',
+    'Nutrição Clínica': 'clinical',
+    'weightLoss': 'weightLoss',
+    'Weight Loss': 'weightLoss',
+    'Emagrecimento': 'weightLoss',
+    'womensHealth': 'womensHealth',
+    'Women\'s Health': 'womensHealth',
+    'Saúde da Mulher': 'womensHealth',
+    'pediatric': 'pediatric',
+    'Pediatric Nutrition': 'pediatric',
+    'Nutrição Pediátrica': 'pediatric',
+    'geriatric': 'geriatric',
+    'Geriatric Nutrition': 'geriatric',
+    'Nutrição Geriátrica': 'geriatric',
+    'vegetarian': 'vegetarian',
+    'Vegetarian/Vegan': 'vegetarian',
+    'Vegetariano/Vegano': 'vegetarian',
+    'diabetes': 'diabetes',
+    'Diabetes Management': 'diabetes',
+    'Controle de Diabetes': 'diabetes',
+    'cardiovascular': 'cardiovascular',
+    'Cardiovascular Health': 'cardiovascular',
+    'Saúde Cardiovascular': 'cardiovascular',
+    'gastrointestinal': 'gastrointestinal',
+    'Gastrointestinal Health': 'gastrointestinal',
+    'Saúde Gastrointestinal': 'gastrointestinal',
+  };
+
+  return specMap[spec] || spec;
+};
+
 export function EditProfessionalProfile() {
   const { user } = useAuthStore();
   const { showToast } = useToastStore();
@@ -67,7 +104,7 @@ export function EditProfessionalProfile() {
       if (data) {
         setFormData({
           professional_bio: data.professional_bio || '',
-          specializations: data.specializations || [],
+          specializations: (data.specializations || []).map(normalizeSpecialization),
           education: data.education || '',
           certifications: (data.certifications || []).join('\n'),
           years_of_experience: data.years_of_experience || 0,
@@ -154,32 +191,19 @@ export function EditProfessionalProfile() {
   };
 
   const toggleSpecialization = (spec: string) => {
-    const translatedValue = t.nutritionists.specializations[spec as keyof typeof t.nutritionists.specializations];
-
     setFormData(prev => {
-      const hasSpec = prev.specializations.some(s => {
-        const specKey = SPECIALIZATIONS_OPTIONS.find(key =>
-          t.nutritionists.specializations[key as keyof typeof t.nutritionists.specializations] === s ||
-          key === s
-        );
-        return specKey === spec;
-      });
+      const normalizedSpecs = prev.specializations.map(normalizeSpecialization);
+      const hasSpec = normalizedSpecs.includes(spec);
 
       if (hasSpec) {
         return {
           ...prev,
-          specializations: prev.specializations.filter(s => {
-            const specKey = SPECIALIZATIONS_OPTIONS.find(key =>
-              t.nutritionists.specializations[key as keyof typeof t.nutritionists.specializations] === s ||
-              key === s
-            );
-            return specKey !== spec;
-          }),
+          specializations: prev.specializations.filter(s => normalizeSpecialization(s) !== spec),
         };
       } else {
         return {
           ...prev,
-          specializations: [...prev.specializations, translatedValue],
+          specializations: [...prev.specializations, spec],
         };
       }
     });
@@ -285,13 +309,8 @@ export function EditProfessionalProfile() {
             </label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {SPECIALIZATIONS_OPTIONS.map((spec) => {
-                const isSelected = formData.specializations.some(s => {
-                  const specKey = SPECIALIZATIONS_OPTIONS.find(key =>
-                    t.nutritionists.specializations[key as keyof typeof t.nutritionists.specializations] === s ||
-                    key === s
-                  );
-                  return specKey === spec;
-                });
+                const normalizedSpecs = formData.specializations.map(normalizeSpecialization);
+                const isSelected = normalizedSpecs.includes(spec);
 
                 return (
                   <button
