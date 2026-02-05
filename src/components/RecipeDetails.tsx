@@ -413,13 +413,22 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
 
                       <div className="bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-lg border border-amber-100 dark:border-amber-800/30">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.labels.rating}</span>
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                          {recipe.rating === 0 || !recipe.rating || recipe.reviews.length === 0 ? (
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-gray-900 dark:text-white">--</div>
+                              <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{t.recipe.noReviews}</div>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <div className="text-2xl font-bold text-gray-900 dark:text-white">{recipe.rating.toFixed(1)}</div>
+                              <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                                {recipe.reviews.length} {recipe.reviews.length === 1 ? t.recipe.reviewSingular : t.recipe.reviewPlural}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <span className="text-base sm:text-xl font-bold text-gray-900 dark:text-white break-words leading-tight">
-                          {displayRating()}
-                        </span>
                       </div>
                     </div>
 
