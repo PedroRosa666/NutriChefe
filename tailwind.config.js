@@ -28,12 +28,25 @@ export default {
       },
       keyframes: {
         slideDown: {
-          '0%': { transform: 'translateY(-100%)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
+          '0%': {
+            transform: 'translate(-50%, -150%)',
+            opacity: '0',
+            scale: '0.9'
+          },
+          '100%': {
+            transform: 'translate(-50%, 0)',
+            opacity: '1',
+            scale: '1'
+          },
+        },
+        bounce: {
+          '0%, 100%': { transform: 'translate(-50%, 0) scale(1)' },
+          '50%': { transform: 'translate(-50%, -10px) scale(1.02)' },
         },
       },
       animation: {
-        slideDown: 'slideDown 0.3s ease-out',
+        slideDown: 'slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        bounce: 'bounce 0.6s ease-in-out',
       },
     },
   },

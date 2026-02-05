@@ -177,48 +177,64 @@ export function EditProfessionalProfile() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 relative">
+    <>
       {justSaved && (
-        <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-600 rounded-xl p-4 flex items-center justify-between shadow-lg animate-slideDown relative z-50">
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
-              <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] max-w-lg w-[calc(100%-2rem)] animate-slideDown pointer-events-auto">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-2 border-green-500 dark:border-green-400 rounded-2xl p-5 flex items-center justify-between shadow-2xl backdrop-blur-md">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-12 h-12 bg-green-500 dark:bg-green-600 rounded-full flex items-center justify-center animate-bounce">
+                <CheckCircle className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <p className="text-base font-bold text-green-900 dark:text-green-100">
+                  Perfil Salvo!
+                </p>
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  {t.nutritionists.editProfile.saved}
+                </p>
+              </div>
             </div>
-            <p className="text-sm font-medium text-green-800 dark:text-green-200">
-              {t.nutritionists.editProfile.saved}
-            </p>
+            <button
+              type="button"
+              onClick={() => setJustSaved(false)}
+              className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-200 transition-colors flex-shrink-0 ml-2"
+              aria-label="Fechar mensagem"
+            >
+              <X className="h-6 w-6" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setJustSaved(false)}
-            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 transition-colors flex-shrink-0"
-            aria-label="Fechar mensagem"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
       )}
 
       {showError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-600 rounded-xl p-4 flex items-center justify-between shadow-lg animate-slideDown relative z-50">
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
-              <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] max-w-lg w-[calc(100%-2rem)] animate-slideDown pointer-events-auto">
+          <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/30 dark:to-orange-900/30 border-2 border-red-500 dark:border-red-400 rounded-2xl p-5 flex items-center justify-between shadow-2xl backdrop-blur-md">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-12 h-12 bg-red-500 dark:bg-red-600 rounded-full flex items-center justify-center animate-pulse">
+                <AlertCircle className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <p className="text-base font-bold text-red-900 dark:text-red-100">
+                  Erro ao Salvar
+                </p>
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  {t.nutritionists.editProfile.error}
+                </p>
+              </div>
             </div>
-            <p className="text-sm font-medium text-red-800 dark:text-red-200">
-              {t.nutritionists.editProfile.error}
-            </p>
+            <button
+              type="button"
+              onClick={() => setShowError(false)}
+              className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-200 transition-colors flex-shrink-0 ml-2"
+              aria-label="Fechar mensagem"
+            >
+              <X className="h-6 w-6" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowError(false)}
-            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors flex-shrink-0"
-            aria-label="Fechar mensagem"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
       )}
+
+      <form onSubmit={handleSubmit} className="space-y-8 relative">
 
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -539,6 +555,7 @@ export function EditProfessionalProfile() {
           )}
         </button>
       </div>
-    </form>
+      </form>
+    </>
   );
 }
