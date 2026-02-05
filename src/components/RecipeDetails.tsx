@@ -378,39 +378,56 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     {/* Meta (tempo, dificuldade, rating) */}
                     <div className="grid grid-cols-3 gap-3">
                       <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-800/30">
-                        <div className="flex items-center gap-1.5 mb-1">
+                        <div className="flex flex-col items-center justify-center gap-1 mb-1 text-center">
                           <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.labels.time}</span>
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            {t.labels.time}
+                          </span>
                         </div>
-                        <span className="text-xl font-bold text-gray-900 dark:text-white">
+                      
+                        <span className="block text-center text-xl font-bold text-gray-900 dark:text-white">
                           {recipe.prepTime}min
                         </span>
                       </div>
 
-                      <div className={cn(
-                        "p-3 rounded-lg border",
-                        recipe.difficulty === 'easy' && 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/30',
-                        recipe.difficulty === 'medium' && 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/30',
-                        recipe.difficulty === 'hard' && 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-800/30',
-                      )}>
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <ChefHat className={cn(
-                            "w-4 h-4",
-                            recipe.difficulty === 'easy' && 'text-emerald-600 dark:text-emerald-400',
-                            recipe.difficulty === 'medium' && 'text-amber-600 dark:text-amber-400',
-                            recipe.difficulty === 'hard' && 'text-red-600 dark:text-red-400',
-                          )} />
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.labels.level}</span>
+
+                      <div
+                        className={cn(
+                          "p-3 rounded-lg border",
+                          recipe.difficulty === "easy" &&
+                            "bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/30",
+                          recipe.difficulty === "medium" &&
+                            "bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/30",
+                          recipe.difficulty === "hard" &&
+                            "bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-800/30"
+                        )}
+                      >
+                        <div className="flex flex-col items-center justify-center gap-1 mb-1 text-center">
+                          <ChefHat
+                            className={cn(
+                              "w-4 h-4",
+                              recipe.difficulty === "easy" && "text-emerald-600 dark:text-emerald-400",
+                              recipe.difficulty === "medium" && "text-amber-600 dark:text-amber-400",
+                              recipe.difficulty === "hard" && "text-red-600 dark:text-red-400"
+                            )}
+                          />
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            {t.labels.level}
+                          </span>
                         </div>
-                        <span className={cn(
-                          "text-base font-bold capitalize",
-                          recipe.difficulty === 'easy' && 'text-emerald-700 dark:text-emerald-300',
-                          recipe.difficulty === 'medium' && 'text-amber-700 dark:text-amber-300',
-                          recipe.difficulty === 'hard' && 'text-red-700 dark:text-red-300',
-                        )}>
+                      
+                        <span
+                          className={cn(
+                            "block text-center text-base font-bold capitalize",
+                            recipe.difficulty === "easy" && "text-emerald-700 dark:text-emerald-300",
+                            recipe.difficulty === "medium" && "text-amber-700 dark:text-amber-300",
+                            recipe.difficulty === "hard" && "text-red-700 dark:text-red-300"
+                          )}
+                        >
                           {translatedDifficulty}
                         </span>
                       </div>
+
 
                       <div className="bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-lg border border-amber-100 dark:border-amber-800/30">
                         <div className="flex flex-col items-center justify-center gap-1">
