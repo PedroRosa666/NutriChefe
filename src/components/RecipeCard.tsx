@@ -152,16 +152,16 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           {recipe.description}
         </p>
 
-        {/* Linha de informações (Opção C) */}
+        {/* Linha de informações (Opção B) */}
 <div className="mt-auto flex items-center justify-between gap-3 border-t border-gray-100 dark:border-slate-700 pt-2">
 
   {/* Tempo */}
-  <div className="flex items-center gap-2 flex-1">
+  <div className="flex flex-col items-center gap-1 flex-1">
     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-900/20 shadow-sm">
       <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
     </div>
 
-    <div className="flex flex-col leading-tight">
+    <div className="flex flex-col items-center gap-0 leading-tight">
       <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
         {t.labels.time}
       </span>
@@ -172,12 +172,12 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
   </div>
 
   {/* Rating */}
-  <div className="flex items-center gap-2 flex-1">
+  <div className="flex flex-col items-center gap-1 flex-1">
     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-900/20 shadow-sm">
       <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
     </div>
 
-    <div className="flex flex-col leading-tight">
+    <div className="flex flex-col items-center gap-0 leading-tight">
       <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
         {t.labels.rating}
       </span>
@@ -188,7 +188,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
   </div>
 
   {/* Dificuldade */}
-  <div className="flex items-center gap-2 flex-1">
+  <div className="flex flex-col items-center gap-1 flex-1">
     <div
       className={cn(
         "flex items-center justify-center w-8 h-8 rounded-lg shadow-sm bg-gradient-to-br",
@@ -203,7 +203,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       <ChefHat className="h-3.5 w-3.5" />
     </div>
 
-    <div className="flex flex-col leading-tight">
+    <div className="flex flex-col items-center gap-0 leading-tight">
       <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
         {t.labels.level}
       </span>
