@@ -317,8 +317,8 @@ export const translations = {
         public: 'Public',
         private: 'Private',
         save: 'Save Changes',
-        saved: 'Profile updated successfully',
-        error: 'Error updating profile',
+        saved: 'Great! Your professional profile has been updated successfully.',
+        error: 'Oops! We couldn\'t save your changes. Please check your connection and try again.',
 
         fields: {
           bio: 'Professional Bio',
@@ -667,8 +667,8 @@ export const translations = {
         public: 'Público',
         private: 'Privado',
         save: 'Salvar Alterações',
-        saved: 'Perfil atualizado com sucesso',
-        error: 'Erro ao atualizar perfil',
+        saved: 'Ótimo! Seu perfil profissional foi atualizado com sucesso.',
+        error: 'Ops! Não conseguimos salvar suas alterações. Por favor, verifique sua conexão e tente novamente.',
 
         fields: {
           bio: 'Biografia Profissional',

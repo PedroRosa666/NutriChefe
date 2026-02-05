@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
+import { Save, ArrowLeft, Loader2, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/auth';
@@ -29,6 +29,7 @@ export function EditProfessionalProfile() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+  const [showError, setShowError] = useState(false);
   const [formData, setFormData] = useState({
     professional_bio: '',
     specializations: [] as string[],
@@ -98,6 +99,7 @@ export function EditProfessionalProfile() {
 
     setLoading(true);
     setJustSaved(false);
+    setShowError(false);
     try {
       const { error } = await supabase
         .from('profiles')
@@ -136,10 +138,15 @@ export function EditProfessionalProfile() {
 
       setTimeout(() => {
         setJustSaved(false);
-      }, 3000);
+      }, 5000);
     } catch (error) {
       console.error('Error updating profile:', error);
+      setShowError(true);
       showToast(t.nutritionists.editProfile.error, 'error');
+
+      setTimeout(() => {
+        setShowError(false);
+      }, 5000);
     } finally {
       setLoading(false);
     }
@@ -171,11 +178,42 @@ export function EditProfessionalProfile() {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {justSaved && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center gap-3">
-          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-          <p className="text-sm font-medium text-green-800 dark:text-green-200">
-            {t.nutritionists.editProfile.saved}
-          </p>
+        <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-600 rounded-xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
+              <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+            </div>
+            <p className="text-sm font-medium text-green-800 dark:text-green-200">
+              {t.nutritionists.editProfile.saved}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setJustSaved(false)}
+            className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+
+      {showError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-600 rounded-xl p-4 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
+              <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+            </div>
+            <p className="text-sm font-medium text-red-800 dark:text-red-200">
+              {t.nutritionists.editProfile.error}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowError(false)}
+            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
       )}
 
