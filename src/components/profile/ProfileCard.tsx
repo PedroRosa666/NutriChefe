@@ -1,8 +1,9 @@
-import { User, Mail, ChefHat, Heart, TrendingUp, Clock } from 'lucide-react';
+import { User, Mail, ChefHat, Heart, TrendingUp, Clock, Crown } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
+import { useSubscriptionStore } from '../../store/subscription';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export function ProfileCard() {
@@ -10,6 +11,7 @@ export function ProfileCard() {
   const { recipes, favoriteRecipes } = useRecipesStore();
   const { goals, activeGoals } = useNutritionGoalsStore();
   const { entries } = useNutritionTrackingStore();
+  const { isPremium } = useSubscriptionStore();
   const t = useTranslation();
 
   if (!user) return null;
@@ -17,6 +19,7 @@ export function ProfileCard() {
   const userRecipes = recipes.filter((r) => r.authorId === user.id);
   const totalFavorites = recipes.filter((r) => favoriteRecipes.includes(r.id)).length;
   const isNutritionist = user.type === 'Nutritionist';
+  const isPremiumUser = isPremium();
   const hasGoals = activeGoals.length > 0;
   const trackingDays = new Set(entries.map(e => e.date)).size;
 
@@ -41,8 +44,17 @@ export function ProfileCard() {
           </div>
 
           <div className="flex items-center gap-2">
-            <ChefHat className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
-            {isNutritionist ? t.profile.nutricionist : t.profile.client}
+            {isPremiumUser && !isNutritionist ? (
+              <Crown className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+            ) : (
+              <ChefHat className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+            )}
+            {isNutritionist
+              ? t.profile.nutricionist
+              : isPremiumUser
+                ? t.profile.clientPremium
+                : t.profile.client
+            }
           </div>
         </div>
 
@@ -89,7 +101,7 @@ export function ProfileCard() {
                   {activeGoals.length}
                 </p>
                 <span className="text-xs text-slate-600 dark:text-slate-400">
-                  Metas ativas
+                  {t.profile.activeGoalsLabel}
                 </span>
               </div>
             )}
@@ -101,7 +113,7 @@ export function ProfileCard() {
                   {trackingDays}
                 </p>
                 <span className="text-xs text-slate-600 dark:text-slate-400">
-                  Dias rastreados
+                  {t.profile.trackedDays}
                 </span>
               </div>
             )}

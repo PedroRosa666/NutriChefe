@@ -43,6 +43,7 @@ export const translations = {
       aiMentoring: 'AI Mentoring',
       premium: 'Premium',
       activeGoals: 'Active Goals',
+      unlimitedAccess: 'Unlimited access',
     },
 
     filters: {
@@ -115,6 +116,8 @@ export const translations = {
       pickARecipe: 'Pick a recipe first.',
       date: 'Date',
       recentFavorites: 'Recent Favorites',
+      activeGoalsLabel: 'Active goals',
+      trackedDays: 'Tracked days',
       personalInfo: 'Personal Information',
       accountType: 'Account Type',
       email: 'Email',
@@ -122,6 +125,7 @@ export const translations = {
       password: 'Password',
       nutricionist: 'Nutritionist',
       client: 'Client',
+      clientPremium: 'Premium Client',
       saveGoals: 'Save goals',
       nutritionGoalsnames: {
         calories: 'Calories',
@@ -298,6 +302,7 @@ export const translations = {
       aiMentoring: 'Mentoria IA',
       premium: 'Premium',
       activeGoals: 'Metas Ativas',
+      unlimitedAccess: 'Acesso ilimitado',
     },
 
     filters: {
@@ -354,6 +359,7 @@ export const translations = {
       password: 'Senha',
       nutricionist: 'Nutricionista',
       client: 'Cliente',
+      clientPremium: 'Cliente Premium',
       saveGoals: 'Salvar metas',
       nutritionGoalsnames: {
         calories: 'Calorias',
@@ -362,6 +368,31 @@ export const translations = {
         fat: 'Gordura',
         fiber: 'Fibra',
       },
+      viewDiaryAndGoals: 'Ver diário e metas',
+      remaining: 'Restante',
+      progressBasedOnDiary:
+        'O progresso é calculado com base no que você registra no diário alimentar.',
+      diaryTitle: 'Diário alimentar',
+      addToDiary: 'Adicionar ao diário',
+      addToDiaryHelper: 'Registre esta receita para acompanhar as metas.',
+      loggedToDiary: 'Adicionado ao diário.',
+      clearDay: 'Limpar',
+      clearDiaryConfirm: 'Limpar o diário deste dia?',
+      diaryCleared: 'Diário limpo.',
+      todayProgress: 'Progresso do dia',
+      loggedMeals: 'Registros',
+      items: 'itens',
+      noDiaryEntries: 'Nenhum registro para este dia ainda.',
+      chooseRecipe: 'Escolha uma receita...',
+      servings: 'Porções',
+      perServing: 'porção',
+      perServingHint: 'Os valores nutricionais são multiplicados pelas porções.',
+      confirmAdd: 'Adicionar',
+      entryRemoved: 'Registro removido.',
+      pickARecipe: 'Escolha uma receita primeiro.',
+      date: 'Data',
+      activeGoalsLabel: 'Metas ativas',
+      trackedDays: 'Dias rastreados',
     },
 
     categories: {

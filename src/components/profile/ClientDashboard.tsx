@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Target, Activity, Heart, Clock } from 'lucide-react';
+import { Target, Activity, Heart, Clock, Crown } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
+import { useSubscriptionStore } from '../../store/subscription';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export function ClientDashboard() {
@@ -12,7 +13,9 @@ export function ClientDashboard() {
   const { recipes, favoriteRecipes } = useRecipesStore();
   const { goals, activeGoals } = useNutritionGoalsStore();
   const { getTotalsForDate, entries } = useNutritionTrackingStore();
+  const { isPremium } = useSubscriptionStore();
   const t = useTranslation();
+  const isPremiumUser = isPremium();
 
   if (!user || user.type !== 'Client') return null;
 
@@ -44,6 +47,25 @@ export function ClientDashboard() {
   const goalLabels = t.profile.nutritionGoalsnames;
   return (
     <div className="space-y-8">
+      {/* Badge Premium */}
+      {isPremiumUser && (
+        <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 dark:border-amber-800/40 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40">
+              <Crown className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-amber-900 dark:text-amber-200">
+                {t.profile.clientPremium}
+              </h3>
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                {t.labels.aiMentoring} • {t.labels.unlimitedAccess}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cards de métricas */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm dark:border-emerald-900/40 dark:bg-slate-900/60">
