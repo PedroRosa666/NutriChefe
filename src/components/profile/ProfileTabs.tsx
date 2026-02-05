@@ -5,6 +5,7 @@ import { RecipeCard } from '../RecipeCard';
 import { NutritionGoalsForm } from '../nutrition/NutritionGoalsForm';
 import { ActiveGoalsSelector } from '../nutrition/ActiveGoalsSelector';
 import { NutritionDiary } from '../nutrition/NutritionDiary';
+import { EditProfessionalProfile } from './EditProfessionalProfile';
 import { useTranslation } from '../../hooks/useTranslation';
 
 interface TabProps {
@@ -30,7 +31,7 @@ function Tab({ active, onClick, children }: TabProps) {
 
 export function ProfileTabs() {
   const [activeTab, setActiveTab] =
-    React.useState<'recipes' | 'favorites' | 'nutrition'>('favorites');
+    React.useState<'recipes' | 'favorites' | 'nutrition' | 'professional'>('favorites');
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
   const t = useTranslation();
@@ -43,11 +44,12 @@ export function ProfileTabs() {
   const MyRecipes = t.buttons.My_recipes;
   const Favorites = t.buttons.Favorites;
   const Nutrition_goal = t.buttons.Nutrition_goal;
+  const ProfessionalProfile = t.nutritionists.editProfile.title;
 
   const isNutritionist = user?.type === 'Nutritionist';
 
   // Guard invalid tabs per role.
-  // - Nutritionist: recipes | favorites
+  // - Nutritionist: recipes | favorites | professional
   // - Client: favorites | nutrition
   React.useEffect(() => {
     if (isNutritionist) {
@@ -55,7 +57,7 @@ export function ProfileTabs() {
       return;
     }
 
-    if (activeTab === 'recipes') setActiveTab('favorites');
+    if (activeTab === 'recipes' || activeTab === 'professional') setActiveTab('favorites');
   }, [isNutritionist, activeTab]);
 
   return (
@@ -82,6 +84,14 @@ export function ProfileTabs() {
             onClick={() => setActiveTab('nutrition')}
           >
             {Nutrition_goal}
+          </Tab>
+        )}
+        {isNutritionist && (
+          <Tab
+            active={activeTab === 'professional'}
+            onClick={() => setActiveTab('professional')}
+          >
+            {ProfessionalProfile}
           </Tab>
         )}
       </div>
@@ -122,6 +132,22 @@ export function ProfileTabs() {
                 <NutritionGoalsForm />
               </div>
               <NutritionDiary />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'professional' && isNutritionist && (
+          <div className="max-w-4xl">
+            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  {t.nutritionists.editProfile.title}
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {t.nutritionists.editProfile.subtitle}
+                </p>
+              </div>
+              <EditProfessionalProfile />
             </div>
           </div>
         )}

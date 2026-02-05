@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, Menu, LogOut, User, Bot } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Menu, LogOut, User, Bot, Users } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuthStore } from '../store/auth';
 import { useSubscriptionStore } from '../store/subscription';
@@ -16,6 +17,7 @@ interface HeaderProps {
 }
 
 export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
+  const navigate = useNavigate();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -67,11 +69,18 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
               </div>
 
               {isAuthenticated ? (
-                <motion.div 
+                <motion.div
                   className="flex items-center space-x-4"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                 >
+                  <button
+                    onClick={() => navigate('/nutricionistas')}
+                    className="flex items-center space-x-2 px-4 py-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                  >
+                    <Users className="w-4 h-4" />
+                    <span className="hidden lg:inline">{t.buttons.findNutritionists}</span>
+                  </button>
                   <button
                     onClick={onAIMentoringClick}
                     className={cn(

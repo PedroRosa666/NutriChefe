@@ -6,6 +6,8 @@ import { AIMentoringPage } from '../pages/AIMentoringPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { SubscriptionSuccessPage } from '../pages/SubscriptionSuccessPage';
 import { SubscriptionCancelledPage } from '../pages/SubscriptionCancelledPage';
+import { NutritionistsPage } from '../pages/NutritionistsPage';
+import { NutritionistProfilePage } from '../pages/NutritionistProfilePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RootLayout } from '../layouts/RootLayout';
 
@@ -30,6 +32,14 @@ export const router = createBrowserRouter([
       {
         path: 'mentoria-ia',
         element: <AIMentoringPage />,
+      },
+      {
+        path: 'nutricionistas',
+        element: <NutritionistsPage />,
+      },
+      {
+        path: 'nutricionista/:id',
+        element: <NutritionistProfilePage />,
       },
       {
         path: 'reset-password',
