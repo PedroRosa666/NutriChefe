@@ -19,6 +19,8 @@ import { useRecipesStore } from '../store/recipes';
 import { useNutritionTrackingStore } from '../store/nutrition-tracking';
 import { useToastStore } from '../store/toast';
 import { EditRecipeForm } from './recipe/EditRecipeForm';
+import { IngredientChecklist } from './recipe/IngredientChecklist';
+import { RecipeTips } from './recipe/RecipeTips';
 import type { Recipe } from '../types/recipe';
 import { cn } from '../lib/utils';
 import { useTranslation } from '../hooks/useTranslation';
@@ -177,11 +179,6 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
     return `${recipe.rating.toFixed(1)} (${recipe.reviews.length} ${label})`;
   };
 
-  const ingredientsCountLabel =
-    recipe.ingredients.length === 1
-      ? t.recipe.ingredientsCountSingular || 'item'
-      : t.recipe.ingredientsCountPlural || 'itens';
-
   // Verificar se o usuário já avaliou esta receita
   const userReview = recipe.reviews.find((review) => review.userId === user?.id);
   const canAddReview = isAuthenticated && !userReview;
@@ -277,34 +274,9 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
                     </div>
 
-                    {/* Ingredientes */}
-                    <div className="bg-white dark:bg-gray-800/50 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                          <div className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/30">
-                            <UtensilsCrossed className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                          </div>
-                          {t.recipe.ingredients}
-                        </h3>
+                    <IngredientChecklist ingredients={recipe.ingredients} />
 
-                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-lg">
-                          {recipe.ingredients.length} {ingredientsCountLabel}
-                        </span>
-                      </div>
-                      <ul className="space-y-2">
-                        {recipe.ingredients.map((ingredient, index) => (
-                          <li
-                            key={index}
-                            className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-200 leading-relaxed"
-                          >
-                            <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold mt-0.5">
-                              {index + 1}
-                            </span>
-                            <span className="flex-1">{ingredient}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    <RecipeTips category={recipe.category} difficulty={recipe.difficulty} />
                   </div>
 
                   {/* COLUNA DIREITA */}

@@ -197,6 +197,14 @@ export const translations = {
       deleteReviewConfirm: 'Are you sure you want to delete this review?',
       addReviewTitle: 'Add review',
       editReviewTitle: 'Edit review',
+      ingredientsCountSingular: 'item',
+      ingredientsCountPlural: 'items',
+      checkIngredients: 'Check off as you gather',
+      checkedAll: 'All ingredients ready!',
+      tipsAndPairings: 'Tips & Pairings',
+      pairingDrink: 'Drink',
+      pairingSide: 'Side dish',
+      chefTip: "Chef's tip",
     },
 
     aiChat: {
@@ -555,6 +563,14 @@ export const translations = {
         'Tem certeza que deseja excluir esta avaliação?',
       addReviewTitle: 'Adicionar avaliação',
       editReviewTitle: 'Editar avaliação',
+      ingredientsCountSingular: 'item',
+      ingredientsCountPlural: 'itens',
+      checkIngredients: 'Marque conforme for separando',
+      checkedAll: 'Todos os ingredientes prontos!',
+      tipsAndPairings: 'Dicas e Harmonizacao',
+      pairingDrink: 'Bebida',
+      pairingSide: 'Acompanhamento',
+      chefTip: 'Dica do chef',
     },
 
     aiChat: {
