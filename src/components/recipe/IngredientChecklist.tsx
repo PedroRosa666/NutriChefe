@@ -1,24 +1,70 @@
-import { useState } from 'react';
+import { useCallback, useState, memo } from 'react';
 import { UtensilsCrossed, Check } from 'lucide-react';
-import { cn } from '../../lib/utils';
 import { useTranslation } from '../../hooks/useTranslation';
 
 interface IngredientChecklistProps {
   ingredients: string[];
 }
 
+interface IngredientItemProps {
+  ingredient: string;
+  index: number;
+  isChecked: boolean;
+  onToggle: (index: number) => void;
+}
+
+const IngredientItem = memo(function IngredientItem({
+  ingredient,
+  index,
+  isChecked,
+  onToggle,
+}: IngredientItemProps) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onToggle(index)}
+        className={
+          isChecked
+            ? 'w-full flex items-center gap-3 text-sm leading-relaxed rounded-lg px-2.5 py-2 text-left bg-emerald-50/60 dark:bg-emerald-900/10'
+            : 'w-full flex items-center gap-3 text-sm leading-relaxed rounded-lg px-2.5 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800/60'
+        }
+      >
+        <span
+          className={
+            isChecked
+              ? 'flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-xs font-semibold border bg-emerald-500 border-emerald-500 text-white'
+              : 'flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-xs font-semibold border bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-600 dark:text-emerald-400'
+          }
+        >
+          {isChecked ? <Check className="w-3.5 h-3.5" /> : index + 1}
+        </span>
+        <span
+          className={
+            isChecked
+              ? 'flex-1 line-through text-gray-400 dark:text-gray-500'
+              : 'flex-1 text-gray-700 dark:text-gray-200'
+          }
+        >
+          {ingredient}
+        </span>
+      </button>
+    </li>
+  );
+});
+
 export function IngredientChecklist({ ingredients }: IngredientChecklistProps) {
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const t = useTranslation();
 
-  const toggle = (index: number) => {
+  const toggle = useCallback((index: number) => {
     setChecked((prev) => {
       const next = new Set(prev);
       if (next.has(index)) next.delete(index);
       else next.add(index);
       return next;
     });
-  };
+  }, []);
 
   const total = ingredients.length;
   const done = checked.size;
@@ -50,24 +96,22 @@ export function IngredientChecklist({ ingredients }: IngredientChecklistProps) {
             {t.recipe.checkIngredients}
           </span>
           <span
-            className={cn(
-              'text-xs font-semibold',
+            className={
               allDone
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-gray-500 dark:text-gray-400'
-            )}
+                ? 'text-xs font-semibold text-emerald-600 dark:text-emerald-400'
+                : 'text-xs font-semibold text-gray-500 dark:text-gray-400'
+            }
           >
             {done}/{total}
           </span>
         </div>
         <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
           <div
-            className={cn(
-              'h-full rounded-full transition-all duration-500 ease-out',
+            className={
               allDone
-                ? 'bg-emerald-500'
-                : 'bg-emerald-400 dark:bg-emerald-500'
-            )}
+                ? 'h-full rounded-full bg-emerald-500 transition-[width] duration-300 ease-out'
+                : 'h-full rounded-full bg-emerald-400 dark:bg-emerald-500 transition-[width] duration-300 ease-out'
+            }
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -83,48 +127,15 @@ export function IngredientChecklist({ ingredients }: IngredientChecklistProps) {
       )}
 
       <ul className="space-y-1.5">
-        {ingredients.map((ingredient, index) => {
-          const isChecked = checked.has(index);
-          return (
-            <li key={index}>
-              <button
-                type="button"
-                onClick={() => toggle(index)}
-                className={cn(
-                  'w-full flex items-center gap-3 text-sm leading-relaxed rounded-lg px-2.5 py-2 transition-all duration-200 text-left',
-                  isChecked
-                    ? 'bg-emerald-50/60 dark:bg-emerald-900/10'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-800/60'
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-xs font-semibold transition-all duration-200 border',
-                    isChecked
-                      ? 'bg-emerald-500 border-emerald-500 text-white'
-                      : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-600 dark:text-emerald-400'
-                  )}
-                >
-                  {isChecked ? (
-                    <Check className="w-3.5 h-3.5" />
-                  ) : (
-                    index + 1
-                  )}
-                </span>
-                <span
-                  className={cn(
-                    'flex-1 transition-all duration-200',
-                    isChecked
-                      ? 'line-through text-gray-400 dark:text-gray-500'
-                      : 'text-gray-700 dark:text-gray-200'
-                  )}
-                >
-                  {ingredient}
-                </span>
-              </button>
-            </li>
-          );
-        })}
+        {ingredients.map((ingredient, index) => (
+          <IngredientItem
+            key={index}
+            ingredient={ingredient}
+            index={index}
+            isChecked={checked.has(index)}
+            onToggle={toggle}
+          />
+        ))}
       </ul>
     </div>
   );
