@@ -20,7 +20,6 @@ import { useNutritionTrackingStore } from '../store/nutrition-tracking';
 import { useToastStore } from '../store/toast';
 import { EditRecipeForm } from './recipe/EditRecipeForm';
 import { IngredientChecklist } from './recipe/IngredientChecklist';
-import { RecipeTips } from './recipe/RecipeTips';
 import type { Recipe } from '../types/recipe';
 import { cn } from '../lib/utils';
 import { useTranslation } from '../hooks/useTranslation';
@@ -275,8 +274,6 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                     </div>
 
                     <IngredientChecklist ingredients={recipe.ingredients} />
-
-                    <RecipeTips category={recipe.category} difficulty={recipe.difficulty} />
                   </div>
 
                   {/* COLUNA DIREITA */}
