@@ -87,7 +87,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       className="
         group relative flex h-full cursor-pointer flex-col overflow-hidden
         rounded-xl border shadow-sm transition-all duration-200
-        hover:-translate-y-1 hover:shadow-lg hover:border-emerald-300
+        translate-y-0 hover:-translate-y-1 hover:shadow-lg hover:border-emerald-300
         bg-white border-gray-200
         dark:bg-slate-800 dark:border-slate-700
       "
