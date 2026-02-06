@@ -207,10 +207,8 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
               </div>
 
               <div className="px-6 md:px-8 pb-8 pt-6">
-                {/* GRID PRINCIPAL */}
                 <div className="grid md:grid-cols-2 gap-6">
-                  {/* COLUNA ESQUERDA */}
-                  <div className="space-y-5">
+                  <div className="flex flex-col gap-5">
                     <div className="relative group">
                       <img
                         src={recipe.image}
@@ -224,7 +222,6 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
                     </div>
 
-                    {/* Informações do Autor */}
                     <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
@@ -273,12 +270,64 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
                     </div>
 
-                    <IngredientChecklist ingredients={recipe.ingredients} />
+                    <div className="flex-1 bg-emerald-50/50 dark:bg-emerald-900/10 p-5 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+                        <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                          <Star className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        {t.recipe.nutritionFacts}
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            {t.profile.nutritionGoalsnames.calories}
+                          </div>
+                          <div className="text-xl font-bold text-gray-900 dark:text-white">
+                            {formatNutritionValue(recipe.nutritionFacts.calories)}
+                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">kcal</span>
+                          </div>
+                        </div>
+                        <div className="bg-white dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            {t.profile.nutritionGoalsnames.protein}
+                          </div>
+                          <div className="text-xl font-bold text-gray-900 dark:text-white">
+                            {formatNutritionValue(recipe.nutritionFacts.protein)}
+                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
+                          </div>
+                        </div>
+                        <div className="bg-white dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            {t.profile.nutritionGoalsnames.carbs}
+                          </div>
+                          <div className="text-xl font-bold text-gray-900 dark:text-white">
+                            {formatNutritionValue(recipe.nutritionFacts.carbs)}
+                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
+                          </div>
+                        </div>
+                        <div className="bg-white dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            {t.profile.nutritionGoalsnames.fat}
+                          </div>
+                          <div className="text-xl font-bold text-gray-900 dark:text-white">
+                            {formatNutritionValue(recipe.nutritionFacts.fat)}
+                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
+                          </div>
+                        </div>
+                        <div className="bg-white dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700 col-span-2">
+                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            {t.profile.nutritionGoalsnames.fiber}
+                          </div>
+                          <div className="text-xl font-bold text-gray-900 dark:text-white">
+                            {formatNutritionValue(recipe.nutritionFacts.fiber)}
+                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* COLUNA DIREITA */}
-                  <div className="space-y-5">
-                    {/* Título + ações */}
+                  <div className="flex flex-col gap-5">
                     <div className="flex justify-between items-start gap-3">
                       <div>
                         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-tight mb-3">
@@ -344,7 +393,6 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
                     </div>
 
-                    {/* Meta (tempo, dificuldade, rating) */}
                     <div className="grid grid-cols-3 gap-3">
                       <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-800/30">
                         <div className="flex flex-col items-center justify-center gap-1 mb-1 text-center">
@@ -353,12 +401,10 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             {t.labels.time}
                           </span>
                         </div>
-                      
                         <span className="block text-center text-xl font-bold text-gray-900 dark:text-white">
                           {recipe.prepTime}min
                         </span>
                       </div>
-
 
                       <div
                         className={cn(
@@ -384,7 +430,6 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             {t.labels.level}
                           </span>
                         </div>
-                      
                         <span
                           className={cn(
                             "block text-center text-base font-bold capitalize",
@@ -396,7 +441,6 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                           {translatedDifficulty}
                         </span>
                       </div>
-
 
                       <div className="bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-lg border border-amber-100 dark:border-amber-800/30">
                         <div className="flex flex-col items-center justify-center gap-1">
@@ -418,94 +462,39 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                       </div>
                     </div>
 
-                    {/* Descrição */}
                     <div className="bg-gray-50 dark:bg-gray-800/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                       <p className="text-base text-gray-700 dark:text-gray-200 leading-relaxed">
                         {recipe.description}
                       </p>
                     </div>
 
-                    {/* Fatos nutricionais */}
-                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-5 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
-                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                        <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
-                          <Star className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        {t.recipe.nutritionFacts}
-                      </h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-white dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                            {t.profile.nutritionGoalsnames.calories}
-                          </div>
-                          <div className="text-xl font-bold text-gray-900 dark:text-white">
-                            {formatNutritionValue(recipe.nutritionFacts.calories)}
-                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">kcal</span>
-                          </div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                            {t.profile.nutritionGoalsnames.protein}
-                          </div>
-                          <div className="text-xl font-bold text-gray-900 dark:text-white">
-                            {formatNutritionValue(recipe.nutritionFacts.protein)}
-                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
-                          </div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                            {t.profile.nutritionGoalsnames.carbs}
-                          </div>
-                          <div className="text-xl font-bold text-gray-900 dark:text-white">
-                            {formatNutritionValue(recipe.nutritionFacts.carbs)}
-                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
-                          </div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                            {t.profile.nutritionGoalsnames.fat}
-                          </div>
-                          <div className="text-xl font-bold text-gray-900 dark:text-white">
-                            {formatNutritionValue(recipe.nutritionFacts.fat)}
-                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
-                          </div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700 col-span-2">
-                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                            {t.profile.nutritionGoalsnames.fiber}
-                          </div>
-                          <div className="text-xl font-bold text-gray-900 dark:text-white">
-                            {formatNutritionValue(recipe.nutritionFacts.fiber)}
-                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Instruções */}
-                    <div className="bg-white dark:bg-gray-800/50 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30">
-                          <UtensilsCrossed className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        {t.recipe.instructions}
-                      </h3>
-
-                      <ol className="space-y-3 max-h-80 overflow-y-auto pr-2">
-                        {recipe.instructions.map((instruction, index) => (
-                          <li
-                            key={index}
-                            className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-200 leading-relaxed"
-                          >
-                            <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold mt-0.5">
-                              {index + 1}
-                            </span>
-                            <span className="flex-1">{instruction}</span>
-                          </li>
-                        ))}
-                      </ol>
+                    <div className="flex-1">
+                      <IngredientChecklist ingredients={recipe.ingredients} />
                     </div>
                   </div>
+                </div>
+
+                <div className="mt-6 bg-white dark:bg-gray-800/50 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+                    <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30">
+                      <UtensilsCrossed className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    {t.recipe.instructions}
+                  </h3>
+
+                  <ol className="grid md:grid-cols-2 gap-3">
+                    {recipe.instructions.map((instruction, index) => (
+                      <li
+                        key={index}
+                        className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-200 leading-relaxed"
+                      >
+                        <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold mt-0.5">
+                          {index + 1}
+                        </span>
+                        <span className="flex-1">{instruction}</span>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
 
                 {/* ÁREA DE AVALIAÇÕES */}
