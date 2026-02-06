@@ -32,7 +32,7 @@ export class StorageService {
       .from(this.AVATARS_BUCKET)
       .getPublicUrl(fileName);
 
-    return data.publicUrl;
+    return `${data.publicUrl}?t=${Date.now()}`;
   }
 
   static async deleteAvatar(userId: string): Promise<void> {

@@ -135,6 +135,14 @@ export const translations = {
         fat: 'Fat',
         fiber: 'Fiber',
       },
+      avatarTooLarge: 'File too large. Maximum size is 10MB.',
+      avatarUpdated: 'Profile photo updated!',
+      avatarRemoved: 'Profile photo removed!',
+      changePhoto: 'Change photo',
+      removePhoto: 'Remove photo',
+      editProfilePhoto: 'Edit Profile Photo',
+      cropApply: 'Apply',
+      cropProcessing: 'Processing...',
     },
 
     categories: {
@@ -484,6 +492,14 @@ export const translations = {
       date: 'Data',
       activeGoalsLabel: 'Metas ativas',
       trackedDays: 'Dias rastreados',
+      avatarTooLarge: 'Arquivo muito grande. O tamanho maximo e 10MB.',
+      avatarUpdated: 'Foto de perfil atualizada!',
+      avatarRemoved: 'Foto de perfil removida!',
+      changePhoto: 'Alterar foto',
+      removePhoto: 'Remover foto',
+      editProfilePhoto: 'Editar Foto de Perfil',
+      cropApply: 'Aplicar',
+      cropProcessing: 'Processando...',
     },
 
     categories: {

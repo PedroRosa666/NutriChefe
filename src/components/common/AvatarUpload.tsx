@@ -5,6 +5,8 @@ import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { supabase } from '../../lib/supabase';
 import { ImageCropModal } from './ImageCropModal';
+import { useTranslation } from '../../hooks/useTranslation';
+import { cn } from '../../lib/utils';
 
 interface AvatarUploadProps {
   currentAvatarUrl?: string | null;
@@ -20,6 +22,48 @@ const sizeClasses = {
   xl: 'w-40 h-40',
 };
 
+const iconSizeClasses = {
+  sm: 'w-3 h-3',
+  md: 'w-4 h-4',
+  lg: 'w-6 h-6',
+  xl: 'w-8 h-8',
+};
+
+const uploadBtnClasses = {
+  sm: 'p-1',
+  md: 'p-1.5',
+  lg: 'p-2',
+  xl: 'p-2.5',
+};
+
+const uploadIconClasses = {
+  sm: 'w-3 h-3',
+  md: 'w-3.5 h-3.5',
+  lg: 'w-4 h-4',
+  xl: 'w-4.5 h-4.5',
+};
+
+const removeBtnClasses = {
+  sm: 'p-0.5',
+  md: 'p-1',
+  lg: 'p-1.5',
+  xl: 'p-1.5',
+};
+
+const removeIconClasses = {
+  sm: 'w-2.5 h-2.5',
+  md: 'w-3 h-3',
+  lg: 'w-3.5 h-3.5',
+  xl: 'w-3.5 h-3.5',
+};
+
+const initialsSizeClasses = {
+  sm: 'text-xs',
+  md: 'text-sm',
+  lg: 'text-xl',
+  xl: 'text-3xl',
+};
+
 export function AvatarUpload({
   currentAvatarUrl,
   onAvatarUpdate,
@@ -33,6 +77,7 @@ export function AvatarUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, updateProfile } = useAuthStore();
   const { showToast } = useToastStore();
+  const t = useTranslation();
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -40,7 +85,7 @@ export function AvatarUpload({
 
     try {
       if (file.size > 10 * 1024 * 1024) {
-        showToast('Arquivo muito grande. O tamanho máximo é 10MB.', 'error');
+        showToast(t.profile.avatarTooLarge || 'Arquivo muito grande. Max 10MB.', 'error');
         return;
       }
 
@@ -90,7 +135,7 @@ export function AvatarUpload({
         onAvatarUpdate(avatarUrl);
       }
 
-      showToast('Foto de perfil atualizada com sucesso!', 'success');
+      showToast(t.profile.avatarUpdated || 'Foto de perfil atualizada!', 'success');
     } catch (error: any) {
       console.error('Error uploading avatar:', error);
       showToast(error.message || 'Erro ao fazer upload da foto', 'error');
@@ -128,7 +173,7 @@ export function AvatarUpload({
         onAvatarUpdate('');
       }
 
-      showToast('Foto de perfil removida com sucesso!', 'success');
+      showToast(t.profile.avatarRemoved || 'Foto de perfil removida!', 'success');
     } catch (error: any) {
       console.error('Error removing avatar:', error);
       showToast(error.message || 'Erro ao remover foto', 'error');
@@ -138,8 +183,8 @@ export function AvatarUpload({
   };
 
   const getInitials = () => {
-    if (!user?.fullName) return '?';
-    return user.fullName
+    if (!user?.name) return '?';
+    return user.name
       .split(' ')
       .map(n => n[0])
       .slice(0, 2)
@@ -149,8 +194,17 @@ export function AvatarUpload({
 
   return (
     <>
-      <div className="relative inline-block">
-        <div className={`${sizeClasses[size]} rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white font-bold shadow-lg relative group`}>
+      <div className="relative inline-block group">
+        <div
+          className={cn(
+            sizeClasses[size],
+            'rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600',
+            'flex items-center justify-center text-white font-bold shadow-lg relative',
+            'ring-4 ring-white dark:ring-slate-900 transition-shadow duration-200',
+            editable && 'cursor-pointer group-hover:shadow-xl'
+          )}
+          onClick={editable ? () => fileInputRef.current?.click() : undefined}
+        >
           {previewUrl ? (
             <>
               <img
@@ -159,20 +213,27 @@ export function AvatarUpload({
                 className="w-full h-full object-cover"
               />
               {editable && (
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <Camera className="w-6 h-6 text-white" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
+                  <Camera className={cn(iconSizeClasses[size], 'text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300')} />
                 </div>
               )}
             </>
           ) : (
-            <span className={size === 'sm' ? 'text-xs' : size === 'md' ? 'text-sm' : size === 'xl' ? 'text-3xl' : 'text-xl'}>
-              {getInitials()}
-            </span>
+            <>
+              <span className={initialsSizeClasses[size]}>
+                {getInitials()}
+              </span>
+              {editable && (
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                  <Camera className={cn(iconSizeClasses[size], 'text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300')} />
+                </div>
+              )}
+            </>
           )}
 
           {isUploading && (
-            <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 text-white animate-spin" />
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+              <Loader2 className={cn(iconSizeClasses[size], 'text-white animate-spin')} />
             </div>
           )}
         </div>
@@ -189,22 +250,40 @@ export function AvatarUpload({
             />
 
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
               disabled={isUploading}
-              className="absolute bottom-0 right-0 p-2 bg-emerald-500 text-white rounded-full shadow-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Alterar foto"
+              className={cn(
+                'absolute bottom-0 right-0 bg-emerald-500 text-white rounded-full shadow-lg',
+                'hover:bg-emerald-600 hover:scale-110 transition-all duration-200',
+                'ring-2 ring-white dark:ring-slate-900',
+                'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100',
+                uploadBtnClasses[size]
+              )}
+              title={t.profile.changePhoto || 'Alterar foto'}
             >
-              <Upload className="w-4 h-4" />
+              <Upload className={uploadIconClasses[size]} />
             </button>
 
             {previewUrl && (
               <button
-                onClick={handleRemoveAvatar}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveAvatar();
+                }}
                 disabled={isUploading}
-                className="absolute top-0 right-0 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Remover foto"
+                className={cn(
+                  'absolute top-0 right-0 bg-red-500 text-white rounded-full shadow-lg',
+                  'hover:bg-red-600 hover:scale-110 transition-all duration-200',
+                  'ring-2 ring-white dark:ring-slate-900',
+                  'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100',
+                  removeBtnClasses[size]
+                )}
+                title={t.profile.removePhoto || 'Remover foto'}
               >
-                <X className="w-3 h-3" />
+                <X className={removeIconClasses[size]} />
               </button>
             )}
           </>

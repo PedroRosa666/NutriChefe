@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
 import { X, ZoomIn, ZoomOut, RotateCw, Check } from 'lucide-react';
 import { getCroppedImg, type Area } from '../../lib/image-utils';
+import { useTranslation } from '../../hooks/useTranslation';
+import { cn } from '../../lib/utils';
 
 interface ImageCropModalProps {
   imageSrc: string;
@@ -15,6 +17,7 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
   const [rotation, setRotation] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const t = useTranslation();
 
   const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -35,21 +38,21 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
   }, [imageSrc, croppedAreaPixels, rotation, onComplete]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Editar Foto de Perfil
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+            {t.profile.editProfilePhoto}
           </h3>
           <button
             onClick={onCancel}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="relative h-96 bg-gray-900">
+        <div className="relative h-80 bg-slate-950 sm:h-96">
           <Cropper
             image={imageSrc}
             crop={crop}
@@ -65,10 +68,10 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
           />
         </div>
 
-        <div className="p-4 space-y-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="space-y-4 border-t border-slate-100 p-5 dark:border-slate-800">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <ZoomOut className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <ZoomOut className="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500" />
               <input
                 type="range"
                 min={1}
@@ -76,13 +79,13 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
                 step={0.1}
                 value={zoom}
                 onChange={(e) => setZoom(Number(e.target.value))}
-                className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-600 dark:bg-slate-700"
               />
-              <ZoomIn className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <ZoomIn className="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500" />
             </div>
 
             <div className="flex items-center gap-3">
-              <RotateCw className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <RotateCw className="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500" />
               <input
                 type="range"
                 min={0}
@@ -90,10 +93,10 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
                 step={1}
                 value={rotation}
                 onChange={(e) => setRotation(Number(e.target.value))}
-                className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-600 dark:bg-slate-700"
               />
-              <span className="text-sm text-gray-600 dark:text-gray-400 w-12 text-right">
-                {rotation}°
+              <span className="w-12 text-right text-sm font-medium text-slate-500 dark:text-slate-400">
+                {rotation}
               </span>
             </div>
           </div>
@@ -101,17 +104,21 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
           <div className="flex gap-3">
             <button
               onClick={onCancel}
-              className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              Cancelar
+              {t.common.cancel}
             </button>
             <button
               onClick={handleComplete}
               disabled={isProcessing}
-              className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className={cn(
+                'flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-base font-semibold text-white shadow-md transition',
+                'bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600 hover:brightness-110',
+                'disabled:cursor-not-allowed disabled:opacity-60'
+              )}
             >
-              <Check className="w-5 h-5" />
-              {isProcessing ? 'Processando...' : 'Aplicar'}
+              <Check className="h-5 w-5" />
+              {isProcessing ? t.profile.cropProcessing : t.profile.cropApply}
             </button>
           </div>
         </div>

@@ -138,6 +138,7 @@ export const useAuthStore = create<AuthState>()(
               email: u.email ?? '',
               name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
               type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+              avatar_url: profile?.avatar_url || null,
               profile: undefined
             };
 
