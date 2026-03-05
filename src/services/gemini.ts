@@ -8,14 +8,12 @@ const MODEL_NAME = "gemini-2.5-flash";
 const CONVERSATION_HISTORY_LENGTH = 10; // Aumentei um pouco, mas pode ser ajustado.
 
 // --- INICIALIZAÇÃO SEGURA ---
-// Acessa a chave da API de forma segura.
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-if (!apiKey) {
-  // Lança um erro se a chave não estiver configurada.
-  // Isso evita que o app tente funcionar com uma configuração inválida.
-  throw new Error("VITE_GEMINI_API_KEY não está definida no seu arquivo .env");
+let genAI: GoogleGenerativeAI | null = null;
+
+if (apiKey && apiKey !== 'your-api-key-here') {
+  genAI = new GoogleGenerativeAI(apiKey);
 }
-const genAI = new GoogleGenerativeAI(apiKey);
 
 // --- TIPOS E INTERFACES ---
 export interface GeminiResponse {
@@ -33,13 +31,16 @@ export async function getGeminiResponse(
   conversationHistory: AIMessage[] = []
 ): Promise<GeminiResponse> {
   try {
-    // 1) SYSTEM PROMPT mais humano e útil
-    const systemInstruction = buildSystemInstruction(aiConfig);
+    if (!genAI) {
+      return {
+        content: 'Oi! Como posso te ajudar hoje? Posso sugerir receitas por dificuldade (easy/medium/hard), tempo (ex.: até 30 min) e avaliação (ex.: 4.5+ ⭐).',
+        error: 'Gemini não configurado'
+      };
+    }
 
-    // 2) HISTÓRICO
+    const systemInstruction = buildSystemInstruction(aiConfig);
     const history = formatConversationHistory(conversationHistory, aiConfig);
 
-    // 3) MODELO + chat
     const model = genAI.getGenerativeModel({
       model: MODEL_NAME,
       systemInstruction: {
@@ -53,28 +54,22 @@ export async function getGeminiResponse(
     });
 
     const chat = model.startChat({ history });
-
-    // 4) RESPOSTA
     const result = await chat.sendMessage(userPrompt);
-    const response = result.response;
-    const text = (response?.text?.() || '').trim();
+    const text = (result.response?.text?.() || '').trim();
 
-    // Fallback simpático caso algo venha vazio
     return {
       content: text || 'Oi! Como posso te ajudar hoje? Posso sugerir receitas por dificuldade (easy/medium/hard), tempo (ex.: até 30 min) e avaliação (ex.: 4.5+ ⭐).'
     };
 
   } catch (error) {
     console.error("Erro ao chamar a API do Gemini:", error);
-    let errorMessage = "Desculpe, ocorreu um erro ao tentar processar sua solicitação. Tente novamente em alguns instantes.";
+    let errorMessage = "Desculpe, ocorreu um erro ao processar sua solicitação. Tente novamente.";
 
     if (error instanceof Error) {
-      if (error.message.includes('API_KEY')) {
-        errorMessage = "Erro de configuração da IA. Entre em contato com o suporte.";
-      } else if (error.message.includes('quota')) {
-        errorMessage = "Limite de uso da IA atingido. Tente novamente mais tarde.";
+      if (error.message.includes('quota')) {
+        errorMessage = "Limite de uso atingido. Tente novamente mais tarde.";
       } else if (error.message.includes('network') || error.message.includes('fetch')) {
-        errorMessage = "Erro de conexão. Verifique sua internet e tente novamente.";
+        errorMessage = "Erro de conexão. Verifique sua internet.";
       }
     }
 

@@ -165,9 +165,8 @@ export const useAIStore = create<AIState>((set, get) => ({
     if (!currentConversation) return;
 
     set({ sendingMessage: true, error: null });
-    
+
     try {
-      // Adicionar mensagem do usuário
       const userMessage = await aiService.createAIMessage({
         conversation_id: conversationId,
         sender_type: 'user',
@@ -179,42 +178,19 @@ export const useAIStore = create<AIState>((set, get) => ({
         messages: [...state.messages, userMessage]
       }));
 
-      // Buscar configuração da IA
-      let aiConfig = get().aiConfig;
-      if (!aiConfig && currentConversation.ai_config_id) {
-        // Buscar configuração se não estiver carregada
-        const { data } = await supabase
-          .from('ai_configurations')
-          .select('*')
-          .eq('id', currentConversation.ai_config_id)
-          .single();
-        aiConfig = data;
-      }
-
-      // Processar resposta da IA
       const aiResponse = await aiService.processAIMessage(
         content,
-        aiConfig || {
-          id: 'default',
-          nutritionist_id: 'default',
-          ai_name: 'NutriBot',
-          personality: 'empathetic',
-          custom_instructions: '',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        } as AIConfiguration,
+        get().aiConfig || undefined,
         get().messages
       );
 
-      // Adicionar resposta da IA
       const aiMessage = await aiService.createAIMessage({
         conversation_id: conversationId,
         sender_type: 'ai',
         content: aiResponse.content,
         metadata: {
-          recipes: aiResponse.recipes,
-          suggestions: aiResponse.suggestions
+          recipes: aiResponse.recipes || [],
+          suggestions: aiResponse.suggestions || []
         }
       });
 
@@ -225,9 +201,9 @@ export const useAIStore = create<AIState>((set, get) => ({
 
     } catch (error) {
       console.error('Error sending message:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao enviar mensagem';
-      set({ error: errorMessage, sendingMessage: false });
-      useToastStore.getState().showToast('Erro ao enviar mensagem', 'error');
+      const errorMsg = error instanceof Error ? error.message : 'Erro ao enviar mensagem';
+      set({ error: errorMsg, sendingMessage: false });
+      useToastStore.getState().showToast(errorMsg, 'error');
     }
   },
 

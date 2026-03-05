@@ -863,52 +863,43 @@ function isNutritionGoalQuery(text: string): boolean {
   );
 }
 
-
-import { getGeminiResponse } from './gemini';
-
 export async function processAIMessage(
-  arg1: any,
-  _arg2?: any,
-  _arg3?: any
+  userMessage: string,
+  _aiConfig?: any,
+  _conversationHistory?: any
 ): Promise<AIResponse> {
-  let content = '';
-  if (typeof arg1 === 'string') {
-    content = arg1;
-  } else if (arg1 && typeof arg1 === 'object' && 'content' in arg1) {
-    content = String(arg1.content);
-  }
-
-  const lower = content.toLowerCase();
-  const looksLikeRecipe =
-    /\breceit|\bprato|\bingredient|\bvegana|\bgluten|\bcarbo|\bprote[ií]na|\bfac(eis|il)|\bhard\b|\bdifficult\b|\bmedium\b/.test(lower);
-
-  const hasNutritionGoal = isNutritionGoalQuery(content);
-
-  // 🔸 Caso 1: pergunta une "receitas" + meta nutricional → Gemini (conselho) + lista de receitas
-  if (looksLikeRecipe && hasNutritionGoal) {
-    const [recipesResp, gem] = await Promise.all([
-      recommendRecipesFromText(content),
-      getGeminiResponse(
-        `Contexto: o usuário quer sugestões voltadas para objetivo corporal/nutricional.\nPergunta: "${content}"\nResponda de forma direta e útil, em 3–5 bullets, incluindo:\n- princípios práticos para o objetivo (emagrecer/ganhar massa);\n- 2–4 ideias de refeições;\n- lembrete curto de consultar nutricionista para plano individual.`
-      ),
-    ]);
-
+  const content = String(userMessage || '').trim();
+  if (!content) {
     return {
-      content: `${gem.content}\n\n${recipesResp.content}`,
-      recipes: recipesResp.recipes,
-      suggestions: recipesResp.suggestions,
+      content: 'Desculpe, não consegui entender. Pode repetir?',
+      recipes: [],
+      suggestions: [],
     };
   }
 
-  // 🔸 Caso 2: pedido de receitas sem meta → motor de receitas
-  if (looksLikeRecipe) {
+  const hasNutritionGoal = isNutritionGoalQuery(content);
+  const intent = detectUserIntent(content);
+
+  if (intent === 'recipe_search') {
+    if (hasNutritionGoal) {
+      const [recipes, advice] = await Promise.all([
+        recommendRecipesFromText(content),
+        getGeminiResponse(
+          `Usuário quer receitas para: "${content}"\nDê 3-4 tips práticos sobre a meta nutricional em 2-3 linhas.`
+        ),
+      ]);
+      return {
+        content: `${advice.content}\n\n${recipes.content}`,
+        recipes: recipes.recipes,
+        suggestions: recipes.suggestions,
+      };
+    }
     return recommendRecipesFromText(content);
   }
 
-  // 🔸 Caso 3: qualquer outra conversa → Gemini generalista
-  const gem = await getGeminiResponse(content);
+  const response = await getGeminiResponse(content);
   return {
-    content: gem.content,
+    content: response.content,
     recipes: [],
     suggestions: [],
   };
