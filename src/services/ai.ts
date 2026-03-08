@@ -280,11 +280,15 @@ function parseQueryToFilters(q: string): ParsedFilters {
 // DB (sem JOIN declarativo)
 // =============================================================================
 async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
-  const { data: recipeRows, error: recipesErr } = await supabase
-    .from('recipes')
-    .select('id, title, description, image, prep_time, difficulty, category, rating, nutrition_facts, author_id, created_at, updated_at');
+  try {
+    const { data: recipeRows, error: recipesErr } = await supabase
+      .from('recipes')
+      .select('id, title, description, image, prep_time, difficulty, category, rating, nutrition_facts, author_id, created_at, updated_at');
 
-  if (recipesErr) throw recipesErr;
+    if (recipesErr) {
+      console.warn('Erro ao buscar receitas:', recipesErr);
+      return [];
+    }
 
   const rows = (recipeRows || []) as Array<{
     id: string;
@@ -372,6 +376,10 @@ const result: RecipeRow[] = rows.map(r => {
 
 
   return result;
+  } catch (error) {
+    console.warn('Erro crítico em fetchRecipesFromDB:', error);
+    return [];
+  }
 }
 
 // =============================================================================
@@ -468,6 +476,7 @@ type ChatIntent =
 
 function detectUserIntent(q: string): ChatIntent {
   const t = normalize(q);
+  if (!t || t.length < 2) return 'fallback';
 
   const looksLikeRecipe =
     /\breceit/.test(t) ||
@@ -493,9 +502,9 @@ function detectUserIntent(q: string): ChatIntent {
   if (/\bsite|plano|assinatura|categorias?|filtros?|avalia[cç][aã]o|min[ií]ma|privacidade|dados|como funciona|sobre\b/.test(t))
     return 'site_info';
 
-  if (/\b(oi|ol[aá]|bom dia|boa tarde|boa noite|hello|hey)\b/.test(t)) return 'greetings';
-  if (/\b(obrigad|valeu|agrade[cç]o)\b/.test(t)) return 'thanks';
-  if (/\bajuda|como usar|n[aã]o sei|d[úu]vida\b/.test(t)) return 'help';
+  if (/\b(oi|ol[aá]|bom dia|boa tarde|boa noite|hello|hey|e ai|fala|tudo bem)\b/.test(t)) return 'greetings';
+  if (/\b(obrigad|valeu|agrade[cç]o|muito obrigad|thanks)\b/.test(t)) return 'thanks';
+  if (/\bajuda|como usar|n[aã]o sei|d[úu]vida|como funciona|qual\b/.test(t)) return 'help';
 
   return 'fallback';
 }
@@ -520,7 +529,7 @@ function siteInfoAnswer(): AIResponse {
 function greetingsAnswer(): AIResponse {
   return {
     content:
-      'Oi! 👋 Sou a assistente do NutriChefe. Quer ideias de receitas, dicas de cozinha ou informações nutricionais? Tô aqui pra ajudar!',
+      'Oi! 👋 Sou a assistente do NutriChefe. Posso ajudar com receitas, dicas de cozinha ou informações nutricionais. O que você precisa?',
     recipes: [],
     suggestions: ['receitas fáceis', 'vegana rápida', 'dica para air fryer'],
   };
@@ -533,7 +542,7 @@ function thanksAnswer(): AIResponse {
 function helpAnswer(): AIResponse {
   return {
     content:
-      'Pode pedir assim:\n• "receitas fáceis"\n• "vegana 15 min 4.5+"\n• "substituição do ovo no bolo"\n• "dica para grelhar frango"\n• "info nutricional do Bolo de Banana".',
+      'Aqui estão alguns exemplos de perguntas que posso responder:\n• "receitas fáceis" ou "receitas rápidas"\n• "vegana em 15 min com 4.5+"\n• "substituição do ovo"\n• "dica para air fryer"\n• "quantas calorias tem o Bolo de Banana"\n• "como ganhar massa muscular"\n\nPosso ajudar com receitas, nutrição, dicas de cozinha e muitos outros tópicos!',
     recipes: [],
     suggestions: ['sem glúten fácil', 'rica em proteína 30 min', 'baixo carbo 5⭐'],
   };
@@ -692,55 +701,67 @@ function humanizeIntro(
 // Recomendação (texto natural, contagem esperta, relaxamento discreto)
 // =============================================================================
 export async function recommendRecipesFromText(query: string): Promise<AIResponse> {
-  const f0 = parseQueryToFilters(query);
-  const rows = await fetchRecipesFromDB();
+  try {
+    const f0 = parseQueryToFilters(query);
+    const rows = await fetchRecipesFromDB();
 
-  // 1) Aplica filtros
-  const initial = applyFiltersBase(rows, f0);
-  let list = initial;
-  let matchedExactly = list.length > 0;
+    if (!rows || rows.length === 0) {
+      return {
+        content: 'No momento não consegui acessar nossas receitas. Tente novamente em alguns instantes.',
+        recipes: [],
+        suggestions: ['receitas fáceis', 'vegana rápida', 'sem glúten'],
+      };
+    }
 
-  // 2) Relaxa SOMENTE se realmente não houver nada
-  if (list.length === 0) {
-    const pr = progressiveRelax(rows, f0);
-    list = pr.list;
-    matchedExactly = false;
-  }
+    const initial = applyFiltersBase(rows, f0);
+    let list = initial;
+    let matchedExactly = list.length > 0;
 
-  // 3) Ordenação + limite
-  const onlyGeneric = !f0.hasStructuredFilter && !f0.plainSearch;
-  let sortKey: SortKey | undefined = f0.sort ?? (onlyGeneric ? 'rating' : undefined);
-  if (!f0.sort && f0.difficulty === 'easy') sortKey = 'prepTime';
-  if (!f0.sort && f0.difficulty === 'hard') sortKey = 'rating';
+    if (list.length === 0) {
+      const pr = progressiveRelax(rows, f0);
+      list = pr.list;
+      matchedExactly = false;
+    }
 
-  const limit = f0.limit ?? (f0.wantAll ? 100 : 12);
-  const sorted = sortList(list, sortKey);
-  const cards = capAndMap(sorted, limit);
+    const onlyGeneric = !f0.hasStructuredFilter && !f0.plainSearch;
+    let sortKey: SortKey | undefined = f0.sort ?? (onlyGeneric ? 'rating' : undefined);
+    if (!f0.sort && f0.difficulty === 'easy') sortKey = 'prepTime';
+    if (!f0.sort && f0.difficulty === 'hard') sortKey = 'rating';
 
-  // 4) Nada mesmo? Ajuda curta e direta
-  if (cards.length === 0) {
+    const limit = f0.limit ?? (f0.wantAll ? 100 : 12);
+    const sorted = sortList(list, sortKey);
+    const cards = capAndMap(sorted, limit);
+
+    if (cards.length === 0) {
+      return {
+        content:
+          'Não encontrei receitas com esses critérios. Quer tentar "vegana fácil", "rápida 4.5+" ou "sem glúten"?',
+        recipes: [],
+        suggestions: ['receitas fáceis', 'vegana rápida', 'rica em proteína 5⭐'],
+      };
+    }
+
+    const content = humanizeIntro(query, {
+      f0,
+      shown: cards.length,
+      total: list.length,
+      matchedExactly,
+      sortKey,
+    });
+
     return {
-      content:
-        'Não pintou nada com esses critérios. Quer tentar “vegana fácil”, “rápida 4.5+” ou “sem glúten em 15 min”?',
+      content,
+      recipes: cards,
+      suggestions: cards.length < 5 ? ['receitas rápidas', 'vegana fácil', '5 ⭐'] : [],
+    };
+  } catch (error) {
+    console.error('Erro em recommendRecipesFromText:', error);
+    return {
+      content: 'Desculpe, tive um problema ao buscar receitas. Tente novamente.',
       recipes: [],
-      suggestions: ['receitas fáceis', 'vegana rápida', 'rica em proteína 5⭐'],
+      suggestions: ['receitas fáceis', 'vegana rápida', 'sem glúten'],
     };
   }
-
-  // 5) Texto natural + call-to-action implícito (usuário segue conversando)
-  const content = humanizeIntro(query, {
-    f0,
-    shown: cards.length,
-    total: list.length,
-    matchedExactly,
-    sortKey,
-  });
-
-  return {
-    content,
-    recipes: cards,
-    suggestions: cards.length < 5 ? ['receitas rápidas', 'vegana fácil', '5 ⭐'] : [],
-  };
 }
 
 // =============================================================================
@@ -869,38 +890,78 @@ export async function processAIMessage(
   _conversationHistory?: any
 ): Promise<AIResponse> {
   const content = String(userMessage || '').trim();
+
   if (!content) {
     return {
       content: 'Desculpe, não consegui entender. Pode repetir?',
       recipes: [],
-      suggestions: [],
+      suggestions: ['receitas fáceis', 'vegana', 'sem glúten'],
     };
   }
 
-  const hasNutritionGoal = isNutritionGoalQuery(content);
-  const intent = detectUserIntent(content);
+  try {
+    const intent = detectUserIntent(content);
 
-  if (intent === 'recipe_search') {
-    if (hasNutritionGoal) {
-      const [recipes, advice] = await Promise.all([
-        recommendRecipesFromText(content),
-        getGeminiResponse(
-          `Usuário quer receitas para: "${content}"\nDê 3-4 tips práticos sobre a meta nutricional em 2-3 linhas.`
-        ),
-      ]);
-      return {
-        content: `${advice.content}\n\n${recipes.content}`,
-        recipes: recipes.recipes,
-        suggestions: recipes.suggestions,
-      };
+    switch (intent) {
+      case 'recipe_search': {
+        const hasNutritionGoal = isNutritionGoalQuery(content);
+        if (hasNutritionGoal) {
+          const [recipes, advice] = await Promise.all([
+            recommendRecipesFromText(content).catch(() => ({
+              content: 'Receitas não disponíveis.',
+              recipes: [],
+              suggestions: [],
+            })),
+            getGeminiResponse(
+              `Usuário quer receitas para: "${content}"\nDê 3-4 tips práticos sobre a meta nutricional em 2-3 linhas.`
+            ),
+          ]);
+          return {
+            content: `${advice.content}\n\n${recipes.content}`,
+            recipes: recipes.recipes || [],
+            suggestions: recipes.suggestions || [],
+          };
+        }
+        return recommendRecipesFromText(content).catch(() => ({
+          content: 'Receitas não encontradas. Tente refinando a busca!',
+          recipes: [],
+          suggestions: ['receitas fáceis', 'vegana rápida', 'sem glúten'],
+        }));
+      }
+
+      case 'greetings':
+        return greetingsAnswer();
+      case 'thanks':
+        return thanksAnswer();
+      case 'help':
+        return helpAnswer();
+      case 'cooking_tips':
+        return cookingTipsAnswer(content);
+      case 'substitutions':
+        return substitutionsAnswer(content);
+      case 'nutrition_general':
+        return nutritionGeneralAnswer(content);
+      case 'nutrition_recipe':
+        return nutritionForRecipeAnswer(content, []);
+      case 'site_info':
+        return siteInfoAnswer();
+
+      default:
+      case 'fallback': {
+        const response = await getGeminiResponse(content);
+        return {
+          content: response.content,
+          recipes: [],
+          suggestions: ['receitas fáceis', 'vegana', 'sem glúten', 'como posso ajudar?'],
+        };
+      }
     }
-    return recommendRecipesFromText(content);
+  } catch (error) {
+    console.error('Erro em processAIMessage:', error);
+    return {
+      content: 'Desculpe, tive um problema. Pode tentar novamente?',
+      recipes: [],
+      suggestions: ['receitas fáceis', 'vegana', 'sem glúten'],
+    };
   }
-
-  const response = await getGeminiResponse(content);
-  return {
-    content: response.content,
-    recipes: [],
-    suggestions: [],
-  };
 }

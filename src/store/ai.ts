@@ -178,16 +178,26 @@ export const useAIStore = create<AIState>((set, get) => ({
         messages: [...state.messages, userMessage]
       }));
 
-      const aiResponse = await aiService.processAIMessage(
-        content,
-        get().aiConfig || undefined,
-        get().messages
-      );
+      let aiResponse;
+      try {
+        aiResponse = await aiService.processAIMessage(
+          content,
+          get().aiConfig || undefined,
+          get().messages
+        );
+      } catch (processError) {
+        console.warn('Erro ao processar mensagem, usando fallback:', processError);
+        aiResponse = {
+          content: 'Desculpe, tive um problema ao processar sua pergunta. Tente novamente.',
+          recipes: [],
+          suggestions: ['receitas fáceis', 'vegana', 'sem glúten'],
+        };
+      }
 
       const aiMessage = await aiService.createAIMessage({
         conversation_id: conversationId,
         sender_type: 'ai',
-        content: aiResponse.content,
+        content: aiResponse.content || 'Desculpe, não consegui gerar uma resposta.',
         metadata: {
           recipes: aiResponse.recipes || [],
           suggestions: aiResponse.suggestions || []
@@ -200,9 +210,11 @@ export const useAIStore = create<AIState>((set, get) => ({
       }));
 
     } catch (error) {
-      console.error('Error sending message:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Erro ao enviar mensagem';
-      set({ error: errorMsg, sendingMessage: false });
+      console.error('Erro crítico ao enviar mensagem:', error);
+      set({ sendingMessage: false });
+      const errorMsg = error instanceof Error && error.message
+        ? error.message
+        : 'Não consegui enviar sua mensagem. Verifique sua conexão.';
       useToastStore.getState().showToast(errorMsg, 'error');
     }
   },

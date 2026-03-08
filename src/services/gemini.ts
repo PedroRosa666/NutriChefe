@@ -24,7 +24,31 @@ export interface GeminiResponse {
 // Criamos um tipo para as personalidades, garantindo que apenas valores válidos sejam usados.
 type Personality = 'empathetic' | 'scientific' | 'friendly' | 'professional';
 
-// --- FUNÇÃO PRINCIPAL ---
+const DEFAULT_RESPONSE = 'Oi! Como posso te ajudar hoje? Posso sugerir receitas por dificuldade (easy/medium/hard), tempo (ex.: até 30 min) e avaliação (ex.: 4.5+ ⭐).';
+
+async function callGeminiWithRetry(
+  chat: any,
+  userPrompt: string,
+  maxRetries = 1
+): Promise<string> {
+  let lastError: any;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await chat.sendMessage(userPrompt);
+      const text = (result.response?.text?.() || '').trim();
+      return text || DEFAULT_RESPONSE;
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 export async function getGeminiResponse(
   userPrompt: string,
   aiConfig?: AIConfiguration,
@@ -32,10 +56,7 @@ export async function getGeminiResponse(
 ): Promise<GeminiResponse> {
   try {
     if (!genAI) {
-      return {
-        content: 'Oi! Como posso te ajudar hoje? Posso sugerir receitas por dificuldade (easy/medium/hard), tempo (ex.: até 30 min) e avaliação (ex.: 4.5+ ⭐).',
-        error: 'Gemini não configurado'
-      };
+      return { content: DEFAULT_RESPONSE };
     }
 
     const systemInstruction = buildSystemInstruction(aiConfig);
@@ -54,29 +75,12 @@ export async function getGeminiResponse(
     });
 
     const chat = model.startChat({ history });
-    const result = await chat.sendMessage(userPrompt);
-    const text = (result.response?.text?.() || '').trim();
-
-    return {
-      content: text || 'Oi! Como posso te ajudar hoje? Posso sugerir receitas por dificuldade (easy/medium/hard), tempo (ex.: até 30 min) e avaliação (ex.: 4.5+ ⭐).'
-    };
+    const text = await callGeminiWithRetry(chat, userPrompt);
+    return { content: text };
 
   } catch (error) {
-    console.error("Erro ao chamar a API do Gemini:", error);
-    let errorMessage = "Desculpe, ocorreu um erro ao processar sua solicitação. Tente novamente.";
-
-    if (error instanceof Error) {
-      if (error.message.includes('quota')) {
-        errorMessage = "Limite de uso atingido. Tente novamente mais tarde.";
-      } else if (error.message.includes('network') || error.message.includes('fetch')) {
-        errorMessage = "Erro de conexão. Verifique sua internet.";
-      }
-    }
-
-    return {
-      content: errorMessage,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
+    console.warn("Aviso ao chamar Gemini (usando fallback):", error);
+    return { content: DEFAULT_RESPONSE };
   }
 }
 
