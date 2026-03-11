@@ -1,5 +1,6 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Bot, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuthStore } from '../../store/auth';
 import { useSubscriptionStore } from '../../store/subscription';
 import { AIChatInterface } from './AIChatInterface';
@@ -15,36 +16,33 @@ export function AIMentoringPage({ onBack }: AIMentoringPageProps) {
   const { hasFeatureAccess } = useSubscriptionStore();
   const t = useTranslation();
 
-  // Verifica acesso
-  const hasAIAccess =
-    user && (isNutritionist() || hasFeatureAccess('ai_mentoring'));
+  const hasAIAccess = user && (isNutritionist() || hasFeatureAccess('ai_mentoring'));
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Botão de voltar */}
-      <button
+      <motion.button
         onClick={onBack}
-        className="
-          mb-8 inline-flex items-center gap-2
-          text-green-600 dark:text-green-400
-          hover:text-green-700 dark:hover:text-green-300
-          font-medium text-lg
-          group
-        "
+        initial={{ opacity: 0, x: -8 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors group"
       >
-        <ArrowLeft
-          className="
-            w-6 h-6 transition-transform duration-200
-            group-hover:-translate-x-1
-          "
-        />
-        <span className="tracking-wide">{t.common.back}</span>
-      </button>
+        <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+        {t.common.back}
+      </motion.button>
 
-      {/* Conteúdo principal */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 md:p-8">
-        {hasAIAccess ? <AIChatInterface /> : <PremiumUpgrade />}
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+      >
+        {hasAIAccess ? (
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl shadow-gray-200/60 dark:shadow-none border border-gray-200 dark:border-gray-700/60 overflow-hidden">
+            <AIChatInterface />
+          </div>
+        ) : (
+          <PremiumUpgrade />
+        )}
+      </motion.div>
     </div>
   );
 }

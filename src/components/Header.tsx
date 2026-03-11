@@ -193,7 +193,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                     className={cn(
                       "relative flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                       hasAIAccess
-                        ? "text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                        ? "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                         : "text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
                     )}
                     title={hasAIAccess ? t.labels.aiMentoring : `${t.labels.aiMentoring} (${t.labels.premium})`}
@@ -201,7 +201,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                     <Bot className="w-4 h-4" />
                     <span className="hidden xl:inline">{t.labels.aiMentoring}</span>
                     {!hasAIAccess && (
-                      <span className="absolute -top-2 -right-2 text-[9px] bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2 py-0.5 rounded-full font-bold shadow-md uppercase tracking-wider">
+                      <span className="absolute -top-2 -right-2 text-[9px] bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2 py-0.5 rounded-full font-bold shadow-md uppercase tracking-wider">
                         {t.labels.premium}
                       </span>
                     )}
@@ -321,14 +321,14 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                       className={cn(
                         "w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-colors relative",
                         hasAIAccess
-                          ? "text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                          ? "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                           : "text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
                       )}
                     >
                       <Bot className="w-4 h-4" />
                       <span className="text-sm font-medium">{t.labels.aiMentoring}</span>
                       {!hasAIAccess && (
-                        <span className="ml-auto text-[10px] bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2.5 py-1 rounded-full font-bold shadow-md uppercase tracking-wider">
+                        <span className="ml-auto text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2.5 py-1 rounded-full font-bold shadow-md uppercase tracking-wider">
                           {t.labels.premium}
                         </span>
                       )}

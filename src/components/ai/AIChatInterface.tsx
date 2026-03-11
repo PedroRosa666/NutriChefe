@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, Loader2, Sparkles, ChefHat, Star, MessageCircle } from 'lucide-react';
+import {
+  Send, Bot, User, Loader2, Sparkles, ChefHat,
+  Star, MessageCircle, Utensils, Clock, BarChart2, Lightbulb,
+} from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useAIStore } from '../../store/ai';
 import { isGeminiConfigured } from '../../services/gemini';
@@ -9,24 +12,28 @@ import { cn } from '../../lib/utils';
 import type { AIMessage } from '../../types/ai';
 import { useTranslation } from '../../hooks/useTranslation';
 
+const QUICK_PROMPTS = [
+  { icon: <Utensils className="w-4 h-4" />, label: 'Receitas fáceis', prompt: 'Mostre receitas fáceis e rápidas' },
+  { icon: <BarChart2 className="w-4 h-4" />, label: 'Rica em proteína', prompt: 'Receitas ricas em proteína' },
+  { icon: <Lightbulb className="w-4 h-4" />, label: 'Dica nutricional', prompt: 'Me dê uma dica de nutrição para hoje' },
+  { icon: <Clock className="w-4 h-4" />, label: 'Até 20 minutos', prompt: 'Receitas prontas em até 20 minutos' },
+];
+
 export function AIChatInterface() {
   const { user } = useAuthStore();
   const {
-    conversations,
     currentConversation,
     messages,
     sendingMessage,
     createConversation,
     setCurrentConversation,
     sendMessage,
-    fetchMessages,
   } = useAIStore();
 
   const [inputMessage, setInputMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const t = useTranslation();
-
   const geminiConfigured = isGeminiConfigured();
 
   useEffect(() => {
@@ -41,7 +48,6 @@ export function AIChatInterface() {
 
   const handleStartConversation = async () => {
     if (!user) return;
-
     try {
       const conversation = await createConversation(user.id);
       setCurrentConversation(conversation);
@@ -50,302 +56,342 @@ export function AIChatInterface() {
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMessage.trim() || !currentConversation || sendingMessage) return;
-
-    const messageToSend = inputMessage.trim();
+  const handleSendMessage = async (e?: React.FormEvent, overrideMsg?: string) => {
+    e?.preventDefault();
+    const msg = (overrideMsg ?? inputMessage).trim();
+    if (!msg || !currentConversation || sendingMessage) return;
     setInputMessage('');
-
     try {
-      await sendMessage(currentConversation.id, messageToSend);
+      await sendMessage(currentConversation.id, msg);
     } catch (error) {
       console.error('Error sending message:', error);
-      setInputMessage(messageToSend);
+      if (!overrideMsg) setInputMessage(msg);
     }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleQuickPrompt = async (prompt: string) => {
+    if (!currentConversation) {
+      if (!user) return;
+      try {
+        const conversation = await createConversation(user.id);
+        setCurrentConversation(conversation);
+        await new Promise(r => setTimeout(r, 100));
+        await sendMessage(conversation.id, prompt);
+      } catch {}
+      return;
+    }
+    await handleSendMessage(undefined, prompt);
   };
 
   const formatMessageContent = (content: string) => {
     return content.split('\n').map((line, index) => {
       if (line.startsWith('# ')) {
         return (
-          <h3 key={index} className="text-lg font-bold mt-4 mb-2">
+          <h3 key={index} className="text-base font-bold mt-3 mb-1.5 text-gray-900 dark:text-white">
             {line.substring(2)}
           </h3>
         );
       }
       if (line.startsWith('## ')) {
         return (
-          <h4 key={index} className="text-md font-semibold mt-3 mb-1">
+          <h4 key={index} className="text-sm font-semibold mt-2.5 mb-1 text-gray-800 dark:text-gray-100">
             {line.substring(3)}
           </h4>
         );
       }
-
       if (line.startsWith('- ') || line.startsWith('• ')) {
         return (
           <div key={index} className="flex items-start gap-2 my-1">
-            <span className="text-purple-500 mt-1">•</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
             <span>{line.substring(2)}</span>
           </div>
         );
       }
-
       const boldText = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
       return line.trim() ? (
-        <p key={index} className="mb-2" dangerouslySetInnerHTML={{ __html: boldText }} />
+        <p key={index} className="mb-1.5 leading-relaxed" dangerouslySetInnerHTML={{ __html: boldText }} />
       ) : (
-        <br key={index} />
+        <div key={index} className="h-1" />
       );
     });
   };
 
-  const renderRecipeCard = (recipe: any) => (
+  const renderRecipeCard = (recipe: any, index: number) => (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-white dark:bg-gray-700 rounded-lg p-4 border border-purple-200 dark:border-purple-700 mt-3"
+      key={index}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.06 }}
+      className="mt-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors shadow-sm"
     >
       <div className="flex items-start gap-3">
-        <ChefHat className="w-5 h-5 text-purple-600 mt-1 flex-shrink-0" />
-        <div className="flex-1">
-          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg flex-shrink-0">
+          <ChefHat className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate mb-0.5">
             {recipe.title}
           </h4>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-1.5">
             {recipe.description}
           </p>
-          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-            <span className="flex items-center gap-1">
-              <User className="w-3 h-3" />
-              {recipe.author}
-            </span>
-            <span className="flex items-center gap-1">
-              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-              {recipe.rating > 0 ? recipe.rating.toFixed(1) : t.recipe.noReviews}
-            </span>
+          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+            {recipe.author && (
+              <span className="flex items-center gap-1">
+                <User className="w-3 h-3" />
+                {recipe.author}
+              </span>
+            )}
+            {recipe.rating > 0 && (
+              <span className="flex items-center gap-1">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                {recipe.rating.toFixed(1)}
+              </span>
+            )}
+            {recipe.prepTime && (
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {recipe.prepTime} min
+              </span>
+            )}
           </div>
         </div>
       </div>
     </motion.div>
   );
 
-  // Sem conversa ativa: tela inicial
   if (!currentConversation) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-8 text-center">
-          <div className="flex justify-center mb-6">
-            <div className="relative">
-              <div className="p-4 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full">
-                <Bot className="w-12 h-12 text-white" />
+      <div className="flex flex-col items-center justify-center min-h-[560px] px-4 py-10">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-2xl"
+        >
+          <div className="text-center mb-10">
+            <div className="flex justify-center mb-6">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
+                  <Bot className="w-10 h-10 text-white" />
+                </div>
+                <motion.div
+                  animate={{ scale: [1, 1.3, 1], rotate: [0, 15, -15, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
+                  className="absolute -top-2 -right-2 w-7 h-7 bg-amber-400 rounded-full flex items-center justify-center shadow-md"
+                >
+                  <Sparkles className="w-4 h-4 text-white" />
+                </motion.div>
               </div>
-              <motion.div
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="absolute -top-1 -right-1"
-              >
-                <Sparkles className="w-6 h-6 text-yellow-500" />
-              </motion.div>
             </div>
+
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3 tracking-tight">
+              {t.aiChat.welcomeTitle}
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 text-base max-w-lg mx-auto leading-relaxed">
+              {t.aiChat.welcomeDescription}
+            </p>
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            {t.aiChat.welcomeTitle}
-          </h2>
-
-          <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
-            {t.aiChat.welcomeDescription}
-          </p>
-
           {!geminiConfigured && (
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6">
+              <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-amber-800 dark:text-amber-200">
                 <strong>{t.aiChat.limitedModeNoticeTitle}</strong>{' '}
                 {t.aiChat.limitedModeNoticeBody}
               </p>
             </div>
           )}
 
-          <div className="grid md:grid-cols-3 gap-4 mb-8">
-            <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-              <h3 className="font-semibold text-purple-700 dark:text-purple-300 mb-2">
-                {t.aiChat.examples.recipesTitle}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t.aiChat.examples.recipesExample}
-              </p>
-            </div>
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <h3 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">
-                {t.aiChat.examples.tipsTitle}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t.aiChat.examples.tipsExample}
-              </p>
-            </div>
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <h3 className="font-semibold text-green-700 dark:text-green-300 mb-2">
-                {t.aiChat.examples.helpTitle}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t.aiChat.examples.helpExample}
-              </p>
-            </div>
+          <div className="grid grid-cols-2 gap-3 mb-8">
+            {QUICK_PROMPTS.map((item, i) => (
+              <motion.button
+                key={i}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }}
+                onClick={() => handleQuickPrompt(item.prompt)}
+                className="flex items-center gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-left hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all group"
+              >
+                <span className="text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                  {item.icon}
+                </span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.label}</span>
+              </motion.button>
+            ))}
           </div>
 
           <motion.button
             onClick={handleStartConversation}
-            className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-blue-700 transition-all duration-200 flex items-center justify-center gap-2 mx-auto"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
             <MessageCircle className="w-5 h-5" />
             {t.aiChat.startConversationButton}
           </motion.button>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
-        {/* Header do Chat */}
-        <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Bot className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-white">
-                {currentConversation.ai_config?.ai_name || 'NutriBot'}
-              </h3>
-              <p className="text-purple-100 text-sm">
-                {t.aiChat.headerSubtitle}
-              </p>
-            </div>
+    <div className="flex flex-col h-[640px]">
+      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
+          <Bot className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white leading-none mb-0.5">
+            {currentConversation.ai_config?.ai_name || 'NutriBot'}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t.aiChat.headerSubtitle}</p>
           </div>
         </div>
+      </div>
 
-        {/* Área de Mensagens */}
-        <div className="h-96 overflow-y-auto p-4 space-y-4">
-          <AnimatePresence>
-            {messages.map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={cn(
-                  'flex gap-3',
-                  message.sender_type === 'user' ? 'justify-end' : 'justify-start'
-                )}
-              >
-                {message.sender_type === 'ai' && (
-                  <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex-shrink-0">
-                    <Bot className="w-4 h-4 text-white" />
-                  </div>
-                )}
-
-                <div
-                  className={cn(
-                    'max-w-xs lg:max-w-md px-4 py-2 rounded-lg',
-                    message.sender_type === 'user'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                  )}
-                >
-                  <div className="text-sm">
-                    {formatMessageContent(message.content)}
-                  </div>
-
-                  {message.metadata?.recipes && message.metadata.recipes.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {message.metadata.recipes.map((recipe: any, index: number) =>
-                        renderRecipeCard(recipe)
-                      )}
-                    </div>
-                  )}
-
-                  <div className="text-xs opacity-70 mt-1">
-                    {new Date(message.created_at).toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </div>
-                </div>
-
-                {message.sender_type === 'user' && (
-                  <div className="p-2 bg-green-600 rounded-full flex-shrink-0">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {/* Indicador de digitação */}
-          {sendingMessage && (
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <AnimatePresence initial={false}>
+          {messages.map((message) => (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              key={message.id}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex gap-3 justify-start"
+              transition={{ duration: 0.2 }}
+              className={cn(
+                'flex gap-3',
+                message.sender_type === 'user' ? 'justify-end' : 'justify-start'
+              )}
             >
-              <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full">
-                <Bot className="w-4 h-4 text-white" />
-              </div>
-              <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <LoadingSpinner size="sm" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {t.aiChat.typing}
-                  </span>
+              {message.sender_type === 'ai' && (
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+              )}
+
+              <div className={cn(
+                'max-w-[75%] lg:max-w-[70%] rounded-2xl px-4 py-3',
+                message.sender_type === 'user'
+                  ? 'bg-emerald-600 text-white rounded-tr-sm'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-tl-sm border border-gray-200 dark:border-gray-700'
+              )}>
+                <div className="text-sm leading-relaxed">
+                  {formatMessageContent(message.content)}
+                </div>
+
+                {message.metadata?.recipes && message.metadata.recipes.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {message.metadata.recipes.map((recipe: any, index: number) =>
+                      renderRecipeCard(recipe, index)
+                    )}
+                  </div>
+                )}
+
+                <div className={cn(
+                  'text-[10px] mt-2 opacity-60 select-none',
+                  message.sender_type === 'user' ? 'text-right' : 'text-left'
+                )}>
+                  {new Date(message.created_at).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
                 </div>
               </div>
+
+              {message.sender_type === 'user' && (
+                <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+              )}
             </motion.div>
-          )}
+          ))}
+        </AnimatePresence>
 
-          <div ref={messagesEndRef} />
-        </div>
+        {sendingMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex gap-3 justify-start"
+          >
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <Bot className="w-4 h-4 text-white" />
+            </div>
+            <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-tl-sm px-4 py-3">
+              <div className="flex items-center gap-1.5">
+                <motion.span
+                  animate={{ scale: [1, 1.4, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity, delay: 0 }}
+                  className="w-1.5 h-1.5 bg-emerald-500 rounded-full"
+                />
+                <motion.span
+                  animate={{ scale: [1, 1.4, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity, delay: 0.2 }}
+                  className="w-1.5 h-1.5 bg-emerald-500 rounded-full"
+                />
+                <motion.span
+                  animate={{ scale: [1, 1.4, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity, delay: 0.4 }}
+                  className="w-1.5 h-1.5 bg-emerald-500 rounded-full"
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
 
-        {/* Input de Mensagem */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-          <form onSubmit={handleSendMessage} className="flex gap-3">
-            <input
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-700/60">
+        <form onSubmit={handleSendMessage} className="flex gap-2.5 items-end">
+          <div className="flex-1 relative">
+            <textarea
               ref={inputRef}
-              type="text"
+              rows={1}
               value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
+              onChange={(e) => {
+                setInputMessage(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+              }}
+              onKeyDown={handleKeyDown}
               placeholder={t.aiChat.inputPlaceholder}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:text-white"
+              className="w-full resize-none px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all leading-relaxed"
               disabled={sendingMessage}
+              style={{ minHeight: '44px', maxHeight: '120px' }}
             />
-            <motion.button
-              type="submit"
-              disabled={!inputMessage.trim() || sendingMessage}
-              className={cn(
-                'px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2',
-                !inputMessage.trim() || sendingMessage
-                  ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700'
-              )}
-              whileHover={!sendingMessage && inputMessage.trim() ? { scale: 1.05 } : {}}
-              whileTap={!sendingMessage && inputMessage.trim() ? { scale: 0.95 } : {}}
-            >
-              {sendingMessage ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </motion.button>
-          </form>
-
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-            {t.aiChat.disclaimer}
-            {!geminiConfigured && t.aiChat.limitedModeSuffix}
-          </p>
-        </div>
+          </div>
+          <motion.button
+            type="submit"
+            disabled={!inputMessage.trim() || sendingMessage}
+            className={cn(
+              'w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all',
+              inputMessage.trim() && !sendingMessage
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+            )}
+            whileHover={inputMessage.trim() && !sendingMessage ? { scale: 1.08 } : {}}
+            whileTap={inputMessage.trim() && !sendingMessage ? { scale: 0.92 } : {}}
+          >
+            {sendingMessage ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </motion.button>
+        </form>
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 text-center">
+          {t.aiChat.disclaimer}
+          {!geminiConfigured && t.aiChat.limitedModeSuffix}
+        </p>
       </div>
     </div>
   );
