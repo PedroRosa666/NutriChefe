@@ -1,7 +1,7 @@
 // src/services/ai.ts
 import { supabase } from '../lib/supabase';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
-import { getGeminiResponse } from './gemini';
+import { getGeminiResponse, analyzeIngredientRequest, isGeminiConfigured } from './gemini';
 
 // =============================================================================
 // Tipos
@@ -101,12 +101,12 @@ const CATEGORY_EN_ALIASES: Record<string, SiteCategory> = {
 
 const NUM_RE = /(\d+(?:[.,]\d+)?)/;
 
-// Palavras que indicam busca por ingrediente
+// Palavras que indicam busca por ingrediente (fallback sem Gemini)
 const INGREDIENT_TRIGGERS = [
   'com ', 'usando ', 'que tenha ', 'que tenham ', 'que use ', 'que usem ',
   'feita com ', 'feitas com ', 'feito com ', 'feitos com ',
   'a base de ', 'à base de ', 'contendo ', 'ingrediente ',
-  'usando ', 'utilizando ', 'que leve ', 'que levem ',
+  'utilizando ', 'que leve ', 'que levem ',
 ];
 
 // Palavras genéricas a ignorar
@@ -180,64 +180,79 @@ function normalizeDifficultyValue(value: string): Difficulty {
 }
 
 // =============================================================================
-// Extrator de ingredientes do texto natural
+// Interface para análise dinâmica de ingredientes
 // =============================================================================
-function extractIngredients(q: string): string[] {
+interface DynamicIngredientSearch {
+  requestedIngredients: string[];
+  searchTerms: string[];
+  substitutes: string[];
+  culinaryCategory: string;
+  usedFallback: boolean;
+}
+
+// Extrator simples de fallback (sem Gemini) — detecta padrões explícitos
+function extractIngredientsFallback(q: string): string[] {
   const text = normalize(q);
   const ingredients: string[] = [];
 
-  // 1) Detecta padrões explícitos: "com banana", "usando frango", "que tenha aveia"
   for (const trigger of INGREDIENT_TRIGGERS) {
     const trigNorm = normalize(trigger);
     const idx = text.indexOf(trigNorm);
     if (idx === -1) continue;
 
     const after = text.slice(idx + trigNorm.length).trim();
-    // Pega até o próximo conector ou fim
     const segment = after.split(/\b(e |, |ou |\.|pra |para )/)[0].trim();
     if (segment && segment.length > 2 && !STOPWORDS.has(segment)) {
-      // Split por "e" ou vírgula para múltiplos ingredientes
       const parts = segment.split(/\s*(?:,|e )\s*/).map(s => s.trim()).filter(s => s.length > 2);
       ingredients.push(...parts);
     }
   }
 
-  // 2) Tenta identificar alimentos conhecidos diretamente no texto
-  // Lista ampla de alimentos comuns em receitas brasileiras
-  const COMMON_FOODS = [
-    'banana', 'maca', 'abacate', 'morango', 'limao', 'laranja', 'mamao', 'abacaxi', 'uva', 'manga',
-    'frango', 'carne', 'peixe', 'atum', 'salmao', 'camarao', 'ovo', 'ovos', 'carne moida', 'peito',
-    'arroz', 'feijao', 'lentilha', 'grao de bico', 'ervilha', 'milho', 'batata', 'batata doce', 'inhame',
-    'aveia', 'quinoa', 'chia', 'linhaça', 'amendoim', 'castanha', 'nozes', 'amendoas',
-    'leite', 'iogurte', 'queijo', 'requeijao', 'manteiga', 'creme de leite', 'leite de coco',
-    'chocolate', 'cacau', 'mel', 'acucar', 'adocante', 'stevia',
-    'tomate', 'cebola', 'alho', 'cenoura', 'brocolis', 'espinafre', 'couve', 'abobrinha', 'berinjela',
-    'cogumelo', 'champignon', 'shitake',
-    'farinha', 'farinha de trigo', 'farinha de aveia', 'amido', 'polvilho', 'fuba',
-    'whey', 'proteina', 'colagem',
-    'azeite', 'oleo', 'vinagre', 'molho de tomate', 'extrato de tomate',
-    'gengibre', 'canela', 'curcuma', 'curry', 'oregano', 'manjericao',
-    'pasta de amendoim', 'tahine',
-  ];
+  return Array.from(new Set(ingredients.filter(Boolean)));
+}
 
-  // Só extrair alimentos se não houver ingrediente já detectado por trigger
-  if (ingredients.length === 0) {
-    for (const food of COMMON_FOODS) {
-      const foodNorm = normalize(food);
-      // Verifica se o alimento aparece como palavra completa no texto
-      const regex = new RegExp(`\\b${foodNorm.replace(/\s+/g, '\\s+')}\\b`);
-      if (regex.test(text)) {
-        // Garante que não é parte de uma negação ("sem banana")
-        const negRegex = new RegExp(`\\bsem\\s+${foodNorm}\\b`);
-        if (!negRegex.test(text)) {
-          ingredients.push(food);
-        }
+// Detector rápido: há menção de ingrediente na mensagem?
+function mightHaveIngredient(q: string): boolean {
+  const t = normalize(q);
+  return INGREDIENT_TRIGGERS.some(trigger => t.includes(normalize(trigger)));
+}
+
+// Análise dinâmica via Gemini (qualquer ingrediente do mundo)
+async function analyzeDynamicIngredients(q: string): Promise<DynamicIngredientSearch> {
+  if (isGeminiConfigured()) {
+    try {
+      const analysis = await analyzeIngredientRequest(q);
+      if (analysis.requestedIngredients.length > 0) {
+        return {
+          requestedIngredients: analysis.requestedIngredients,
+          searchTerms: [
+            ...analysis.normalizedIngredients,
+            ...analysis.searchTerms,
+          ],
+          substitutes: analysis.substitutes,
+          culinaryCategory: analysis.culinaryCategory,
+          usedFallback: false,
+        };
       }
+    } catch {
+      // Cai no fallback
     }
   }
 
-  // Deduplica
-  return Array.from(new Set(ingredients.filter(Boolean)));
+  // Fallback: extração simples sem Gemini
+  const simple = extractIngredientsFallback(q);
+  return {
+    requestedIngredients: simple,
+    searchTerms: simple,
+    substitutes: [],
+    culinaryCategory: '',
+    usedFallback: true,
+  };
+}
+
+// Alias para manter compatibilidade com detectUserIntent
+function extractIngredients(q: string): string[] {
+  return extractIngredientsFallback(q);
 }
 
 // =============================================================================
@@ -326,15 +341,16 @@ function parseQueryToFilters(q: string): ParsedFilters {
   f.limit = parseCount(text) ?? undefined;
   f.sort = parseSort(text) ?? undefined;
 
-  // Ingredientes (NOVO)
-  const detectedIngredients = extractIngredients(q);
-  if (detectedIngredients.length > 0) {
-    f.ingredients = detectedIngredients;
+  // Ingredientes: detecta apenas com fallback simples no parse síncrono
+  // A análise completa via Gemini é feita de forma assíncrona em recommendRecipesFromText
+  const simpleIngredients = extractIngredientsFallback(q);
+  if (simpleIngredients.length > 0) {
+    f.ingredients = simpleIngredients;
   }
 
   // Marcador de filtro estruturado
   f.hasStructuredFilter = Boolean(
-    f.category || f.difficulty || f.maxPrep || f.minPrep || f.minRating || f.ingredients?.length
+    f.category || f.difficulty || f.maxPrep || f.minPrep || f.minRating || f.ingredients?.length || mightHaveIngredient(q)
   );
 
   // Busca textual livre (quando nenhum filtro estruturado encontrado)
@@ -446,36 +462,6 @@ async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
   }
 }
 
-// =============================================================================
-// Filtro por ingredientes — busca flexível
-// =============================================================================
-function recipeMatchesIngredients(recipe: RecipeRow, requestedIngredients: string[]): boolean {
-  if (!requestedIngredients.length) return true;
-
-  const ingredientText = [
-    ...recipe.ingredients.map(normalize),
-    normalize(recipe.title),
-    normalize(recipe.description),
-  ].join(' ');
-
-  // A receita precisa ter pelo menos UM dos ingredientes pedidos
-  return requestedIngredients.some(ing => {
-    const ingNorm = normalize(ing);
-    return ingredientText.includes(ingNorm);
-  });
-}
-
-// Calcula score de relevância para ordenar por ingredientes
-function ingredientScore(recipe: RecipeRow, requestedIngredients: string[]): number {
-  if (!requestedIngredients.length) return 0;
-  const ingredientText = recipe.ingredients.map(normalize).join(' ');
-  let score = 0;
-  for (const ing of requestedIngredients) {
-    if (ingredientText.includes(normalize(ing))) score += 2;
-    else if (normalize(recipe.title).includes(normalize(ing))) score += 1;
-  }
-  return score;
-}
 
 // =============================================================================
 // Filtro + ordenação + relaxamento
@@ -498,9 +484,9 @@ function applyFiltersBase(rows: RecipeRow[], f: ParsedFilters): RecipeRow[] {
     list = list.filter(r => (typeof r.rating === 'number' ? r.rating : 0) >= (f.minRating as number));
   }
 
-  // Filtro por ingredientes (NOVO)
+  // Filtro por ingredientes — usa busca dinâmica
   if (f.ingredients?.length) {
-    list = list.filter(r => recipeMatchesIngredients(r, f.ingredients!));
+    list = list.filter(r => recipeMatchesSearchTerms(r, f.ingredients!));
   }
 
   if (f.plainSearch) {
@@ -514,19 +500,8 @@ function applyFiltersBase(rows: RecipeRow[], f: ParsedFilters): RecipeRow[] {
   return list;
 }
 
-function sortList(list: RecipeRow[], sort?: SortKey, ingredients?: string[]): RecipeRow[] {
+function sortList(list: RecipeRow[], sort?: SortKey): RecipeRow[] {
   const arr = list.slice();
-
-  // Se há ingredientes, ordena por relevância primeiro
-  if (ingredients?.length) {
-    arr.sort((a, b) => {
-      const scoreB = ingredientScore(b, ingredients) + (b.rating ?? 0) * 0.5;
-      const scoreA = ingredientScore(a, ingredients) + (a.rating ?? 0) * 0.5;
-      return scoreB - scoreA;
-    });
-    return arr;
-  }
-
   if (sort === 'prepTime') {
     arr.sort((a, b) => a.prep_time - b.prep_time || ((b.rating ?? 0) - (a.rating ?? 0)));
   } else if (sort === 'newest') {
@@ -812,12 +787,51 @@ function humanizeIntro(
 }
 
 // =============================================================================
-// Recomendação principal
+// Busca flexível por termos de ingrediente em uma receita
+// =============================================================================
+function recipeMatchesSearchTerms(recipe: RecipeRow, terms: string[]): boolean {
+  if (!terms.length) return false;
+  const haystack = [
+    ...recipe.ingredients.map(normalize),
+    normalize(recipe.title),
+    normalize(recipe.description),
+  ].join(' ');
+  return terms.some(t => haystack.includes(normalize(t)));
+}
+
+function ingredientRelevanceScore(recipe: RecipeRow, terms: string[]): number {
+  if (!terms.length) return 0;
+  const ingredientText = recipe.ingredients.map(normalize).join(' ');
+  const titleText = normalize(recipe.title);
+  let score = 0;
+  for (const t of terms) {
+    const tn = normalize(t);
+    if (ingredientText.includes(tn)) score += 3;
+    else if (titleText.includes(tn)) score += 1;
+  }
+  return score;
+}
+
+// =============================================================================
+// Recomendação principal — totalmente dinâmica com Gemini
 // =============================================================================
 export async function recommendRecipesFromText(query: string): Promise<AIResponse> {
   try {
     const f0 = parseQueryToFilters(query);
-    const rows = await fetchRecipesFromDB();
+
+    // Busca receitas e análise de ingredientes em paralelo
+    const [rows, dynamicSearch] = await Promise.all([
+      fetchRecipesFromDB(),
+      mightHaveIngredient(query) || f0.ingredients?.length
+        ? analyzeDynamicIngredients(query)
+        : Promise.resolve<DynamicIngredientSearch>({
+            requestedIngredients: [],
+            searchTerms: [],
+            substitutes: [],
+            culinaryCategory: '',
+            usedFallback: true,
+          }),
+    ]);
 
     if (!rows || rows.length === 0) {
       return {
@@ -827,46 +841,114 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
       };
     }
 
-    let list = applyFiltersBase(rows, f0);
+    // Usa os termos dinâmicos do Gemini se disponíveis
+    const allSearchTerms = dynamicSearch.searchTerms.length > 0
+      ? dynamicSearch.searchTerms
+      : (f0.ingredients || []);
+
+    // Monta filtros com os termos dinâmicos
+    const enrichedFilters: ParsedFilters = {
+      ...f0,
+      ingredients: allSearchTerms.length > 0 ? allSearchTerms : f0.ingredients,
+    };
+
+    // Fase 1: busca com filtros completos + ingredientes pedidos
+    let list = applyFiltersBase(rows, enrichedFilters);
     let matchedExactly = list.length > 0;
     let relaxedFilters: string[] = [];
+    let usedSubstitutes = false;
+    let substitutesUsed: string[] = [];
 
+    // Fase 2: se não achou, tenta apenas com ingredientes (sem outros filtros)
+    if (list.length === 0 && allSearchTerms.length > 0) {
+      list = rows.filter(r => recipeMatchesSearchTerms(r, allSearchTerms));
+      if (list.length > 0) {
+        matchedExactly = false;
+        relaxedFilters = ['filtros de categoria/dificuldade'];
+      }
+    }
+
+    // Fase 3: se ainda não achou, tenta com substitutos/similares sugeridos pelo Gemini
+    if (list.length === 0 && dynamicSearch.substitutes.length > 0) {
+      list = rows.filter(r => recipeMatchesSearchTerms(r, dynamicSearch.substitutes));
+      if (list.length > 0) {
+        matchedExactly = false;
+        usedSubstitutes = true;
+        substitutesUsed = dynamicSearch.substitutes.slice(0, 3);
+      }
+    }
+
+    // Fase 4: relaxamento progressivo padrão
     if (list.length === 0) {
-      const { list: relaxedList, relaxed } = progressiveRelax(rows, f0);
+      const { list: relaxedList, relaxed } = progressiveRelax(rows, enrichedFilters);
       list = relaxedList;
       relaxedFilters = relaxed;
       matchedExactly = false;
     }
 
-    const onlyGeneric = !f0.hasStructuredFilter && !f0.plainSearch;
-    let sortKey: SortKey | undefined = f0.sort ?? (onlyGeneric ? 'rating' : undefined);
-    if (!f0.sort && f0.difficulty === 'easy') sortKey = 'prepTime';
-    if (!f0.sort && f0.difficulty === 'hard') sortKey = 'rating';
+    const onlyGeneric = !enrichedFilters.hasStructuredFilter && !enrichedFilters.plainSearch;
+    let sortKey: SortKey | undefined = enrichedFilters.sort ?? (onlyGeneric ? 'rating' : undefined);
+    if (!enrichedFilters.sort && enrichedFilters.difficulty === 'easy') sortKey = 'prepTime';
+    if (!enrichedFilters.sort && enrichedFilters.difficulty === 'hard') sortKey = 'rating';
 
-    const limit = f0.limit ?? (f0.wantAll ? 100 : 12);
-    const sorted = sortList(list, sortKey, f0.ingredients);
+    // Ordena por relevância de ingrediente quando há termos
+    const limit = enrichedFilters.limit ?? (enrichedFilters.wantAll ? 100 : 12);
+
+    let sorted: RecipeRow[];
+    if (allSearchTerms.length > 0 && !usedSubstitutes) {
+      sorted = list.slice().sort((a, b) => {
+        const scoreB = ingredientRelevanceScore(b, allSearchTerms) + (b.rating ?? 0) * 0.3;
+        const scoreA = ingredientRelevanceScore(a, allSearchTerms) + (a.rating ?? 0) * 0.3;
+        return scoreB - scoreA;
+      });
+    } else if (usedSubstitutes) {
+      sorted = list.slice().sort((a, b) => {
+        const scoreB = ingredientRelevanceScore(b, dynamicSearch.substitutes) + (b.rating ?? 0) * 0.3;
+        const scoreA = ingredientRelevanceScore(a, dynamicSearch.substitutes) + (a.rating ?? 0) * 0.3;
+        return scoreB - scoreA;
+      });
+    } else {
+      sorted = sortList(list, sortKey);
+    }
+
     const cards = capAndMap(sorted, limit);
 
     if (cards.length === 0) {
+      const ing = dynamicSearch.requestedIngredients[0] || '';
       return {
-        content: 'Não encontrei receitas com esses critérios. Tente buscar por outro ingrediente ou categoria!',
+        content: `Não encontrei receitas${ing ? ` com **${ing}**` : ''} no site. Tente outro ingrediente ou categoria!`,
         recipes: [],
         suggestions: ['receitas fáceis', 'vegana rápida', 'rica em proteína'],
       };
     }
 
-    const content = humanizeIntro(query, {
-      f0,
-      shown: cards.length,
-      total: list.length,
-      matchedExactly,
-      sortKey,
-      relaxedFilters,
-    });
+    // Monta mensagem contextual
+    let content = '';
+    const reqIng = dynamicSearch.requestedIngredients;
 
+    if (usedSubstitutes && reqIng.length > 0) {
+      const ingLabel = reqIng.join(', ');
+      const subLabel = substitutesUsed.join(', ');
+      content = `Não encontrei receitas com **${ingLabel}** no site, mas trouxe algumas com ingredientes similares (**${subLabel}**) que podem te agradar:`;
+    } else if (!matchedExactly && reqIng.length > 0 && relaxedFilters.length > 0) {
+      content = `Trouxe receitas próximas ao que você pediu (flexibilizei *${relaxedFilters[0]}*):`;
+    } else {
+      content = humanizeIntro(query, {
+        f0: enrichedFilters,
+        shown: cards.length,
+        total: list.length,
+        matchedExactly,
+        sortKey,
+        relaxedFilters,
+      });
+    }
+
+    // Sugestões dinâmicas baseadas no que foi encontrado
     const suggestions: string[] = [];
-    if (f0.ingredients?.length) {
-      suggestions.push(`${f0.ingredients[0]} vegana`, `${f0.ingredients[0]} fácil`);
+    if (reqIng.length > 0) {
+      const mainIng = reqIng[0];
+      suggestions.push(`${mainIng} vegana`, `${mainIng} fácil rápida`);
+      if (dynamicSearch.substitutes[0]) suggestions.push(dynamicSearch.substitutes[0]);
     } else if (cards.length < 5) {
       suggestions.push('receitas rápidas', 'vegana fácil', '5 estrelas');
     }

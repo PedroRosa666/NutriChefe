@@ -150,6 +150,70 @@ function formatConversationHistory(history: AIMessage[], _aiConfig?: AIConfigura
     }));
 }
 
+export interface IngredientAnalysis {
+  requestedIngredients: string[];
+  normalizedIngredients: string[];
+  substitutes: string[];
+  culinaryCategory: string;
+  searchTerms: string[];
+  notFound: boolean;
+}
+
+export async function analyzeIngredientRequest(userMessage: string): Promise<IngredientAnalysis> {
+  const fallback: IngredientAnalysis = {
+    requestedIngredients: [],
+    normalizedIngredients: [],
+    substitutes: [],
+    culinaryCategory: '',
+    searchTerms: [],
+    notFound: false,
+  };
+
+  try {
+    if (!genAI) return fallback;
+
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+    const prompt = `Analise esta mensagem de um usuário buscando receitas: "${userMessage}"
+
+Retorne APENAS um JSON válido (sem markdown, sem blocos de código) com este formato exato:
+{
+  "requestedIngredients": ["ingrediente1", "ingrediente2"],
+  "normalizedIngredients": ["versão normalizada em português minúsculo"],
+  "substitutes": ["substituto1", "substituto2", "substituto3"],
+  "culinaryCategory": "categoria culinária principal (ex: frutas, carnes, legumes, grãos, laticínios, frutos do mar)",
+  "searchTerms": ["termo1", "termo2", "termo3"]
+}
+
+Regras:
+- requestedIngredients: ingredientes exatamente como o usuário mencionou
+- normalizedIngredients: os mesmos ingredientes em português, sem acentos, singular, minúsculos
+- substitutes: 3-5 ingredientes similares/substitutos que poderiam aparecer em receitas parecidas
+- culinaryCategory: categoria geral do ingrediente principal
+- searchTerms: todos os termos de busca úteis (inclui variações, sinônimos, preparações comuns com este ingrediente)
+
+Se não houver ingrediente específico na mensagem, retorne listas vazias.`;
+
+    const result = await model.generateContent(prompt);
+    const text = (result.response?.text?.() || '').trim();
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return fallback;
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      requestedIngredients: Array.isArray(parsed.requestedIngredients) ? parsed.requestedIngredients : [],
+      normalizedIngredients: Array.isArray(parsed.normalizedIngredients) ? parsed.normalizedIngredients : [],
+      substitutes: Array.isArray(parsed.substitutes) ? parsed.substitutes : [],
+      culinaryCategory: typeof parsed.culinaryCategory === 'string' ? parsed.culinaryCategory : '',
+      searchTerms: Array.isArray(parsed.searchTerms) ? parsed.searchTerms : [],
+      notFound: false,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 /**
  * Checagem simples de configuração da API
  */
