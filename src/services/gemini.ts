@@ -24,7 +24,7 @@ export interface GeminiResponse {
 // Criamos um tipo para as personalidades, garantindo que apenas valores válidos sejam usados.
 type Personality = 'empathetic' | 'scientific' | 'friendly' | 'professional';
 
-const DEFAULT_RESPONSE = 'Oi! Como posso te ajudar hoje? Posso sugerir receitas por dificuldade (easy/medium/hard), tempo (ex.: até 30 min) e avaliação (ex.: 4.5+ ⭐).';
+const DEFAULT_RESPONSE = 'Oi! Como posso te ajudar hoje? Posso sugerir receitas por dificuldade (Fácil/Médio/Difícil), tempo (ex.: até 30 min) e avaliação (ex.: 4.5+ ⭐).';
 
 async function callGeminiWithRetry(
   chat: any,
