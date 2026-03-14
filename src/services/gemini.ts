@@ -180,17 +180,25 @@ Retorne APENAS um JSON válido (sem markdown, sem blocos de código) com este fo
 {
   "requestedIngredients": ["ingrediente1", "ingrediente2"],
   "normalizedIngredients": ["versão normalizada em português minúsculo"],
-  "substitutes": ["substituto1", "substituto2", "substituto3"],
-  "culinaryCategory": "categoria culinária principal (ex: frutas, carnes, legumes, grãos, laticínios, frutos do mar)",
+  "substitutes": ["substituto1", "substituto2", "substituto3", "substituto4", "substituto5"],
+  "culinaryCategory": "uma das categorias abaixo",
   "searchTerms": ["termo1", "termo2", "termo3"]
 }
 
 Regras:
 - requestedIngredients: ingredientes exatamente como o usuário mencionou
 - normalizedIngredients: os mesmos ingredientes em português, sem acentos, singular, minúsculos
-- substitutes: 3-5 ingredientes similares/substitutos que poderiam aparecer em receitas parecidas
-- culinaryCategory: categoria geral do ingrediente principal
-- searchTerms: todos os termos de busca úteis (inclui variações, sinônimos, preparações comuns com este ingrediente)
+- substitutes: 4-6 ingredientes da MESMA categoria culinária que poderiam substituir ou aparecer em receitas parecidas. Ex: se banana → maçã, morango, manga, abacaxi, pêssego
+- culinaryCategory: classifique automaticamente o ingrediente principal em uma destas categorias exatas: frutas, vegetais, legumes, carnes, frango, peixes, frutos_do_mar, laticinios, graos_cereais, massas, temperos, nozes_sementes, ovos, doces_sobremesas, paes_farinhas, oleos_gorduras
+- searchTerms: variações de escrita, sinônimos, formas plurais, preparações comuns com este ingrediente
+
+Exemplos de classificação:
+- banana, maçã, morango, manga → frutas
+- salmão, tilápia, atum → peixes
+- brócolis, couve-flor, cenoura → vegetais
+- frango, peito de frango, coxa → frango
+- queijo, leite, iogurte → laticinios
+- feijão, lentilha, grão-de-bico → legumes
 
 Se não houver ingrediente específico na mensagem, retorne listas vazias.`;
 

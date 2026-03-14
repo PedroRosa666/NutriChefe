@@ -64,6 +64,116 @@ interface ParsedFilters {
 }
 
 // =============================================================================
+// Sistema de categorias culinárias para sugestões semânticas
+// =============================================================================
+const INGREDIENT_CATEGORIES: Record<string, string[]> = {
+  frutas: [
+    'banana', 'maçã', 'maca', 'morango', 'manga', 'abacaxi', 'laranja', 'limão', 'limao',
+    'uva', 'pêra', 'pera', 'pêssego', 'pessego', 'melão', 'melao', 'melancia', 'kiwi',
+    'mamão', 'mamao', 'papaia', 'maracujá', 'maracuja', 'goiaba', 'framboesa', 'amora',
+    'mirtilo', 'blueberry', 'caqui', 'figo', 'tâmara', 'tamara', 'abacate', 'açaí', 'acai',
+    'carambola', 'pitaia', 'lichia', 'romã', 'roma', 'nectarina',
+  ],
+  vegetais: [
+    'brócolis', 'brocolis', 'couve-flor', 'couveflor', 'cenoura', 'abobrinha', 'berinjela',
+    'espinafre', 'couve', 'alface', 'rúcula', 'rucula', 'agrião', 'agriao', 'acelga',
+    'repolho', 'beterraba', 'pepino', 'pimentão', 'pimentao', 'tomate', 'chuchu',
+    'abóbora', 'abobora', 'mandioca', 'mandioquinha', 'batata', 'batata-doce', 'batata doce',
+    'inhame', 'cará', 'cara', 'quiabo', 'jiló', 'jilo', 'vagem', 'ervilha', 'milho',
+    'aspargo', 'alcachofra', 'rabanete', 'nabo', 'salsão', 'salsao', 'aipo', 'alho-poró',
+    'alho poro', 'alhoporó', 'palmito',
+  ],
+  legumes: [
+    'feijão', 'feijao', 'lentilha', 'grão-de-bico', 'grao-de-bico', 'grão de bico',
+    'soja', 'ervilha seca', 'fava', 'amendoim', 'edamame',
+  ],
+  carnes: [
+    'carne', 'bife', 'picanha', 'alcatra', 'maminha', 'contrafilé', 'contrafile',
+    'filé mignon', 'file mignon', 'costela', 'acém', 'acem', 'patinho', 'paleta',
+    'pernil', 'copa lombo', 'bacon', 'linguiça', 'linguica', 'salsicha', 'calabresa',
+    'presunto', 'carne moída', 'carne moida', 'carne seca', 'charque', 'carneiro', 'cordeiro',
+    'javali',
+  ],
+  frango: [
+    'frango', 'peito de frango', 'coxa', 'sobrecoxa', 'asa', 'coxinha da asa', 'frango inteiro',
+    'frango desfiado', 'chester', 'peru', 'galinha', 'tender', 'pato',
+  ],
+  peixes: [
+    'salmão', 'salmao', 'tilápia', 'tilapia', 'atum', 'sardinha', 'bacalhau', 'robalo',
+    'dourado', 'tainha', 'corvina', 'merluza', 'linguado', 'peixe', 'truta', 'anchova',
+    'garoupa', 'cação', 'cacao', 'filhote', 'pintado',
+  ],
+  frutos_do_mar: [
+    'camarão', 'camarao', 'lagosta', 'mariscos', 'mexilhão', 'mexilhao', 'polvo', 'lula',
+    'vieira', 'ostra', 'caranguejo', 'sururu', 'berbigão', 'berbigao',
+  ],
+  laticinios: [
+    'leite', 'queijo', 'iogurte', 'manteiga', 'creme de leite', 'nata', 'ricota',
+    'cream cheese', 'mussarela', 'parmesão', 'parmesao', 'gorgonzola', 'brie', 'camembert',
+    'cottage', 'requeijão', 'requeijao', 'cheddar', 'provolone', 'gruyere', 'leite condensado',
+    'leite em pó', 'leite em po',
+  ],
+  graos_cereais: [
+    'arroz', 'aveia', 'trigo', 'milho', 'quinoa', 'amaranto', 'cevada', 'centeio',
+    'espelta', 'painço', 'painco', 'sorgo', 'granola', 'flocos de aveia', 'farinha de trigo',
+    'farinha de arroz', 'farinha de milho', 'fubá', 'fuba', 'semolina', 'bulgur', 'triguilho',
+    'couscous', 'cuscuz',
+  ],
+  massas: [
+    'macarrão', 'macarrao', 'espaguete', 'penne', 'fusilli', 'farfalle', 'tagliatelle',
+    'lasanha', 'ravióli', 'ravioli', 'nhoque', 'talharim', 'capeletti', 'tortellini',
+    'massa', 'macarrão integral', 'macarrao integral',
+  ],
+  temperos: [
+    'alho', 'cebola', 'gengibre', 'pimenta', 'sal', 'açafrão', 'acafrao', 'cúrcuma', 'curcuma',
+    'canela', 'cravo', 'noz-moscada', 'noz moscada', 'páprica', 'paprica', 'cominho', 'coentro',
+    'salsa', 'cebolinha', 'orégano', 'oregano', 'tomilho', 'alecrim', 'manjericão', 'manjericao',
+    'louro', 'curry', 'za\'atar', 'sumac', 'cardamomo', 'anis', 'erva-doce', 'erva doce',
+    'hortelã', 'hortela', 'menta', 'tahine', 'shoyu', 'molho de soja', 'vinagre', 'limão siciliano',
+  ],
+  nozes_sementes: [
+    'castanha', 'nozes', 'noz', 'amêndoa', 'amendoa', 'pistache', 'cajú', 'caju', 'pecã', 'peca',
+    'macadâmia', 'macadamia', 'avelã', 'avela', 'semente de girassol', 'semente de abóbora',
+    'linhaça', 'linhaca', 'chia', 'gergelim', 'sésamo', 'sesamo', 'pinhole', 'pinhão', 'pinhao',
+  ],
+  ovos: [
+    'ovo', 'ovos', 'ovo de galinha', 'clara', 'gema', 'ovo cozido', 'ovo mexido',
+    'ovo pochê', 'ovo poche',
+  ],
+  doces_sobremesas: [
+    'chocolate', 'cacau', 'açúcar', 'acucar', 'mel', 'agave', 'stevia', 'adoçante',
+    'adocante', 'baunilha', 'leite condensado', 'doce de leite', 'geleia', 'gelatina',
+    'marshmallow', 'fondant', 'caramelo', 'brigadeiro', 'nata', 'chantilly',
+  ],
+  paes_farinhas: [
+    'pão', 'pao', 'pão integral', 'pão de forma', 'brioche', 'baguete', 'ciabatta',
+    'focaccia', 'farinha', 'farinha de trigo', 'farinha integral', 'fermento', 'levedura',
+    'fermento biológico', 'fermento químico', 'polvilho', 'amido de milho',
+  ],
+  oleos_gorduras: [
+    'azeite', 'óleo', 'oleo', 'óleo de coco', 'oleo de coco', 'ghee', 'banha',
+    'margarina', 'óleo de girassol', 'óleo de oliva',
+  ],
+};
+
+function getIngredientCategory(ingredient: string): string | null {
+  const norm = normalize(ingredient);
+  for (const [category, ingredients] of Object.entries(INGREDIENT_CATEGORIES)) {
+    if (ingredients.some(i => {
+      const ni = normalize(i);
+      return norm === ni || norm.includes(ni) || ni.includes(norm);
+    })) {
+      return category;
+    }
+  }
+  return null;
+}
+
+function getCategoryIngredients(category: string): string[] {
+  return INGREDIENT_CATEGORIES[category] || [];
+}
+
+// =============================================================================
 // Vocabulário
 // =============================================================================
 const DIFFICULTY_SYNONYMS: Record<Difficulty, string[]> = {
@@ -101,15 +211,15 @@ const CATEGORY_EN_ALIASES: Record<string, SiteCategory> = {
 
 const NUM_RE = /(\d+(?:[.,]\d+)?)/;
 
-// Palavras que indicam busca por ingrediente (fallback sem Gemini)
 const INGREDIENT_TRIGGERS = [
   'com ', 'usando ', 'que tenha ', 'que tenham ', 'que use ', 'que usem ',
   'feita com ', 'feitas com ', 'feito com ', 'feitos com ',
   'a base de ', 'à base de ', 'contendo ', 'ingrediente ',
   'utilizando ', 'que leve ', 'que levem ',
+  'tem algo com ', 'algo com ', 'algo que leve ', 'prato com ', 'prato que ',
+  'cozinhar com ', 'preparar com ', 'fazer com ',
 ];
 
-// Palavras genéricas a ignorar
 const STOPWORDS = new Set([
   'receita', 'receitas', 'quero', 'queria', 'gostaria', 'me', 'mostra', 'mostrar', 'mostre', 'traga', 'trazer',
   'uma', 'umas', 'um', 'uns', 'de', 'do', 'da', 'no', 'na', 'em', 'pra', 'para', 'por', 'a', 'o', 'as', 'os',
@@ -190,7 +300,6 @@ interface DynamicIngredientSearch {
   usedFallback: boolean;
 }
 
-// Extrator simples de fallback (sem Gemini) — detecta padrões explícitos
 function extractIngredientsFallback(q: string): string[] {
   const text = normalize(q);
   const ingredients: string[] = [];
@@ -211,26 +320,41 @@ function extractIngredientsFallback(q: string): string[] {
   return Array.from(new Set(ingredients.filter(Boolean)));
 }
 
-// Detector rápido: há menção de ingrediente na mensagem?
 function mightHaveIngredient(q: string): boolean {
   const t = normalize(q);
   return INGREDIENT_TRIGGERS.some(trigger => t.includes(normalize(trigger)));
 }
 
-// Análise dinâmica via Gemini (qualquer ingrediente do mundo)
 async function analyzeDynamicIngredients(q: string): Promise<DynamicIngredientSearch> {
   if (isGeminiConfigured()) {
     try {
       const analysis = await analyzeIngredientRequest(q);
       if (analysis.requestedIngredients.length > 0) {
+        const culinaryCategory = analysis.culinaryCategory || '';
+
+        const localCategory = analysis.requestedIngredients
+          .map(i => getIngredientCategory(i))
+          .find(c => c !== null) ?? null;
+
+        const categorySubstitutes = localCategory
+          ? getCategoryIngredients(localCategory).filter(i =>
+              !analysis.requestedIngredients.some(ri => normalize(ri) === normalize(i))
+            ).slice(0, 6)
+          : [];
+
+        const allSubstitutes = Array.from(new Set([
+          ...analysis.substitutes,
+          ...categorySubstitutes,
+        ])).slice(0, 8);
+
         return {
           requestedIngredients: analysis.requestedIngredients,
           searchTerms: [
             ...analysis.normalizedIngredients,
             ...analysis.searchTerms,
           ],
-          substitutes: analysis.substitutes,
-          culinaryCategory: analysis.culinaryCategory,
+          substitutes: allSubstitutes,
+          culinaryCategory: culinaryCategory || localCategory || '',
           usedFallback: false,
         };
       }
@@ -239,18 +363,25 @@ async function analyzeDynamicIngredients(q: string): Promise<DynamicIngredientSe
     }
   }
 
-  // Fallback: extração simples sem Gemini
   const simple = extractIngredientsFallback(q);
+
+  // Enriquece os substitutos com base na categoria local
+  const localCategory = simple.map(i => getIngredientCategory(i)).find(c => c !== null) ?? null;
+  const categorySubstitutes = localCategory
+    ? getCategoryIngredients(localCategory).filter(i =>
+        !simple.some(s => normalize(s) === normalize(i))
+      ).slice(0, 6)
+    : [];
+
   return {
     requestedIngredients: simple,
     searchTerms: simple,
-    substitutes: [],
-    culinaryCategory: '',
+    substitutes: categorySubstitutes,
+    culinaryCategory: localCategory || '',
     usedFallback: true,
   };
 }
 
-// Alias para manter compatibilidade com detectUserIntent
 function extractIngredients(q: string): string[] {
   return extractIngredientsFallback(q);
 }
@@ -288,7 +419,6 @@ function parseQueryToFilters(q: string): ParsedFilters {
   const text = normalize(q);
   const f: ParsedFilters = {};
 
-  // Categoria
   for (const cat of CATEGORY_LABELS) {
     const syns = CATEGORY_SYNONYMS[cat].map(normalize);
     if (syns.some(s => text.includes(s))) {
@@ -297,7 +427,6 @@ function parseQueryToFilters(q: string): ParsedFilters {
     }
   }
 
-  // Dificuldade
   for (const [key, syns] of Object.entries(DIFFICULTY_SYNONYMS)) {
     if (syns.some(s => text.includes(normalize(s)))) {
       f.difficulty = key as Difficulty;
@@ -310,7 +439,6 @@ function parseQueryToFilters(q: string): ParsedFilters {
     else if (/\bdific(?:eis|il)\b|\bhard\b|\bdifficult\b/.test(text)) f.difficulty = 'hard';
   }
 
-  // Tempo
   if (/\br[aá]pid[oa]s?\b/.test(text) || /\b<=?\s*15\b/.test(text)) f.maxPrep = 15;
   if (/\bm[eé]di[oa]\b/.test(text) || /\b<=?\s*30\b/.test(text)) f.maxPrep = f.maxPrep ?? 30;
   if (/\blongo?s?\b|\b>?\s*30\b/.test(text)) f.minPrep = 31;
@@ -320,7 +448,6 @@ function parseQueryToFilters(q: string): ParsedFilters {
     if (!isNaN(mins)) f.maxPrep = Math.min(f.maxPrep ?? Infinity, mins);
   }
 
-  // Avaliação
   const starPlus = text.match(new RegExp(`${NUM_RE.source}\\s*(\\+|mais)?\\s*(\\*|estrela|estrelas)?`));
   if (starPlus) {
     const val = parseFloat(starPlus[1].replace(',', '.'));
@@ -334,26 +461,20 @@ function parseQueryToFilters(q: string): ParsedFilters {
   if (/\b4[.,]5\+\b/.test(text)) f.minRating = Math.max(f.minRating ?? 0, 4.5);
   if (/\b5\s*(\*|estrelas?)?\b/.test(text)) f.minRating = 5;
 
-  // Todos
   if (/\btod[ao]s?\b|\bqualquer\b/.test(text)) f.wantAll = true;
 
-  // Quantidade e ordenação
   f.limit = parseCount(text) ?? undefined;
   f.sort = parseSort(text) ?? undefined;
 
-  // Ingredientes: detecta apenas com fallback simples no parse síncrono
-  // A análise completa via Gemini é feita de forma assíncrona em recommendRecipesFromText
   const simpleIngredients = extractIngredientsFallback(q);
   if (simpleIngredients.length > 0) {
     f.ingredients = simpleIngredients;
   }
 
-  // Marcador de filtro estruturado
   f.hasStructuredFilter = Boolean(
     f.category || f.difficulty || f.maxPrep || f.minPrep || f.minRating || f.ingredients?.length || mightHaveIngredient(q)
   );
 
-  // Busca textual livre (quando nenhum filtro estruturado encontrado)
   const maybePlain = pickPlainSearchSource(q);
   if (!f.hasStructuredFilter && maybePlain) f.plainSearch = maybePlain;
 
@@ -361,7 +482,7 @@ function parseQueryToFilters(q: string): ParsedFilters {
 }
 
 // =============================================================================
-// DB — busca receitas com ingredientes
+// DB — busca receitas
 // =============================================================================
 async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
   try {
@@ -392,7 +513,6 @@ async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
 
     if (rows.length === 0) return [];
 
-    // Autores
     const authorIds = Array.from(new Set(rows.map(r => r.author_id).filter(Boolean))) as string[];
     let authorsMap: Record<string, string> = {};
     if (authorIds.length > 0) {
@@ -407,7 +527,6 @@ async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
       }
     }
 
-    // Reviews -> média
     const recipeIds = rows.map(r => r.id);
     const { data: reviews } = await supabase
       .from('reviews')
@@ -462,7 +581,6 @@ async function fetchRecipesFromDB(): Promise<RecipeRow[]> {
   }
 }
 
-
 // =============================================================================
 // Filtro + ordenação + relaxamento
 // =============================================================================
@@ -484,7 +602,6 @@ function applyFiltersBase(rows: RecipeRow[], f: ParsedFilters): RecipeRow[] {
     list = list.filter(r => (typeof r.rating === 'number' ? r.rating : 0) >= (f.minRating as number));
   }
 
-  // Filtro por ingredientes — usa busca dinâmica
   if (f.ingredients?.length) {
     list = list.filter(r => recipeMatchesSearchTerms(r, f.ingredients!));
   }
@@ -524,7 +641,6 @@ function capAndMap(list: RecipeRow[], limit = 12): AppRecipeCard[] {
 function progressiveRelax(rows: RecipeRow[], f: ParsedFilters): { list: RecipeRow[]; relaxed: string[] } {
   const relaxed: string[] = [];
 
-  // Ordem de relaxamento: avaliação → tempo → categoria → dificuldade → ingredientes (parcial)
   const attempts: Array<{ label: string; tweak: (g: ParsedFilters) => void }> = [
     { label: 'avaliação mínima', tweak: g => { if (typeof g.minRating === 'number') delete g.minRating; } },
     { label: 'tempo de preparo', tweak: g => { if (typeof g.maxPrep === 'number') delete g.maxPrep; } },
@@ -791,35 +907,50 @@ function humanizeIntro(
 // =============================================================================
 function recipeMatchesSearchTerms(recipe: RecipeRow, terms: string[]): boolean {
   if (!terms.length) return false;
-  const haystack = [
-    ...recipe.ingredients.map(normalize),
-    normalize(recipe.title),
-    normalize(recipe.description),
-  ].join(' ');
-  return terms.some(t => haystack.includes(normalize(t)));
+  const ingredientText = recipe.ingredients.map(normalize).join(' ');
+  const titleText = normalize(recipe.title);
+  const descText = normalize(recipe.description);
+
+  return terms.some(term => {
+    const tn = normalize(term);
+    if (tn.length < 3) return false;
+    // Busca exata na lista de ingredientes (cada ingrediente individualmente)
+    if (recipe.ingredients.some(ing => {
+      const ni = normalize(ing);
+      return ni === tn || ni.includes(tn) || tn.includes(ni);
+    })) return true;
+    // Busca no texto completo dos ingredientes
+    if (ingredientText.includes(tn)) return true;
+    // Busca no título
+    if (titleText.includes(tn)) return true;
+    return false;
+  });
 }
 
 function ingredientRelevanceScore(recipe: RecipeRow, terms: string[]): number {
   if (!terms.length) return 0;
-  const ingredientText = recipe.ingredients.map(normalize).join(' ');
   const titleText = normalize(recipe.title);
   let score = 0;
   for (const t of terms) {
     const tn = normalize(t);
-    if (ingredientText.includes(tn)) score += 3;
-    else if (titleText.includes(tn)) score += 1;
+    // Pontuação mais alta se o ingrediente aparece diretamente na lista de ingredientes
+    const inIngredients = recipe.ingredients.some(ing => {
+      const ni = normalize(ing);
+      return ni === tn || ni.includes(tn) || tn.includes(ni);
+    });
+    if (inIngredients) score += 5;
+    else if (titleText.includes(tn)) score += 2;
   }
   return score;
 }
 
 // =============================================================================
-// Recomendação principal — totalmente dinâmica com Gemini
+// Recomendação principal — totalmente dinâmica com Gemini + categorias locais
 // =============================================================================
 export async function recommendRecipesFromText(query: string): Promise<AIResponse> {
   try {
     const f0 = parseQueryToFilters(query);
 
-    // Busca receitas e análise de ingredientes em paralelo
     const [rows, dynamicSearch] = await Promise.all([
       fetchRecipesFromDB(),
       mightHaveIngredient(query) || f0.ingredients?.length
@@ -841,12 +972,10 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
       };
     }
 
-    // Usa os termos dinâmicos do Gemini se disponíveis
     const allSearchTerms = dynamicSearch.searchTerms.length > 0
       ? dynamicSearch.searchTerms
       : (f0.ingredients || []);
 
-    // Monta filtros com os termos dinâmicos
     const enrichedFilters: ParsedFilters = {
       ...f0,
       ingredients: allSearchTerms.length > 0 ? allSearchTerms : f0.ingredients,
@@ -858,8 +987,9 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
     let relaxedFilters: string[] = [];
     let usedSubstitutes = false;
     let substitutesUsed: string[] = [];
+    let substituteCategoryName = '';
 
-    // Fase 2: se não achou, tenta apenas com ingredientes (sem outros filtros)
+    // Fase 2: se não achou, tenta apenas com ingredientes (sem outros filtros como categoria/dificuldade)
     if (list.length === 0 && allSearchTerms.length > 0) {
       list = rows.filter(r => recipeMatchesSearchTerms(r, allSearchTerms));
       if (list.length > 0) {
@@ -868,13 +998,37 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
       }
     }
 
-    // Fase 3: se ainda não achou, tenta com substitutos/similares sugeridos pelo Gemini
-    if (list.length === 0 && dynamicSearch.substitutes.length > 0) {
-      list = rows.filter(r => recipeMatchesSearchTerms(r, dynamicSearch.substitutes));
-      if (list.length > 0) {
-        matchedExactly = false;
-        usedSubstitutes = true;
-        substitutesUsed = dynamicSearch.substitutes.slice(0, 3);
+    // Fase 3: se ainda não achou, tenta com substitutos/similares (mesma categoria)
+    if (list.length === 0) {
+      const substitutesToTry = dynamicSearch.substitutes;
+
+      if (substitutesToTry.length > 0) {
+        list = rows.filter(r => recipeMatchesSearchTerms(r, substitutesToTry));
+        if (list.length > 0) {
+          matchedExactly = false;
+          usedSubstitutes = true;
+
+          const foundIngs: string[] = [];
+          for (const recipe of list.slice(0, 5)) {
+            for (const sub of substitutesToTry) {
+              if (recipeMatchesSearchTerms(recipe, [sub])) {
+                if (!foundIngs.includes(sub)) foundIngs.push(sub);
+              }
+            }
+          }
+          substitutesUsed = foundIngs.slice(0, 3);
+
+          const catMap: Record<string, string> = {
+            frutas: 'frutas', vegetais: 'vegetais', legumes: 'legumes',
+            carnes: 'carnes', frango: 'frango/aves', peixes: 'peixes',
+            frutos_do_mar: 'frutos do mar', laticinios: 'laticínios',
+            graos_cereais: 'grãos e cereais', massas: 'massas',
+            temperos: 'temperos', nozes_sementes: 'nozes e sementes',
+            ovos: 'ovos', doces_sobremesas: 'doces e sobremesas',
+            paes_farinhas: 'pães e farinhas', oleos_gorduras: 'óleos e gorduras',
+          };
+          substituteCategoryName = catMap[dynamicSearch.culinaryCategory] || dynamicSearch.culinaryCategory;
+        }
       }
     }
 
@@ -891,7 +1045,6 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
     if (!enrichedFilters.sort && enrichedFilters.difficulty === 'easy') sortKey = 'prepTime';
     if (!enrichedFilters.sort && enrichedFilters.difficulty === 'hard') sortKey = 'rating';
 
-    // Ordena por relevância de ingrediente quando há termos
     const limit = enrichedFilters.limit ?? (enrichedFilters.wantAll ? 100 : 12);
 
     let sorted: RecipeRow[];
@@ -916,7 +1069,7 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
     if (cards.length === 0) {
       const ing = dynamicSearch.requestedIngredients[0] || '';
       return {
-        content: `Não encontrei receitas${ing ? ` com **${ing}**` : ''} no site. Tente outro ingrediente ou categoria!`,
+        content: `Infelizmente não há nenhuma receita com esse ingrediente${ing ? ` (**${ing}**)` : ''} no site. Tente outro ingrediente ou categoria!`,
         recipes: [],
         suggestions: ['receitas fáceis', 'vegana rápida', 'rica em proteína'],
       };
@@ -927,9 +1080,9 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
     const reqIng = dynamicSearch.requestedIngredients;
 
     if (usedSubstitutes && reqIng.length > 0) {
-      const ingLabel = reqIng.join(', ');
-      const subLabel = substitutesUsed.join(', ');
-      content = `Não encontrei receitas com **${ingLabel}** no site, mas trouxe algumas com ingredientes similares (**${subLabel}**) que podem te agradar:`;
+      const ingLabel = reqIng.map(i => `**${i}**`).join(' e ');
+      const catLabel = substituteCategoryName ? ` da categoria ${substituteCategoryName}` : '';
+      content = `Infelizmente não há nenhuma receita com esse ingrediente (${ingLabel}) no site, mas temos essas que são semelhantes${catLabel} e podem te agradar:`;
     } else if (!matchedExactly && reqIng.length > 0 && relaxedFilters.length > 0) {
       content = `Trouxe receitas próximas ao que você pediu (flexibilizei *${relaxedFilters[0]}*):`;
     } else {
@@ -948,7 +1101,7 @@ export async function recommendRecipesFromText(query: string): Promise<AIRespons
     if (reqIng.length > 0) {
       const mainIng = reqIng[0];
       suggestions.push(`${mainIng} vegana`, `${mainIng} fácil rápida`);
-      if (dynamicSearch.substitutes[0]) suggestions.push(dynamicSearch.substitutes[0]);
+      if (dynamicSearch.substitutes[0]) suggestions.push(`receitas com ${dynamicSearch.substitutes[0]}`);
     } else if (cards.length < 5) {
       suggestions.push('receitas rápidas', 'vegana fácil', '5 estrelas');
     }
