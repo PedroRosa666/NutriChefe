@@ -4,6 +4,7 @@ import { ProfilePage } from '../pages/ProfilePage';
 import { RecipePage } from '../pages/RecipePage';
 import { AIMentoringPage } from '../pages/AIMentoringPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
+import { ConfirmEmailPage } from '../pages/ConfirmEmailPage';
 import { SubscriptionSuccessPage } from '../pages/SubscriptionSuccessPage';
 import { SubscriptionCancelledPage } from '../pages/SubscriptionCancelledPage';
 import { NutritionistsPage } from '../pages/NutritionistsPage';
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
       {
         path: 'reset-password',
         element: <ResetPasswordPage />,
+      },
+      {
+        path: 'confirmar-email',
+        element: <ConfirmEmailPage />,
       },
       {
         path: 'assinatura/sucesso',

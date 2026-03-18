@@ -11,6 +11,7 @@ interface AuthState {
   isAuthenticated: boolean;
   error: string | null;
   loading: boolean;
+  pendingConfirmationEmail: string | null;
 
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string, type: UserType) => Promise<void>;
@@ -18,6 +19,7 @@ interface AuthState {
   initializeAuth: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
   clearError: () => void;
+  clearPendingConfirmation: () => void;
   isNutritionist: () => boolean;
 }
 
@@ -29,6 +31,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       error: null,
       loading: false,
+      pendingConfirmationEmail: null,
 
       initializeAuth: async () => {
         try {
@@ -41,7 +44,6 @@ export const useAuthStore = create<AuthState>()(
 
           const u = session.user;
 
-          // Montar objeto User do app
           const profile = await getUserProfile(u.id).catch(() => null);
           const mapped: User = {
             id: u.id,
@@ -70,7 +72,7 @@ export const useAuthStore = create<AuthState>()(
           if (error) {
             let friendly = 'Erro ao fazer login';
             if (error.message.includes('Invalid login credentials')) friendly = 'Email ou senha incorretos.';
-            if (error.message.includes('Email not confirmed')) friendly = 'Email não confirmado. Verifique sua caixa de entrada.';
+            if (error.message.includes('Email not confirmed')) friendly = 'Email não confirmado. Verifique sua caixa de entrada e clique no link de ativação.';
             if (error.message.includes('Too many requests')) friendly = 'Muitas tentativas. Tente mais tarde.';
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
@@ -78,7 +80,6 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const u = data.user;
-
           const session = data.session ?? (await supabase.auth.getSession()).data.session;
           const profile = await getUserProfile(u.id).catch(() => null);
           const mapped: User = {
@@ -112,7 +113,7 @@ export const useAuthStore = create<AuthState>()(
             email,
             password,
             options: {
-              // Confirmação de e-mail desativada no app (e idealmente também no painel do Supabase)
+              emailRedirectTo: `${window.location.origin}/confirmar-email`,
               data: { full_name: name, user_type: type }
             }
           });
@@ -128,9 +129,9 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const u = data.user;
-          const session = data.session ?? (await supabase.auth.getSession()).data.session;
+          const session = data.session;
 
-          // Se o Supabase estiver com "Confirm email" DESLIGADO, normalmente já vem session aqui
+          // Se já veio sessão (confirm email desabilitado no Supabase), loga direto
           if (u && session?.access_token) {
             const profile = await getUserProfile(u.id).catch(() => null);
             const mapped: User = {
@@ -153,9 +154,12 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
 
-          // Fallback: conta criada, mas sem sessão (geralmente indica que o Supabase ainda exige confirmação)
-          useToastStore.getState().showToast('Conta criada com sucesso! Agora faça login.', 'success');
-          set({ loading: false });
+          // Confirmação de email necessária — guarda o email para mostrar na tela
+          set({
+            loading: false,
+            error: 'EMAIL_CONFIRMATION_REQUIRED',
+            pendingConfirmationEmail: email,
+          });
         } catch (e) {
           console.error('signUp error:', e);
           useToastStore.getState().showToast('Erro inesperado ao criar conta.', 'error');
@@ -187,6 +191,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearError: () => set({ error: null }),
+      clearPendingConfirmation: () => set({ pendingConfirmationEmail: null, error: null }),
       isNutritionist: () => get().user?.type === 'Nutritionist'
     }),
     {

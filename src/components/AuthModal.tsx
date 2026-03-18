@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { X, Leaf, Eye, EyeOff } from 'lucide-react';
+import { X, Leaf, Eye, EyeOff, Mail, CheckCircle, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { ForgotPasswordModal } from './auth/ForgotPasswordModal';
 import { cn } from '../lib/utils';
 import type { UserType } from '../types/user';
 import { useTranslation } from '../hooks/useTranslation';
+import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -23,9 +24,13 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const t = useTranslation();
 
-  const { signIn, signUp } = useAuthStore();
+  const { signIn, signUp, error, clearError, clearPendingConfirmation, pendingConfirmationEmail } = useAuthStore();
+
+  const showEmailConfirmation = error === 'EMAIL_CONFIRMATION_REQUIRED';
 
   useEffect(() => {
     if (!isOpen) return;
@@ -50,45 +55,158 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     }
   }, [mode]);
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
   const isSignup = mode === 'signup';
 
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    clearError();
+    clearPendingConfirmation();
+    setEmail('');
+    setPassword('');
+    setName('');
+    setResendCooldown(0);
+    onClose();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       if (mode === 'signin') {
-        await signIn(email, password, name);
+        await signIn(email, password);
+        const { isAuthenticated } = useAuthStore.getState();
+        if (isAuthenticated) handleClose();
       } else {
         await signUp(email, password, name, userType);
+        const { isAuthenticated } = useAuthStore.getState();
+        if (isAuthenticated) handleClose();
       }
-      onClose();
-    } catch (error) {
-      console.error('Auth error:', error);
+    } catch (err) {
+      console.error('Auth error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleForgotPassword = () => {
-    setShowForgotPassword(true);
+  const handleResendEmail = async () => {
+    if (resendCooldown > 0 || !pendingConfirmationEmail) return;
+    setResendLoading(true);
+    try {
+      await supabase.auth.resend({
+        type: 'signup',
+        email: pendingConfirmationEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/confirmar-email`,
+        },
+      });
+      setResendCooldown(60);
+    } catch {
+      // silencioso
+    } finally {
+      setResendLoading(false);
+    }
   };
+
+  const handleBackToSignup = () => {
+    clearPendingConfirmation();
+    setMode('signup');
+    setPassword('');
+  };
+
+  if (showEmailConfirmation) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="relative w-full max-w-md rounded-2xl bg-white/95 shadow-2xl dark:bg-slate-900/95 border border-slate-100/70 dark:border-slate-800">
+          <button
+            onClick={handleClose}
+            className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          <div className="flex flex-col items-center px-6 pt-8 pb-8 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-900/30 mb-4">
+              <Mail className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+            </div>
+
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-2">
+              Confirme seu e-mail
+            </h2>
+
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
+              Enviamos um link de confirmação para:
+            </p>
+            <p className="font-semibold text-slate-800 dark:text-slate-100 mb-5 break-all">
+              {pendingConfirmationEmail}
+            </p>
+
+            <div className="w-full rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 p-4 mb-4 text-left">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-emerald-800 dark:text-emerald-200 space-y-1">
+                  <p className="font-medium">Como confirmar sua conta:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-emerald-700 dark:text-emerald-300">
+                    <li>Abra o e-mail que enviamos</li>
+                    <li>Clique no botão "Confirmar meu e-mail"</li>
+                    <li>Volte aqui e faça login</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            <div className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 p-3 mb-6 text-left">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                <strong>Dica:</strong> Verifique também a pasta de spam caso não encontre o e-mail na caixa de entrada.
+              </p>
+            </div>
+
+            <button
+              onClick={handleResendEmail}
+              disabled={resendLoading || resendCooldown > 0}
+              className={cn(
+                'w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition mb-3',
+                resendLoading || resendCooldown > 0
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-500'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+              )}
+            >
+              <RefreshCw className={cn('h-4 w-4', resendLoading && 'animate-spin')} />
+              {resendCooldown > 0
+                ? `Reenviar em ${resendCooldown}s`
+                : 'Reenviar e-mail de confirmação'}
+            </button>
+
+            <button
+              onClick={handleBackToSignup}
+              className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition"
+            >
+              Usar outro e-mail
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
         <div className="relative w-full max-w-md rounded-2xl bg-white/95 shadow-2xl dark:bg-slate-900/95 border border-slate-100/70 dark:border-slate-800">
-          {/* Botão fechar */}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
           >
             <X className="h-5 w-5" />
             <span className="sr-only">{t.common.close}</span>
           </button>
 
-          {/* Header um pouco mais compacto */}
           <div className="flex items-center gap-3 px-6 pt-6 pb-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300">
               <Leaf className="h-5 w-5" />
@@ -104,12 +222,11 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
             </div>
           </div>
 
-          {/* Abas levemente maiores (fonte maior) */}
           <div className="px-6 pb-3">
             <div className="flex rounded-full bg-slate-100 p-1.5 text-sm dark:bg-slate-800">
               <button
                 type="button"
-                onClick={() => setMode('signin')}
+                onClick={() => { setMode('signin'); clearError(); }}
                 className={cn(
                   'flex-1 rounded-full px-3 py-1.5 font-medium transition-all',
                   mode === 'signin'
@@ -121,7 +238,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               </button>
               <button
                 type="button"
-                onClick={() => setMode('signup')}
+                onClick={() => { setMode('signup'); clearError(); }}
                 className={cn(
                   'flex-1 rounded-full px-3 py-1.5 font-medium transition-all',
                   mode === 'signup'
@@ -134,14 +251,12 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
             </div>
           </div>
 
-          {/* Formulário */}
           <form
             onSubmit={handleSubmit}
             className="space-y-3 border-t border-slate-100 px-6 pb-5 pt-4 dark:border-slate-800 text-sm"
           >
             {isSignup && (
               <>
-                {/* Nome */}
                 <div className="space-y-1.5">
                   <label
                     htmlFor="name"
@@ -161,7 +276,6 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                   />
                 </div>
 
-                {/* Tipo de usuário - layout igual Entrar/Cadastrar */}
                 <div className="space-y-1.5">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
                     {t.profile.accountType}
@@ -198,7 +312,6 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               </>
             )}
 
-            {/* Email */}
             <div className="space-y-1.5">
               <label
                 htmlFor="email"
@@ -218,7 +331,6 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               />
             </div>
 
-            {/* Senha */}
             <div className="space-y-1.5">
               <label
                 htmlFor="password"
@@ -248,11 +360,17 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               </div>
             </div>
 
+            {error && error !== 'EMAIL_CONFIRMATION_REQUIRED' && (
+              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2">
+                <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
+
             {mode === 'signin' && (
               <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={handleForgotPassword}
+                  onClick={() => setShowForgotPassword(true)}
                   className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
                   {t.common.forgotPassword}
@@ -260,7 +378,6 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               </div>
             )}
 
-            {/* Botão de ação */}
             <button
               type="submit"
               disabled={loading}
@@ -276,14 +393,13 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                 : t.common.signUp}
             </button>
 
-            {/* Footer de alternância */}
             <p className="mt-3 text-center text-sm text-slate-500 dark:text-slate-400">
               {mode === 'signin'
                 ? t.common.dontHaveAccount
                 : t.common.alreadyHaveAccount}
               <button
                 type="button"
-                onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+                onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); clearError(); }}
                 className="ml-1 font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 {mode === 'signin' ? t.common.signUp : t.common.signIn}
