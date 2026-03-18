@@ -22,17 +22,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const normalizedEmail = email.toLowerCase().trim();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Check if user exists in profiles table
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("id, email")
-      .eq("email", email.toLowerCase().trim())
+      .select("id")
+      .eq("email", normalizedEmail)
       .maybeSingle();
 
     if (!profile) {
@@ -42,18 +44,32 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Generate password recovery link — this also sends the email via Supabase
-    const { error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "recovery",
-      email: email.toLowerCase().trim(),
-      options: {
-        redirectTo: redirectTo || `${Deno.env.get("FRONTEND_URL") || ""}/reset-password`,
-      },
+    const finalRedirectTo = redirectTo || `${Deno.env.get("FRONTEND_URL") || ""}/reset-password`;
+
+    const supabaseAnon = createClient(supabaseUrl, anonKey);
+    const { error: resetError } = await supabaseAnon.auth.resetPasswordForEmail(normalizedEmail, {
+      redirectTo: finalRedirectTo,
     });
 
-    if (linkError) {
+    if (resetError) {
+      const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+        type: "recovery",
+        email: normalizedEmail,
+        options: { redirectTo: finalRedirectTo },
+      });
+
+      if (linkData?.properties?.hashed_token) {
+        const token = linkData.properties.hashed_token;
+        const recoveryLink = `${supabaseUrl}/auth/v1/verify?token=${token}&type=recovery&redirect_to=${encodeURIComponent(finalRedirectTo)}`;
+
+        return new Response(
+          JSON.stringify({ success: true, recoveryLink }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ error: linkError.message }),
+        JSON.stringify({ error: resetError.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

@@ -22,23 +22,43 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const normalizedEmail = email.toLowerCase().trim();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const { error } = await supabaseAdmin.auth.admin.generateLink({
+    const finalRedirectTo = redirectTo || `${Deno.env.get("FRONTEND_URL") || ""}/confirmar-email`;
+
+    const supabaseAnon = createClient(supabaseUrl, anonKey);
+    const { error: resendError } = await supabaseAnon.auth.resend({
       type: "signup",
-      email: email.toLowerCase().trim(),
-      options: {
-        redirectTo: redirectTo || `${Deno.env.get("FRONTEND_URL") || ""}/confirmar-email`,
-      },
+      email: normalizedEmail,
+      options: { emailRedirectTo: finalRedirectTo },
     });
 
-    if (error) {
+    if (resendError) {
+      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+
+      const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+        type: "signup",
+        email: normalizedEmail,
+        options: { redirectTo: finalRedirectTo },
+      });
+
+      if (linkData?.properties?.hashed_token) {
+        const token = linkData.properties.hashed_token;
+        const confirmationLink = `${supabaseUrl}/auth/v1/verify?token=${token}&type=signup&redirect_to=${encodeURIComponent(finalRedirectTo)}`;
+
+        return new Response(
+          JSON.stringify({ success: true, confirmationLink }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: resendError.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

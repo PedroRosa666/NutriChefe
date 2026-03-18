@@ -23,14 +23,13 @@ Deno.serve(async (req: Request) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
-    // Check if email already exists via profiles table (fast, indexed)
     const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
       .select("id")
@@ -44,8 +43,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create user with email_confirm: false to force email confirmation
-    // regardless of the project's autoconfirm setting
     const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: normalizedEmail,
       password,
@@ -62,18 +59,59 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Generate signup confirmation link — this sends the email via Supabase's email system
-    const { error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    const finalRedirectTo = redirectTo || `${Deno.env.get("FRONTEND_URL") || supabaseUrl.replace('.supabase.co', '')}/confirmar-email`;
+
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: "signup",
       email: normalizedEmail,
-      options: {
-        redirectTo: redirectTo || `${Deno.env.get("FRONTEND_URL") || ""}/confirmar-email`,
-      },
+      options: { redirectTo: finalRedirectTo },
     });
 
-    if (linkError) {
+    if (linkError || !linkData?.properties?.hashed_token) {
       return new Response(
         JSON.stringify({ success: true, emailSent: false, userId: userData.user?.id }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = linkData.properties.hashed_token;
+    const confirmationLink = `${supabaseUrl}/auth/v1/verify?token=${token}&type=signup&redirect_to=${encodeURIComponent(finalRedirectTo)}`;
+
+    const emailRes = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": serviceRoleKey,
+        "Authorization": `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({
+        type: "signup",
+        email: normalizedEmail,
+        redirect_to: finalRedirectTo,
+      }),
+    });
+
+    if (!emailRes.ok) {
+      const resendRes = await fetch(`${supabaseUrl}/auth/v1/resend`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": Deno.env.get("SUPABASE_ANON_KEY") || serviceRoleKey,
+        },
+        body: JSON.stringify({
+          type: "signup",
+          email: normalizedEmail,
+          options: { emailRedirectTo: finalRedirectTo },
+        }),
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          emailSent: resendRes.ok,
+          userId: userData.user?.id,
+          confirmationLink: confirmationLink,
+        }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
