@@ -151,34 +151,33 @@ export const useAuthStore = create<AuthState>()(
       signUp: async (email, password, name, type) => {
         set({ loading: true, error: null });
         try {
-          const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              emailRedirectTo: `${window.location.origin}/confirmar-email`,
-              data: { full_name: name, user_type: type },
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+          const res = await fetch(`${supabaseUrl}/functions/v1/auth-signup`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${anonKey}`,
             },
+            body: JSON.stringify({
+              email: email.toLowerCase().trim(),
+              password,
+              full_name: name,
+              user_type: type,
+              redirectTo: `${window.location.origin}/confirmar-email`,
+            }),
           });
 
-          if (error) {
-            let friendly = 'Erro ao criar conta';
-            if (error.message.includes('User already registered'))
+          const result = await res.json();
+
+          if (!res.ok) {
+            let friendly = result.error || 'Erro ao criar conta.';
+            if (friendly.includes('já está cadastrado') || res.status === 409)
               friendly = 'Este e-mail já está cadastrado.';
-            if (error.message.includes('already registered'))
-              friendly = 'Este e-mail já está cadastrado.';
-            if (error.message.includes('Password should be at least'))
-              friendly = 'A senha deve ter pelo menos 6 caracteres.';
-            if (error.message.includes('Invalid email'))
-              friendly = 'E-mail inválido.';
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
             return;
-          }
-
-          // Always sign out any auto-created session so the user must confirm their email.
-          // This enforces email verification even when the Supabase project has autoconfirm enabled.
-          if (data.session) {
-            await supabase.auth.signOut();
           }
 
           set({
@@ -187,7 +186,7 @@ export const useAuthStore = create<AuthState>()(
             token: null,
             isAuthenticated: false,
             error: 'EMAIL_CONFIRMATION_REQUIRED',
-            pendingConfirmationEmail: email,
+            pendingConfirmationEmail: email.toLowerCase().trim(),
           });
         } catch {
           useToastStore

@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, CheckCircle, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
-import { checkEmailExists } from '../../services/database';
 import { cn } from '../../lib/utils';
 
 interface ForgotPasswordModalProps {
@@ -27,15 +25,30 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
     setError('');
 
     try {
-      const emailExists = await checkEmailExists(trimmedEmail);
-      if (!emailExists) { setStep('not_found'); return; }
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const res = await fetch(`${supabaseUrl}/functions/v1/auth-reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({
+          email: trimmedEmail,
+          redirectTo: `${window.location.origin}/reset-password`,
+        }),
       });
 
-      if (resetError) {
-        const isRateLimit = resetError.message.includes('rate limit') || resetError.message.includes('For security');
+      const result = await res.json();
+
+      if (res.status === 404 || result.error === 'EMAIL_NOT_FOUND') {
+        setStep('not_found');
+        return;
+      }
+
+      if (!res.ok) {
+        const isRateLimit = result.error?.includes('rate limit') || result.error?.includes('security');
         setError(isRateLimit
           ? 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.'
           : 'Erro ao enviar e-mail. Tente novamente em alguns minutos.');

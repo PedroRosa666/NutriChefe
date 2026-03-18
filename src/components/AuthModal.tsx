@@ -5,7 +5,6 @@ import { ForgotPasswordModal } from './auth/ForgotPasswordModal';
 import { cn } from '../lib/utils';
 import type { UserType } from '../types/user';
 import { useTranslation } from '../hooks/useTranslation';
-import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -99,12 +98,18 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     if (resendCooldown > 0 || !pendingConfirmationEmail) return;
     setResendLoading(true);
     try {
-      await supabase.auth.resend({
-        type: 'signup',
-        email: pendingConfirmationEmail,
-        options: {
-          emailRedirectTo: `${window.location.origin}/confirmar-email`,
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      await fetch(`${supabaseUrl}/functions/v1/auth-signup-resend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
         },
+        body: JSON.stringify({
+          email: pendingConfirmationEmail,
+          redirectTo: `${window.location.origin}/confirmar-email`,
+        }),
       });
       setResendCooldown(60);
     } catch {
