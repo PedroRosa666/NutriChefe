@@ -16,34 +16,46 @@ export function ResetPasswordPage() {
   const [validToken, setValidToken] = useState(false);
 
   useEffect(() => {
-    const checkToken = async () => {
-      try {
-        const hash = window.location.hash;
+    // The most reliable approach: listen for PASSWORD_RECOVERY event from Supabase.
+    // Supabase Auth automatically processes the URL (hash or PKCE code) before firing this event.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setValidToken(true);
+        setInitialLoading(false);
+      }
+    });
 
-        if (hash && hash.includes('access_token')) {
-          const params = new URLSearchParams(hash.substring(1));
-          const access_token = params.get('access_token') || '';
-          const refresh_token = params.get('refresh_token') || '';
-          const type = params.get('type');
-
-          if (type === 'recovery' && access_token) {
-            const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
-            if (sessionError) {
-              setStatus('error');
-              setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
-            } else {
-              setValidToken(true);
-            }
-            setInitialLoading(false);
-            return;
-          }
+    // Also handle the PKCE code flow (?code=...) explicitly, as older
+    // SDK versions may not fire PASSWORD_RECOVERY for it automatically.
+    const tryCode = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      if (code) {
+        const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (codeError) {
+          setStatus('error');
+          setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
+          setInitialLoading(false);
+        } else {
+          // onAuthStateChange will fire PASSWORD_RECOVERY after exchangeCodeForSession
+          // so we just wait for it; add a safety fallback after 2s
+          setTimeout(() => {
+            setValidToken((v) => { if (!v) { setInitialLoading(false); } return v; });
+          }, 2000);
         }
+        return;
+      }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        if (code) {
-          const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (codeError) {
+      // Legacy hash flow (#access_token=...&type=recovery)
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.substring(1));
+        const access_token = params.get('access_token') || '';
+        const refresh_token = params.get('refresh_token') || '';
+        const type = params.get('type');
+        if (type === 'recovery' && access_token) {
+          const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (sessionError) {
             setStatus('error');
             setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
           } else {
@@ -52,28 +64,33 @@ export function ResetPasswordPage() {
           setInitialLoading(false);
           return;
         }
-
-        setStatus('error');
-        setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
-        setInitialLoading(false);
-      } catch {
-        setStatus('error');
-        setError('Erro ao validar link de recuperação. Tente novamente.');
-        setInitialLoading(false);
       }
+
+      // No token found at all — wait 1.5s for onAuthStateChange, then show error
+      setTimeout(() => {
+        setInitialLoading((prev) => {
+          if (prev) {
+            setStatus('error');
+            setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
+          }
+          return false;
+        });
+      }, 1500);
     };
 
-    checkToken();
+    tryCode();
+
+    return () => { subscription.unsubscribe(); };
   }, []);
 
   const getPasswordStrength = (pwd: string) => {
-    let strength = 0;
-    if (pwd.length >= 6) strength++;
-    if (pwd.match(/[a-z]/)) strength++;
-    if (pwd.match(/[A-Z]/)) strength++;
-    if (pwd.match(/[0-9]/)) strength++;
-    if (pwd.match(/[^a-zA-Z0-9]/)) strength++;
-    return strength;
+    let s = 0;
+    if (pwd.length >= 6) s++;
+    if (pwd.match(/[a-z]/)) s++;
+    if (pwd.match(/[A-Z]/)) s++;
+    if (pwd.match(/[0-9]/)) s++;
+    if (pwd.match(/[^a-zA-Z0-9]/)) s++;
+    return s;
   };
 
   const passwordStrength = getPasswordStrength(password);
@@ -84,15 +101,8 @@ export function ResetPasswordPage() {
     e.preventDefault();
     setError('');
 
-    if (password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('As senhas não coincidem.');
-      return;
-    }
+    if (password.length < 6) { setError('A senha deve ter pelo menos 6 caracteres.'); return; }
+    if (password !== confirmPassword) { setError('As senhas não coincidem.'); return; }
 
     setLoading(true);
     try {
@@ -101,12 +111,11 @@ export function ResetPasswordPage() {
         setError(updateError.message || 'Erro ao redefinir senha. Tente novamente.');
         return;
       }
-
       setStatus('success');
       setTimeout(async () => {
         await supabase.auth.signOut();
-        setTimeout(() => { window.location.href = '/'; }, 2000);
-      }, 1000);
+        window.location.href = '/';
+      }, 3000);
     } catch {
       setError('Erro inesperado. Tente novamente.');
     } finally {
@@ -123,12 +132,8 @@ export function ResetPasswordPage() {
           className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-8 text-center shadow-xl border border-slate-100 dark:border-slate-800"
         >
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-emerald-600" />
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-2">
-            Verificando link...
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Aguarde enquanto validamos seu link de recuperação.
-          </p>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-2">Verificando link...</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Aguarde enquanto validamos seu link de recuperação.</p>
         </motion.div>
       </div>
     );
@@ -145,9 +150,7 @@ export function ResetPasswordPage() {
           <div className="mx-auto w-16 h-16 bg-emerald-50 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-5">
             <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-3">
-            Senha redefinida!
-          </h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-3">Senha redefinida!</h1>
           <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">
             Sua senha foi alterada com sucesso. Você será redirecionado para a página inicial em instantes.
           </p>
@@ -181,9 +184,7 @@ export function ResetPasswordPage() {
           <div className="mx-auto w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-5">
             <AlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-3">
-            Link inválido ou expirado
-          </h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-3">Link inválido ou expirado</h1>
           <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">
             {error || 'Este link de recuperação é inválido ou já expirou. Solicite um novo link de recuperação.'}
           </p>
@@ -210,12 +211,8 @@ export function ResetPasswordPage() {
             <Lock className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">
-              Nova senha
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Crie uma senha segura para sua conta
-            </p>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50">Nova senha</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Crie uma senha segura para sua conta</p>
           </div>
         </div>
 
@@ -245,6 +242,7 @@ export function ResetPasswordPage() {
                 placeholder="Mínimo 6 caracteres"
                 required
                 disabled={loading}
+                autoFocus
               />
               <button
                 type="button"

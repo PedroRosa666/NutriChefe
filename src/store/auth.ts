@@ -164,6 +164,8 @@ export const useAuthStore = create<AuthState>()(
             let friendly = 'Erro ao criar conta';
             if (error.message.includes('User already registered'))
               friendly = 'Este e-mail já está cadastrado.';
+            if (error.message.includes('already registered'))
+              friendly = 'Este e-mail já está cadastrado.';
             if (error.message.includes('Password should be at least'))
               friendly = 'A senha deve ter pelo menos 6 caracteres.';
             if (error.message.includes('Invalid email'))
@@ -173,27 +175,17 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
 
-          const u = data.user;
-          const session = data.session;
-
-          if (u && session?.access_token) {
-            const profile = await fetchUserProfile(u.id);
-            const mapped = mapSupabaseUser(u, profile);
-
-            set({
-              user: mapped,
-              token: session.access_token,
-              isAuthenticated: true,
-              loading: false,
-              error: null,
-            });
-
-            useToastStore.getState().showToast('Conta criada com sucesso!', 'success');
-            return;
+          // Always sign out any auto-created session so the user must confirm their email.
+          // This enforces email verification even when the Supabase project has autoconfirm enabled.
+          if (data.session) {
+            await supabase.auth.signOut();
           }
 
           set({
             loading: false,
+            user: null,
+            token: null,
+            isAuthenticated: false,
             error: 'EMAIL_CONFIRMATION_REQUIRED',
             pendingConfirmationEmail: email,
           });

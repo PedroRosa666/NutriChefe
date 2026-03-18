@@ -469,23 +469,13 @@ export async function getFavorites(userId: string) {
 // Função para verificar se email existe (para recuperação de senha)
 export async function checkEmailExists(email: string): Promise<boolean> {
   try {
-    console.log('Checking if email exists:', email);
     const { data, error } = await supabase
       .from('profiles')
       .select('email')
       .eq('email', email.toLowerCase().trim())
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      if (error.code === 'PGRST116') { // No rows returned
-        console.log('Email not found in profiles table');
-        return false;
-      }
-      console.error('Error checking email:', error);
-      return false;
-    }
-
-    console.log('Email found in profiles table:', !!data);
+    if (error) return false;
     return !!data;
   } catch (error) {
     console.error('Error checking email existence:', error);
