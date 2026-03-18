@@ -10,6 +10,7 @@ interface AuthState {
   isAuthenticated: boolean;
   error: string | null;
   loading: boolean;
+  initialized: boolean;
   pendingConfirmationEmail: string | null;
 
   signIn: (email: string, password: string) => Promise<void>;
@@ -21,6 +22,8 @@ interface AuthState {
   clearPendingConfirmation: () => void;
   isNutritionist: () => boolean;
 }
+
+let authListenerRegistered = false;
 
 async function fetchUserProfile(userId: string) {
   const { data } = await supabase
@@ -56,71 +59,78 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       error: null,
       loading: false,
+      initialized: false,
       pendingConfirmationEmail: null,
 
       initializeAuth: async () => {
+        if (get().initialized) return;
+
         try {
           const { data } = await supabase.auth.getSession();
           const session = data.session;
 
-          if (!session?.user) {
-            set({ user: null, token: null, isAuthenticated: false });
-            return;
+          if (session?.user) {
+            const profile = await fetchUserProfile(session.user.id);
+            const mapped = mapSupabaseUser(session.user, profile);
+            set({
+              user: mapped,
+              token: session.access_token,
+              isAuthenticated: true,
+              initialized: true,
+            });
+          } else {
+            set({ user: null, token: null, isAuthenticated: false, initialized: true });
           }
-
-          const profile = await fetchUserProfile(session.user.id);
-          const mapped = mapSupabaseUser(session.user, profile);
-
-          set({
-            user: mapped,
-            token: session.access_token,
-            isAuthenticated: true,
-          });
         } catch {
-          set({ user: null, token: null, isAuthenticated: false });
+          set({ user: null, token: null, isAuthenticated: false, initialized: true });
         }
 
-        supabase.auth.onAuthStateChange((event, session) => {
-          (async () => {
-            if (event === 'SIGNED_OUT' || !session) {
-              set({ user: null, token: null, isAuthenticated: false });
-              return;
-            }
+        if (!authListenerRegistered) {
+          authListenerRegistered = true;
+          supabase.auth.onAuthStateChange((event, session) => {
+            (async () => {
+              if (event === 'SIGNED_OUT' || !session) {
+                set({ user: null, token: null, isAuthenticated: false });
+                return;
+              }
 
-            if (
-              event === 'SIGNED_IN' ||
-              event === 'TOKEN_REFRESHED' ||
-              event === 'USER_UPDATED'
-            ) {
-              const profile = await fetchUserProfile(session.user.id);
-              const mapped = mapSupabaseUser(session.user, profile);
-              set({
-                user: mapped,
-                token: session.access_token,
-                isAuthenticated: true,
-              });
-            }
-          })();
-        });
+              if (
+                event === 'SIGNED_IN' ||
+                event === 'TOKEN_REFRESHED' ||
+                event === 'USER_UPDATED'
+              ) {
+                const profile = await fetchUserProfile(session.user.id);
+                const mapped = mapSupabaseUser(session.user, profile);
+                set({
+                  user: mapped,
+                  token: session.access_token,
+                  isAuthenticated: true,
+                });
+              }
+            })();
+          });
+        }
       },
 
       signIn: async (email, password) => {
         set({ loading: true, error: null });
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
-            email,
+            email: email.toLowerCase().trim(),
             password,
           });
 
           if (error) {
-            let friendly = 'Erro ao fazer login';
-            if (error.message.includes('Invalid login credentials'))
+            let friendly = 'Erro ao fazer login.';
+            const msg = error.message.toLowerCase();
+            if (msg.includes('invalid login credentials'))
               friendly = 'Email ou senha incorretos.';
-            if (error.message.includes('Email not confirmed'))
-              friendly =
-                'E-mail não confirmado. Verifique sua caixa de entrada e clique no link de ativação.';
-            if (error.message.includes('Too many requests'))
-              friendly = 'Muitas tentativas. Tente mais tarde.';
+            else if (msg.includes('email not confirmed'))
+              friendly = 'E-mail não confirmado. Verifique sua caixa de entrada e clique no link de ativação.';
+            else if (msg.includes('too many requests'))
+              friendly = 'Muitas tentativas. Tente novamente mais tarde.';
+            else if (msg.includes('network') || msg.includes('fetch'))
+              friendly = 'Erro de conexão. Verifique sua internet e tente novamente.';
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
             return;
@@ -175,6 +185,8 @@ export const useAuthStore = create<AuthState>()(
             let friendly = result.error || 'Erro ao criar conta.';
             if (friendly.includes('já está cadastrado') || res.status === 409)
               friendly = 'Este e-mail já está cadastrado.';
+            if (res.status === 429)
+              friendly = 'Muitas tentativas. Aguarde alguns minutos.';
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
             return;

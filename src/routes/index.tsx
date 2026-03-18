@@ -11,6 +11,7 @@ import { NutritionistsPage } from '../pages/NutritionistsPage';
 import { NutritionistProfilePage } from '../pages/NutritionistProfilePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RootLayout } from '../layouts/RootLayout';
+import { ProtectedRoute } from '../components/common/ProtectedRoute';
 
 export const router = createBrowserRouter([
   {
@@ -24,7 +25,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'perfil',
-        element: <ProfilePage />,
+        element: (
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'receita/:id',
@@ -32,7 +37,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'mentoria-ia',
-        element: <AIMentoringPage />,
+        element: (
+          <ProtectedRoute>
+            <AIMentoringPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'nutricionistas',
@@ -52,7 +61,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'assinatura/sucesso',
-        element: <SubscriptionSuccessPage />,
+        element: (
+          <ProtectedRoute>
+            <SubscriptionSuccessPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'assinatura/cancelada',

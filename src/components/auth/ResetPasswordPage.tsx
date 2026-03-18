@@ -16,37 +16,41 @@ export function ResetPasswordPage() {
   const [validToken, setValidToken] = useState(false);
 
   useEffect(() => {
-    // The most reliable approach: listen for PASSWORD_RECOVERY event from Supabase.
-    // Supabase Auth automatically processes the URL (hash or PKCE code) before firing this event.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+    let resolved = false;
+
+    const resolve = (valid: boolean, errorMsg?: string) => {
+      if (resolved) return;
+      resolved = true;
+      if (valid) {
         setValidToken(true);
         setInitialLoading(false);
+      } else {
+        setStatus('error');
+        setError(errorMsg || 'Link de recuperação inválido ou expirado. Solicite um novo link.');
+        setInitialLoading(false);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        resolve(true);
       }
     });
 
-    // Also handle the PKCE code flow (?code=...) explicitly, as older
-    // SDK versions may not fire PASSWORD_RECOVERY for it automatically.
     const tryCode = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
+
       if (code) {
         const { error: codeError } = await supabase.auth.exchangeCodeForSession(code);
         if (codeError) {
-          setStatus('error');
-          setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
-          setInitialLoading(false);
+          resolve(false, 'Link de recuperação inválido ou expirado. Solicite um novo link.');
         } else {
-          // onAuthStateChange will fire PASSWORD_RECOVERY after exchangeCodeForSession
-          // so we just wait for it; add a safety fallback after 2s
-          setTimeout(() => {
-            setValidToken((v) => { if (!v) { setInitialLoading(false); } return v; });
-          }, 2000);
+          setTimeout(() => resolve(true), 500);
         }
         return;
       }
 
-      // Legacy hash flow (#access_token=...&type=recovery)
       const hash = window.location.hash;
       if (hash && hash.includes('access_token')) {
         const params = new URLSearchParams(hash.substring(1));
@@ -56,26 +60,15 @@ export function ResetPasswordPage() {
         if (type === 'recovery' && access_token) {
           const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
           if (sessionError) {
-            setStatus('error');
-            setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
+            resolve(false, 'Link de recuperação inválido ou expirado. Solicite um novo link.');
           } else {
-            setValidToken(true);
+            resolve(true);
           }
-          setInitialLoading(false);
           return;
         }
       }
 
-      // No token found at all — wait 1.5s for onAuthStateChange, then show error
-      setTimeout(() => {
-        setInitialLoading((prev) => {
-          if (prev) {
-            setStatus('error');
-            setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
-          }
-          return false;
-        });
-      }, 1500);
+      setTimeout(() => resolve(false), 2000);
     };
 
     tryCode();
@@ -108,7 +101,15 @@ export function ResetPasswordPage() {
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) {
-        setError(updateError.message || 'Erro ao redefinir senha. Tente novamente.');
+        const msg = updateError.message.toLowerCase();
+        let friendly = 'Erro ao redefinir senha. Tente novamente.';
+        if (msg.includes('same password') || msg.includes('different'))
+          friendly = 'A nova senha deve ser diferente da senha atual.';
+        else if (msg.includes('weak') || msg.includes('short'))
+          friendly = 'Senha muito fraca. Use pelo menos 6 caracteres com letras e números.';
+        else if (msg.includes('session') || msg.includes('expired'))
+          friendly = 'Sessão expirada. Solicite um novo link de recuperação.';
+        setError(friendly);
         return;
       }
       setStatus('success');

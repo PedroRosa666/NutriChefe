@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
@@ -52,25 +52,15 @@ Deno.serve(async (req: Request) => {
     });
 
     if (resetError) {
-      const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
-        type: "recovery",
-        email: normalizedEmail,
-        options: { redirectTo: finalRedirectTo },
-      });
-
-      if (linkData?.properties?.hashed_token) {
-        const token = linkData.properties.hashed_token;
-        const recoveryLink = `${supabaseUrl}/auth/v1/verify?token=${token}&type=recovery&redirect_to=${encodeURIComponent(finalRedirectTo)}`;
-
-        return new Response(
-          JSON.stringify({ success: true, recoveryLink }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
+      const isRateLimit = resetError.message?.toLowerCase().includes("rate") ||
+        resetError.message?.toLowerCase().includes("security");
       return new Response(
-        JSON.stringify({ error: resetError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: isRateLimit
+            ? "Muitas tentativas. Aguarde alguns minutos."
+            : "Erro ao enviar e-mail de recuperação. Tente novamente.",
+        }),
+        { status: isRateLimit ? 429 : 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

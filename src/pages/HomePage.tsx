@@ -17,7 +17,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 export function HomePage() {
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const [recipesLoaded, setRecipesLoaded] = useState(false);
 
   const {
     category,
@@ -28,34 +28,23 @@ export function HomePage() {
     setCategory
   } = useFiltersStore();
   const { recipes, loading, fetchRecipes } = useRecipesStore();
-  const { isAuthenticated, isNutritionist, initializeAuth } = useAuthStore();
+  const { isAuthenticated, isNutritionist } = useAuthStore();
   const { message, type, hideToast } = useToastStore();
   const t = useTranslation();
 
   const CATEGORIES = ['all', 'vegan', 'lowCarb', 'highProtein', 'glutenFree'];
 
   useEffect(() => {
-    const initialize = async () => {
-      if (initialized) return;
-
-      try {
-        await initializeAuth();
-        await fetchRecipes();
-        setInitialized(true);
-      } catch (error) {
-        console.error('Error initializing app:', error);
-        setInitialized(true);
-      }
-    };
-
-    initialize();
-  }, [initializeAuth, fetchRecipes, initialized]);
+    if (!recipesLoaded) {
+      fetchRecipes().then(() => setRecipesLoaded(true)).catch(() => setRecipesLoaded(true));
+    }
+  }, [fetchRecipes, recipesLoaded]);
 
   useEffect(() => {
-    if (initialized) {
+    if (recipesLoaded) {
       setCategory('all');
     }
-  }, [setCategory, initialized]);
+  }, [setCategory, recipesLoaded]);
 
   const normalizeKey = (key: string) => {
     return key.toLowerCase().replace(/\s+/g, '');

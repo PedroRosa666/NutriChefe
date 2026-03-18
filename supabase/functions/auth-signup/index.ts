@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
@@ -18,6 +18,13 @@ Deno.serve(async (req: Request) => {
     if (!email || !password || !full_name || !user_type) {
       return new Response(
         JSON.stringify({ error: "Campos obrigatórios ausentes." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (password.length < 6) {
+      return new Response(
+        JSON.stringify({ error: "A senha deve ter pelo menos 6 caracteres." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -51,73 +58,32 @@ Deno.serve(async (req: Request) => {
     });
 
     if (createError) {
-      const isDuplicate = createError.message.toLowerCase().includes("already") ||
-        createError.message.toLowerCase().includes("exists");
+      const msg = createError.message.toLowerCase();
+      const isDuplicate = msg.includes("already") || msg.includes("exists");
       return new Response(
         JSON.stringify({ error: isDuplicate ? "Este e-mail já está cadastrado." : createError.message }),
         { status: isDuplicate ? 409 : 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const finalRedirectTo = redirectTo || `${Deno.env.get("FRONTEND_URL") || supabaseUrl.replace('.supabase.co', '')}/confirmar-email`;
+    const finalRedirectTo = redirectTo || `${supabaseUrl.replace('.supabase.co', '')}/confirmar-email`;
 
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "signup",
-      email: normalizedEmail,
-      options: { redirectTo: finalRedirectTo },
-    });
-
-    if (linkError || !linkData?.properties?.hashed_token) {
-      return new Response(
-        JSON.stringify({ success: true, emailSent: false, userId: userData.user?.id }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const token = linkData.properties.hashed_token;
-    const confirmationLink = `${supabaseUrl}/auth/v1/verify?token=${token}&type=signup&redirect_to=${encodeURIComponent(finalRedirectTo)}`;
-
-    const emailRes = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || serviceRoleKey;
+    const resendRes = await fetch(`${supabaseUrl}/auth/v1/resend`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "apikey": serviceRoleKey,
-        "Authorization": `Bearer ${serviceRoleKey}`,
+        "apikey": anonKey,
       },
       body: JSON.stringify({
         type: "signup",
         email: normalizedEmail,
-        redirect_to: finalRedirectTo,
+        options: { emailRedirectTo: finalRedirectTo },
       }),
     });
 
-    if (!emailRes.ok) {
-      const resendRes = await fetch(`${supabaseUrl}/auth/v1/resend`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": Deno.env.get("SUPABASE_ANON_KEY") || serviceRoleKey,
-        },
-        body: JSON.stringify({
-          type: "signup",
-          email: normalizedEmail,
-          options: { emailRedirectTo: finalRedirectTo },
-        }),
-      });
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          emailSent: resendRes.ok,
-          userId: userData.user?.id,
-          confirmationLink: confirmationLink,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     return new Response(
-      JSON.stringify({ success: true, emailSent: true, userId: userData.user?.id }),
+      JSON.stringify({ success: true, emailSent: resendRes.ok }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {

@@ -76,19 +76,24 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearError();
+
+    if (mode === 'signup' && password.length < 6) {
+      useAuthStore.setState({ error: 'A senha deve ter pelo menos 6 caracteres.' });
+      return;
+    }
+
     setLoading(true);
     try {
       if (mode === 'signin') {
         await signIn(email, password);
-        const { isAuthenticated } = useAuthStore.getState();
-        if (isAuthenticated) handleClose();
+        const state = useAuthStore.getState();
+        if (state.isAuthenticated) handleClose();
       } else {
         await signUp(email, password, name, userType);
-        const { isAuthenticated } = useAuthStore.getState();
-        if (isAuthenticated) handleClose();
       }
-    } catch (err) {
-      console.error('Auth error:', err);
+    } catch {
+      // errors handled inside signIn/signUp
     } finally {
       setLoading(false);
     }
