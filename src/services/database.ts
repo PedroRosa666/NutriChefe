@@ -141,18 +141,15 @@ export async function updateUserProfile(id: string, updates: Partial<User>) {
 }
 
 export async function getUserProfile(id: string) {
-  console.log('Getting user profile for ID:', id);
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    console.error('Error getting user profile:', error);
     throw error;
   }
-  console.log('User profile retrieved:', data);
   return data;
 }
 

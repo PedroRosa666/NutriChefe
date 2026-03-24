@@ -112,7 +112,6 @@ export const useAuthStore = create<AuthState>()(
             email,
             password,
             options: {
-              // Confirmação de e-mail desativada no app (e idealmente também no painel do Supabase)
               data: { full_name: name, user_type: type }
             }
           });
@@ -130,15 +129,13 @@ export const useAuthStore = create<AuthState>()(
           const u = data.user;
           const session = data.session ?? (await supabase.auth.getSession()).data.session;
 
-          // Se o Supabase estiver com "Confirm email" DESLIGADO, normalmente já vem session aqui
           if (u && session?.access_token) {
-            const profile = await getUserProfile(u.id).catch(() => null);
             const mapped: User = {
               id: u.id,
               email: u.email ?? '',
-              name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
-              type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
-              avatar_url: profile?.avatar_url || null,
+              name: name,
+              type: type,
+              avatar_url: null,
               profile: undefined
             };
 
@@ -153,7 +150,6 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
 
-          // Fallback: conta criada, mas sem sessão (geralmente indica que o Supabase ainda exige confirmação)
           useToastStore.getState().showToast('Conta criada com sucesso! Agora faça login.', 'success');
           set({ loading: false });
         } catch (e) {

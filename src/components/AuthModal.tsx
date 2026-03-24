@@ -59,7 +59,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     setLoading(true);
     try {
       if (mode === 'signin') {
-        await signIn(email, password, name);
+        await signIn(email, password);
       } else {
         await signUp(email, password, name, userType);
       }
