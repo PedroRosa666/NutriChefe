@@ -4,14 +4,12 @@ import { ProfilePage } from '../pages/ProfilePage';
 import { RecipePage } from '../pages/RecipePage';
 import { AIMentoringPage } from '../pages/AIMentoringPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
-import { ConfirmEmailPage } from '../pages/ConfirmEmailPage';
 import { SubscriptionSuccessPage } from '../pages/SubscriptionSuccessPage';
 import { SubscriptionCancelledPage } from '../pages/SubscriptionCancelledPage';
 import { NutritionistsPage } from '../pages/NutritionistsPage';
 import { NutritionistProfilePage } from '../pages/NutritionistProfilePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RootLayout } from '../layouts/RootLayout';
-import { ProtectedRoute } from '../components/common/ProtectedRoute';
 
 export const router = createBrowserRouter([
   {
@@ -25,11 +23,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'perfil',
-        element: (
-          <ProtectedRoute>
-            <ProfilePage />
-          </ProtectedRoute>
-        ),
+        element: <ProfilePage />,
       },
       {
         path: 'receita/:id',
@@ -37,11 +31,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'mentoria-ia',
-        element: (
-          <ProtectedRoute>
-            <AIMentoringPage />
-          </ProtectedRoute>
-        ),
+        element: <AIMentoringPage />,
       },
       {
         path: 'nutricionistas',
@@ -56,16 +46,8 @@ export const router = createBrowserRouter([
         element: <ResetPasswordPage />,
       },
       {
-        path: 'confirmar-email',
-        element: <ConfirmEmailPage />,
-      },
-      {
         path: 'assinatura/sucesso',
-        element: (
-          <ProtectedRoute>
-            <SubscriptionSuccessPage />
-          </ProtectedRoute>
-        ),
+        element: <SubscriptionSuccessPage />,
       },
       {
         path: 'assinatura/cancelada',

@@ -141,13 +141,18 @@ export async function updateUserProfile(id: string, updates: Partial<User>) {
 }
 
 export async function getUserProfile(id: string) {
+  console.log('Getting user profile for ID:', id);
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', id)
-    .maybeSingle();
+    .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error getting user profile:', error);
+    throw error;
+  }
+  console.log('User profile retrieved:', data);
   return data;
 }
 
@@ -469,13 +474,23 @@ export async function getFavorites(userId: string) {
 // Função para verificar se email existe (para recuperação de senha)
 export async function checkEmailExists(email: string): Promise<boolean> {
   try {
+    console.log('Checking if email exists:', email);
     const { data, error } = await supabase
       .from('profiles')
       .select('email')
       .eq('email', email.toLowerCase().trim())
-      .maybeSingle();
+      .single();
 
-    if (error) return false;
+    if (error) {
+      if (error.code === 'PGRST116') { // No rows returned
+        console.log('Email not found in profiles table');
+        return false;
+      }
+      console.error('Error checking email:', error);
+      return false;
+    }
+
+    console.log('Email found in profiles table:', !!data);
     return !!data;
   } catch (error) {
     console.error('Error checking email existence:', error);

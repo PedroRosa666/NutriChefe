@@ -12,12 +12,4 @@ if (!supabaseAnonKey) {
   throw new Error('Missing environment variable: VITE_SUPABASE_ANON_KEY');
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: 'nutrichef-auth',
-    flowType: 'pkce',
-  },
-});
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);

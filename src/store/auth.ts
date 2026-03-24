@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
+import { getUserProfile } from '../services/database';
 import { useToastStore } from './toast';
 import type { User, UserType } from '../types/user';
 
@@ -10,8 +11,6 @@ interface AuthState {
   isAuthenticated: boolean;
   error: string | null;
   loading: boolean;
-  initialized: boolean;
-  pendingConfirmationEmail: string | null;
 
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string, type: UserType) => Promise<void>;
@@ -19,36 +18,7 @@ interface AuthState {
   initializeAuth: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
   clearError: () => void;
-  clearPendingConfirmation: () => void;
   isNutritionist: () => boolean;
-}
-
-let authListenerRegistered = false;
-
-async function fetchUserProfile(userId: string) {
-  const { data } = await supabase
-    .from('profiles')
-    .select('full_name, user_type, avatar_url')
-    .eq('id', userId)
-    .maybeSingle();
-  return data;
-}
-
-function mapSupabaseUser(supabaseUser: any, profile: any): User {
-  return {
-    id: supabaseUser.id,
-    email: supabaseUser.email ?? '',
-    name:
-      (supabaseUser.user_metadata?.full_name as string) ||
-      profile?.full_name ||
-      '',
-    type:
-      ((supabaseUser.user_metadata?.user_type as UserType) ||
-        (profile?.user_type as UserType)) ??
-      'Client',
-    avatar_url: profile?.avatar_url || null,
-    profile: undefined,
-  };
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -59,101 +29,78 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       error: null,
       loading: false,
-      initialized: false,
-      pendingConfirmationEmail: null,
 
       initializeAuth: async () => {
-        if (get().initialized) return;
-
         try {
           const { data } = await supabase.auth.getSession();
           const session = data.session;
-
-          if (session?.user) {
-            const profile = await fetchUserProfile(session.user.id);
-            const mapped = mapSupabaseUser(session.user, profile);
-            set({
-              user: mapped,
-              token: session.access_token,
-              isAuthenticated: true,
-              initialized: true,
-            });
-          } else {
-            set({ user: null, token: null, isAuthenticated: false, initialized: true });
+          if (!session?.user) {
+            set({ user: null, token: null, isAuthenticated: false });
+            return;
           }
-        } catch {
-          set({ user: null, token: null, isAuthenticated: false, initialized: true });
-        }
 
-        if (!authListenerRegistered) {
-          authListenerRegistered = true;
-          supabase.auth.onAuthStateChange((event, session) => {
-            (async () => {
-              if (event === 'SIGNED_OUT' || !session) {
-                set({ user: null, token: null, isAuthenticated: false });
-                return;
-              }
+          const u = session.user;
 
-              if (
-                event === 'SIGNED_IN' ||
-                event === 'TOKEN_REFRESHED' ||
-                event === 'USER_UPDATED'
-              ) {
-                const profile = await fetchUserProfile(session.user.id);
-                const mapped = mapSupabaseUser(session.user, profile);
-                set({
-                  user: mapped,
-                  token: session.access_token,
-                  isAuthenticated: true,
-                });
-              }
-            })();
+          // Montar objeto User do app
+          const profile = await getUserProfile(u.id).catch(() => null);
+          const mapped: User = {
+            id: u.id,
+            email: u.email ?? '',
+            name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
+            type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+            avatar_url: profile?.avatar_url || null,
+            profile: undefined
+          };
+
+          set({
+            user: mapped,
+            token: session.access_token,
+            isAuthenticated: true
           });
+        } catch (e) {
+          console.error('initializeAuth error:', e);
+          set({ user: null, token: null, isAuthenticated: false });
         }
       },
 
       signIn: async (email, password) => {
         set({ loading: true, error: null });
         try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: email.toLowerCase().trim(),
-            password,
-          });
-
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) {
-            let friendly = 'Erro ao fazer login.';
-            const msg = error.message.toLowerCase();
-            if (msg.includes('invalid login credentials'))
-              friendly = 'Email ou senha incorretos.';
-            else if (msg.includes('email not confirmed'))
-              friendly = 'E-mail não confirmado. Verifique sua caixa de entrada e clique no link de ativação.';
-            else if (msg.includes('too many requests'))
-              friendly = 'Muitas tentativas. Tente novamente mais tarde.';
-            else if (msg.includes('network') || msg.includes('fetch'))
-              friendly = 'Erro de conexão. Verifique sua internet e tente novamente.';
+            let friendly = 'Erro ao fazer login';
+            if (error.message.includes('Invalid login credentials')) friendly = 'Email ou senha incorretos.';
+            if (error.message.includes('Email not confirmed')) friendly = 'Email não confirmado. Verifique sua caixa de entrada.';
+            if (error.message.includes('Too many requests')) friendly = 'Muitas tentativas. Tente mais tarde.';
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
             return;
           }
 
           const u = data.user;
-          const session = data.session;
-          const profile = await fetchUserProfile(u.id);
-          const mapped = mapSupabaseUser(u, profile);
+
+          const session = data.session ?? (await supabase.auth.getSession()).data.session;
+          const profile = await getUserProfile(u.id).catch(() => null);
+          const mapped: User = {
+            id: u.id,
+            email: u.email ?? '',
+            name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
+            type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+            avatar_url: profile?.avatar_url || null,
+            profile: undefined
+          };
 
           set({
             user: mapped,
             token: session?.access_token ?? null,
             isAuthenticated: true,
-            loading: false,
-            error: null,
+            loading: false
           });
 
           useToastStore.getState().showToast('Login realizado com sucesso!', 'success');
-        } catch {
-          useToastStore
-            .getState()
-            .showToast('Erro inesperado ao fazer login.', 'error');
+        } catch (e) {
+          console.error('signIn error:', e);
+          useToastStore.getState().showToast('Erro inesperado ao fazer login.', 'error');
           set({ error: 'Erro inesperado', loading: false });
         }
       },
@@ -161,49 +108,57 @@ export const useAuthStore = create<AuthState>()(
       signUp: async (email, password, name, type) => {
         set({ loading: true, error: null });
         try {
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-          const res = await fetch(`${supabaseUrl}/functions/v1/auth-signup`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${anonKey}`,
-            },
-            body: JSON.stringify({
-              email: email.toLowerCase().trim(),
-              password,
-              full_name: name,
-              user_type: type,
-              redirectTo: `${window.location.origin}/confirmar-email`,
-            }),
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              // Confirmação de e-mail desativada no app (e idealmente também no painel do Supabase)
+              data: { full_name: name, user_type: type }
+            }
           });
 
-          const result = await res.json();
-
-          if (!res.ok) {
-            let friendly = result.error || 'Erro ao criar conta.';
-            if (friendly.includes('já está cadastrado') || res.status === 409)
-              friendly = 'Este e-mail já está cadastrado.';
-            if (res.status === 429)
-              friendly = 'Muitas tentativas. Aguarde alguns minutos.';
+          if (error) {
+            let friendly = 'Erro ao criar conta';
+            if (error.message.includes('User already registered')) friendly = 'Este e-mail já está cadastrado.';
+            if (error.message.includes('Password should be at least')) friendly = 'A senha deve ter pelo menos 6 caracteres.';
+            if (error.message.includes('Invalid email')) friendly = 'E-mail inválido.';
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
             return;
           }
 
-          set({
-            loading: false,
-            user: null,
-            token: null,
-            isAuthenticated: false,
-            error: 'EMAIL_CONFIRMATION_REQUIRED',
-            pendingConfirmationEmail: email.toLowerCase().trim(),
-          });
-        } catch {
-          useToastStore
-            .getState()
-            .showToast('Erro inesperado ao criar conta.', 'error');
+          const u = data.user;
+          const session = data.session ?? (await supabase.auth.getSession()).data.session;
+
+          // Se o Supabase estiver com "Confirm email" DESLIGADO, normalmente já vem session aqui
+          if (u && session?.access_token) {
+            const profile = await getUserProfile(u.id).catch(() => null);
+            const mapped: User = {
+              id: u.id,
+              email: u.email ?? '',
+              name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
+              type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+              avatar_url: profile?.avatar_url || null,
+              profile: undefined
+            };
+
+            set({
+              user: mapped,
+              token: session.access_token,
+              isAuthenticated: true,
+              loading: false
+            });
+
+            useToastStore.getState().showToast('Conta criada com sucesso!', 'success');
+            return;
+          }
+
+          // Fallback: conta criada, mas sem sessão (geralmente indica que o Supabase ainda exige confirmação)
+          useToastStore.getState().showToast('Conta criada com sucesso! Agora faça login.', 'success');
+          set({ loading: false });
+        } catch (e) {
+          console.error('signUp error:', e);
+          useToastStore.getState().showToast('Erro inesperado ao criar conta.', 'error');
           set({ error: 'Erro inesperado', loading: false });
         }
       },
@@ -211,31 +166,32 @@ export const useAuthStore = create<AuthState>()(
       signOut: async () => {
         try {
           await supabase.auth.signOut();
-        } catch {
-          /* ignore */
+          set({ user: null, token: null, isAuthenticated: false });
+          useToastStore.getState().showToast('Logout realizado!', 'info');
+        } catch (e) {
+          console.error('signOut error:', e);
+          useToastStore.getState().showToast('Logout realizado', 'info');
         }
-        set({ user: null, token: null, isAuthenticated: false });
-        useToastStore.getState().showToast('Até logo!', 'info');
       },
 
       updateProfile: async (updates) => {
         const currentUser = get().user;
         if (!currentUser) return;
-        set({ user: { ...currentUser, ...updates } });
+
+        set({
+          user: {
+            ...currentUser,
+            ...updates
+          }
+        });
       },
 
       clearError: () => set({ error: null }),
-      clearPendingConfirmation: () =>
-        set({ pendingConfirmationEmail: null, error: null }),
-      isNutritionist: () => get().user?.type === 'Nutritionist',
+      isNutritionist: () => get().user?.type === 'Nutritionist'
     }),
     {
       name: 'auth-storage',
-      partialize: (s) => ({
-        user: s.user,
-        token: s.token,
-        isAuthenticated: s.isAuthenticated,
-      }),
+      partialize: (s) => ({ user: s.user, token: s.token, isAuthenticated: s.isAuthenticated })
     }
   )
 );
