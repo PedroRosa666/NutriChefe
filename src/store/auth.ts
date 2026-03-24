@@ -122,6 +122,7 @@ export const useAuthStore = create<AuthState>()(
             if (error.message.includes('User already registered')) friendly = 'Este e-mail já está cadastrado.';
             if (error.message.includes('Password should be at least')) friendly = 'A senha deve ter pelo menos 6 caracteres.';
             if (error.message.includes('Invalid email')) friendly = 'E-mail inválido.';
+            if (error.message.includes('email rate limit exceeded')) friendly = 'Muitas tentativas de cadastro. Por favor, aguarde alguns minutos e tente novamente.';
             if (error.message.includes('Error sending confirmation email')) friendly = 'Erro no serviço de email. Tente novamente mais tarde ou entre em contato com o suporte.';
             if (error.message.includes('unexpected_failure')) friendly = 'Erro no servidor. Tente novamente mais tarde.';
             useToastStore.getState().showToast(friendly, 'error');
