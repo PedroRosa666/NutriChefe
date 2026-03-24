@@ -72,6 +72,7 @@ export const useAuthStore = create<AuthState>()(
             if (error.message.includes('Invalid login credentials')) friendly = 'Email ou senha incorretos.';
             if (error.message.includes('Email not confirmed')) friendly = 'Email não confirmado. Verifique sua caixa de entrada.';
             if (error.message.includes('Too many requests')) friendly = 'Muitas tentativas. Tente mais tarde.';
+            if (error.message.includes('Error sending confirmation email')) friendly = 'Erro no serviço de email. Tente novamente mais tarde ou entre em contato com o suporte.';
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
             return;
@@ -121,6 +122,8 @@ export const useAuthStore = create<AuthState>()(
             if (error.message.includes('User already registered')) friendly = 'Este e-mail já está cadastrado.';
             if (error.message.includes('Password should be at least')) friendly = 'A senha deve ter pelo menos 6 caracteres.';
             if (error.message.includes('Invalid email')) friendly = 'E-mail inválido.';
+            if (error.message.includes('Error sending confirmation email')) friendly = 'Erro no serviço de email. Tente novamente mais tarde ou entre em contato com o suporte.';
+            if (error.message.includes('unexpected_failure')) friendly = 'Erro no servidor. Tente novamente mais tarde.';
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
             return;
