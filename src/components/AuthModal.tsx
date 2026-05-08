@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, Leaf, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
-import { ForgotPasswordModal } from './auth/ForgotPasswordModal';
 import { cn } from '../lib/utils';
 import type { UserType } from '../types/user';
 import { useTranslation } from '../hooks/useTranslation';
@@ -22,7 +21,6 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   const [userType, setUserType] = useState<UserType>('Client');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const t = useTranslation();
 
   const { signIn, signUp } = useAuthStore();
@@ -69,10 +67,6 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleForgotPassword = () => {
-    setShowForgotPassword(true);
   };
 
   return (
@@ -252,7 +246,10 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={handleForgotPassword}
+                  onClick={() => {
+                    onClose();
+                    window.location.href = '/forgot-password';
+                  }}
                   className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
                   {t.common.forgotPassword}
@@ -293,10 +290,6 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
         </div>
       </div>
 
-      <ForgotPasswordModal
-        isOpen={showForgotPassword}
-        onClose={() => setShowForgotPassword(false)}
-      />
     </>
   );
 }

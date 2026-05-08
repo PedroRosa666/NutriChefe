@@ -497,30 +497,17 @@ export async function checkEmailExists(email: string): Promise<boolean> {
 
 // Funções para recuperação de senha
 export async function sendPasswordResetEmail(email: string): Promise<void> {
-  console.log('Sending password reset email to:', email);
-  
-  const { error } = await supabase.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
-    redirectTo: `${window.location.origin}/reset-password`,
-  });
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    email.toLowerCase().trim(),
+    {
+      redirectTo: `${window.location.origin}/reset-password`,
+    }
+  );
 
   if (error) {
-    console.error('Error sending password reset email:', error);
-    
-    // Mapear erros específicos para mensagens amigáveis
-    if (error.message.includes('Email rate limit exceeded')) {
-      throw new Error('Muitas tentativas de recuperação. Aguarde alguns minutos antes de tentar novamente.');
-    } else if (error.message.includes('For security purposes')) {
-      throw new Error('Por motivos de segurança, aguarde alguns minutos antes de solicitar outro email.');
-    } else if (error.message.includes('Invalid email')) {
-      throw new Error('Email inválido. Verifique o formato do email.');
-    } else if (error.message.includes('User not found')) {
-      throw new Error('Email não encontrado. Verifique se o email está correto ou crie uma conta.');
-    }
-    
-    throw new Error('Erro ao enviar email de recuperação. Tente novamente em alguns minutos.');
+    console.error(error);
+    throw error;
   }
-  
-  console.log('Password reset email sent successfully');
 }
 
 export async function updatePassword(newPassword: string): Promise<void> {
@@ -535,9 +522,8 @@ export async function updatePassword(newPassword: string): Promise<void> {
     
     if (error.message.includes('session_not_found')) {
       throw new Error('Sessão expirada. Solicite um novo link de recuperação.');
-    } else if (error.message.includes('same_password')) {
-      throw new Error('A nova senha deve ser diferente da senha atual.');
-    } else if (error.message.includes('Password should be at least')) {
+    }
+    if (error.message.includes('Password should be at least')) {
       throw new Error('A senha deve ter pelo menos 6 caracteres.');
     }
     

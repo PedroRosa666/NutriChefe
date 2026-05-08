@@ -4,6 +4,7 @@ import { ProfilePage } from '../pages/ProfilePage';
 import { RecipePage } from '../pages/RecipePage';
 import { AIMentoringPage } from '../pages/AIMentoringPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
+import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
 import { SubscriptionSuccessPage } from '../pages/SubscriptionSuccessPage';
 import { SubscriptionCancelledPage } from '../pages/SubscriptionCancelledPage';
 import { NutritionistsPage } from '../pages/NutritionistsPage';
@@ -42,8 +43,16 @@ export const router = createBrowserRouter([
         element: <NutritionistProfilePage />,
       },
       {
+        path: 'forgot-password',
+        element: <ForgotPasswordPage />,
+      },
+      {
         path: 'reset-password',
         element: <ResetPasswordPage />,
+      },
+      {
+        path: 'login',
+        element: <HomePage />,
       },
       {
         path: 'assinatura/sucesso',

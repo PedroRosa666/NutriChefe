@@ -45,21 +45,8 @@ export function ResetPasswordPage() {
   }, []);
 
   const validatePassword = (pwd: string) => {
-    const errors = [];
-    
-    if (pwd.length < 6) {
-      errors.push('A senha deve ter pelo menos 6 caracteres');
-    }
-    if (!/(?=.*[a-z])/.test(pwd)) {
-      errors.push('A senha deve conter pelo menos uma letra minúscula');
-    }
-    if (!/(?=.*[A-Z])/.test(pwd)) {
-      errors.push('A senha deve conter pelo menos uma letra maiúscula');
-    }
-    if (!/(?=.*\d)/.test(pwd)) {
-      errors.push('A senha deve conter pelo menos um número');
-    }
-    
+    const errors: string[] = [];
+    if (pwd.length < 6) errors.push('A senha deve ter pelo menos 6 caracteres');
     return errors;
   };
 
@@ -96,7 +83,7 @@ export function ResetPasswordPage() {
         await supabase.auth.signOut();
         // Redirecionar para login após 3 segundos
         setTimeout(() => {
-          window.location.href = '/';
+          window.location.href = '/login';
         }, 3000);
       }, 1000);
       
@@ -170,7 +157,7 @@ export function ResetPasswordPage() {
             />
           </div>
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() => window.location.href = '/login'}
             className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
           >
             Ir para login agora
@@ -198,10 +185,10 @@ export function ResetPasswordPage() {
             {error || 'Este link de recuperação é inválido ou expirou. Solicite um novo link de recuperação.'}
           </p>
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() => window.location.href = '/forgot-password'}
             className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
           >
-            Voltar ao login
+            Solicitar novo link
           </button>
         </motion.div>
       </div>
@@ -333,10 +320,10 @@ export function ResetPasswordPage() {
 
           <button
             type="submit"
-            disabled={loading || password !== confirmPassword || passwordStrength < 3}
+            disabled={loading || password !== confirmPassword || password.length < 6}
             className={cn(
               "w-full py-2.5 rounded-lg text-white font-medium transition-colors flex items-center justify-center gap-2",
-              loading || password !== confirmPassword || passwordStrength < 3
+              loading || password !== confirmPassword || password.length < 6
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-green-600 hover:bg-green-700"
             )}
@@ -348,7 +335,7 @@ export function ResetPasswordPage() {
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() => window.location.href = '/login'}
             className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
             disabled={loading}
           >
