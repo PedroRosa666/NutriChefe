@@ -130,16 +130,45 @@ export async function createAIConversation(input: {
 export async function getAIConversations(userId: string): Promise<AIConversation[]> {
   const { data, error } = await supabase
     .from('ai_conversations')
-    .select('*, ai_messages(count)')
+    .select('*, ai_messages(count), first:ai_messages(content, sender_type)')
     .eq('client_id', userId)
     .eq('is_active', true)
+    .eq('first.sender_type', 'user')
+    .order('created_at', { referencedTable: 'first', ascending: true })
+    .limit(1, { referencedTable: 'first' })
     .order('last_message_at', { ascending: false, nullsFirst: false })
-    .limit(100);
+    .limit(500);
   if (error) throw error;
+
+  type Row = AIConversation & { ai_messages?: { count: number }[]; first?: { content: string }[] };
   // Conversas sem mensagens (a versão antiga criava uma a cada visita) não entram no histórico.
-  return (data || [])
-    .filter((c: { ai_messages?: { count: number }[] }) => (c.ai_messages?.[0]?.count ?? 0) > 0)
-    .slice(0, 50) as unknown as AIConversation[];
+  // Todas as outras entram: antes só as 50 mais recentes apareciam, e ao excluir uma
+  // a próxima antiga tomava o lugar, parecendo que a excluída tinha voltado.
+  return ((data || []) as unknown as Row[])
+    .filter((c) => (c.ai_messages?.[0]?.count ?? 0) > 0)
+    .map((row) => {
+      const { first, ...c } = row;
+      delete (c as Partial<Row>).ai_messages;
+      const firstQuestion = first?.[0]?.content?.trim();
+      if (!isDefaultTitle(c.title) || !firstQuestion) return c;
+      // Conversas antigas ficaram com o título padrão: usa a 1ª pergunta e grava para as próximas vezes.
+      const title = firstQuestion.length > 60 ? `${firstQuestion.slice(0, 57)}...` : firstQuestion;
+      supabase.from('ai_conversations').update({ title }).eq('id', c.id).then(({ error: e }) => {
+        if (e) console.warn('Conversation title update failed:', e);
+      });
+      return { ...c, title };
+    });
+}
+
+const isDefaultTitle = (title?: string) => !title || title === 'Nova conversa com IA' || title === 'Nova conversa';
+
+export async function archiveAllAIConversations(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('ai_conversations')
+    .update({ is_active: false })
+    .eq('client_id', userId)
+    .eq('is_active', true);
+  if (error) throw error;
 }
 
 export async function updateAIConversation(

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useOutlet, useSearchParams } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { Header } from '../components/Header';
 import { RecipeCard } from '../components/RecipeCard';
 import { CategoryFilter } from '../components/CategoryFilter';
@@ -39,10 +40,27 @@ export function HomePage() {
 
   const CATEGORIES = ['all', 'vegan', 'vegetarian', 'lowCarb', 'highProtein', 'glutenFree'];
 
+  // Receita aberta (rota filha /receita/:id) aparece como modal por cima da lista.
+  const outlet = useOutlet();
+  const location = useLocation();
+
   // A sessão é inicializada no RootLayout; aqui só carregamos as receitas.
+  // Voltando para a home com a lista já carregada, atualiza em silêncio
+  // (antes a grade virava um spinner e as imagens recarregavam).
   useEffect(() => {
-    fetchRecipes();
+    fetchRecipes({ silent: useRecipesStore.getState().recipes.length > 0 });
   }, [fetchRecipes]);
+
+  // Baixa o código do modal de receita enquanto a pessoa olha a lista.
+  useEffect(() => {
+    const load = () => { import('./RecipePage'); };
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(load);
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = setTimeout(load, 1500);
+    return () => clearTimeout(id);
+  }, []);
 
   const normalizeKey = (key: string) => {
     return key.toLowerCase().replace(/\s+/g, '');
@@ -153,6 +171,10 @@ export function HomePage() {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
         />
+
+        <AnimatePresence>
+          {location.pathname.startsWith('/receita/') && <div key={location.pathname}>{outlet}</div>}
+        </AnimatePresence>
 
       </div>
   );

@@ -167,6 +167,7 @@ export const translations = {
       ofGoal: 'of goal',
       streak: 'Day streak',
       daysLoggedLast30: 'days logged in the last 30',
+      dayLoggedLast30: 'day logged in the last 30',
       yearsLabel: 'years of practice',
       profileStrength: 'Public profile strength',
       checklist: {
@@ -382,6 +383,8 @@ export const translations = {
       deleteConversation: 'Delete conversation',
       deleteConversationConfirm: 'Delete this conversation?',
       contains: 'contains',
+      clearHistory: 'Clear all',
+      clearHistoryConfirm: 'Delete all conversations from history?',
       thinking: 'Searching recipes...',
     },
 
@@ -687,6 +690,7 @@ export const translations = {
       ofGoal: 'da meta',
       streak: 'Dias seguidos',
       daysLoggedLast30: 'dias registrados nos últimos 30',
+      dayLoggedLast30: 'dia registrado nos últimos 30',
       yearsLabel: 'anos de atuação',
       profileStrength: 'Força do perfil público',
       checklist: {
@@ -903,6 +907,8 @@ export const translations = {
       deleteConversation: 'Excluir conversa',
       deleteConversationConfirm: 'Excluir esta conversa?',
       contains: 'contém',
+      clearHistory: 'Limpar tudo',
+      clearHistoryConfirm: 'Excluir todas as conversas do histórico?',
       thinking: 'Procurando receitas...',
     },
 

@@ -85,7 +85,7 @@ export function ClientDashboard() {
           icon={<CalendarCheck className="h-4 w-4" />}
           label={t.profile.streak}
           value={`${streak}`}
-          helperText={`${daysLogged30} ${t.profile.daysLoggedLast30}`}
+          helperText={`${daysLogged30} ${daysLogged30 === 1 ? t.profile.dayLoggedLast30 : t.profile.daysLoggedLast30}`}
           tone="emerald"
         />
         <DashboardMetricCard
@@ -175,7 +175,13 @@ export function ClientDashboard() {
                 to={`/receita/${recipe.id}`}
                 className="flex items-center gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900/60"
               >
-                <img src={recipe.image} alt={recipe.title} className="h-16 w-16 rounded-lg object-cover" loading="lazy" />
+                <img
+                  src={recipe.image}
+                  alt=""
+                  className="h-16 w-16 flex-shrink-0 rounded-lg object-cover bg-gray-100 dark:bg-gray-700"
+                  loading="lazy"
+                  onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
+                />
                 <div className="min-w-0">
                   <h4 className="truncate text-sm font-medium text-slate-900 dark:text-slate-50">{recipe.title}</h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400">{categoryLabel(recipe.category)}</p>

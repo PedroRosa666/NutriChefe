@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { LayoutDashboard, Apple, HeartPulse, Heart, Settings, BookOpen, Briefcase } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
@@ -14,6 +15,7 @@ import { HealthProfileForm } from './HealthProfileForm';
 import { AccountSettings } from './AccountSettings';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
+import { SMOOTH, tabContent } from '../../lib/motion';
 
 type TabKey = 'overview' | 'nutrition' | 'health' | 'recipes' | 'professional' | 'favorites' | 'account';
 
@@ -72,21 +74,37 @@ export function ProfileTabs() {
                 aria-selected={active}
                 onClick={() => selectTab(tab)}
                 className={cn(
-                  'inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors',
+                  'relative inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors duration-200',
                   active
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'text-white'
                     : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                 )}
               >
-                <Icon className="h-4 w-4" />
-                {t.profile.tabs[tab]}
+                {/* A pílula verde desliza da aba anterior para a nova. */}
+                {active && (
+                  <motion.span
+                    layoutId="profile-tab-pill"
+                    className="absolute inset-0 rounded-lg bg-emerald-600 shadow-sm"
+                    transition={SMOOTH}
+                  />
+                )}
+                <Icon className="relative h-4 w-4" />
+                <span className="relative">{t.profile.tabs[tab]}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      <div role="tabpanel">
+      <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={activeTab}
+        role="tabpanel"
+        variants={tabContent}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+      >
         {activeTab === 'overview' && (isNutritionist ? <NutritionistDashboard /> : <ClientDashboard />)}
 
         {activeTab === 'nutrition' && (
@@ -132,7 +150,8 @@ export function ProfileTabs() {
         )}
 
         {activeTab === 'account' && <AccountSettings />}
-      </div>
+      </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

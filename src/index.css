@@ -3,12 +3,26 @@
 @tailwind utilities;
 
 @layer base {
+  /* Paleta de fundos (usada pelo tailwind.config.js). Valores em "R G B". */
+  :root {
+    --nc-page: 241 239 234;        /* fundo da página: linho claro */
+    --nc-surface: 250 249 246;     /* cartões e painéis: off-white */
+    --nc-muted: 233 230 223;       /* áreas secundárias, chips, hover */
+    --nc-border: 223 219 210;
+    --nc-border-soft: 232 229 222;
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    @apply antialiased;
+    @apply antialiased bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
     font-size: clamp(14px, 2vw, 16px);
     line-height: 1.6;
   }

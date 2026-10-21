@@ -55,6 +55,7 @@ export function AIChatInterface() {
     createConversation,
     setCurrentConversation,
     archiveConversation,
+    archiveAllConversations,
     sendMessage,
   } = useAIStore();
   const buildContext = useAIUserContext();
@@ -273,7 +274,17 @@ export function AIChatInterface() {
       </div>
       <div className="px-3 pb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
         <History className="w-3.5 h-3.5" />
-        {t.aiChat.history}
+        <span className="flex-1">{t.aiChat.history}</span>
+        {conversations.length > 1 && (
+          <button
+            onClick={() => {
+              if (user && window.confirm(t.aiChat.clearHistoryConfirm)) archiveAllConversations(user.id);
+            }}
+            className="normal-case font-medium tracking-normal text-gray-400 hover:text-red-600 transition-colors"
+          >
+            {t.aiChat.clearHistory}
+          </button>
+        )}
       </div>
       <nav className="flex-1 overflow-y-auto px-2 pb-3 space-y-1" aria-label={t.aiChat.history}>
         {loadingConversations && conversations.length === 0 && (

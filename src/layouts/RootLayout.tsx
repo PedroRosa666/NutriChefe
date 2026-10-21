@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
+import { MotionConfig, motion } from 'framer-motion';
+import { pageFade } from '../lib/motion';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { Toast } from '../components/common/Toast';
 import { supabase } from '../lib/supabase';
@@ -15,6 +17,9 @@ export function RootLayout() {
   const { message, type, hideToast } = useToastStore();
   const userId = useAuthStore((s) => s.user?.id);
   const isClient = useAuthStore((s) => s.user?.type === 'Client');
+  // Uma "seção" por primeiro trecho da URL; /receita/:id faz parte da home (é um modal).
+  const { pathname } = useLocation();
+  const section = pathname.startsWith('/receita/') ? '/' : `/${pathname.split('/')[1] ?? ''}`;
 
   // Sessão: carrega uma vez e acompanha login/logout/expiração em qualquer rota.
   useEffect(() => {
@@ -59,7 +64,12 @@ export function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <Outlet />
+      {/* reducedMotion="user": quem pediu menos movimento no sistema não vê as animações. */}
+      <MotionConfig reducedMotion="user">
+        <motion.div key={section} variants={pageFade} initial="initial" animate="animate">
+          <Outlet />
+        </motion.div>
+      </MotionConfig>
       {message && (
         <Toast
           message={message}

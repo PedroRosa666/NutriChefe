@@ -31,7 +31,9 @@ function ProgressRow({
   unit: string;
 }) {
   const pct = clampPct(goal > 0 ? value / goal : 0);
-  const display = `${value.toFixed(1)} / ${goal.toFixed(1)} ${unit}`;
+  // kcal sem casas decimais; gramas com no máximo uma ("33,5 g", "50 g").
+  const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: unit === 'kcal' ? 0 : 1 });
+  const display = `${fmt(value)} / ${fmt(goal)} ${unit}`;
   const barPct = Math.round(pct * 100);
 
   return (

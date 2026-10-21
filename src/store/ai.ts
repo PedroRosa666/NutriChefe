@@ -29,6 +29,7 @@ interface AIState {
   createConversation: (clientId: string, nutritionistId?: string) => Promise<AIConversation>;
   setCurrentConversation: (conversation: AIConversation | null) => void;
   archiveConversation: (conversationId: string) => Promise<void>;
+  archiveAllConversations: (userId: string) => Promise<void>;
 
   // Ações para mensagens
   fetchMessages: (conversationId: string) => Promise<void>;
@@ -162,6 +163,18 @@ export const useAIStore = create<AIState>((set, get) => ({
       console.error('Error archiving conversation:', error);
       set({ conversations: previous });
       useToastStore.getState().showToast('Não foi possível excluir a conversa', 'error');
+    }
+  },
+
+  archiveAllConversations: async (userId: string) => {
+    const previous = get().conversations;
+    set({ conversations: [], currentConversation: null, messages: [] });
+    try {
+      await aiService.archiveAllAIConversations(userId);
+    } catch (error) {
+      console.error('Error archiving conversations:', error);
+      set({ conversations: previous });
+      useToastStore.getState().showToast('Não foi possível limpar o histórico', 'error');
     }
   },
 

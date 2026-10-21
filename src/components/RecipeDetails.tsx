@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   Star,
   Clock,
@@ -23,14 +24,35 @@ import { IngredientChecklist } from './recipe/IngredientChecklist';
 import type { Recipe } from '../types/recipe';
 import { cn } from '../lib/utils';
 import { useTranslation } from '../hooks/useTranslation';
+import { backdrop, modalPanel } from '../lib/motion';
 
 interface RecipeDetailsProps {
   recipe: Recipe;
   onClose: () => void;
 }
 
-export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
+export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsProps) {
+  // Durante a animação de saída o modal ainda está montado: um segundo Esc ou
+  // clique não pode "voltar" de novo no histórico.
+  const closedRef = useRef(false);
+  const onClose = React.useCallback(() => {
+    if (closedRef.current) return;
+    closedRef.current = true;
+    requestClose();
+  }, [requestClose]);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
+
+  // Com o modal aberto a página de trás não rola, e Esc fecha.
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
   const [editingReview, setEditingReview] = useState<{
     id: string;
     rating: number;
@@ -182,10 +204,9 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
     }
   };
 
-  // Função para formatar valores nutricionais com decimais
-  const formatNutritionValue = (value: number) => {
-    return Number(value).toFixed(1);
-  };
+  // Até uma casa decimal, sem ".0" sobrando ("104 kcal", "3,5 g").
+  const formatNutritionValue = (value: number) =>
+    Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 
   // Função para formatar data
   const formatDate = (dateString: string) => {
@@ -217,14 +238,28 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm overflow-y-auto z-50">
-        <div className="min-h-screen flex items-center justify-center p-4 py-8">
-          <div className="relative max-w-6xl w-full">
-            <div className="absolute -top-10 right-0 hidden md:block text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 font-medium">
-              {t.recipe.details || 'Detalhes da receita'}
-            </div>
-
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      {/* Fundo translúcido: a home continua visível (desfocada) atrás da receita. */}
+      <motion.div
+        className="fixed inset-0 z-50 bg-slate-900/25 backdrop-blur-[3px] dark:bg-slate-950/40"
+        variants={backdrop}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        aria-hidden="true"
+      />
+      <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain" role="dialog" aria-modal="true">
+        <div
+          className="min-h-screen flex items-center justify-center p-4 py-8"
+          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+          <motion.div
+            className="relative max-w-6xl w-full"
+            variants={modalPanel}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl shadow-slate-900/10 border border-gray-200 dark:border-gray-700 overflow-hidden">
               {/* Cabeçalho com botão de fechar */}
               <div className="flex items-center justify-between px-6 md:px-8 pt-5 pb-4 border-b border-gray-200 dark:border-gray-800">
                 <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -791,7 +826,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
 
