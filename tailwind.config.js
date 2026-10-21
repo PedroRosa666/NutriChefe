@@ -17,37 +17,37 @@ export default {
       // Os valores ficam em src/index.css (--nc-*).
       backgroundColor: {
         white: 'rgb(var(--nc-surface) / <alpha-value>)',
-        // Modo escuro "ardósia": cinza médio em vez de preto, para cansar menos a vista.
-        // gray = página e áreas internas; slate = cartões (um degrau acima da página).
+        // Modo escuro "azul-noite": azul profundo e mais claro que preto, para as fotos
+        // das receitas se destacarem sem cansar a vista. gray = página; slate = cartões.
         gray: {
           50: 'rgb(var(--nc-page) / <alpha-value>)',
           100: 'rgb(var(--nc-muted) / <alpha-value>)',
-          700: 'rgb(74 82 96 / <alpha-value>)',
-          800: 'rgb(58 65 77 / <alpha-value>)',
-          900: 'rgb(43 49 59 / <alpha-value>)',
-          950: 'rgb(37 42 51 / <alpha-value>)',
+          700: 'rgb(64 75 104 / <alpha-value>)',
+          800: 'rgb(46 55 80 / <alpha-value>)',
+          900: 'rgb(30 37 56 / <alpha-value>)',
+          950: 'rgb(25 31 48 / <alpha-value>)',
         },
         slate: {
           50: 'rgb(var(--nc-page) / <alpha-value>)',
           100: 'rgb(var(--nc-muted) / <alpha-value>)',
-          700: 'rgb(78 87 101 / <alpha-value>)',
-          800: 'rgb(63 71 84 / <alpha-value>)',
-          900: 'rgb(52 59 70 / <alpha-value>)',
-          950: 'rgb(43 49 59 / <alpha-value>)',
+          700: 'rgb(70 82 113 / <alpha-value>)',
+          800: 'rgb(54 64 92 / <alpha-value>)',
+          900: 'rgb(40 48 72 / <alpha-value>)',
+          950: 'rgb(30 37 56 / <alpha-value>)',
         },
       },
       borderColor: {
         gray: {
           100: 'rgb(var(--nc-border-soft) / <alpha-value>)',
           200: 'rgb(var(--nc-border) / <alpha-value>)',
-          700: 'rgb(84 93 108 / <alpha-value>)',
-          800: 'rgb(70 78 92 / <alpha-value>)',
+          700: 'rgb(76 89 122 / <alpha-value>)',
+          800: 'rgb(60 71 101 / <alpha-value>)',
         },
         slate: {
           100: 'rgb(var(--nc-border-soft) / <alpha-value>)',
           200: 'rgb(var(--nc-border) / <alpha-value>)',
-          700: 'rgb(84 93 108 / <alpha-value>)',
-          800: 'rgb(70 78 92 / <alpha-value>)',
+          700: 'rgb(76 89 122 / <alpha-value>)',
+          800: 'rgb(60 71 101 / <alpha-value>)',
         },
       },
       gradientColorStops: {

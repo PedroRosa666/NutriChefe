@@ -32,7 +32,12 @@ import {
   type SearchableRecipe,
 } from "../_shared/recipe-search.ts";
 
-const MODEL = "gemini-2.5-flash";
+// Modelos configuráveis pelos segredos GEMINI_MODEL / GEMINI_LITE_MODEL. Se o Google
+// aposentar um deles, a função escolhe sozinha o "flash" mais novo disponível.
+const MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash";
+// Modelo leve para o plano de busca (extração estruturada) e reserva quando o principal
+// atinge o limite de uso: cada modelo tem a própria cota no Gemini.
+const LITE_MODEL = Deno.env.get("GEMINI_LITE_MODEL") || "gemini-3.5-flash-lite";
 const MAX_HISTORY = 12;
 const MAX_PROMPT_CHARS = 4000;
 const CATALOG_TTL_MS = 60_000;
@@ -141,26 +146,106 @@ function toContents(history: any[]): any[] {
 // Gemini
 // =============================================================================
 
-async function callGemini(apiKey: string, body: Record<string, unknown>): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+class EmptyAnswerError extends Error {
+  constructor(public reason: string) {
+    super(`Gemini returned no text (${reason})`);
+  }
+}
+
+class QuotaError extends Error {}
+
+// O Google aposenta modelos de tempos em tempos (404 para chaves novas). Quando isso
+// acontece, escolhe o "flash" mais recente disponível para a chave e lembra a troca.
+const modelSubstitutes = new Map<string, string>();
+// 0 = thinkingBudget aceito; 1 = usa thinkingLevel; 2 = sem thinkingConfig.
+const thinkingModes = new Map<string, number>();
+// Modelo que respondeu 429 fica de lado por um tempo (vai direto para o reserva).
+const quotaExhaustedUntil = new Map<string, number>();
+const QUOTA_COOLDOWN_MS = 10 * 60_000;
+const isQuotaExhausted = (model: string) =>
+  (quotaExhaustedUntil.get(modelSubstitutes.get(model) ?? model) ?? 0) > Date.now();
+
+async function pickAvailableModel(apiKey: string, wanted: string): Promise<string | null> {
+  const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", {
+    headers: { "x-goog-api-key": apiKey },
+  });
+  if (!res.ok) return null;
+  const { models = [] } = await res.json();
+  const lite = wanted.includes("lite");
+  const candidates = (models as any[])
+    .filter((m) => (m.supportedGenerationMethods ?? []).includes("generateContent"))
+    .map((m) => String(m.name).replace(/^models\//, ""))
+    .filter((n) => /^gemini-[\d.]+-flash/.test(n) && !/(image|tts|audio|live|exp|preview|thinking|latest)/.test(n))
+    .filter((n) => n !== wanted && n.includes("lite") === lite)
+    .sort((x, y) => parseFloat(y.slice(7)) - parseFloat(x.slice(7)));
+  return candidates[0] ?? null;
+}
+
+async function callGemini(apiKey: string, body: Record<string, unknown>, requested = MODEL): Promise<string> {
+  let model = modelSubstitutes.get(requested) ?? requested;
+  const url = () => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   let lastError = "";
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await fetch(url, {
+  let payload: Record<string, any> = body;
+  let thinkingFallbacks = 0;
+  // Começa direto pelo ajuste de "thinking" que já funcionou neste modelo.
+  const adaptThinking = (level: number) => {
+    const config = payload.generationConfig as Record<string, any> | undefined;
+    if (!config?.thinkingConfig || level === 0) return;
+    const next: Record<string, any> = { ...config, maxOutputTokens: Math.max(Number(config.maxOutputTokens) || 0, 4096) };
+    if (level === 1) next.thinkingConfig = { thinkingLevel: "low" };
+    else delete next.thinkingConfig;
+    payload = { ...payload, generationConfig: next };
+  };
+  thinkingFallbacks = thinkingModes.get(model) ?? 0;
+  adaptThinking(thinkingFallbacks);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(url(), {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
     if (res.ok) {
       const json = await res.json();
-      return (json?.candidates?.[0]?.content?.parts ?? [])
+      const candidate = json?.candidates?.[0];
+      const text = (candidate?.content?.parts ?? [])
         .map((p: any) => p?.text ?? "")
         .join("")
         .trim();
+      // Resposta vazia = bloqueada (ex.: RECITATION ao escrever uma receita parecida com
+      // alguma publicada). Quem chamou decide se tenta de novo.
+      if (!text) throw new EmptyAnswerError(candidate?.finishReason ?? json?.promptFeedback?.blockReason ?? "EMPTY");
+      return text;
     }
     lastError = `${res.status} ${await res.text()}`;
-    if (res.status < 500 && res.status !== 429) break; // erro do pedido: não adianta repetir
+    if (res.status === 404 && attempt === 0) {
+      const replacement = await pickAvailableModel(apiKey, model);
+      if (replacement) {
+        console.warn(`model ${model} unavailable, using ${replacement}`);
+        modelSubstitutes.set(requested, replacement);
+        model = replacement;
+        payload = body;
+        thinkingFallbacks = thinkingModes.get(model) ?? 0;
+        adaptThinking(thinkingFallbacks);
+        continue;
+      }
+    }
+    // Modelos mais novos não aceitam "thinkingBudget": tenta "thinkingLevel" e depois sem ajuste
+    // (com mais tokens, porque o raciocínio interno também consome o limite).
+    if (res.status === 400 && (payload.generationConfig as any)?.thinkingConfig && thinkingFallbacks < 2) {
+      thinkingFallbacks++;
+      adaptThinking(thinkingFallbacks);
+      thinkingModes.set(model, thinkingFallbacks);
+      continue;
+    }
+    // 429 = cota do modelo esgotada: repetir só atrasa. Quem chamou troca de modelo.
+    if (res.status === 429) {
+      quotaExhaustedUntil.set(model, Date.now() + QUOTA_COOLDOWN_MS);
+      break;
+    }
+    if (res.status < 500) break; // erro do pedido: não adianta repetir
     await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
   }
+  if (lastError.startsWith("429")) throw new QuotaError(`Gemini quota (${model})`);
   throw new Error(`Gemini error: ${lastError.slice(0, 300)}`);
 }
 
@@ -368,7 +453,7 @@ async function makePlan(apiKey: string, message: string, history: any[], catalog
       responseSchema: PLAN_SCHEMA,
       thinkingConfig: { thinkingBudget: 0 },
     },
-  });
+  }, LITE_MODEL);
   return toPlan(JSON.parse(text), catalog);
 }
 
@@ -452,15 +537,29 @@ async function writeAnswer(
   brief: string | null,
 ): Promise<string> {
   const message = clip(body.message, MAX_PROMPT_CHARS).trim();
-  const parts = [{ text: message }];
-  if (brief) parts.push({ text: brief });
-  return await callGemini(apiKey, {
-    systemInstruction: { parts: [{ text: buildSystemInstruction(body.aiConfig, body.context) }] },
-    contents: [...toContents(body.history), { role: "user", parts }],
-    safetySettings: SAFETY,
-    // Sem "thinking": respostas rápidas e sem gastar o limite de tokens antes do texto.
-    generationConfig: { temperature: 0.6, maxOutputTokens: 1400, thinkingConfig: { thinkingBudget: 0 } },
-  });
+  const request = (extra: string | null, temperature: number, model = MODEL) => {
+    const parts = [{ text: message }];
+    if (brief) parts.push({ text: brief });
+    if (extra) parts.push({ text: extra });
+    return callGemini(apiKey, {
+      systemInstruction: { parts: [{ text: buildSystemInstruction(body.aiConfig, body.context) }] },
+      contents: [...toContents(body.history), { role: "user", parts }],
+      safetySettings: SAFETY,
+      // Sem "thinking": respostas rápidas e sem gastar o limite de tokens antes do texto.
+      generationConfig: { temperature, maxOutputTokens: 1400, thinkingConfig: { thinkingBudget: 0 } },
+    }, model);
+  };
+  try {
+    return await request(null, 0.6, isQuotaExhausted(MODEL) ? LITE_MODEL : MODEL);
+  } catch (e) {
+    if (e instanceof QuotaError) return await request(null, 0.6, LITE_MODEL);
+    if (!(e instanceof EmptyAnswerError)) throw e;
+    console.warn("empty answer, retrying:", e.reason);
+    return await request(
+      "Escreva tudo com suas próprias palavras, de forma original e resumida. Numa receita, use quantidades aproximadas e passos curtos.",
+      0.9,
+    );
+  }
 }
 
 async function assist(apiKey: string, supabase: any, body: any) {
@@ -494,10 +593,12 @@ async function assist(apiKey: string, supabase: any, body: any) {
   }
 
   let content: string;
+  let answerError: string | undefined;
   try {
     content = await writeAnswer(apiKey, body, brief);
   } catch (e) {
     console.warn("answer fallback", e);
+    answerError = e instanceof EmptyAnswerError ? `empty:${e.reason}` : String((e as Error)?.message ?? e).slice(0, 160);
     content = result ? composeLocalReply(plan.query, result) : "A IA está indisponível no momento. Tente de novo em instantes.";
   }
 
@@ -509,6 +610,7 @@ async function assist(apiKey: string, supabase: any, body: any) {
     meta: {
       intent: plan.intent,
       mode: result?.mode ?? null,
+      ...(answerError ? { answerError } : {}),
       ingredients: plan.query.include?.map((i) => i.name) ?? [],
       missing: result?.missing ?? [],
     },

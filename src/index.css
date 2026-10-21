@@ -10,11 +10,24 @@
     --nc-muted: 233 230 223;       /* áreas secundárias, chips, hover */
     --nc-border: 223 219 210;
     --nc-border-soft: 232 229 222;
+    /* Degradê do fundo: claro no topo (mesmo tom do cabeçalho), mais fundo no final. */
+    --nc-top: 250 249 245;
+    --nc-bottom: 225 220 209;
+    --nc-glow: 16 185 129;
+    --nc-glow-alpha: 0.09;
     color-scheme: light;
   }
 
   .dark {
+    --nc-top: 46 56 84;
+    --nc-page: 31 38 58;
+    --nc-bottom: 19 24 38;
+    --nc-glow-alpha: 0.13;
     color-scheme: dark;
+  }
+
+  html {
+    min-height: 100%;
   }
 
   html {
@@ -22,7 +35,14 @@
   }
 
   body {
-    @apply antialiased bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+    @apply antialiased text-gray-900 dark:text-gray-100;
+    min-height: 100vh;
+    /* Um brilho verde suave no alto (cor da marca) sobre o degradê vertical da página toda. */
+    background-color: rgb(var(--nc-page));
+    background-image:
+      radial-gradient(1100px 480px at 50% -140px, rgb(var(--nc-glow) / var(--nc-glow-alpha)), transparent 70%),
+      linear-gradient(180deg, rgb(var(--nc-top)) 0%, rgb(var(--nc-page)) 42%, rgb(var(--nc-bottom)) 100%);
+    background-repeat: no-repeat;
     font-size: clamp(14px, 2vw, 16px);
     line-height: 1.6;
   }

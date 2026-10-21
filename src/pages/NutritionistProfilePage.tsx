@@ -151,7 +151,7 @@ export function NutritionistProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen">
       <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-48"></div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-32 pb-12">

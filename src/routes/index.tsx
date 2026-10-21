@@ -17,7 +17,7 @@ function lazyPage<T>(load: () => Promise<T>, name: keyof T, overlay = false) {
             <LoadingSpinner size="lg" />
           </div>
         ) : (
-          <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="min-h-screen flex items-center justify-center">
             <LoadingSpinner size="lg" />
           </div>
         )
