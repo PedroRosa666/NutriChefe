@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Trash2, CalendarDays, Plus, XCircle } from 'lucide-react';
+import { Trash2, CalendarDays, Plus, XCircle, Loader2 } from 'lucide-react';
+import { WeeklyCaloriesChart } from './WeeklyCaloriesChart';
 import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useRecipesStore } from '../../store/recipes';
@@ -58,35 +59,67 @@ export function NutritionDiary() {
   const { recipes } = useRecipesStore();
   const { showToast } = useToastStore();
   const { goals } = useNutritionGoalsStore();
-  const { entries: allEntries, addRecipeToLog, removeEntry, clearDate, getEntriesForDate, getTotalsForDate } =
+  const { entries: allEntries, addRecipeToLog, removeEntry, clearDate, getTotalsForDate } =
     useNutritionTrackingStore();
 
   const [date, setDate] = React.useState(() => toISODate(new Date()));
-  const [quickRecipeId, setQuickRecipeId] = React.useState<number | ''>('');
-  const [servings, setServings] = React.useState(1);
+  const [quickRecipeId, setQuickRecipeId] = React.useState('');
+  // Texto livre: permite digitar "0,5" sem o campo pular para 1 no meio da digitação.
+  const [servings, setServings] = React.useState('1');
+  const [adding, setAdding] = React.useState(false);
 
-  const entries = useMemo(() => getEntriesForDate(date), [getEntriesForDate, date, allEntries]);
+  const entries = useMemo(() => allEntries.filter((e) => e.date === date), [allEntries, date]);
+  // `allEntries` força o recálculo quando o diário muda (o getter lê o estado direto).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const totals = useMemo(() => getTotalsForDate(date), [getTotalsForDate, date, allEntries]);
 
   const availableRecipes = recipes.slice().sort((a, b) => a.title.localeCompare(b.title));
 
-  const handleQuickAdd = () => {
-    const id = Number(quickRecipeId);
-    const recipe = recipes.find((r) => r.id === id);
+  const handleQuickAdd = async () => {
+    const recipe = recipes.find((r) => r.id === quickRecipeId);
     if (!recipe) {
-      showToast(t.profile.pickARecipe ?? 'Selecione uma receita.', 'warning');
+      showToast(t.profile.pickARecipe, 'warning');
       return;
     }
-    addRecipeToLog(recipe, servings, date);
-    showToast(t.profile.loggedToDiary ?? 'Adicionado ao diário.', 'success');
+    const amount = parseFloat(servings.replace(',', '.'));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showToast(t.profile.invalidServings, 'warning');
+      return;
+    }
+    setAdding(true);
+    try {
+      await addRecipeToLog(recipe, amount, date);
+      showToast(t.profile.loggedToDiary, 'success');
+      setQuickRecipeId('');
+      setServings('1');
+    } catch (error) {
+      console.error('Error adding diary entry:', error);
+      showToast(t.profile.diaryError, 'error');
+    } finally {
+      setAdding(false);
+    }
   };
 
-  const handleClearDay = () => {
+  const handleClearDay = async () => {
     if (!entries.length) return;
-    const ok = window.confirm(t.profile.clearDiaryConfirm ?? 'Limpar o diário deste dia?');
-    if (!ok) return;
-    clearDate(date);
-    showToast(t.profile.diaryCleared ?? 'Diário limpo.', 'info');
+    if (!window.confirm(t.profile.clearDiaryConfirm)) return;
+    try {
+      await clearDate(date);
+      showToast(t.profile.diaryCleared, 'info');
+    } catch (error) {
+      console.error('Error clearing diary:', error);
+      showToast(t.profile.diaryError, 'error');
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    try {
+      await removeEntry(id);
+      showToast(t.profile.entryRemoved, 'info');
+    } catch (error) {
+      console.error('Error removing diary entry:', error);
+      showToast(t.profile.diaryError, 'error');
+    }
   };
 
   return (
@@ -121,7 +154,7 @@ export function NutritionDiary() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <select
           value={quickRecipeId}
-          onChange={(e) => setQuickRecipeId(e.target.value === '' ? '' : Number(e.target.value))}
+          onChange={(e) => setQuickRecipeId(e.target.value)}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
         >
           <option value="">{t.profile.chooseRecipe ?? 'Escolher receita...'}</option>
@@ -137,7 +170,7 @@ export function NutritionDiary() {
           min={0.1}
           step={0.1}
           value={servings}
-          onChange={(e) => setServings(Math.max(0.1, Number(e.target.value) || 1))}
+          onChange={(e) => setServings(e.target.value)}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           placeholder={t.profile.servings ?? 'Porções'}
         />
@@ -145,9 +178,10 @@ export function NutritionDiary() {
         <button
           type="button"
           onClick={handleQuickAdd}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+          disabled={adding}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
         >
-          <Plus className="h-4 w-4" />
+          {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           {t.profile.addToDiary ?? 'Adicionar'}
         </button>
       </div>
@@ -166,6 +200,8 @@ export function NutritionDiary() {
           <ProgressRow label={t.profile.nutritionGoalsnames.fiber} value={totals.fiber} goal={goals.fiber} unit="g" />
         </div>
       </div>
+
+      <WeeklyCaloriesChart entries={allEntries} goal={goals.calories} selectedDate={date} onSelectDate={setDate} />
 
       {/* Entries */}
       <div className="space-y-3">
@@ -203,10 +239,7 @@ export function NutritionDiary() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    removeEntry(e.id);
-                    showToast(t.profile.entryRemoved ?? 'Item removido.', 'info');
-                  }}
+                  onClick={() => handleRemove(e.id)}
                   className="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-white hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-900"
                   aria-label={t.profile.remove ?? 'Remover'}
                 >

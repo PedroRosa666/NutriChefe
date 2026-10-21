@@ -6,20 +6,19 @@ import type { Recipe } from '../types/recipe';
 
 interface RecipesState {
   recipes: Recipe[];
-  favoriteRecipes: number[];
+  favoriteRecipes: string[];
   loading: boolean;
   error: string | null;
-  addToFavorites: (recipeId: number) => Promise<void>;
-  removeFromFavorites: (recipeId: number) => Promise<void>;
-  addReview: (recipeId: number, review: { userId: string; userName: string; rating: number; comment: string; date: string; }) => Promise<void>;
+  addToFavorites: (recipeId: string) => Promise<void>;
+  removeFromFavorites: (recipeId: string) => Promise<void>;
+  addReview: (recipeId: string, review: { userId: string; userName: string; rating: number; comment: string; date: string; }) => Promise<void>;
   updateReview: (reviewId: string, updates: { rating: number; comment: string; }) => Promise<void>;
   deleteReview: (reviewId: string) => Promise<void>;
   createRecipe: (recipe: Omit<Recipe, 'id' | 'rating' | 'reviews' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateRecipe: (recipe: Recipe) => Promise<void>;
-  deleteRecipe: (recipeId: number) => Promise<void>;
-  fetchRecipes: () => Promise<void>;
+  deleteRecipe: (recipeId: string) => Promise<void>;
+  fetchRecipes: (options?: { silent?: boolean }) => Promise<void>;
   fetchFavorites: (userId: string) => Promise<void>;
-  initializeAuth: () => Promise<void>;
   clearUserData: () => void;
 }
 
@@ -30,24 +29,15 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
   error: null,
 
   clearUserData: () => {
-    console.log('Clearing user data from recipes store');
     set({ favoriteRecipes: [] });
   },
 
-  initializeAuth: async () => {
-    // Esta função será chamada pelo useAuthStore
-    const { user } = useAuthStore.getState();
-    if (user) {
-      await get().fetchFavorites(user.id);
-    }
-  },
-
-  fetchRecipes: async () => {
-    set({ loading: true, error: null });
+  // `silent` atualiza a lista sem acionar o spinner (ex.: após salvar avaliação),
+  // evitando desmontar a tela atual.
+  fetchRecipes: async (options) => {
+    if (!options?.silent) set({ loading: true, error: null });
     try {
-      console.log('Fetching recipes from database...');
       const recipes = await db.getRecipes();
-      console.log('Recipes fetched successfully:', recipes.length);
       set({ recipes, loading: false });
       
       // Se o usuário estiver autenticado, buscar favoritos
@@ -65,9 +55,7 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
 
   fetchFavorites: async (userId: string) => {
     try {
-      console.log('Fetching favorites for user:', userId);
       const favorites = await db.getFavorites(userId);
-      console.log('Favorites fetched:', favorites);
       set({ favoriteRecipes: favorites });
     } catch (error) {
       console.error('Failed to fetch favorites:', error);
@@ -75,7 +63,7 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
     }
   },
 
-  addToFavorites: async (recipeId: number) => {
+  addToFavorites: async (recipeId: string) => {
     const { user } = useAuthStore.getState();
     if (!user) {
       useToastStore.getState().showToast('Faça login para favoritar receitas', 'error');
@@ -83,10 +71,11 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
     }
 
     try {
-      console.log('Adding to favorites:', { userId: user.id, recipeId });
       await db.addToFavorites(user.id, recipeId);
       set(state => ({
-        favoriteRecipes: [...state.favoriteRecipes, recipeId]
+        favoriteRecipes: state.favoriteRecipes.includes(recipeId)
+          ? state.favoriteRecipes
+          : [...state.favoriteRecipes, recipeId]
       }));
       useToastStore.getState().showToast('Adicionado aos favoritos', 'success');
     } catch (error) {
@@ -96,7 +85,7 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
     }
   },
 
-  removeFromFavorites: async (recipeId: number) => {
+  removeFromFavorites: async (recipeId: string) => {
     const { user } = useAuthStore.getState();
     if (!user) {
       useToastStore.getState().showToast('Faça login para gerenciar favoritos', 'error');
@@ -104,7 +93,6 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
     }
 
     try {
-      console.log('Removing from favorites:', { userId: user.id, recipeId });
       await db.removeFromFavorites(user.id, recipeId);
       set(state => ({
         favoriteRecipes: state.favoriteRecipes.filter(id => id !== recipeId)
@@ -117,9 +105,8 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
     }
   },
 
-  addReview: async (recipeId: number, review) => {
+  addReview: async (recipeId: string, review) => {
     try {
-      console.log('Adding review:', { recipeId, review });
       await db.addReview(recipeId, {
         user_id: review.userId,
         rating: review.rating,
@@ -127,11 +114,14 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
       });
       
       // Atualizar receitas para obter avaliações atualizadas
-      await get().fetchRecipes();
+      await get().fetchRecipes({ silent: true });
       useToastStore.getState().showToast('Avaliação adicionada com sucesso!', 'success');
     } catch (error) {
       console.error('Failed to add review:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao adicionar avaliação';
+      const isDuplicate = (error as { code?: string } | null)?.code === '23505';
+      const errorMessage = isDuplicate
+        ? 'Você já avaliou esta receita. Edite sua avaliação existente.'
+        : error instanceof Error ? error.message : 'Erro ao adicionar avaliação';
       useToastStore.getState().showToast(errorMessage, 'error');
       throw error;
     }
@@ -139,11 +129,10 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
 
   updateReview: async (reviewId: string, updates) => {
     try {
-      console.log('Updating review:', { reviewId, updates });
       await db.updateReview(reviewId, updates);
       
       // Atualizar receitas para obter avaliações atualizadas
-      await get().fetchRecipes();
+      await get().fetchRecipes({ silent: true });
       useToastStore.getState().showToast('Avaliação atualizada com sucesso!', 'success');
     } catch (error) {
       console.error('Failed to update review:', error);
@@ -155,11 +144,10 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
 
   deleteReview: async (reviewId: string) => {
     try {
-      console.log('Deleting review:', reviewId);
       await db.deleteReview(reviewId);
       
       // Atualizar receitas para obter avaliações atualizadas
-      await get().fetchRecipes();
+      await get().fetchRecipes({ silent: true });
       useToastStore.getState().showToast('Avaliação excluída com sucesso!', 'success');
     } catch (error) {
       console.error('Failed to delete review:', error);
@@ -170,11 +158,10 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
   },
 
   createRecipe: async (recipe) => {
-    set({ loading: true, error: null });
+    set({ error: null });
     try {
-      console.log('Creating recipe:', recipe);
       await db.createRecipe(recipe);
-      await get().fetchRecipes();
+      await get().fetchRecipes({ silent: true });
       useToastStore.getState().showToast('Receita criada com sucesso!', 'success');
     } catch (error) {
       console.error('Failed to create recipe:', error);
@@ -182,17 +169,14 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
       set({ error: errorMessage });
       useToastStore.getState().showToast('Erro ao criar receita', 'error');
       throw error;
-    } finally {
-      set({ loading: false });
     }
   },
 
   updateRecipe: async (recipe) => {
-    set({ loading: true, error: null });
+    set({ error: null });
     try {
-      console.log('Updating recipe:', recipe);
       await db.updateRecipe(recipe.id, recipe);
-      await get().fetchRecipes();
+      await get().fetchRecipes({ silent: true });
       useToastStore.getState().showToast('Receita atualizada com sucesso!', 'success');
     } catch (error) {
       console.error('Failed to update recipe:', error);
@@ -200,15 +184,12 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
       set({ error: errorMessage });
       useToastStore.getState().showToast('Erro ao atualizar receita', 'error');
       throw error;
-    } finally {
-      set({ loading: false });
     }
   },
 
   deleteRecipe: async (recipeId) => {
-    set({ loading: true, error: null });
+    set({ error: null });
     try {
-      console.log('Deleting recipe:', recipeId);
       await db.deleteRecipe(recipeId);
       set(state => ({
         recipes: state.recipes.filter(recipe => recipe.id !== recipeId),
@@ -221,8 +202,6 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
       set({ error: errorMessage });
       useToastStore.getState().showToast('Erro ao excluir receita', 'error');
       throw error;
-    } finally {
-      set({ loading: false });
     }
   }
 }));

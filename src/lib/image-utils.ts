@@ -1,3 +1,5 @@
+const MAX_OUTPUT_SIZE = 512;
+
 export interface Area {
   x: number;
   y: number;
@@ -67,8 +69,10 @@ export async function getCroppedImg(
     throw new Error('No 2d context');
   }
 
-  croppedCanvas.width = pixelCrop.width;
-  croppedCanvas.height = pixelCrop.height;
+  // Avatar não precisa de mais que 512px: mantém o arquivo bem abaixo do limite de 2MB do upload.
+  const scale = Math.min(1, MAX_OUTPUT_SIZE / Math.max(pixelCrop.width, pixelCrop.height));
+  croppedCanvas.width = Math.round(pixelCrop.width * scale);
+  croppedCanvas.height = Math.round(pixelCrop.height * scale);
 
   croppedCtx.drawImage(
     canvas,
@@ -78,8 +82,8 @@ export async function getCroppedImg(
     pixelCrop.height,
     0,
     0,
-    pixelCrop.width,
-    pixelCrop.height
+    croppedCanvas.width,
+    croppedCanvas.height
   );
 
   return new Promise((resolve, reject) => {
@@ -89,6 +93,6 @@ export async function getCroppedImg(
         return;
       }
       resolve(blob);
-    }, 'image/jpeg');
+    }, 'image/jpeg', 0.85);
   });
 }

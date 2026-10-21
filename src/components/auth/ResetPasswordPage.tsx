@@ -70,12 +70,9 @@ export function ResetPasswordPage() {
     }
 
     try {
-      console.log('Updating password...');
-      
       // Atualizar a senha
       await updatePassword(password);
       
-      console.log('Password updated successfully');
       setStatus('success');
       
       // Fazer logout para limpar a sessão de recuperação após um delay
@@ -87,10 +84,10 @@ export function ResetPasswordPage() {
         }, 3000);
       }, 1000);
       
-    } catch (err: any) {
+    } catch (err) {
       console.error('Password reset error:', err);
-      setError(err.message || 'Erro inesperado. Tente novamente.');
-      setStatus('error');
+      // Mantém o formulário: o link continua válido e o usuário pode tentar outra senha.
+      setError(err instanceof Error && err.message ? err.message : 'Erro inesperado. Tente novamente.');
     } finally {
       setLoading(false);
     }

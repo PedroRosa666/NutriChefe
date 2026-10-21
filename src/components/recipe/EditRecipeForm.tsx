@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Minus, Clock, ChefHat, Image, FileText, UtensilsCrossed, ListOrdered, Activity } from 'lucide-react';
+import { X, Plus, Minus, Clock, Image, FileText, UtensilsCrossed, ListOrdered, Activity } from 'lucide-react';
 import { useRecipesStore } from '../../store/recipes';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
@@ -193,6 +193,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
             {editedRecipe.image && (
               <div className="relative mt-2 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
                 <img
+                  key={editedRecipe.image}
                   src={editedRecipe.image}
                   alt={editedRecipe.title}
                   className="h-40 w-full object-cover"

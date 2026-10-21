@@ -72,6 +72,19 @@ serve(async (req: Request) => {
       return fail("Missing priceId or planId");
     }
 
+    // Evita cobrança em dobro: quem já tem assinatura paga ativa vai para o portal.
+    const { data: activeSub } = await supabase
+      .from("user_subscriptions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .not("stripe_subscription_id", "is", null)
+      .limit(1)
+      .maybeSingle();
+    if (activeSub) {
+      return fail("Você já tem uma assinatura ativa. Gerencie-a pelo seu perfil.");
+    }
+
     // ===== PROFILE / CUSTOMER =====
     const { data: profile } = await supabase
       .from("profiles")
@@ -86,6 +99,16 @@ serve(async (req: Request) => {
       await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
     }
 
+    // Só aceita URLs de retorno do próprio site (evita redirecionamento para domínio externo).
+    const sameOrigin = (url: unknown): string | undefined => {
+      if (typeof url !== "string") return undefined;
+      try {
+        return new URL(url).origin === new URL(frontendUrl).origin ? url : undefined;
+      } catch {
+        return undefined;
+      }
+    };
+
     // ===== CHECKOUT =====
     let session;
     try {
@@ -94,10 +117,12 @@ serve(async (req: Request) => {
         payment_method_types: ["card"],
         customer: customerId,
         line_items: [{ price: selectedPriceId, quantity: 1 }],
-        success_url: successUrl || `${frontendUrl}/assinatura/sucesso`,
-        cancel_url: cancelUrl || `${frontendUrl}/assinatura/cancelada`,
+        success_url: sameOrigin(successUrl) || `${frontendUrl}/assinatura/sucesso`,
+        cancel_url: sameOrigin(cancelUrl) || `${frontendUrl}/assinatura/cancelada`,
         allow_promotion_codes: true,
         metadata: { user_id: user.id, price_id: selectedPriceId },
+        // Copia o user_id para a assinatura: os eventos customer.subscription.* passam a trazê-lo.
+        subscription_data: { metadata: { user_id: user.id } },
       });
     } catch (e: any) {
       // Captura erro do Stripe (modo test/live trocado, price inválido, etc.)

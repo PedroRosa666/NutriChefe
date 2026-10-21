@@ -1,214 +1,192 @@
 # 🍽️ NutriChef
 
-Uma plataforma completa para descobrir, criar e compartilhar receitas saudáveis, desenvolvida especialmente para nutricionistas e pessoas interessadas em alimentação equilibrada.
+Plataforma para descobrir, criar e compartilhar receitas saudáveis, que conecta nutricionistas e clientes. Tem diário alimentar, perfil de saúde, assinatura Premium e uma Mentoria IA que encontra receitas do catálogo a partir do que a pessoa escreve, do jeito que ela escrever.
 
 ![NutriChef](https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=400&fit=crop&crop=center)
 
-## 📋 Sobre o Projeto
+## ✨ Funcionalidades
 
-O **NutriChef** é uma aplicação web moderna que conecta nutricionistas e clientes através de receitas nutritivas e personalizadas. A plataforma permite que profissionais da nutrição compartilhem receitas com informações nutricionais detalhadas, enquanto usuários podem descobrir, avaliar e favoritar receitas que se adequem aos seus objetivos de saúde.
+### Para todos
+- 🔐 **Conta completa**: cadastro com confirmação de e-mail, login, recuperação de senha e troca de senha no perfil.
+- 🍳 **Catálogo de receitas** com filtros por categoria, dificuldade, tempo, avaliação e busca por texto (também pela URL: `/?q=morango`).
+- ⭐ **Avaliações** de 1 a 5 estrelas com comentário (uma por pessoa por receita, editável).
+- ❤️ **Favoritos** sincronizados com a conta.
+- 📊 **Informação nutricional** por porção: calorias, proteínas, carboidratos, gorduras e fibras.
+- 🌙 **Modo escuro/claro** e 🌍 **português/inglês**.
 
-### ✨ Principais Funcionalidades
+### 🥗 Cliente
+- **Visão geral**: calorias do dia, sequência de dias registrando, peso/IMC, favoritos e progresso das metas.
+- **Diário alimentar**: registre receitas com o número de porções; totais do dia e gráfico dos últimos 7 dias.
+- **Metas nutricionais** salvas na conta, com cálculo automático pelo perfil de saúde (Mifflin-St Jeor + nível de atividade + objetivo).
+- **Perfil de saúde**: idade, sexo, altura, peso, peso-alvo, atividade, objetivo, preferências alimentares e alergias, com histórico e gráfico de peso.
+- **Assinatura Premium** (Stripe) com portal para trocar cartão, ver faturas e cancelar.
 
-- 🔐 **Sistema de Autenticação Completo** - Cadastro, login e recuperação de senha
-- 👥 **Dois Tipos de Usuário** - Nutricionistas (criadores) e Clientes (consumidores)
-- 🍳 **Gestão de Receitas** - Criar, editar, excluir e visualizar receitas
-- 🔍 **Sistema de Filtros Avançados** - Por categoria, dificuldade, tempo de preparo e avaliação
-- ⭐ **Sistema de Avaliações** - Avaliar receitas com comentários e notas
-- ❤️ **Favoritos** - Salvar receitas preferidas
-- 📊 **Informações Nutricionais** - Calorias, proteínas, carboidratos, gorduras e fibras
-- 📱 **Design Responsivo** - Interface adaptada para desktop e mobile
-- 🌙 **Modo Escuro/Claro** - Alternância de temas
-- 🌍 **Multilíngue** - Suporte para Português e Inglês
+### 👨‍⚕️ Nutricionista
+- Criar, editar e excluir receitas próprias.
+- **Painel**: receitas publicadas, avaliações recebidas, nota média, receita mais bem avaliada e avaliações recentes.
+- **Perfil profissional público**: especialidades, formação, experiência, abordagem, valores, convênios, endereço e contatos, com checklist de completude e botão "Agendar pelo WhatsApp".
+- Acesso à Mentoria IA sem assinatura.
 
-## 🚀 Tecnologias Utilizadas
+### 🤖 Mentoria IA
+- Entende pedidos em linguagem natural: "quero receitas com morangos", "tenho uns morangos sobrando, o que faço?", "algo doce sem lactose", "jantar leve até 400 kcal", "e mais rápidas?".
+- **Busca receitas reais do catálogo** pelo ingrediente pedido (plural, sinônimo, erro de digitação ou inglês) e mostra cartões com foto, tempo, calorias e "contém: morango".
+- Respeita **alergias e preferências** do perfil de saúde e pedidos como "sem leite": nunca sugere receitas com esses ingredientes.
+- Se o catálogo não tem o ingrediente, diz isso e oferece receitas com ingredientes parecidos e uma sugestão de preparo marcada como **"fora do catálogo"**.
+- Responde dúvidas sobre uma receita específica ("como faço a primeira?", "quantas calorias tem?") e perguntas gerais de nutrição.
+- Histórico de conversas, sugestões de próxima pergunta e personalização pelo nutricionista (nome, personalidade e instruções).
 
-### Frontend
-- **React 18** - Biblioteca principal para interface
-- **TypeScript** - Tipagem estática
-- **Vite** - Build tool e dev server
-- **Tailwind CSS** - Framework de estilos
-- **Framer Motion** - Animações e transições
-- **Zustand** - Gerenciamento de estado
-- **Lucide React** - Ícones
+## 🧠 Como a Mentoria IA funciona
 
-### Backend & Banco de Dados
-- **Supabase** - Backend as a Service
-- **PostgreSQL** - Banco de dados relacional
-- **Row Level Security (RLS)** - Segurança a nível de linha
-- **Supabase Auth** - Sistema de autenticação
+```
+Mensagem ──► Edge Function ai-chat
+              1. Gemini monta um PLANO em JSON: intenção, ingredientes obrigatórios
+                 (com variações), exclusões (alergias expandidas), categoria,
+                 tempo, calorias, tipo de prato e receitas que combinam com a ocasião.
+              2. BUSCA no catálogo real (supabase/functions/_shared/recipe-search.ts):
+                 casamento por radical ("morangos" = "morango"; "sal" ≠ "salmão"),
+                 filtros soltos um a um se não houver resultado, substitutos se o
+                 ingrediente não existir no catálogo.
+              3. Gemini escreve a resposta usando SÓ as receitas encontradas.
+          ◄── { content, recipes (cartões), suggestions, meta }
+```
 
-### Bibliotecas Auxiliares
-- **clsx & tailwind-merge** - Utilitários para classes CSS
-- **React DOM** - Renderização do React
+- A chave do Gemini fica só no servidor; a função confere acesso (nutricionista ou Premium com `ai_mentoring`) e o limite de mensagens por hora.
+- Sem a chave, ou se a IA cair, o app usa a **mesma busca** com um plano montado localmente pelo vocabulário do catálogo: a pessoa continua recebendo receitas, só sem o texto gerado.
 
-## 🛠️ Como Rodar o Projeto
+## 🚀 Tecnologias
+
+- **Frontend**: React 18, TypeScript (strict), Vite, Tailwind CSS, Framer Motion, Zustand, React Router, Lucide.
+- **Backend**: Supabase (PostgreSQL com RLS e permissões por coluna, Auth, Storage, Edge Functions em Deno).
+- **IA**: Google Gemini 2.5 Flash, chamado pela Edge Function `ai-chat`.
+- **Pagamentos**: Stripe Checkout, Customer Portal e webhooks.
+
+## 🛠️ Como rodar
 
 ### Pré-requisitos
-- Node.js 18+ instalado
-- npm ou yarn
-- Conta no Supabase
+- Node.js 18+
+- Projeto no Supabase (e, para pagamentos, conta no Stripe)
+- [Supabase CLI](https://supabase.com/docs/guides/cli) (`npx supabase ...` funciona)
 
-### 1. Clone o repositório
-```bash
-git clone https://github.com/seu-usuario/nutrichef.git
-cd nutrichef
-```
+### 1. Instale
 
-### 2. Instale as dependências
 ```bash
+git clone https://github.com/PedroRosa666/NutriChefe.git
+cd NutriChefe
 npm install
-# ou
-yarn install
 ```
 
-### 3. Configure as variáveis de ambiente
-Crie um arquivo `.env` na raiz do projeto:
+### 2. Variáveis do front (`.env`)
 
 ```env
 VITE_SUPABASE_URL=sua_url_do_supabase
 VITE_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
 ```
 
-### 4. Configure o banco de dados
-Execute as migrações do Supabase que estão na pasta `supabase/migrations/`:
+A chave do Gemini **não** vai no `.env`: tudo com `VITE_` fica público no navegador. Ela é segredo da Edge Function (passo 4).
+
+No Supabase (Authentication > URL Configuration), inclua nas **Redirect URLs** os endereços `/confirm-email` e `/reset-password` do site (ex.: `http://localhost:5173/confirm-email`).
+
+### 3. Banco de dados
 
 ```bash
-# Se estiver usando Supabase CLI
-supabase db reset
-
-# Ou execute manualmente no painel do Supabase
+npx supabase login
+npx supabase link --project-ref SEU_PROJECT_REF
+npx supabase db push
 ```
 
-### 5. Inicie o servidor de desenvolvimento
+Migrations recentes importantes:
+
+| Migration | O que faz |
+| --- | --- |
+| `20261021120000_lock_user_subscriptions` | Impede o próprio usuário de se dar Premium alterando a assinatura. |
+| `20261021130000_client_health_and_tracking` | Cria `nutrition_goals`, `nutrition_log_entries`, `client_health_profiles` e `weight_logs`, só visíveis para o dono. |
+| `20261021140000_protect_profile_private_columns` | Esconde `email` e `stripe_customer_id` de `profiles` e limita o que o usuário pode editar (não pode mudar o próprio tipo de conta). |
+
+### 4. Edge Functions e segredos
+
+```bash
+npx supabase functions deploy ai-chat
+npx supabase functions deploy create-checkout-session
+npx supabase functions deploy create-portal-session
+npx supabase functions deploy stripe-webhook --no-verify-jwt
+
+npx supabase secrets set GEMINI_API_KEY=... STRIPE_SECRET_KEY=... STRIPE_WEBHOOK_SECRET=... FRONTEND_URL=https://seu-dominio
+# Opcional: mensagens da IA por usuário por hora (padrão 60)
+npx supabase secrets set AI_HOURLY_LIMIT=60
+```
+
+| Função | Para quê |
+| --- | --- |
+| `ai-chat` | Mentoria IA (plano + busca + resposta). |
+| `create-checkout-session` | Abre o Checkout do Stripe; bloqueia cobrança em dobro e aceita só URLs do próprio site. |
+| `create-portal-session` | Abre o portal do cliente do Stripe. |
+| `stripe-webhook` | Atualiza `user_subscriptions` (ativa, renova, marca pagamento falho e cancela). |
+
+### 5. Stripe
+
+- Webhook apontando para `https://SEU_PROJETO.supabase.co/functions/v1/stripe-webhook` com os eventos `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated` e `customer.subscription.deleted`. O segredo `whsec_...` desse destino vai em `STRIPE_WEBHOOK_SECRET`.
+- Salve uma vez as configurações do **Customer Portal** (Configurações > Faturamento > Portal do cliente).
+- Preencha `stripe_price_id` do plano Premium na tabela `subscription_plans`.
+
+### 6. Rode
+
 ```bash
 npm run dev
-# ou
-yarn dev
 ```
 
-O projeto estará disponível em `http://localhost:5173`
+Disponível em `http://localhost:5173`.
 
-## 🗄️ Estrutura do Banco de Dados
+## 🔧 Scripts
 
-### Tabelas Principais
+```bash
+npm run dev        # servidor de desenvolvimento
+npm run build      # checagem de tipos + build de produção
+npm run typecheck  # só a checagem de tipos
+npm run lint       # ESLint
+npm run preview    # serve o build localmente
+```
 
-- **profiles** - Perfis dos usuários (vinculada ao auth.users)
-- **recipes** - Receitas com informações nutricionais
-- **reviews** - Avaliações e comentários das receitas
-- **favorites** - Receitas favoritas dos usuários
+## 🗂️ Estrutura
 
-### Relacionamentos
-- Um usuário pode ter muitas receitas (1:N)
-- Uma receita pode ter muitas avaliações (1:N)
-- Um usuário pode favoritar muitas receitas (N:M)
-- Um usuário pode fazer uma avaliação por receita (1:1)
+```
+src/
+  components/      # UI por área (ai, profile, nutrition, recipes, auth...)
+  pages/           # páginas carregadas sob demanda pelo roteador
+  store/           # estado global (Zustand): auth, receitas, assinatura, diário, metas, saúde, IA
+  services/        # acesso ao Supabase, IA e assinatura
+  lib/             # utilidades (calculadora nutricional, links de contato, i18n...)
+supabase/
+  migrations/      # esquema do banco e políticas de segurança
+  functions/       # Edge Functions (Deno)
+    _shared/       # busca de receitas usada pela IA e pelo app
+```
 
-## 👤 Tipos de Usuário
+## 🔐 Segurança
 
-### 🥗 Cliente
-- Visualizar todas as receitas
-- Avaliar e comentar receitas
-- Favoritar receitas
-- Definir metas nutricionais
-- Dashboard com estatísticas pessoais
-
-### 👨‍⚕️ Nutricionista
-- Todas as funcionalidades do Cliente
-- Criar, editar e excluir receitas próprias
-- Dashboard com estatísticas das receitas publicadas
-- Visualizar avaliações recebidas
-
-## 🔐 Fluxo de Autenticação
-
-1. **Cadastro**: Usuário escolhe o tipo (Cliente/Nutricionista) e cria conta
-2. **Login**: Autenticação via email/senha
-3. **Recuperação de Senha**: Sistema completo de reset via email
-4. **Sessão**: Mantida automaticamente pelo Supabase Auth
-5. **Logout**: Limpeza segura da sessão
-
-## 🎨 Funcionalidades Detalhadas
-
-### 🔍 Sistema de Filtros
-- **Categorias**: Vegana, Vegetariana, Low Carb, Rica em Proteína, Sem Glúten
-- **Dificuldade**: Fácil, Médio, Difícil
-- **Tempo de Preparo**: Rápido (≤15min), Médio (≤30min), Longo (>30min)
-- **Avaliação Mínima**: 4+, 4.5+, 5 estrelas
-- **Busca por Texto**: Título e descrição das receitas
-
-### 📊 Informações Nutricionais
-Cada receita inclui valores por porção:
-- Calorias (kcal)
-- Proteínas (g)
-- Carboidratos (g)
-- Gorduras (g)
-- Fibras (g)
-
-### ⭐ Sistema de Avaliações
-- Avaliação de 1 a 5 estrelas
-- Comentários opcionais
-- Edição e exclusão das próprias avaliações
-- Cálculo automático da média de avaliações
-
-## 📱 Interface Responsiva
-
-A aplicação foi desenvolvida com design mobile-first, garantindo uma experiência otimizada em:
-- 📱 Smartphones (320px+)
-- 📱 Tablets (768px+)
-- 💻 Desktops (1024px+)
-- 🖥️ Telas grandes (1440px+)
-
-## 🌍 Internacionalização
-
-Suporte completo para:
-- 🇧🇷 **Português** (padrão)
-- 🇺🇸 **Inglês**
-
-Todas as interfaces, mensagens e categorias são traduzidas automaticamente.
+- RLS em todas as tabelas; diário, metas, saúde e peso só são lidos pelo dono.
+- `email` e `stripe_customer_id` não são legíveis pela chave pública; o usuário não pode alterar o próprio tipo de conta nem a assinatura.
+- Chaves do Gemini e do Stripe só existem como segredos das Edge Functions.
+- Texto vindo de usuários e da IA é renderizado sem HTML; links de contato aceitam só `http(s)`.
 
 ## 🚀 Deploy
 
-O projeto está configurado para deploy automático no Netlify:
-
-```bash
-npm run build
-```
-
-### Variáveis de Ambiente para Produção
-Configure as mesmas variáveis do `.env` no painel do Netlify ou plataforma de deploy escolhida.
-
-## 🔧 Scripts Disponíveis
-
-```bash
-npm run dev          # Servidor de desenvolvimento
-npm run build        # Build para produção
-npm run preview      # Preview do build
-npm run lint         # Verificação de código
-```
-
-## 🤝 Contribuição
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+O front é publicado no Netlify a partir deste repositório (`npm run build`, pasta `dist`). Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no painel do Netlify. Banco e Edge Functions são publicados pelo Supabase CLI (passos 3 e 4).
 
 ## 👨‍💻 Autor
 
-**Desenvolvido por [Pedro Henrique de Oliveira Rosa]**
+**Desenvolvido por Pedro Henrique de Oliveira Rosa**
 
 - 📧 Email: pehenriqueoliveirarosa@gmail.com
-- 💼 LinkedIn: [linkedin.com/in/pedro-henrique-oliveira-rosa-232383274]
-- 🐱 GitHub: [https://github.com/PedroRosa666]
+- 💼 LinkedIn: [linkedin.com/in/pedro-henrique-oliveira-rosa-232383274](https://linkedin.com/in/pedro-henrique-oliveira-rosa-232383274)
+- 🐱 GitHub: [github.com/PedroRosa666](https://github.com/PedroRosa666)
+
+## 📄 Licença
+
+MIT.
 
 ---
 
 <div align="center">
   <p>Feito com ❤️ e muito ☕</p>
-  <p>NutriChef © 2024 - Alimentação saudável ao alcance de todos</p>
+  <p>NutriChef © 2024–2026 - Alimentação saudável ao alcance de todos</p>
 </div>

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Camera, Upload, X, Loader2 } from 'lucide-react';
 import { StorageService } from '../../services/storage';
 import { useAuthStore } from '../../store/auth';
@@ -79,6 +79,11 @@ export function AvatarUpload({
   const { showToast } = useToastStore();
   const t = useTranslation();
 
+  // O perfil pode carregar depois do primeiro render.
+  useEffect(() => {
+    setPreviewUrl(currentAvatarUrl || null);
+  }, [currentAvatarUrl]);
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
@@ -95,9 +100,9 @@ export function AvatarUpload({
         setShowCropModal(true);
       };
       reader.readAsDataURL(file);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error reading file:', error);
-      showToast(error.message || 'Erro ao ler arquivo', 'error');
+      showToast(error instanceof Error && error.message ? error.message : 'Erro ao ler arquivo', 'error');
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -136,9 +141,9 @@ export function AvatarUpload({
       }
 
       showToast(t.profile.avatarUpdated || 'Foto de perfil atualizada!', 'success');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error uploading avatar:', error);
-      showToast(error.message || 'Erro ao fazer upload da foto', 'error');
+      showToast(error instanceof Error && error.message ? error.message : 'Erro ao fazer upload da foto', 'error');
       setPreviewUrl(currentAvatarUrl || null);
     } finally {
       setIsUploading(false);
@@ -174,9 +179,9 @@ export function AvatarUpload({
       }
 
       showToast(t.profile.avatarRemoved || 'Foto de perfil removida!', 'success');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error removing avatar:', error);
-      showToast(error.message || 'Erro ao remover foto', 'error');
+      showToast(error instanceof Error && error.message ? error.message : 'Erro ao remover foto', 'error');
     } finally {
       setIsUploading(false);
     }

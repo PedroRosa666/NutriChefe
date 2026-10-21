@@ -12,10 +12,14 @@ interface AuthState {
   error: string | null;
   loading: boolean;
 
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string, type: UserType) => Promise<void>;
+  /** true quando o login deu certo. */
+  signIn: (email: string, password: string) => Promise<boolean>;
+  /** 'signed_in' (já logado), 'confirm_email' (precisa confirmar) ou null em caso de erro. */
+  signUp: (email: string, password: string, name: string, type: UserType) => Promise<'signed_in' | 'confirm_email' | null>;
+  updateName: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
   initializeAuth: () => Promise<void>;
+  clearSession: () => void;
   updateProfile: (updates: Partial<User>) => Promise<void>;
   clearError: () => void;
   isNutritionist: () => boolean;
@@ -46,7 +50,8 @@ export const useAuthStore = create<AuthState>()(
           const mapped: User = {
             id: u.id,
             email: u.email ?? '',
-            name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
+            name: profile?.full_name || (u.user_metadata?.full_name as string) || '',
+            created_at: u.created_at,
             type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
             avatar_url: profile?.avatar_url || null,
             profile: undefined
@@ -75,7 +80,7 @@ export const useAuthStore = create<AuthState>()(
             if (error.message.includes('Error sending confirmation email')) friendly = 'Erro no serviço de email. Tente novamente mais tarde ou entre em contato com o suporte.';
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
-            return;
+            return false;
           }
 
           const u = data.user;
@@ -85,7 +90,8 @@ export const useAuthStore = create<AuthState>()(
           const mapped: User = {
             id: u.id,
             email: u.email ?? '',
-            name: (u.user_metadata?.full_name as string) || profile?.full_name || '',
+            name: profile?.full_name || (u.user_metadata?.full_name as string) || '',
+            created_at: u.created_at,
             type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
             avatar_url: profile?.avatar_url || null,
             profile: undefined
@@ -99,10 +105,12 @@ export const useAuthStore = create<AuthState>()(
           });
 
           useToastStore.getState().showToast('Login realizado com sucesso!', 'success');
+          return true;
         } catch (e) {
           console.error('signIn error:', e);
           useToastStore.getState().showToast('Erro inesperado ao fazer login.', 'error');
           set({ error: 'Erro inesperado', loading: false });
+          return false;
         }
       },
 
@@ -113,7 +121,8 @@ export const useAuthStore = create<AuthState>()(
             email,
             password,
             options: {
-              data: { full_name: name, user_type: type }
+              data: { full_name: name, user_type: type },
+              emailRedirectTo: `${window.location.origin}/confirm-email`
             }
           });
 
@@ -127,7 +136,7 @@ export const useAuthStore = create<AuthState>()(
             if (error.message.includes('unexpected_failure')) friendly = 'Erro no servidor. Tente novamente mais tarde.';
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
-            return;
+            return null;
           }
 
           const u = data.user;
@@ -151,28 +160,44 @@ export const useAuthStore = create<AuthState>()(
             });
 
             useToastStore.getState().showToast('Conta criada com sucesso!', 'success');
-            return;
+            return 'signed_in';
           }
 
-          useToastStore.getState().showToast('Conta criada com sucesso! Agora faça login.', 'success');
+          useToastStore.getState().showToast('Conta criada! Enviamos um link de confirmação para o seu e-mail.', 'success');
           set({ loading: false });
+          return 'confirm_email';
         } catch (e) {
           console.error('signUp error:', e);
           useToastStore.getState().showToast('Erro inesperado ao criar conta.', 'error');
           set({ error: 'Erro inesperado', loading: false });
+          return null;
         }
       },
 
       signOut: async () => {
         try {
           await supabase.auth.signOut();
-          set({ user: null, token: null, isAuthenticated: false });
-          useToastStore.getState().showToast('Logout realizado!', 'info');
         } catch (e) {
           console.error('signOut error:', e);
-          useToastStore.getState().showToast('Logout realizado', 'info');
+        } finally {
+          // Limpa o estado local mesmo se a chamada de rede falhar.
+          get().clearSession();
+          useToastStore.getState().showToast('Logout realizado!', 'info');
         }
       },
+
+      updateName: async (name) => {
+        const currentUser = get().user;
+        const trimmed = name.trim();
+        if (!currentUser || !trimmed) return;
+        const { error } = await supabase.from('profiles').update({ full_name: trimmed }).eq('id', currentUser.id);
+        if (error) throw error;
+        // Metadado do auth também, pois o nome é lido dele no login.
+        await supabase.auth.updateUser({ data: { full_name: trimmed } }).catch(() => undefined);
+        set({ user: { ...currentUser, name: trimmed } });
+      },
+
+      clearSession: () => set({ user: null, token: null, isAuthenticated: false, error: null }),
 
       updateProfile: async (updates) => {
         const currentUser = get().user;

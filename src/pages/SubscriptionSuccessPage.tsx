@@ -1,9 +1,21 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
+import { useAuthStore } from '../store/auth';
+import { useSubscriptionStore } from '../store/subscription';
 
 export function SubscriptionSuccessPage() {
   const navigate = useNavigate();
+  const userId = useAuthStore((s) => s.user?.id);
+
+  // O webhook do Stripe pode levar alguns segundos: busca a assinatura agora e de novo depois.
+  useEffect(() => {
+    if (!userId) return;
+    const { fetchUserSubscription } = useSubscriptionStore.getState();
+    fetchUserSubscription(userId);
+    const retry = setTimeout(() => fetchUserSubscription(userId), 3000);
+    return () => clearTimeout(retry);
+  }, [userId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

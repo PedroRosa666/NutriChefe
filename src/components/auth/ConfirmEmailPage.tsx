@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -46,7 +47,7 @@ export default function ConfirmEmailPage() {
 
         // 3) Legado (?token_hash=...&type=signup)
         const token_hash = url.searchParams.get('token_hash');
-        const type = (url.searchParams.get('type') || 'signup') as any;
+        const type = (url.searchParams.get('type') || 'signup') as EmailOtpType;
         if (token_hash) {
           const { data, error } = await supabase.auth.verifyOtp({ type, token_hash });
           if (error) throw error;
@@ -59,10 +60,10 @@ export default function ConfirmEmailPage() {
 
         setStatus('error');
         setMessage('Link inválido ou expirado. Solicite um novo e-mail de confirmação.');
-      } catch (err: any) {
+      } catch (err) {
         console.error('Erro ao confirmar e-mail:', err);
         setStatus('error');
-        const friendly = err?.message?.includes('expired')
+        const friendly = err instanceof Error && err.message.includes('expired')
           ? 'Seu link expirou. Solicite um novo e-mail de confirmação.'
           : 'Não foi possível confirmar seu e-mail. Tente novamente.';
         setMessage(friendly);

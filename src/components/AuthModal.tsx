@@ -56,12 +56,14 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     e.preventDefault();
     setLoading(true);
     try {
+      // Fecha só quando deu certo; em caso de erro o usuário corrige e tenta de novo.
       if (mode === 'signin') {
-        await signIn(email, password);
+        if (await signIn(email, password)) onClose();
       } else {
-        await signUp(email, password, name, userType);
+        const result = await signUp(email, password, name, userType);
+        if (result === 'signed_in') onClose();
+        else if (result === 'confirm_email') setMode('signin');
       }
-      onClose();
     } catch (error) {
       console.error('Auth error:', error);
     } finally {

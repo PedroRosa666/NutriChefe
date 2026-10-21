@@ -1,129 +1,94 @@
-import { Mail, ChefHat, Heart, TrendingUp, Clock, Crown } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Mail, ChefHat, Crown, CalendarDays, ExternalLink, User as UserIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
-import { useRecipesStore } from '../../store/recipes';
-import { useNutritionGoalsStore } from '../../store/nutrition-goals';
-import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useSubscriptionStore } from '../../store/subscription';
+import { useSettingsStore } from '../../store/settings';
 import { useTranslation } from '../../hooks/useTranslation';
 import { AvatarUpload } from '../common/AvatarUpload';
 
+/** Cabeçalho do perfil: identidade e plano. As métricas ficam na aba "Visão geral". */
 export function ProfileCard() {
   const { user } = useAuthStore();
-  const { recipes, favoriteRecipes } = useRecipesStore();
-  const { goals, activeGoals } = useNutritionGoalsStore();
-  const { entries } = useNutritionTrackingStore();
   const { isPremium } = useSubscriptionStore();
+  const { language } = useSettingsStore();
   const t = useTranslation();
 
   if (!user) return null;
 
-  const userRecipes = recipes.filter((r) => r.authorId === user.id);
-  const totalFavorites = recipes.filter((r) => favoriteRecipes.includes(r.id)).length;
   const isNutritionist = user.type === 'Nutritionist';
-  const isPremiumUser = isPremium();
-  const hasGoals = activeGoals.length > 0;
-  const trackingDays = new Set(entries.map(e => e.date)).size;
+  const isPremiumUser = !isNutritionist && isPremium();
+  const memberSince = user.created_at
+    ? new Date(user.created_at).toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US', {
+        month: 'long',
+        year: 'numeric',
+      })
+    : null;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 flex flex-col sm:flex-row sm:items-center gap-6">
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="h-24 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 sm:h-28" />
+      <div className="flex flex-col gap-4 px-6 pb-6 sm:flex-row sm:items-end">
+        <div className="-mt-12 flex-shrink-0 rounded-full ring-4 ring-white dark:ring-slate-900">
+          <AvatarUpload currentAvatarUrl={user.avatar_url} size="xl" editable />
+        </div>
 
-      {/* Avatar */}
-      <div className="flex-shrink-0">
-        <AvatarUpload
-          currentAvatarUrl={user.avatar_url}
-          size="xl"
-          editable={true}
-        />
-      </div>
-
-      {/* Infos */}
-      <div className="flex-1 space-y-3">
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-          {user.name}
-        </h2>
-
-        <div className="flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-400">
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
-            {user.email}
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="truncate text-xl font-semibold text-slate-900 dark:text-white sm:text-2xl">
+              {user.name || t.recipe.authorFallbackName}
+            </h2>
+            {isNutritionist ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+                <ChefHat className="h-3.5 w-3.5" />
+                {t.profile.nutricionist}
+              </span>
+            ) : isPremiumUser ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+                <Crown className="h-3.5 w-3.5" />
+                {t.profile.clientPremium}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <UserIcon className="h-3.5 w-3.5" />
+                {t.profile.client}
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {isPremiumUser && !isNutritionist ? (
-              <Crown className="h-4 w-4 text-amber-500 dark:text-amber-400" />
-            ) : (
-              <ChefHat className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
+            <span className="inline-flex items-center gap-1.5">
+              <Mail className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              {user.email}
+            </span>
+            {memberSince && (
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                {t.profile.memberSince} {memberSince}
+              </span>
             )}
-            {isNutritionist
-              ? t.profile.nutricionist
-              : isPremiumUser
-                ? t.profile.clientPremium
-                : t.profile.client
-            }
           </div>
         </div>
 
-        {/* Stats for Nutritionist */}
-        {isNutritionist && (
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-2 gap-4">
-            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3 text-center border border-emerald-100 dark:border-emerald-800/60">
-              <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">
-                {userRecipes.length}
-              </p>
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                {t.profile.publishedRecipes}
-              </span>
-            </div>
-
-            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3 text-center border border-emerald-100 dark:border-emerald-800/60">
-              <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">
-                {totalFavorites}
-              </p>
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                {t.profile.favorites}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Stats for Client */}
-        {!isNutritionist && (
-          <div className="mt-4 grid grid-cols-3 gap-4">
-            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3 text-center border border-emerald-100 dark:border-emerald-800/60">
-              <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-1">
-                <Heart className="h-4 w-4" />
-                {totalFavorites}
-              </p>
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                {t.profile.favorites}
-              </span>
-            </div>
-
-            {hasGoals && (
-              <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 p-3 text-center border border-blue-100 dark:border-blue-800/60">
-                <p className="text-lg font-semibold text-blue-700 dark:text-blue-300 flex items-center justify-center gap-1">
-                  <TrendingUp className="h-4 w-4" />
-                  {activeGoals.length}
-                </p>
-                <span className="text-xs text-slate-600 dark:text-slate-400">
-                  {t.profile.activeGoalsLabel}
-                </span>
-              </div>
-            )}
-
-            {trackingDays > 0 && (
-              <div className="rounded-xl bg-purple-50 dark:bg-purple-900/20 p-3 text-center border border-purple-100 dark:border-purple-800/60">
-                <p className="text-lg font-semibold text-purple-700 dark:text-purple-300 flex items-center justify-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  {trackingDays}
-                </p>
-                <span className="text-xs text-slate-600 dark:text-slate-400">
-                  {t.profile.trackedDays}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {isNutritionist && (
+            <Link
+              to={`/nutricionista/${user.id}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {t.profile.viewPublicProfile}
+            </Link>
+          )}
+          {!isNutritionist && !isPremiumUser && (
+            <Link
+              to="/mentoria-ia"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600"
+            >
+              <Crown className="h-4 w-4" />
+              {t.profile.upgradePremium}
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

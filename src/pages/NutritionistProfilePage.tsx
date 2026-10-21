@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   User,
@@ -20,7 +20,11 @@ import {
 import { supabase } from '../lib/supabase';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
+import { PUBLIC_PROFILE_COLUMNS } from '../lib/profile-columns';
+import { instagramUrl, phoneUrl, safeWebsiteUrl, whatsappUrl } from '../lib/contact-links';
 import type { Recipe } from '../types/recipe';
+
+type RecipePreview = Pick<Recipe, 'id' | 'title' | 'image'>;
 import { getSpecializationTranslation } from '../lib/i18n/translations';
 import { useSettingsStore } from '../store/settings';
 
@@ -53,80 +57,81 @@ export function NutritionistProfilePage() {
   const t = useTranslation();
   const { language } = useSettingsStore();
   const [profile, setProfile] = useState<NutritionistFullProfile | null>(null);
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [recipes, setRecipes] = useState<RecipePreview[]>([]);
+  const [totalRecipes, setTotalRecipes] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (id) {
-      loadProfile();
-    }
-  }, [id]);
+    if (!id) return;
+    let cancelled = false;
 
-  const loadProfile = async () => {
-    try {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', id)
-        .eq('user_type', 'Nutritionist')
-        .eq('profile_visibility', 'public')
-        .maybeSingle();
+    const loadProfile = async () => {
+      setLoading(true);
+      try {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select(PUBLIC_PROFILE_COLUMNS)
+          .eq('id', id)
+          .eq('user_type', 'Nutritionist')
+          .eq('profile_visibility', 'public')
+          .maybeSingle();
 
-      if (!profileData) {
-        navigate('/nutricionistas');
-        return;
-      }
-
-      setProfile({
-        id: profileData.id,
-        full_name: profileData.full_name || 'Nutricionista',
-        professional_bio: profileData.professional_bio || '',
-        specializations: profileData.specializations || [],
-        years_of_experience: profileData.years_of_experience || 0,
-        education: profileData.education || '',
-        certifications: profileData.certifications || [],
-        approach: profileData.approach || '',
-        consultation_price: profileData.consultation_price || 0,
-        consultation_duration: profileData.consultation_duration || 60,
-        consultation_types: profileData.consultation_types || [],
-        accepts_health_insurance: profileData.accepts_health_insurance || false,
-        health_insurances: profileData.health_insurances || [],
-        phone: profileData.phone || '',
-        whatsapp: profileData.whatsapp || '',
-        instagram: profileData.instagram || '',
-        website: profileData.website || '',
-        clinic_address: profileData.clinic_address || '',
-        accepting_new_clients: profileData.accepting_new_clients ?? true,
-        avatar_url: profileData.avatar_url || null,
-      });
-
-      const { data: recipesData } = await supabase
-        .from('recipes')
-        .select('*')
-        .eq('author_id', id)
-        .order('created_at', { ascending: false })
-        .limit(6);
-
-      if (recipesData) {
-        setRecipes(recipesData);
-
-        const { data: reviews } = await supabase
-          .from('reviews')
-          .select('rating')
-          .in('recipe_id', recipesData.map(r => r.id));
-
-        if (reviews && reviews.length > 0) {
-          const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
-          setAverageRating(avg);
+        if (cancelled) return;
+        if (!profileData) {
+          navigate('/nutricionistas');
+          return;
         }
+
+        setProfile({
+          id: profileData.id,
+          full_name: profileData.full_name || 'Nutricionista',
+          professional_bio: profileData.professional_bio || '',
+          specializations: profileData.specializations || [],
+          years_of_experience: profileData.years_of_experience || 0,
+          education: profileData.education || '',
+          certifications: profileData.certifications || [],
+          approach: profileData.approach || '',
+          consultation_price: profileData.consultation_price || 0,
+          consultation_duration: profileData.consultation_duration || 60,
+          consultation_types: profileData.consultation_types || [],
+          accepts_health_insurance: profileData.accepts_health_insurance || false,
+          health_insurances: profileData.health_insurances || [],
+          phone: profileData.phone || '',
+          whatsapp: profileData.whatsapp || '',
+          instagram: profileData.instagram || '',
+          website: profileData.website || '',
+          clinic_address: profileData.clinic_address || '',
+          accepting_new_clients: profileData.accepting_new_clients ?? true,
+          avatar_url: profileData.avatar_url || null,
+        });
+
+        // Todas as receitas do autor (para contagem e média); exibimos só as 6 mais recentes.
+        const { data: recipesData } = await supabase
+          .from('recipes')
+          .select('id, title, image, reviews(rating)')
+          .eq('author_id', id)
+          .order('created_at', { ascending: false });
+
+        if (cancelled || !recipesData) return;
+
+        setRecipes(recipesData.slice(0, 6).map(({ id, title, image }) => ({ id, title, image })));
+        setTotalRecipes(recipesData.length);
+
+        const ratings = recipesData.flatMap((r) => (r.reviews ?? []).map((rv) => rv.rating));
+        setAverageRating(ratings.length ? ratings.reduce((sum, n) => sum + n, 0) / ratings.length : 0);
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    loadProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, navigate]);
 
   if (loading) {
     return (
@@ -137,6 +142,13 @@ export function NutritionistProfilePage() {
   }
 
   if (!profile) return null;
+
+  const links = {
+    whatsapp: whatsappUrl(profile.whatsapp, `Olá, ${profile.full_name}! Vi seu perfil no NutriChefe e gostaria de agendar uma consulta.`),
+    phone: phoneUrl(profile.phone),
+    instagram: instagramUrl(profile.instagram),
+    website: safeWebsiteUrl(profile.website),
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -191,11 +203,11 @@ export function NutritionistProfilePage() {
                           </span>
                         </div>
                       )}
-                      {recipes.length > 0 && (
+                      {totalRecipes > 0 && (
                         <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
                           <Heart className="h-4 w-4" />
                           <span className="text-sm font-medium">
-                            {recipes.length} {t.nutritionists.profile.publishedRecipes}
+                            {totalRecipes} {t.nutritionists.profile.publishedRecipes}
                           </span>
                         </div>
                       )}
@@ -221,6 +233,18 @@ export function NutritionistProfilePage() {
                     )}
                   </div>
                 </div>
+
+                {profile.accepting_new_clients && links.whatsapp && (
+                  <a
+                    href={links.whatsapp}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mb-4 inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    {t.nutritionists.scheduleWhatsapp}
+                  </a>
+                )}
 
                 {profile.specializations.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-4">
@@ -321,7 +345,7 @@ export function NutritionistProfilePage() {
                         {t.nutritionists.profile.consultationTypes}
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {profile.consultation_types.map((ct: any, idx: number) => (
+                        {profile.consultation_types.map((ct, idx) => (
                           <span
                             key={idx}
                             className="px-3 py-1.5 bg-white dark:bg-gray-800 rounded-lg text-sm font-medium text-gray-900 dark:text-white"
@@ -358,9 +382,9 @@ export function NutritionistProfilePage() {
                   {t.nutritionists.profile.contactInfo}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {profile.whatsapp && (
+                  {links.whatsapp && (
                     <a
-                      href={`https://wa.me/${profile.whatsapp.replace(/\D/g, '')}`}
+                      href={links.whatsapp}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
@@ -373,9 +397,9 @@ export function NutritionistProfilePage() {
                     </a>
                   )}
 
-                  {profile.phone && (
+                  {links.phone && (
                     <a
-                      href={`tel:${profile.phone}`}
+                      href={links.phone}
                       className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                     >
                       <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -386,9 +410,9 @@ export function NutritionistProfilePage() {
                     </a>
                   )}
 
-                  {profile.instagram && (
+                  {links.instagram && (
                     <a
-                      href={`https://instagram.com/${profile.instagram.replace('@', '')}`}
+                      href={links.instagram}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 p-4 bg-pink-50 dark:bg-pink-900/20 rounded-xl hover:bg-pink-100 dark:hover:bg-pink-900/30 transition-colors"
@@ -401,9 +425,9 @@ export function NutritionistProfilePage() {
                     </a>
                   )}
 
-                  {profile.website && (
+                  {links.website && (
                     <a
-                      href={profile.website}
+                      href={links.website}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"

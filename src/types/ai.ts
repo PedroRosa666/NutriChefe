@@ -31,20 +31,29 @@ export interface AIMessage {
   conversation_id: string;
   sender_type: 'user' | 'ai';
   content: string;
-  metadata: Record<string, any>;
+  metadata: {
+    recipes?: AIResponse['recipes'];
+    nutritionists?: AIResponse['nutritionists'];
+    suggestions?: string[];
+    [key: string]: unknown;
+  };
   created_at: string;
 }
 
-// --- ATUALIZAÇÃO AQUI ---
-// Adicionei a possibilidade de retornar perfis de nutricionistas
 export interface AIResponse {
   content: string;
   recipes?: Array<{
-    id: number;
+    id: string;
     title: string;
     description: string;
     author: string;
     rating: number;
+    prepTime?: number;
+    image?: string;
+    category?: string;
+    calories?: number;
+    /** Ingredientes pedidos que a receita contém (mostrados no cartão). */
+    matched?: string[];
   }>;
   nutritionists?: Array<{
     id: string;
@@ -52,4 +61,6 @@ export interface AIResponse {
     bio: string;
   }>;
   suggestions?: string[];
+  /** Como a IA entendeu o pedido (intenção, ingredientes, resultado da busca). */
+  meta?: Record<string, unknown>;
 }

@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from './auth';
 
-interface NutritionGoals {
+export interface NutritionGoals {
   calories: number;
   protein: number;
   carbs: number;
@@ -10,118 +10,113 @@ interface NutritionGoals {
   fiber: number;
 }
 
-type GoalKey = 'calories' | 'protein' | 'carbs' | 'fat' | 'fiber';
+export type GoalKey = keyof NutritionGoals;
 
 interface NutritionGoalsState {
   goals: NutritionGoals;
   activeGoals: GoalKey[];
-  setGoals: (goals: Partial<NutritionGoals>) => void;
-  fetchGoals: (userId: string) => Promise<void>;
-  setActiveGoals: (userId: string, activeGoals: GoalKey[]) => Promise<void>;
-  toggleGoal: (userId: string, goal: GoalKey) => Promise<void>;
   loading: boolean;
+  saving: boolean;
+  fetchGoals: (userId: string) => Promise<void>;
+  saveGoals: (goals: NutritionGoals) => Promise<void>;
+  toggleGoal: (goal: GoalKey) => Promise<void>;
+  reset: () => void;
 }
 
-const DEFAULT_GOALS: NutritionGoals = {
-  calories: 2000.0,
-  protein: 50.0,
-  carbs: 250.0,
-  fat: 70.0,
-  fiber: 25.0
+export const DEFAULT_GOALS: NutritionGoals = {
+  calories: 2000,
+  protein: 50,
+  carbs: 250,
+  fat: 70,
+  fiber: 25,
 };
 
-const DEFAULT_ACTIVE_GOALS: GoalKey[] = ['calories', 'protein', 'carbs', 'fat', 'fiber'];
+export const GOAL_KEYS: GoalKey[] = ['calories', 'protein', 'carbs', 'fat', 'fiber'];
 
-export const useNutritionGoalsStore = create<NutritionGoalsState>()(
-  persist(
-    (set) => ({
-      goals: DEFAULT_GOALS,
-      activeGoals: DEFAULT_ACTIVE_GOALS,
-      loading: false,
+const isGoalKey = (v: unknown): v is GoalKey => GOAL_KEYS.includes(v as GoalKey);
 
-      fetchGoals: async (userId: string) => {
-        set({ loading: true });
-        try {
-          const { data, error } = await supabase
-            .from('nutrition_goals')
-            .select('*')
-            .eq('user_id', userId)
-            .maybeSingle();
+// Escritas em sequência: cliques rápidos não chegam fora de ordem no banco.
+let writeQueue: Promise<unknown> = Promise.resolve();
 
-          if (error) throw error;
+async function upsertGoals(goals: NutritionGoals, activeGoals: GoalKey[]) {
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) throw new Error('Faça login para salvar suas metas.');
+  const { error } = await supabase
+    .from('nutrition_goals')
+    .upsert(
+      { user_id: userId, ...goals, active_goals: activeGoals, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' }
+    );
+  if (error) throw error;
+}
 
-          if (data) {
-            set({
-              goals: {
-                calories: data.calories || DEFAULT_GOALS.calories,
-                protein: data.protein || DEFAULT_GOALS.protein,
-                carbs: data.carbs || DEFAULT_GOALS.carbs,
-                fat: data.fat || DEFAULT_GOALS.fat,
-                fiber: data.fiber || DEFAULT_GOALS.fiber,
-              },
-              activeGoals: data.active_goals || DEFAULT_ACTIVE_GOALS,
-              loading: false
-            });
-          } else {
-            set({ loading: false });
-          }
-        } catch (error) {
-          console.error('Error fetching nutrition goals:', error);
-          set({ loading: false });
-        }
-      },
+export const useNutritionGoalsStore = create<NutritionGoalsState>()((set, get) => ({
+  goals: DEFAULT_GOALS,
+  activeGoals: GOAL_KEYS,
+  loading: false,
+  saving: false,
 
-      setActiveGoals: async (userId: string, activeGoals: GoalKey[]) => {
-        try {
-          const { error } = await supabase
-            .from('nutrition_goals')
-            .update({ active_goals: activeGoals })
-            .eq('user_id', userId);
+  fetchGoals: async (userId) => {
+    set({ loading: true });
+    const { data, error } = await supabase
+      .from('nutrition_goals')
+      .select('calories, protein, carbs, fat, fiber, active_goals')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-          if (error) throw error;
-
-          set({ activeGoals });
-        } catch (error) {
-          console.error('Error updating active goals:', error);
-          throw error;
-        }
-      },
-
-      toggleGoal: async (userId: string, goal: GoalKey) => {
-        set(state => {
-          const newActiveGoals = state.activeGoals.includes(goal)
-            ? state.activeGoals.filter(g => g !== goal)
-            : [...state.activeGoals, goal];
-
-          (async () => {
-            try {
-              const { error } = await supabase
-                .from('nutrition_goals')
-                .update({ active_goals: newActiveGoals })
-                .eq('user_id', userId);
-
-              if (error) throw error;
-            } catch (error) {
-              console.error('Error toggling goal:', error);
-            }
-          })();
-
-          return { activeGoals: newActiveGoals };
-        });
-      },
-
-      setGoals: (newGoals) =>
-        set((state) => ({
-          goals: {
-            ...state.goals,
-            ...Object.fromEntries(
-              Object.entries(newGoals).map(([key, value]) => [key, Number(value)])
-            )
-          }
-        }))
-    }),
-    {
-      name: 'nutrition-goals'
+    if (error) {
+      console.error('Error fetching nutrition goals:', error);
+      set({ loading: false });
+      return;
     }
-  )
-);
+
+    // Sem linha: usuário novo, volta aos padrões (nunca herda metas de outro login).
+    set({
+      goals: data
+        ? {
+            calories: Number(data.calories) || DEFAULT_GOALS.calories,
+            protein: Number(data.protein) || DEFAULT_GOALS.protein,
+            carbs: Number(data.carbs) || DEFAULT_GOALS.carbs,
+            fat: Number(data.fat) || DEFAULT_GOALS.fat,
+            fiber: Number(data.fiber) || DEFAULT_GOALS.fiber,
+          }
+        : DEFAULT_GOALS,
+      activeGoals: Array.isArray(data?.active_goals) ? data.active_goals.filter(isGoalKey) : GOAL_KEYS,
+      loading: false,
+    });
+  },
+
+  saveGoals: async (goals) => {
+    const previous = get().goals;
+    set({ goals, saving: true });
+    try {
+      await (writeQueue = writeQueue.catch(() => undefined).then(() => upsertGoals(goals, get().activeGoals)));
+    } catch (error) {
+      set({ goals: previous });
+      throw error;
+    } finally {
+      set({ saving: false });
+    }
+  },
+
+  toggleGoal: async (goal) => {
+    const previous = get().activeGoals;
+    const next = previous.includes(goal) ? previous.filter((g) => g !== goal) : [...previous, goal];
+    set({ activeGoals: next });
+    try {
+      await (writeQueue = writeQueue.catch(() => undefined).then(() => upsertGoals(get().goals, next)));
+    } catch (error) {
+      set({ activeGoals: previous });
+      throw error;
+    }
+  },
+
+  reset: () => set({ goals: DEFAULT_GOALS, activeGoals: GOAL_KEYS, loading: false, saving: false }),
+}));
+
+// Metas antigas ficavam no navegador sem separar por usuário.
+try {
+  localStorage.removeItem('nutrition-goals');
+} catch {
+  /* storage indisponível */
+}

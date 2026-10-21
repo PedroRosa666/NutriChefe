@@ -1,4 +1,6 @@
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { LayoutDashboard, Apple, HeartPulse, Heart, Settings, BookOpen, Briefcase } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { RecipeCard } from '../RecipeCard';
@@ -6,108 +8,117 @@ import { NutritionGoalsForm } from '../nutrition/NutritionGoalsForm';
 import { ActiveGoalsSelector } from '../nutrition/ActiveGoalsSelector';
 import { NutritionDiary } from '../nutrition/NutritionDiary';
 import { EditProfessionalProfile } from './EditProfessionalProfile';
+import { ClientDashboard } from './ClientDashboard';
+import { NutritionistDashboard } from './NutritionistDashboard';
+import { HealthProfileForm } from './HealthProfileForm';
+import { AccountSettings } from './AccountSettings';
 import { useTranslation } from '../../hooks/useTranslation';
+import { cn } from '../../lib/utils';
 
-interface TabProps {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}
+type TabKey = 'overview' | 'nutrition' | 'health' | 'recipes' | 'professional' | 'favorites' | 'account';
 
-function Tab({ active, onClick, children }: TabProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-        active
-          ? 'bg-emerald-500 text-white shadow-sm'
-          : 'text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
+const CLIENT_TABS: TabKey[] = ['overview', 'nutrition', 'health', 'favorites', 'account'];
+const NUTRITIONIST_TABS: TabKey[] = ['overview', 'recipes', 'professional', 'favorites', 'account'];
+
+const ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
+  overview: LayoutDashboard,
+  nutrition: Apple,
+  health: HeartPulse,
+  recipes: BookOpen,
+  professional: Briefcase,
+  favorites: Heart,
+  account: Settings,
+};
 
 export function ProfileTabs() {
-  const [activeTab, setActiveTab] =
-    React.useState<'recipes' | 'favorites' | 'nutrition' | 'professional'>('favorites');
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
   const t = useTranslation();
-
-  const userRecipes = recipes.filter((recipe) => recipe.authorId === user?.id);
-  const userFavorites = recipes.filter((recipe) =>
-    favoriteRecipes.includes(recipe.id),
-  );
-
-  const MyRecipes = t.buttons.My_recipes;
-  const Favorites = t.buttons.Favorites;
-  const Nutrition_goal = t.buttons.Nutrition_goal;
-  const ProfessionalProfile = t.nutritionists.editProfile.title;
+  // A aba fica na URL (?tab=...): links do painel e o botão voltar funcionam.
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const isNutritionist = user?.type === 'Nutritionist';
+  const tabs = isNutritionist ? NUTRITIONIST_TABS : CLIENT_TABS;
+  const requested = searchParams.get('tab') as TabKey | null;
+  const activeTab: TabKey = requested && tabs.includes(requested) ? requested : 'overview';
 
-  // Guard invalid tabs per role.
-  // - Nutritionist: recipes | favorites | professional
-  // - Client: favorites | nutrition
-  React.useEffect(() => {
-    if (isNutritionist) {
-      if (activeTab === 'nutrition') setActiveTab('recipes');
-      return;
-    }
+  const selectTab = (tab: TabKey) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'overview') next.delete('tab');
+    else next.set('tab', tab);
+    setSearchParams(next);
+  };
 
-    if (activeTab === 'recipes' || activeTab === 'professional') setActiveTab('favorites');
-  }, [isNutritionist, activeTab]);
+  const userRecipes = recipes.filter((recipe) => recipe.authorId === user?.id);
+  const userFavorites = recipes.filter((recipe) => favoriteRecipes.includes(recipe.id));
+
+  const empty = (text: string) => (
+    <p className="col-span-full rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+      {text}
+    </p>
+  );
 
   return (
     <div className="space-y-6">
-      {/* Barra de abas */}
-      <div className="inline-flex rounded-full border border-slate-100 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
-        {isNutritionist && (
-          <Tab
-            active={activeTab === 'recipes'}
-            onClick={() => setActiveTab('recipes')}
-          >
-            {MyRecipes}
-          </Tab>
-        )}
-        <Tab
-          active={activeTab === 'favorites'}
-          onClick={() => setActiveTab('favorites')}
-        >
-          {Favorites}
-        </Tab>
-        {!isNutritionist && (
-          <Tab
-            active={activeTab === 'nutrition'}
-            onClick={() => setActiveTab('nutrition')}
-          >
-            {Nutrition_goal}
-          </Tab>
-        )}
-        {isNutritionist && (
-          <Tab
-            active={activeTab === 'professional'}
-            onClick={() => setActiveTab('professional')}
-          >
-            {ProfessionalProfile}
-          </Tab>
-        )}
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div role="tablist" className="inline-flex min-w-max gap-1 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
+          {tabs.map((tab) => {
+            const Icon = ICONS[tab];
+            const active = tab === activeTab;
+            return (
+              <button
+                key={tab}
+                role="tab"
+                aria-selected={active}
+                onClick={() => selectTab(tab)}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors',
+                  active
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {t.profile.tabs[tab]}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Conteúdo das abas */}
-      <div className="mt-2">
-        {activeTab === 'recipes' && isNutritionist && (
+      <div role="tabpanel">
+        {activeTab === 'overview' && (isNutritionist ? <NutritionistDashboard /> : <ClientDashboard />)}
+
+        {activeTab === 'nutrition' && (
+          <div className="space-y-6">
+            <ActiveGoalsSelector />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <NutritionGoalsForm />
+              </div>
+              <NutritionDiary />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'health' && <HealthProfileForm />}
+
+        {activeTab === 'recipes' && (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {userRecipes.map((recipe) => (
               <RecipeCard key={recipe.id} recipe={recipe} />
             ))}
-            {userRecipes.length === 0 && (
-              <p className="col-span-full py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                {t.profile.noRecipesYet}
-              </p>
-            )}
+            {userRecipes.length === 0 && empty(t.profile.noRecipesYet)}
+          </div>
+        )}
+
+        {activeTab === 'professional' && (
+          <div className="max-w-4xl rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="mb-6">
+              <h2 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">{t.nutritionists.editProfile.title}</h2>
+              <p className="text-gray-600 dark:text-gray-400">{t.nutritionists.editProfile.subtitle}</p>
+            </div>
+            <EditProfessionalProfile />
           </div>
         )}
 
@@ -116,41 +127,11 @@ export function ProfileTabs() {
             {userFavorites.map((recipe) => (
               <RecipeCard key={recipe.id} recipe={recipe} />
             ))}
-            {userFavorites.length === 0 && (
-              <p className="col-span-full py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                {t.profile.noFavorites}
-              </p>
-            )}
+            {userFavorites.length === 0 && empty(t.profile.noFavorites)}
           </div>
         )}
 
-        {activeTab === 'nutrition' && !isNutritionist && (
-          <div className="space-y-6">
-            <ActiveGoalsSelector />
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 lg:grid-cols-2">
-              <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-5">
-                <NutritionGoalsForm />
-              </div>
-              <NutritionDiary />
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'professional' && isNutritionist && (
-          <div className="max-w-4xl">
-            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                  {t.nutritionists.editProfile.title}
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400">
-                  {t.nutritionists.editProfile.subtitle}
-                </p>
-              </div>
-              <EditProfessionalProfile />
-            </div>
-          </div>
-        )}
+        {activeTab === 'account' && <AccountSettings />}
       </div>
     </div>
   );

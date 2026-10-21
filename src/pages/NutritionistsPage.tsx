@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Star, MapPin, Clock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { User, Star, Clock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
@@ -29,69 +29,46 @@ export function NutritionistsPage() {
   const { language } = useSettingsStore();
 
   useEffect(() => {
+    const loadNutritionists = async () => {
+      try {
+        // Uma consulta só: perfis + receitas + notas (antes eram 3 consultas por nutricionista).
+        const { data: profiles, error } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, professional_bio, specializations, years_of_experience, consultation_price, clinic_address, accepting_new_clients, recipes!recipes_author_id_fkey(id, reviews(rating))')
+          .eq('user_type', 'Nutritionist')
+          .eq('profile_visibility', 'public')
+          .order('years_of_experience', { ascending: false });
+
+        if (error) throw error;
+
+        setNutritionists(
+          (profiles ?? []).map((profile) => {
+            const authorRecipes: Array<{ reviews: { rating: number }[] | null }> = profile.recipes ?? [];
+            const ratings = authorRecipes.flatMap((r) => (r.reviews ?? []).map((rv) => rv.rating));
+            return {
+              id: profile.id,
+              full_name: profile.full_name || 'Nutricionista',
+              professional_bio: profile.professional_bio || '',
+              specializations: profile.specializations || [],
+              years_of_experience: profile.years_of_experience || 0,
+              consultation_price: profile.consultation_price || 0,
+              clinic_address: profile.clinic_address || '',
+              accepting_new_clients: profile.accepting_new_clients ?? true,
+              published_recipes_count: authorRecipes.length,
+              average_rating: ratings.length ? ratings.reduce((sum, n) => sum + n, 0) / ratings.length : 0,
+              avatar_url: profile.avatar_url || null,
+            };
+          })
+        );
+      } catch (error) {
+        console.error('Error loading nutritionists:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadNutritionists();
   }, []);
-
-  const loadNutritionists = async () => {
-    try {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_type', 'Nutritionist')
-        .eq('profile_visibility', 'public')
-        .order('years_of_experience', { ascending: false });
-
-      if (!profiles) {
-        setNutritionists([]);
-        setLoading(false);
-        return;
-      }
-
-      const nutritionistsData = await Promise.all(
-        profiles.map(async (profile) => {
-          const { count: recipesCount } = await supabase
-            .from('recipes')
-            .select('*', { count: 'exact', head: true })
-            .eq('author_id', profile.id);
-
-          const { data: reviews } = await supabase
-            .from('reviews')
-            .select('rating')
-            .in('recipe_id',
-              await supabase
-                .from('recipes')
-                .select('id')
-                .eq('author_id', profile.id)
-                .then(res => res.data?.map(r => r.id) || [])
-            );
-
-          const avgRating = reviews && reviews.length > 0
-            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-            : 0;
-
-          return {
-            id: profile.id,
-            full_name: profile.full_name || 'Nutricionista',
-            professional_bio: profile.professional_bio || '',
-            specializations: profile.specializations || [],
-            years_of_experience: profile.years_of_experience || 0,
-            consultation_price: profile.consultation_price || 0,
-            clinic_address: profile.clinic_address || '',
-            accepting_new_clients: profile.accepting_new_clients ?? true,
-            published_recipes_count: recipesCount || 0,
-            average_rating: avgRating,
-            avatar_url: profile.avatar_url || null,
-          };
-        })
-      );
-
-      setNutritionists(nutritionistsData);
-    } catch (error) {
-      console.error('Error loading nutritionists:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (

@@ -2,33 +2,62 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send, Bot, User, Loader2, Sparkles, ChefHat,
-  Star, MessageCircle, Utensils, Clock, BarChart2, Lightbulb,
+  Star, MessageCircle, Clock, Plus, Trash2, History, Flame, Check,
+  Cherry, Leaf, Dumbbell, Moon,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useAIStore } from '../../store/ai';
 import { isGeminiConfigured } from '../../services/gemini';
-import { LoadingSpinner } from '../common/LoadingSpinner';
+import { Link } from 'react-router-dom';
 import { cn } from '../../lib/utils';
-import type { AIMessage } from '../../types/ai';
+import type { AIResponse } from '../../types/ai';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useAIUserContext } from '../../hooks/useAIUserContext';
+
+type RecipeCardData = NonNullable<AIResponse['recipes']>[number];
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Converte **negrito** em <strong> sem usar innerHTML: o conteúdo vem do usuário
+// e da IA (que lê textos de receitas de terceiros), então não pode virar HTML.
+function renderInline(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') && part.length > 4
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part
+  );
+}
 
 const QUICK_PROMPTS = [
-  { icon: <Utensils className="w-4 h-4" />, label: 'Receitas fáceis', prompt: 'Mostre receitas fáceis e rápidas' },
-  { icon: <BarChart2 className="w-4 h-4" />, label: 'Rica em proteína', prompt: 'Receitas ricas em proteína' },
-  { icon: <Lightbulb className="w-4 h-4" />, label: 'Dica nutricional', prompt: 'Me dê uma dica de nutrição para hoje' },
-  { icon: <Clock className="w-4 h-4" />, label: 'Até 20 minutos', prompt: 'Receitas prontas em até 20 minutos' },
+  { icon: <Cherry className="w-4 h-4" />, label: 'Tenho morangos em casa', prompt: 'Tenho morangos em casa, o que posso fazer?' },
+  { icon: <Moon className="w-4 h-4" />, label: 'Jantar leve', prompt: 'Uma ideia de jantar leve, até 450 kcal' },
+  { icon: <Dumbbell className="w-4 h-4" />, label: 'Rica em proteína', prompt: 'Receitas ricas em proteína com frango' },
+  { icon: <Leaf className="w-4 h-4" />, label: 'Vegana e rápida', prompt: 'Receitas veganas prontas em até 20 minutos' },
 ];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  vegan: 'Vegana',
+  vegetarian: 'Vegetariana',
+  glutenFree: 'Sem glúten',
+  lowCarb: 'Low carb',
+  highProtein: 'Proteica',
+};
 
 export function AIChatInterface() {
   const { user } = useAuthStore();
   const {
+    conversations,
     currentConversation,
     messages,
     sendingMessage,
+    loadingConversations,
+    fetchConversations,
     createConversation,
     setCurrentConversation,
+    archiveConversation,
     sendMessage,
   } = useAIStore();
+  const buildContext = useAIUserContext();
 
   const [inputMessage, setInputMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,7 +67,12 @@ export function AIChatInterface() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, sendingMessage]);
+
+  // Histórico de conversas do usuário (antes cada visita começava do zero).
+  useEffect(() => {
+    if (user?.id) fetchConversations(user.id);
+  }, [user?.id, fetchConversations]);
 
   useEffect(() => {
     if (!sendingMessage && inputRef.current) {
@@ -49,8 +83,7 @@ export function AIChatInterface() {
   const handleStartConversation = async () => {
     if (!user) return;
     try {
-      const conversation = await createConversation(user.id);
-      setCurrentConversation(conversation);
+      await createConversation(user.id);
     } catch (error) {
       console.error('Error starting conversation:', error);
     }
@@ -62,7 +95,7 @@ export function AIChatInterface() {
     if (!msg || !currentConversation || sendingMessage) return;
     setInputMessage('');
     try {
-      await sendMessage(currentConversation.id, msg);
+      await sendMessage(currentConversation.id, msg, buildContext());
     } catch (error) {
       console.error('Error sending message:', error);
       if (!overrideMsg) setInputMessage(msg);
@@ -81,10 +114,10 @@ export function AIChatInterface() {
       if (!user) return;
       try {
         const conversation = await createConversation(user.id);
-        setCurrentConversation(conversation);
-        await new Promise(r => setTimeout(r, 100));
-        await sendMessage(conversation.id, prompt);
-      } catch {}
+        await sendMessage(conversation.id, prompt, buildContext());
+      } catch (error) {
+        console.error('Error starting conversation:', error);
+      }
       return;
     }
     await handleSendMessage(undefined, prompt);
@@ -106,35 +139,64 @@ export function AIChatInterface() {
           </h4>
         );
       }
-      if (line.startsWith('- ') || line.startsWith('• ')) {
+      if (line.startsWith('### ')) {
+        return (
+          <h4 key={index} className="text-sm font-semibold mt-2.5 mb-1 text-gray-800 dark:text-gray-100">
+            {renderInline(line.substring(4))}
+          </h4>
+        );
+      }
+      const numbered = line.match(/^(\d{1,2})[.)] (.*)$/);
+      if (numbered) {
         return (
           <div key={index} className="flex items-start gap-2 my-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
-            <span>{line.substring(2)}</span>
+            <span className="min-w-[1.25rem] text-right font-semibold text-emerald-600 dark:text-emerald-400">{numbered[1]}.</span>
+            <span>{renderInline(numbered[2])}</span>
           </div>
         );
       }
-      const boldText = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      if (line.startsWith('- ') || line.startsWith('• ') || line.startsWith('* ')) {
+        return (
+          <div key={index} className="flex items-start gap-2 my-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+            <span>{renderInline(line.substring(2))}</span>
+          </div>
+        );
+      }
       return line.trim() ? (
-        <p key={index} className="mb-1.5 leading-relaxed" dangerouslySetInnerHTML={{ __html: boldText }} />
+        <p key={index} className="mb-1.5 leading-relaxed">{renderInline(line)}</p>
       ) : (
         <div key={index} className="h-1" />
       );
     });
   };
 
-  const renderRecipeCard = (recipe: any, index: number) => (
+  const renderRecipeCard = (recipe: RecipeCardData, index: number) => (
     <motion.div
-      key={index}
+      key={recipe.id ?? index}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06 }}
-      className="mt-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors shadow-sm"
+    >
+    <Link
+      // Conversas antigas guardaram um ID numérico que não abre a receita: leva à busca pelo título.
+      to={UUID_RE.test(String(recipe.id)) ? `/receita/${recipe.id}` : `/?q=${encodeURIComponent(recipe.title)}`}
+      className="mt-2 block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors shadow-sm"
     >
       <div className="flex items-start gap-3">
-        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg flex-shrink-0">
-          <ChefHat className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-        </div>
+        {recipe.image ? (
+          <img
+            src={recipe.image}
+            alt=""
+            loading="lazy"
+            className="h-16 w-16 flex-shrink-0 rounded-lg object-cover bg-gray-100 dark:bg-gray-700"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        ) : (
+          <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg flex-shrink-0">
+            <ChefHat className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate mb-0.5">
             {recipe.title}
@@ -142,7 +204,22 @@ export function AIChatInterface() {
           <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-1.5">
             {recipe.description}
           </p>
-          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+          {(!!recipe.matched?.length || (recipe.category && CATEGORY_LABELS[recipe.category])) && (
+            <div className="mb-1.5 flex flex-wrap gap-1">
+              {recipe.matched?.map((m) => (
+                <span key={m} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  <Check className="w-3 h-3" />
+                  {t.aiChat.contains} {m}
+                </span>
+              ))}
+              {recipe.category && CATEGORY_LABELS[recipe.category] && (
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                  {CATEGORY_LABELS[recipe.category]}
+                </span>
+              )}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 dark:text-gray-500">
             {recipe.author && (
               <span className="flex items-center gap-1">
                 <User className="w-3 h-3" />
@@ -155,21 +232,93 @@ export function AIChatInterface() {
                 {recipe.rating.toFixed(1)}
               </span>
             )}
-            {recipe.prepTime && (
+            {!!recipe.prepTime && (
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {recipe.prepTime} min
               </span>
             )}
+            {!!recipe.calories && (
+              <span className="flex items-center gap-1">
+                <Flame className="w-3 h-3" />
+                {Math.round(recipe.calories)} kcal
+              </span>
+            )}
           </div>
         </div>
       </div>
+    </Link>
     </motion.div>
   );
 
-  if (!currentConversation) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[560px] px-4 py-10">
+  // Conversas da versão antiga ficaram com o título padrão: mostra a data no lugar.
+  const conversationTitle = (c: { title?: string; created_at: string }) =>
+    !c.title || c.title === 'Nova conversa com IA'
+      ? `${t.aiChat.conversationFrom} ${new Date(c.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`
+      : c.title;
+
+  const lastAiMessage = [...messages].reverse().find((m) => m.sender_type === 'ai');
+  const suggestions = !sendingMessage ? lastAiMessage?.metadata?.suggestions?.slice(0, 4) ?? [] : [];
+
+  const sidebar = (
+    <aside className="hidden md:flex w-64 flex-shrink-0 flex-col border-r border-gray-100 dark:border-gray-700/60 bg-gray-50/60 dark:bg-gray-900/40">
+      <div className="p-3">
+        <button
+          onClick={handleStartConversation}
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          {t.aiChat.newConversation}
+        </button>
+      </div>
+      <div className="px-3 pb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        <History className="w-3.5 h-3.5" />
+        {t.aiChat.history}
+      </div>
+      <nav className="flex-1 overflow-y-auto px-2 pb-3 space-y-1" aria-label={t.aiChat.history}>
+        {loadingConversations && conversations.length === 0 && (
+          <p className="px-2 py-2 text-xs text-gray-400">{t.common.loading}</p>
+        )}
+        {!loadingConversations && conversations.length === 0 && (
+          <p className="px-2 py-2 text-xs text-gray-400">{t.aiChat.noConversations}</p>
+        )}
+        {conversations.map((c) => (
+          <div
+            key={c.id}
+            className={cn(
+              'group flex items-center gap-1 rounded-lg pr-1 transition-colors',
+              currentConversation?.id === c.id
+                ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+            )}
+          >
+            <button
+              onClick={() => currentConversation?.id !== c.id && setCurrentConversation(c)}
+              className="flex-1 min-w-0 px-2.5 py-2 text-left"
+            >
+              <p className="truncate text-sm text-gray-800 dark:text-gray-200">{conversationTitle(c)}</p>
+              <p className="text-[11px] text-gray-400">
+                {new Date(c.last_message_at || c.created_at).toLocaleDateString('pt-BR')}
+              </p>
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm(t.aiChat.deleteConversationConfirm)) archiveConversation(c.id);
+              }}
+              className="p-1.5 rounded-md text-gray-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-red-600 transition"
+              aria-label={t.aiChat.deleteConversation}
+              title={t.aiChat.deleteConversation}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </nav>
+    </aside>
+  );
+
+  const main = !currentConversation ? (
+      <div className="flex-1 overflow-y-auto flex flex-col items-center px-4 py-10">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -237,13 +386,27 @@ export function AIChatInterface() {
             <MessageCircle className="w-5 h-5" />
             {t.aiChat.startConversationButton}
           </motion.button>
+
+          {conversations.length > 0 && (
+            <div className="mt-6 md:hidden">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">{t.aiChat.history}</p>
+              <div className="space-y-1.5">
+                {conversations.slice(0, 5).map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setCurrentConversation(c)}
+                    className="w-full truncate rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:border-emerald-400"
+                  >
+                    {conversationTitle(c)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col h-[640px]">
+  ) : (
+    <div className="flex-1 min-w-0 flex flex-col h-full">
       <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 dark:border-gray-700/60">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
           <Bot className="w-5 h-5 text-white" />
@@ -257,6 +420,14 @@ export function AIChatInterface() {
             <p className="text-xs text-gray-500 dark:text-gray-400">{t.aiChat.headerSubtitle}</p>
           </div>
         </div>
+        <button
+          onClick={handleStartConversation}
+          className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+          aria-label={t.aiChat.newConversation}
+          title={t.aiChat.newConversation}
+        >
+          <Plus className="w-4 h-4" />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -290,7 +461,7 @@ export function AIChatInterface() {
 
                 {message.metadata?.recipes && message.metadata.recipes.length > 0 && (
                   <div className="mt-3 space-y-2">
-                    {message.metadata.recipes.map((recipe: any, index: number) =>
+                    {message.metadata.recipes.map((recipe, index) =>
                       renderRecipeCard(recipe, index)
                     )}
                   </div>
@@ -326,7 +497,7 @@ export function AIChatInterface() {
               <Bot className="w-4 h-4 text-white" />
             </div>
             <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-tl-sm px-4 py-3">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5" role="status" aria-label={t.aiChat.thinking}>
                 <motion.span
                   animate={{ scale: [1, 1.4, 1] }}
                   transition={{ duration: 0.8, repeat: Infinity, delay: 0 }}
@@ -342,9 +513,24 @@ export function AIChatInterface() {
                   transition={{ duration: 0.8, repeat: Infinity, delay: 0.4 }}
                   className="w-1.5 h-1.5 bg-emerald-500 rounded-full"
                 />
+                <span className="ml-1.5 text-xs text-gray-500 dark:text-gray-400">{t.aiChat.thinking}</span>
               </div>
             </div>
           </motion.div>
+        )}
+
+        {suggestions.length > 0 && (
+          <div className="flex flex-wrap gap-2 pl-11">
+            {suggestions.map((s) => (
+              <button
+                key={s}
+                onClick={() => handleSendMessage(undefined, s)}
+                className="rounded-full border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         )}
 
         <div ref={messagesEndRef} />
@@ -393,6 +579,13 @@ export function AIChatInterface() {
           {!geminiConfigured && t.aiChat.limitedModeSuffix}
         </p>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="flex h-[640px]">
+      {sidebar}
+      {main}
     </div>
   );
 }

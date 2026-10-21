@@ -27,7 +27,7 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
     .maybeSingle();
 
   // PGRST116 = no rows; tratamos como null
-  if (error && (error as any).code !== 'PGRST116') throw error;
+  if (error && error.code !== 'PGRST116') throw error;
   return data ?? null;
 }
 
@@ -67,6 +67,44 @@ export async function updateSubscription(
   return data!;
 }
 
+async function getAccessToken(): Promise<string> {
+  const { data, error } = await supabase.auth.getSession();
+  let session = data.session;
+  if (error || !session?.access_token) {
+    const refreshed = await supabase.auth.refreshSession().catch(() => null);
+    session = refreshed?.data?.session ?? null;
+  }
+  if (!session?.access_token) {
+    throw new Error('Você precisa estar logado. Faça login e tente novamente.');
+  }
+  return session.access_token;
+}
+
+function redirectTo(url: string) {
+  // Sair de iframe se necessário (StackBlitz/WebContainer)
+  try {
+    if (window.top && window.top !== window) {
+      window.top.location.href = url;
+      return;
+    }
+  } catch {/* ignore */}
+  window.location.assign(url);
+}
+
+/**
+ * Abre o portal do Stripe, onde o assinante cancela, troca o cartão e vê faturas.
+ */
+export async function openBillingPortal() {
+  const accessToken = await getAccessToken();
+  const { data, error } = await supabase.functions.invoke('create-portal-session', {
+    body: { returnUrl: `${window.location.origin}/perfil?tab=account` },
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (error && !data) throw new Error(error.message);
+  if (!data?.url) throw new Error(data?.error || 'Não foi possível abrir o portal de assinatura.');
+  redirectTo(data.url as string);
+}
+
 /**
  * Inicia o Stripe Checkout (assinatura recorrente).
  * Aceita `priceId` diretamente OU `planId` (busca o price do plano no backend).
@@ -82,52 +120,23 @@ export async function startCheckout({
   successUrl?: string;
   cancelUrl?: string;
 }) {
-  // 1) tenta pegar a sessão atual
-  let {
-    data: { session },
-    error: sessionErr,
-  } = await supabase.auth.getSession();
+  const accessToken = await getAccessToken();
 
-  // 2) Se não houver sessão ou token, tenta renovar (caso tenha refresh_token salvo)
-  if (sessionErr || !session?.access_token) {
-    const refreshed = await supabase.auth.refreshSession().catch(() => null);
-    session = refreshed?.data?.session ?? null;
-  }
-
-  // 3) Se ainda não houver token, interrompa com erro legível
-  const accessToken = session?.access_token;
-  if (!accessToken) {
-    throw new Error('Você precisa estar logado para assinar. Faça login e tente novamente.');
-  }
-
-  // 4) Invoca a Edge Function (que agora sempre responde 200 com ok:true/false)
-  const { data } = await supabase.functions.invoke('create-checkout-session', {
+  // A Edge Function sempre responde 200 com ok:true/false
+  const { data: result, error: invokeError } = await supabase.functions.invoke('create-checkout-session', {
     body: { priceId, planId, successUrl, cancelUrl },
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
-  if (!data) throw new Error('Checkout failed: sem resposta do servidor');
-  if (data.error) {
-    const hint = data.debug?.priceId
-      ? ` (priceId: ${data.debug.priceId}${data.debug?.message ? ` • ${data.debug.message}` : ''})`
+  if (invokeError && !result) throw new Error(`Checkout failed: ${invokeError.message}`);
+  if (!result) throw new Error('Checkout failed: sem resposta do servidor');
+  if (result.error) {
+    const hint = result.debug?.priceId
+      ? ` (priceId: ${result.debug.priceId}${result.debug?.message ? ` • ${result.debug.message}` : ''})`
       : '';
-    throw new Error(`Checkout failed: ${data.error}${hint}`);
+    throw new Error(`Checkout failed: ${result.error}${hint}`);
   }
-  if (!data.url) throw new Error('Falha ao criar sessão de pagamento (sem URL)');
+  if (!result.url) throw new Error('Falha ao criar sessão de pagamento (sem URL)');
 
-  const url = data.url as string;
-
-  // Sair de iframe se necessário (StackBlitz/WebContainer)
-  try {
-    if (typeof window !== 'undefined' && window.top && window.top !== window) {
-      window.top.location.href = url;
-      return;
-    }
-  } catch {/* ignore */}
-
-  try {
-    window.location.assign(url);
-  } catch {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }
+  redirectTo(result.url as string);
 }

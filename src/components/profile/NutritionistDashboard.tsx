@@ -1,23 +1,27 @@
-import { Award, Users, BookOpen, TrendingUp } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMemo } from 'react';
+import {
+  Award, BookOpen, Star, MessageSquare, CheckCircle2, Circle, Link2, Eye, EyeOff, UserCheck, UserX, Trophy,
+} from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
+import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
+import { professionalChecklist, useProfessionalProfile } from '../../hooks/useProfessionalProfile';
 import { DashboardMetricCard } from './DashboardMetricCard';
 
 export function NutritionistDashboard() {
   const { user } = useAuthStore();
   const { recipes } = useRecipesStore();
+  const { showToast } = useToastStore();
   const t = useTranslation();
-
-  if (!user || user.type !== 'Nutritionist') return null;
-
-  const profile = user.profile || {};
+  const userId = user?.id;
+  const { profile } = useProfessionalProfile(userId);
+  const [copied, setCopied] = useState(false);
 
   const userRecipes = useMemo(
-    () => recipes.filter((recipe) => recipe.authorId === user.id),
-    [recipes, user.id],
+    () => recipes.filter((recipe) => recipe.authorId === userId),
+    [recipes, userId],
   );
 
   const totalReviews = useMemo(
@@ -25,15 +29,52 @@ export function NutritionistDashboard() {
     [userRecipes],
   );
 
+  // Média ponderada por avaliação: receitas sem nota não puxam a média para baixo.
   const averageRating = useMemo(() => {
-    const sum = userRecipes.reduce((acc, recipe) => acc + recipe.rating, 0);
-    return userRecipes.length ? sum / userRecipes.length : 0;
+    const all = userRecipes.flatMap((r) => r.reviews.map((rv) => rv.rating));
+    return all.length ? all.reduce((s, n) => s + n, 0) / all.length : 0;
   }, [userRecipes]);
+
+  const recentReviews = useMemo(
+    () =>
+      userRecipes
+        .flatMap((recipe) => recipe.reviews.map((review) => ({ ...review, recipeId: recipe.id, recipeTitle: recipe.title })))
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 5),
+    [userRecipes],
+  );
+
+  const topRecipe = useMemo(
+    () =>
+      userRecipes
+        .filter((r) => r.reviews.length > 0)
+        .sort((a, b) => b.rating - a.rating || b.reviews.length - a.reviews.length)[0],
+    [userRecipes],
+  );
+
+  // Hooks acima precisam rodar sempre, antes de qualquer retorno antecipado.
+  if (!user || user.type !== 'Nutritionist') return null;
+
+  const checklist = professionalChecklist(profile ? { ...profile, avatar_url: user.avatar_url ?? profile.avatar_url } : null);
+  const done = checklist.filter((c) => c.done).length;
+  const completeness = Math.round((done / checklist.length) * 100);
+  const publicUrl = `${window.location.origin}/nutricionista/${user.id}`;
+  const isPublic = profile?.profile_visibility !== 'private';
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setCopied(true);
+      showToast(t.profile.linkCopied, 'success');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      showToast(publicUrl, 'info');
+    }
+  };
 
   return (
     <div className="space-y-8">
-      {/* Cards de métricas */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <DashboardMetricCard
           icon={<BookOpen className="h-4 w-4" />}
           label={t.profile.publishedRecipes}
@@ -41,89 +82,130 @@ export function NutritionistDashboard() {
           helperText={userRecipes.length ? undefined : t.profile.noRecipesYet}
           tone="emerald"
         />
-
         <DashboardMetricCard
-          icon={<Users className="h-4 w-4" />}
+          icon={<MessageSquare className="h-4 w-4" />}
           label={t.profile.totalReviews}
           value={totalReviews}
           tone="sky"
         />
-
         <DashboardMetricCard
-          icon={<TrendingUp className="h-4 w-4" />}
+          icon={<Star className="h-4 w-4" />}
           label={t.profile.averageRating}
-          value={averageRating.toFixed(1)}
-          helperText={userRecipes.length ? undefined : t.profile.publishToGetReviews ?? undefined}
+          value={averageRating ? averageRating.toFixed(1) : '—'}
+          helperText={totalReviews ? undefined : t.profile.publishToGetReviews}
           tone="amber"
         />
-
         <DashboardMetricCard
           icon={<Award className="h-4 w-4" />}
           label={t.profile.experience}
-          value={profile.experience || 'N/A'}
+          value={profile?.years_of_experience ? `${profile.years_of_experience}` : '—'}
+          helperText={profile?.years_of_experience ? t.profile.yearsLabel : t.health.notInformed}
           tone="slate"
         />
       </div>
 
-      {/* Últimas receitas publicadas */}
-      <div className="space-y-3">
-        <div className="flex items-end justify-between gap-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {t.profile.myRecipes}
-          </h3>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        {/* Perfil público: completude e status */}
+        <section className="space-y-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:col-span-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t.profile.profileStrength}</h3>
+            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{completeness}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+            <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${completeness}%` }} />
+          </div>
+          <ul className="space-y-1.5">
+            {checklist.map((item) => (
+              <li key={item.key} className="flex items-center gap-2 text-sm">
+                {item.done ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <Circle className="h-4 w-4 text-slate-300 dark:text-slate-600" />
+                )}
+                <span className={item.done ? 'text-slate-500 line-through dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'}>
+                  {t.profile.checklist[item.key]}
+                </span>
+              </li>
+            ))}
+          </ul>
 
-          {userRecipes.length > 0 && (
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4 text-xs dark:border-slate-800">
+            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${isPublic ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+              {isPublic ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              {isPublic ? t.nutritionists.editProfile.public : t.nutritionists.editProfile.private}
+            </span>
+            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${profile?.accepting_new_clients !== false ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>
+              {profile?.accepting_new_clients !== false ? <UserCheck className="h-3.5 w-3.5" /> : <UserX className="h-3.5 w-3.5" />}
+              {profile?.accepting_new_clients !== false ? t.nutritionists.acceptingClients : t.nutritionists.notAcceptingClients}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
             <Link
-              to="/perfil?tab=recipes"
-              className="text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
+              to="/perfil?tab=professional"
+              className="inline-flex flex-1 items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
             >
-              {t.profile.viewAll ?? t.common.search}
+              {t.profile.editProfessionalProfile}
+            </Link>
+            <button
+              type="button"
+              onClick={copyLink}
+              disabled={!isPublic}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              title={isPublic ? publicUrl : t.profile.privateProfileHint}
+            >
+              <Link2 className="h-4 w-4" />
+              {copied ? t.profile.linkCopiedShort : t.profile.copyLink}
+            </button>
+          </div>
+        </section>
+
+        {/* Feedback recebido */}
+        <section className="space-y-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:col-span-3">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t.profile.recentReviews}</h3>
+
+          {topRecipe && (
+            <Link
+              to={`/receita/${topRecipe.id}`}
+              className="flex items-center gap-3 rounded-xl border border-amber-100 bg-amber-50/60 p-3 transition hover:border-amber-300 dark:border-amber-900/40 dark:bg-amber-900/10"
+            >
+              <Trophy className="h-5 w-5 flex-shrink-0 text-amber-500" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-amber-700 dark:text-amber-300">{t.profile.topRecipe}</p>
+                <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{topRecipe.title}</p>
+              </div>
+              <span className="text-sm font-semibold text-amber-600">★ {topRecipe.rating.toFixed(1)}</span>
             </Link>
           )}
-        </div>
 
-        {userRecipes.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center dark:border-slate-800 dark:bg-slate-900/40">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-              {t.profile.noRecipesYet}
+          {recentReviews.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+              {t.profile.publishFirstRecipe}
             </p>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {t.profile.publishFirstRecipe ?? 'Publish your first recipe to start receiving reviews.'}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {userRecipes
-              .slice(-3)
-              .reverse()
-              .map((recipe) => (
-                <Link
-                  key={recipe.id}
-                  to={`/receita/${recipe.id}`}
-                  className="group flex items-center gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60"
-                >
-                  <img
-                    src={recipe.image}
-                    alt={recipe.title}
-                    loading="lazy"
-                    className="h-16 w-16 rounded-lg object-cover ring-1 ring-slate-200/40 dark:ring-slate-800/50"
-                  />
-                  <div className="min-w-0">
-                    <h4 className="truncate text-sm font-semibold text-slate-900 group-hover:text-emerald-700 dark:text-slate-50 dark:group-hover:text-emerald-300">
-                      {recipe.title}
-                    </h4>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <span>★ {recipe.rating.toFixed(1)}</span>
-                      <span>•</span>
-                      <span>
-                        {recipe.reviews.length} {t.recipe.reviews}
-                      </span>
-                    </div>
+          ) : (
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+              {recentReviews.map((review) => (
+                <li key={review.id} className="py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Link
+                      to={`/receita/${review.recipeId}`}
+                      className="truncate text-sm font-medium text-slate-900 hover:text-emerald-600 dark:text-white"
+                    >
+                      {review.recipeTitle}
+                    </Link>
+                    <span className="flex-shrink-0 text-xs text-amber-500">{'★'.repeat(review.rating)}</span>
                   </div>
-                </Link>
+                  {review.comment && (
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">“{review.comment}”</p>
+                  )}
+                  <p className="mt-1 text-xs text-slate-400">
+                    {review.userName || t.recipe.authorFallbackName} • {new Date(`${review.date}T00:00:00`).toLocaleDateString('pt-BR')}
+                  </p>
+                </li>
               ))}
-          </div>
-        )}
+            </ul>
+          )}
+        </section>
       </div>
     </div>
   );

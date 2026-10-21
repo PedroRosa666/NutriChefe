@@ -6,13 +6,13 @@ import {
   Heart,
   Edit,
   Trash2,
-  User,
   Calendar,
   Edit2,
   X,
   UtensilsCrossed,
   PlusCircle,
   Check,
+  Loader2,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useRecipesStore } from '../store/recipes';
@@ -39,7 +39,11 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
-  const [logServings, setLogServings] = useState(1);
+  // Texto livre para permitir "0,5" sem o campo pular para 1 durante a digitação.
+  const [logServings, setLogServings] = useState('1');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [logging, setLogging] = useState(false);
   const [logDate, setLogDate] = useState(() => {
     const d = new Date();
     const y = d.getFullYear();
@@ -101,8 +105,9 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
   const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || submittingReview) return;
 
+    setSubmittingReview(true);
     try {
       await addReview(recipe.id, {
         userId: user.id,
@@ -114,6 +119,8 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
       setNewReview({ rating: 5, comment: '' });
     } catch (error) {
       console.error('Error adding review:', error);
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -143,9 +150,35 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
   };
 
   const handleDelete = async () => {
-    if (window.confirm(t.recipe.deleteConfirm)) {
+    if (deleting || !window.confirm(t.recipe.deleteConfirm)) return;
+    setDeleting(true);
+    try {
       await deleteRecipe(recipe.id);
       onClose();
+    } catch (error) {
+      // O store já mostra o toast de erro.
+      console.error('Error deleting recipe:', error);
+      setDeleting(false);
+    }
+  };
+
+  const handleLogToDiary = async () => {
+    const amount = parseFloat(logServings.replace(',', '.'));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showToast(t.profile.invalidServings, 'warning');
+      return;
+    }
+    setLogging(true);
+    try {
+      await addRecipeToLog(recipe, amount, logDate);
+      showToast(t.profile.loggedToDiary, 'success');
+      setIsLogModalOpen(false);
+      setLogServings('1');
+    } catch (error) {
+      console.error('Error logging recipe:', error);
+      showToast(error instanceof Error && error.message ? error.message : t.profile.diaryError, 'error');
+    } finally {
+      setLogging(false);
     }
   };
 
@@ -334,6 +367,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                             </button>
                             <button
                               onClick={handleDelete}
+                              disabled={deleting}
                               className="p-2.5 rounded-full border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 shadow-sm transition-colors dark:bg-red-900/30 dark:border-red-700/60 dark:hover:bg-red-900/50"
                               title={t.recipe.delete}
                             >
@@ -578,8 +612,10 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
 
                       <button
                         type="submit"
-                        className="inline-flex px-5 py-2.5 bg-emerald-600 text-white text-base rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
+                        disabled={submittingReview}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white text-base rounded-lg hover:bg-emerald-700 transition-colors font-semibold disabled:opacity-60"
                       >
+                        {submittingReview && <Loader2 className="h-4 w-4 animate-spin" />}
                         {t.recipe.submitReview}
                       </button>
                     </form>
@@ -803,7 +839,7 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
                   min={0.1}
                   step={0.1}
                   value={logServings}
-                  onChange={(e) => setLogServings(Math.max(0.1, Number(e.target.value) || 1))}
+                  onChange={(e) => setLogServings(e.target.value)}
                   className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                 />
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -822,14 +858,11 @@ export function RecipeDetails({ recipe, onClose }: RecipeDetailsProps) {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  addRecipeToLog(recipe, logServings, logDate);
-                  showToast(t.profile.loggedToDiary ?? 'Adicionado ao diário.', 'success');
-                  setIsLogModalOpen(false);
-                }}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                onClick={handleLogToDiary}
+                disabled={logging}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
               >
-                <Check className="h-4 w-4" />
+                {logging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                 {t.profile.confirmAdd ?? 'Adicionar'}
               </button>
             </div>

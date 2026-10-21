@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
 import * as aiService from '../services/ai';
 import { useToastStore } from './toast';
-import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
+import type { AIConfiguration, AIConversation, AIMessage } from '../types/ai';
+import type { AIUserContext } from '../services/gemini';
 
 interface AIState {
   // Configurações
@@ -15,6 +15,7 @@ interface AIState {
   
   // Estados
   loading: boolean;
+  loadingConversations: boolean;
   sendingMessage: boolean;
   error: string | null;
 
@@ -27,10 +28,11 @@ interface AIState {
   fetchConversations: (userId: string) => Promise<void>;
   createConversation: (clientId: string, nutritionistId?: string) => Promise<AIConversation>;
   setCurrentConversation: (conversation: AIConversation | null) => void;
+  archiveConversation: (conversationId: string) => Promise<void>;
 
   // Ações para mensagens
   fetchMessages: (conversationId: string) => Promise<void>;
-  sendMessage: (conversationId: string, content: string) => Promise<void>;
+  sendMessage: (conversationId: string, content: string, context?: AIUserContext) => Promise<void>;
   
   // Utilitários
   clearError: () => void;
@@ -44,6 +46,7 @@ export const useAIStore = create<AIState>((set, get) => ({
   currentConversation: null,
   messages: [],
   loading: false,
+  loadingConversations: false,
   sendingMessage: false,
   error: null,
 
@@ -92,14 +95,14 @@ export const useAIStore = create<AIState>((set, get) => ({
 
   // Conversas
   fetchConversations: async (userId: string) => {
-    set({ loading: true, error: null });
+    set({ loadingConversations: true, error: null });
     try {
       const conversations = await aiService.getAIConversations(userId);
-      set({ conversations, loading: false });
+      set({ conversations, loadingConversations: false });
     } catch (error) {
       console.error('Error fetching conversations:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar conversas';
-      set({ error: errorMessage, loading: false });
+      set({ error: errorMessage, loadingConversations: false });
     }
   },
 
@@ -117,13 +120,16 @@ export const useAIStore = create<AIState>((set, get) => ({
         client_id: clientId,
         nutritionist_id: nutritionistId,
         ai_config_id: aiConfigId,
-        title: 'Nova conversa com IA',
+        title: 'Nova conversa',
         is_active: true
       });
 
+      // Conversa nova não tem mensagens: não buscamos nada (antes um fetch tardio
+      // podia apagar a primeira mensagem enviada logo em seguida).
       set(state => ({
         conversations: [conversation, ...state.conversations],
         currentConversation: conversation,
+        messages: [],
         loading: false
       }));
 
@@ -144,11 +150,28 @@ export const useAIStore = create<AIState>((set, get) => ({
     }
   },
 
+  archiveConversation: async (conversationId: string) => {
+    const previous = get().conversations;
+    set(state => ({
+      conversations: state.conversations.filter(c => c.id !== conversationId),
+      ...(state.currentConversation?.id === conversationId ? { currentConversation: null, messages: [] } : {}),
+    }));
+    try {
+      await aiService.updateAIConversation(conversationId, { is_active: false });
+    } catch (error) {
+      console.error('Error archiving conversation:', error);
+      set({ conversations: previous });
+      useToastStore.getState().showToast('Não foi possível excluir a conversa', 'error');
+    }
+  },
+
   // Mensagens
   fetchMessages: async (conversationId: string) => {
     set({ loading: true, error: null });
     try {
       const messages = await aiService.getAIMessages(conversationId);
+      // Ignora a resposta se o usuário já trocou de conversa.
+      if (get().currentConversation?.id !== conversationId) return;
       set({ messages, loading: false });
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -157,16 +180,15 @@ export const useAIStore = create<AIState>((set, get) => ({
     }
   },
 
+  sendMessage: async (conversationId: string, content: string, context?: AIUserContext) => {
+    const { currentConversation, sendingMessage } = get();
+    if (!currentConversation || sendingMessage) return;
 
-  
-
-  sendMessage: async (conversationId: string, content: string) => {
-    const { currentConversation } = get();
-    if (!currentConversation) return;
-
+    const isCurrent = () => get().currentConversation?.id === conversationId;
     set({ sendingMessage: true, error: null });
 
     try {
+      const isFirstMessage = get().messages.length === 0;
       const userMessage = await aiService.createAIMessage({
         conversation_id: conversationId,
         sender_type: 'user',
@@ -174,16 +196,17 @@ export const useAIStore = create<AIState>((set, get) => ({
         metadata: {}
       });
 
-      set(state => ({
-        messages: [...state.messages, userMessage]
-      }));
+      if (isCurrent()) {
+        set(state => ({ messages: [...state.messages, userMessage] }));
+      }
 
       let aiResponse;
       try {
         aiResponse = await aiService.processAIMessage(
           content,
           get().aiConfig || undefined,
-          get().messages
+          isCurrent() ? get().messages : [userMessage],
+          context
         );
       } catch (processError) {
         console.warn('Erro ao processar mensagem, usando fallback:', processError);
@@ -200,15 +223,27 @@ export const useAIStore = create<AIState>((set, get) => ({
         content: aiResponse.content || 'Desculpe, não consegui gerar uma resposta.',
         metadata: {
           recipes: aiResponse.recipes || [],
-          suggestions: aiResponse.suggestions || []
+          suggestions: aiResponse.suggestions || [],
+          ...(aiResponse.meta ? { meta: aiResponse.meta } : {})
         }
       });
 
+      // A 1ª pergunta vira o título da conversa (aparece no histórico).
+      const updates: Partial<AIConversation> = { last_message_at: new Date().toISOString() };
+      if (isFirstMessage) updates.title = content.length > 60 ? `${content.slice(0, 57)}...` : content;
+      aiService.updateAIConversation(conversationId, updates).catch(e => console.warn('Conversation update failed:', e));
+
       set(state => ({
-        messages: [...state.messages, aiMessage],
+        conversations: [
+          ...state.conversations.filter(c => c.id === conversationId).map(c => ({ ...c, ...updates })),
+          ...state.conversations.filter(c => c.id !== conversationId),
+        ],
+        currentConversation: state.currentConversation?.id === conversationId
+          ? { ...state.currentConversation, ...updates }
+          : state.currentConversation,
+        messages: state.currentConversation?.id === conversationId ? [...state.messages, aiMessage] : state.messages,
         sendingMessage: false
       }));
-
     } catch (error) {
       console.error('Erro crítico ao enviar mensagem:', error);
       set({ sendingMessage: false });
@@ -216,10 +251,10 @@ export const useAIStore = create<AIState>((set, get) => ({
         ? error.message
         : 'Não consegui enviar sua mensagem. Verifique sua conexão.';
       useToastStore.getState().showToast(errorMsg, 'error');
+      throw error;
     }
   },
 
-  // Utilitários
   clearError: () => set({ error: null }),
   
   reset: () => set({
@@ -228,6 +263,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     currentConversation: null,
     messages: [],
     loading: false,
+    loadingConversations: false,
     sendingMessage: false,
     error: null
   })

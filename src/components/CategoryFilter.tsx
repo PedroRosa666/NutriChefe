@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Salad, Wheat, Flame, ShieldCheck, Leaf, UtensilsCrossed } from 'lucide-react';
+import { Salad, Flame, ShieldCheck, Leaf, UtensilsCrossed } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTranslation } from '../hooks/useTranslation';
 

@@ -1,6 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import { useRecipesStore } from '../store/recipes';
 import { RecipeDetails } from '../components/RecipeDetails';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -8,20 +7,28 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 export function RecipePage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { recipes, loading, fetchRecipes } = useRecipesStore();
-  const [initialized, setInitialized] = useState(false);
+  const { recipes, fetchRecipes } = useRecipesStore();
+  const [fetchDone, setFetchDone] = useState(recipes.length > 0);
 
+  // Acesso direto pelo link: a lista ainda não foi carregada.
   useEffect(() => {
-    if (!initialized && recipes.length === 0) {
-      fetchRecipes().then(() => setInitialized(true));
-    } else {
-      setInitialized(true);
+    if (recipes.length > 0) {
+      setFetchDone(true);
+      return;
     }
-  }, [fetchRecipes, initialized, recipes.length]);
+    let cancelled = false;
+    fetchRecipes().finally(() => {
+      if (!cancelled) setFetchDone(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchRecipes]);
 
-  const recipe = recipes.find(r => r.id === parseInt(id || '0'));
+  const recipe = recipes.find(r => r.id === id);
 
-  if (loading) {
+  if (!recipe && !fetchDone) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <LoadingSpinner size="lg" />

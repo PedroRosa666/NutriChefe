@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Menu, LogOut, User as UserIcon, Bot, Users, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
+import type { Translations } from '../hooks/useTranslation';
 import { useAuthStore } from '../store/auth';
 import { useSubscriptionStore } from '../store/subscription';
 import { useFiltersStore } from '../store/filters';
@@ -16,7 +17,7 @@ interface UserDropdownProps {
   user: User | null;
   onProfileClick: () => void;
   onSignOut: () => void;
-  t: any;
+  t: Translations;
 }
 
 function UserDropdown({ user, onProfileClick, onSignOut, t }: UserDropdownProps) {

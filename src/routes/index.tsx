@@ -1,16 +1,26 @@
+import { lazy, Suspense, type ComponentType } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { HomePage } from '../pages/HomePage';
-import { ProfilePage } from '../pages/ProfilePage';
-import { RecipePage } from '../pages/RecipePage';
-import { AIMentoringPage } from '../pages/AIMentoringPage';
-import { ResetPasswordPage } from '../pages/ResetPasswordPage';
-import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
-import { SubscriptionSuccessPage } from '../pages/SubscriptionSuccessPage';
-import { SubscriptionCancelledPage } from '../pages/SubscriptionCancelledPage';
-import { NutritionistsPage } from '../pages/NutritionistsPage';
-import { NutritionistProfilePage } from '../pages/NutritionistProfilePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RootLayout } from '../layouts/RootLayout';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
+
+// Páginas fora da home são carregadas sob demanda: o bundle inicial fica menor
+// (a mentoria IA, por exemplo, traz o SDK do Gemini).
+function lazyPage<T>(load: () => Promise<T>, name: keyof T) {
+  const Page = lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <LoadingSpinner size="lg" />
+        </div>
+      }
+    >
+      <Page />
+    </Suspense>
+  );
+}
 
 export const router = createBrowserRouter([
   {
@@ -24,31 +34,35 @@ export const router = createBrowserRouter([
       },
       {
         path: 'perfil',
-        element: <ProfilePage />,
+        element: lazyPage(() => import('../pages/ProfilePage'), 'ProfilePage'),
       },
       {
         path: 'receita/:id',
-        element: <RecipePage />,
+        element: lazyPage(() => import('../pages/RecipePage'), 'RecipePage'),
       },
       {
         path: 'mentoria-ia',
-        element: <AIMentoringPage />,
+        element: lazyPage(() => import('../pages/AIMentoringPage'), 'AIMentoringPage'),
       },
       {
         path: 'nutricionistas',
-        element: <NutritionistsPage />,
+        element: lazyPage(() => import('../pages/NutritionistsPage'), 'NutritionistsPage'),
       },
       {
         path: 'nutricionista/:id',
-        element: <NutritionistProfilePage />,
+        element: lazyPage(() => import('../pages/NutritionistProfilePage'), 'NutritionistProfilePage'),
       },
       {
         path: 'forgot-password',
-        element: <ForgotPasswordPage />,
+        element: lazyPage(() => import('../pages/ForgotPasswordPage'), 'ForgotPasswordPage'),
       },
       {
         path: 'reset-password',
-        element: <ResetPasswordPage />,
+        element: lazyPage(() => import('../pages/ResetPasswordPage'), 'ResetPasswordPage'),
+      },
+      {
+        path: 'confirm-email',
+        element: lazyPage(() => import('../pages/ConfirmEmailPage'), 'ConfirmEmailPage'),
       },
       {
         path: 'login',
@@ -56,11 +70,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'assinatura/sucesso',
-        element: <SubscriptionSuccessPage />,
+        element: lazyPage(() => import('../pages/SubscriptionSuccessPage'), 'SubscriptionSuccessPage'),
       },
       {
         path: 'assinatura/cancelada',
-        element: <SubscriptionCancelledPage />,
+        element: lazyPage(() => import('../pages/SubscriptionCancelledPage'), 'SubscriptionCancelledPage'),
       },
       {
         path: '404',

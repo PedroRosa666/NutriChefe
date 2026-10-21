@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { RecipeCard } from '../components/RecipeCard';
 import { CategoryFilter } from '../components/CategoryFilter';
@@ -8,16 +8,14 @@ import { CreateRecipeForm } from '../components/CreateRecipeForm';
 import { useFiltersStore } from '../store/filters';
 import { useRecipesStore } from '../store/recipes';
 import { useAuthStore } from '../store/auth';
-import { useToastStore } from '../store/toast';
 import { useTranslation } from '../hooks/useTranslation';
 import { Plus } from 'lucide-react';
-import { Toast } from '../components/common/Toast';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import type { Recipe } from '../types/recipe';
 
 export function HomePage() {
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [initialized, setInitialized] = useState(false);
 
   const {
     category,
@@ -25,43 +23,32 @@ export function HomePage() {
     difficulty,
     prepTimeRange,
     minRating,
-    setCategory
+    setCategory,
+    setSearchQuery
   } = useFiltersStore();
+  const [searchParams] = useSearchParams();
+  const queryFromUrl = searchParams.get('q');
+
+  // Links com ?q= (ex.: cartões da Mentoria IA) já abrem a busca preenchida.
+  useEffect(() => {
+    if (queryFromUrl) setSearchQuery(queryFromUrl);
+  }, [queryFromUrl, setSearchQuery]);
   const { recipes, loading, fetchRecipes } = useRecipesStore();
-  const { isAuthenticated, isNutritionist, initializeAuth } = useAuthStore();
-  const { message, type, hideToast } = useToastStore();
+  const { isAuthenticated, isNutritionist } = useAuthStore();
   const t = useTranslation();
 
-  const CATEGORIES = ['all', 'vegan', 'lowCarb', 'highProtein', 'glutenFree'];
+  const CATEGORIES = ['all', 'vegan', 'vegetarian', 'lowCarb', 'highProtein', 'glutenFree'];
 
+  // A sessão é inicializada no RootLayout; aqui só carregamos as receitas.
   useEffect(() => {
-    const initialize = async () => {
-      if (initialized) return;
-
-      try {
-        await initializeAuth();
-        await fetchRecipes();
-        setInitialized(true);
-      } catch (error) {
-        console.error('Error initializing app:', error);
-        setInitialized(true);
-      }
-    };
-
-    initialize();
-  }, [initializeAuth, fetchRecipes, initialized]);
-
-  useEffect(() => {
-    if (initialized) {
-      setCategory('all');
-    }
-  }, [setCategory, initialized]);
+    fetchRecipes();
+  }, [fetchRecipes]);
 
   const normalizeKey = (key: string) => {
     return key.toLowerCase().replace(/\s+/g, '');
   };
 
-  const matchesPrepTime = (recipe: any) => {
+  const matchesPrepTime = (recipe: Recipe) => {
     if (!prepTimeRange) return true;
 
     switch (prepTimeRange) {
@@ -143,10 +130,10 @@ export function HomePage() {
               <p className="text-gray-500 dark:text-gray-400 mb-4">{t.home.noRecipes}</p>
               {recipes.length === 0 && !loading && (
                 <button
-                  onClick={fetchRecipes}
+                  onClick={() => fetchRecipes()}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
-                  Tentar novamente
+                  {t.common.retry}
                 </button>
               )}
             </div>
@@ -167,13 +154,6 @@ export function HomePage() {
           onClose={() => setIsCreateModalOpen(false)}
         />
 
-        {message && (
-          <Toast
-            message={message}
-            type={type}
-            onClose={hideToast}
-          />
-        )}
       </div>
   );
 }

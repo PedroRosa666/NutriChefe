@@ -16,5 +16,6 @@ export interface User {
   name: string;
   type: UserType;
   avatar_url?: string | null;
+  created_at?: string;
   profile?: UserProfile;
 }

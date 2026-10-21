@@ -1,5 +1,4 @@
-import React from 'react';
-import { ArrowLeft, Bot, Sparkles } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../../store/auth';
 import { useSubscriptionStore } from '../../store/subscription';
@@ -13,10 +12,12 @@ interface AIMentoringPageProps {
 
 export function AIMentoringPage({ onBack }: AIMentoringPageProps) {
   const { user, isNutritionist } = useAuthStore();
-  const { hasFeatureAccess } = useSubscriptionStore();
+  const { hasFeatureAccess, subscriptionLoaded } = useSubscriptionStore();
   const t = useTranslation();
 
   const hasAIAccess = user && (isNutritionist() || hasFeatureAccess('ai_mentoring'));
+  // Enquanto a assinatura carrega, não mostra a tela de venda para quem já é Premium.
+  const checkingAccess = Boolean(user) && !isNutritionist() && !subscriptionLoaded;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -35,7 +36,11 @@ export function AIMentoringPage({ onBack }: AIMentoringPageProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
       >
-        {hasAIAccess ? (
+        {checkingAccess ? (
+          <div className="flex justify-center py-24">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          </div>
+        ) : hasAIAccess ? (
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl shadow-gray-200/60 dark:shadow-none border border-gray-200 dark:border-gray-700/60 overflow-hidden">
             <AIChatInterface />
           </div>

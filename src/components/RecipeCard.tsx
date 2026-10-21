@@ -71,8 +71,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
 
   // Função para exibir rating ou texto "Sem avaliações" com tradução
   const displayRating = () => {
-    const noReviewsLabel =
-      t.recipes?.noReviews || t.recipe?.noReviews || 'Sem avaliações';
+    const noReviewsLabel = t.recipe.noReviews;
 
     if (recipe.rating === 0 || !recipe.rating || recipe.reviews?.length === 0) {
       return noReviewsLabel;

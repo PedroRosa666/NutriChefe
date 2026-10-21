@@ -32,7 +32,7 @@ serve(async (req: Request) => {
         const priceId = session.metadata?.price_id || session.display_items?.[0]?.price?.id || session.line_items?.data?.[0]?.price?.id;
         const userId = session.metadata?.user_id;
         if (userId && subscriptionId) {
-          await upsertActiveSubscription(supabase, userId, subscriptionId, priceId);
+          await upsertSubscription(supabase, userId, subscriptionId, "active", priceId);
         }
         if (userId && customerId) {
           await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", userId);
@@ -43,7 +43,16 @@ serve(async (req: Request) => {
       case "customer.subscription.created": {
         const sub = event.data.object as any;
         const userId = sub.metadata?.user_id || (await lookupUserIdByCustomer(supabase, sub.customer));
-        await upsertActiveSubscription(supabase, userId, sub.id, sub.items?.data?.[0]?.price?.id);
+        // Antes toda atualização virava "active", mesmo com pagamento falho ou assinatura cancelada.
+        await upsertSubscription(
+          supabase,
+          userId,
+          sub.id,
+          mapStripeStatus(sub.status),
+          sub.items?.data?.[0]?.price?.id,
+          periodEndIso(sub),
+          sub.cancel_at_period_end === true ? false : undefined,
+        );
         break;
       }
       case "customer.subscription.deleted": {
@@ -79,7 +88,38 @@ async function lookupUserIdByCustomer(supabase: any, customerId: string) {
   return data?.id ?? null;
 }
 
-async function upsertActiveSubscription(supabase: any, userId: string | null, stripeSubId: string, priceId?: string) {
+type AppStatus = "active" | "cancelled" | "expired" | "pending";
+
+// Converte o status do Stripe para os valores aceitos pela tabela user_subscriptions.
+function mapStripeStatus(status: string): AppStatus {
+  switch (status) {
+    case "active":
+    case "trialing":
+      return "active";
+    case "canceled":
+      return "cancelled";
+    case "incomplete_expired":
+      return "expired";
+    default: // past_due, unpaid, incomplete, paused
+      return "pending";
+  }
+}
+
+function periodEndIso(sub: any): string | undefined {
+  // Em versões novas da API o período fica no item da assinatura.
+  const end = sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end;
+  return typeof end === "number" ? new Date(end * 1000).toISOString() : undefined;
+}
+
+async function upsertSubscription(
+  supabase: any,
+  userId: string | null,
+  stripeSubId: string,
+  status: AppStatus,
+  priceId?: string,
+  expiresAt?: string,
+  autoRenew?: boolean,
+) {
   if (!userId) return;
   // Find plan by price id
   let planId: string | null = null;
@@ -88,17 +128,24 @@ async function upsertActiveSubscription(supabase: any, userId: string | null, st
     planId = plan?.id ?? null;
   }
   const payload: any = {
-    status: "active",
+    status,
     updated_at: new Date().toISOString(),
     stripe_subscription_id: stripeSubId,
   };
   if (planId) payload.plan_id = planId;
+  if (expiresAt) payload.expires_at = expiresAt;
+  if (autoRenew !== undefined) payload.auto_renew = autoRenew;
 
   // upsert by user
   const { data: existing } = await supabase.from("user_subscriptions").select("id").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (existing) {
-    await supabase.from("user_subscriptions").update(payload).eq("id", existing.id);
+    const { error } = await supabase.from("user_subscriptions").update(payload).eq("id", existing.id);
+    if (error) throw error;
+  } else if (planId) {
+    const { error } = await supabase.from("user_subscriptions").insert({ user_id: userId, ...payload });
+    if (error) throw error;
   } else {
-    await supabase.from("user_subscriptions").insert({ user_id: userId, ...payload });
+    // plan_id é obrigatório: sem plano mapeado ao price não há como criar a linha.
+    console.error("No subscription_plans row for Stripe price", priceId, "user", userId);
   }
 }

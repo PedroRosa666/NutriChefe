@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, ArrowLeft, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { PUBLIC_PROFILE_COLUMNS } from '../../lib/profile-columns';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -61,7 +61,6 @@ export function EditProfessionalProfile() {
   const { user } = useAuthStore();
   const { showToast } = useToastStore();
   const t = useTranslation();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
@@ -85,18 +84,21 @@ export function EditProfessionalProfile() {
     accepting_new_clients: true,
   });
 
+  const userId = user?.id;
+
+  // Recarrega quando a sessão termina de carregar (antes, sem usuário no 1º render,
+  // o carregamento nunca acontecia e o spinner ficava preso).
   useEffect(() => {
-    loadProfile();
-  }, []);
+    if (userId) loadProfile(userId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
-  const loadProfile = async () => {
-    if (!user) return;
-
+  const loadProfile = async (profileId: string) => {
     try {
       const { data } = await supabase
         .from('profiles')
-        .select('*')
-        .eq('id', user.id)
+        .select(PUBLIC_PROFILE_COLUMNS)
+        .eq('id', profileId)
         .maybeSingle();
 
       if (data) {
@@ -196,7 +198,7 @@ export function EditProfessionalProfile() {
     setHasChanges(true);
   };
 
-  const handleFieldChange = (field: string, value: any) => {
+  const handleFieldChange = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };

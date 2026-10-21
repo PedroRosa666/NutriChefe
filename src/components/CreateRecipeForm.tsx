@@ -134,6 +134,11 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
     setRecipe((prev) => ({
       ...prev,
       nutritionFacts: {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiber: 0,
         ...prev.nutritionFacts,
         [key]: numericValue,
       },

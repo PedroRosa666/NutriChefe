@@ -9,11 +9,13 @@ import {
 } from 'lucide-react';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useAuthStore } from '../../store/auth';
+import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export function ActiveGoalsSelector() {
   const { activeGoals, toggleGoal } = useNutritionGoalsStore();
   const { user } = useAuthStore();
+  const { showToast } = useToastStore();
   const t = useTranslation();
 
   const goalLabels = t.profile.nutritionGoalsnames;
@@ -60,8 +62,12 @@ export function ActiveGoalsSelector() {
   );
 
   const handleToggle = async (goalKey: 'calories' | 'protein' | 'carbs' | 'fat' | 'fiber') => {
-    if (user?.id) {
-      await toggleGoal(user.id, goalKey);
+    if (!user?.id) return;
+    try {
+      await toggleGoal(goalKey);
+    } catch (error) {
+      console.error('Error toggling goal:', error);
+      showToast(t.profile.goalsSaveError, 'error');
     }
   };
 
@@ -70,12 +76,12 @@ export function ActiveGoalsSelector() {
       <div className="mb-4 flex items-center gap-2">
         <Settings className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-          Metas para Acompanhar
+          {t.profile.trackGoalsTitle}
         </h3>
       </div>
 
       <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-        Selecione quais metas nutricionais você deseja acompanhar diariamente
+        {t.profile.trackGoalsSubtitle}
       </p>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
@@ -86,6 +92,8 @@ export function ActiveGoalsSelector() {
           return (
             <button
               key={key}
+              type="button"
+              aria-pressed={isActive}
               onClick={() => handleToggle(key)}
               className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition ${
                 isActive

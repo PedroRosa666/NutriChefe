@@ -17,7 +17,7 @@ interface FiltersState {
 }
 
 export const useFiltersStore = create<FiltersState>((set) => ({
-  category: 'All',
+  category: 'all',
   searchQuery: '',
   difficulty: null,
   prepTimeRange: null,
@@ -30,7 +30,7 @@ export const useFiltersStore = create<FiltersState>((set) => ({
   setMinRating: (minRating) => set({ minRating }),
   setSortBy: (sortBy) => set({ sortBy }),
   resetFilters: () => set({
-    category: 'All',
+    category: 'all',
     searchQuery: '',
     difficulty: null,
     prepTimeRange: null,

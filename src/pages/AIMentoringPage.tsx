@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
 import { AIMentoringPage as AIMentoringPageComponent } from '../components/ai/AIMentoringPage';
 
 export function AIMentoringPage() {

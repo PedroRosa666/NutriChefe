@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Crown, Check, Sparkles, Bot, MessageCircle, Star, Zap, ArrowRight, Shield } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -6,12 +6,14 @@ import { getSubscriptionPlans, startCheckout } from '../../services/subscription
 import type { SubscriptionPlan } from '../../types/subscription';
 import { useToastStore } from '../../store/toast';
 import { supabase } from '../../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 const FALLBACK_STRIPE_PRICE_ID = 'price_1S8hUJRvfweGXYGcPyJ9VAR9';
 const FALLBACK_DISPLAY_PRICE = 19.90;
 
 export function PremiumUpgrade() {
   const t = useTranslation();
+  const navigate = useNavigate();
   const { showToast } = useToastStore();
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -25,10 +27,7 @@ export function PremiumUpgrade() {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ? { id: session.user.id } : null);
     });
-    return () => {
-      // @ts-ignore
-      sub?.subscription?.unsubscribe?.();
-    };
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -36,12 +35,17 @@ export function PremiumUpgrade() {
       .then((ps) => setPlans(ps || []))
       .catch((e) => {
         console.error(e);
-        showToast(t.premium.loadPlansError);
+        showToast(t.premium.loadPlansError, 'error');
       });
   }, [showToast, t.premium.loadPlansError]);
 
+  // Plano pago com IA; evita cair no plano gratuito (o primeiro, ordenado por preço).
   const primaryPlan = useMemo(
-    () => plans.find((p) => (p as any).stripe_price_id) ?? plans[0] ?? null,
+    () =>
+      plans.find((p) => p.stripe_price_id && p.features?.includes('ai_mentoring')) ??
+      plans.find((p) => p.stripe_price_id) ??
+      plans.find((p) => p.price > 0) ??
+      null,
     [plans]
   );
 
@@ -103,15 +107,15 @@ export function PremiumUpgrade() {
     try {
       setLoading(true);
       if (!user) {
-        showToast(t.premium.loginRequired);
-        window.location.href = '/login';
+        showToast(t.premium.loginRequired, 'info');
+        navigate('/login');
         return;
       }
-      const priceIdToUse = (primaryPlan as any)?.stripe_price_id || FALLBACK_STRIPE_PRICE_ID;
+      const priceIdToUse = primaryPlan?.stripe_price_id || FALLBACK_STRIPE_PRICE_ID;
       await startCheckout({ planId: primaryPlan?.id, priceId: priceIdToUse });
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
-      showToast(e?.message || t.premium.checkoutErrorGeneric);
+      showToast(e instanceof Error && e.message ? e.message : t.premium.checkoutErrorGeneric, 'error');
     } finally {
       setLoading(false);
     }

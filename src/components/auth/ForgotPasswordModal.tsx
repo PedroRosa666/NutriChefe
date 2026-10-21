@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Mail, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { checkEmailExists, sendPasswordResetEmail } from '../../services/database';
-import { useTranslation } from '../../hooks/useTranslation';
+import { X, Mail, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { sendPasswordResetEmail } from '../../services/database';
 import { cn } from '../../lib/utils';
 
 interface ForgotPasswordModalProps {
@@ -17,7 +16,6 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step>('email');
   const [error, setError] = useState('');
-  const t = useTranslation();
 
   if (!isOpen) return null;
 
@@ -46,35 +44,17 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
     setError('');
 
     try {
-      console.log('Starting password reset process for:', trimmedEmail);
-      
-      // Verificar se o email existe no banco de dados
-      const emailExists = await checkEmailExists(trimmedEmail);
-
-      if (!emailExists) {
-        setError('Email não encontrado. Verifique se o email está correto ou crie uma conta.');
-        setStep('error');
-        return;
-      }
-
-      console.log('Email exists, sending reset email...');
-      
-      // Enviar email de recuperação
+      // Não revelamos se o email existe (evita enumeração de contas):
+      // o Supabase só envia o link quando a conta existe.
       await sendPasswordResetEmail(trimmedEmail);
-      
-      console.log('Reset email sent successfully');
       setStep('sent');
-      
-    } catch (err: any) {
+    } catch (err) {
       console.error('Password reset error:', err);
-      
-      let friendlyMessage = 'Erro ao enviar email de recuperação. Tente novamente em alguns minutos.';
-      
-      if (err.message) {
-        friendlyMessage = err.message;
-      }
-      
-      setError(friendlyMessage);
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'Erro ao enviar email de recuperação. Tente novamente em alguns minutos.'
+      );
       setStep('error');
     } finally {
       setLoading(false);
@@ -183,7 +163,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
               Email enviado!
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Enviamos um link de recuperação para <strong>{email}</strong>. 
+              Se existir uma conta com <strong>{email}</strong>, enviamos um link de recuperação.
               Verifique sua caixa de entrada e pasta de spam.
             </p>
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">

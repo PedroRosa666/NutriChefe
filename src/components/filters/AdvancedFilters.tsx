@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, X, Star, Clock, ChefHat } from 'lucide-react';
 import { useFiltersStore } from '../../store/filters';

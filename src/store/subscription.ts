@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import * as subscriptionService from '../services/subscription';
 import { useToastStore } from './toast';
 import type { SubscriptionPlan, UserSubscription } from '../types/subscription';
@@ -7,6 +6,8 @@ import type { SubscriptionPlan, UserSubscription } from '../types/subscription';
 interface SubscriptionState {
   plans: SubscriptionPlan[];
   userSubscription: UserSubscription | null;
+  /** true depois da primeira busca da assinatura do usuário logado. */
+  subscriptionLoaded: boolean;
   loading: boolean;
   error: string | null;
   fetchPlans: () => Promise<void>;
@@ -14,13 +15,14 @@ interface SubscriptionState {
   hasFeatureAccess: (feature: string) => boolean;
   isPremium: () => boolean;
   createSubscription: (subscription: Omit<UserSubscription, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  reset: () => void;
 }
 
 export const useSubscriptionStore = create<SubscriptionState>()(
-  persist(
     (set, get) => ({
       plans: [],
       userSubscription: null,
+      subscriptionLoaded: false,
       loading: false,
       error: null,
 
@@ -40,19 +42,22 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       fetchUserSubscription: async (userId: string) => {
         try {
           const subscription = await subscriptionService.getUserSubscription(userId);
-          set({ userSubscription: subscription });
+          set({ userSubscription: subscription, subscriptionLoaded: true });
         } catch (error) {
           console.error('Error fetching user subscription:', error);
-          set({ userSubscription: null });
+          set({ userSubscription: null, subscriptionLoaded: true });
         }
       },
 
       hasFeatureAccess: (feature: string) => {
         const { userSubscription } = get();
-        if (!userSubscription || !userSubscription.plan) {
+        if (!userSubscription?.plan || userSubscription.status !== 'active') {
           return false;
         }
-        return userSubscription.plan.features.includes(feature);
+        if (userSubscription.expires_at && new Date(userSubscription.expires_at).getTime() < Date.now()) {
+          return false;
+        }
+        return Array.isArray(userSubscription.plan.features) && userSubscription.plan.features.includes(feature);
       },
 
       isPremium: () => {
@@ -77,15 +82,16 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       reset: () => set({
         plans: [],
         userSubscription: null,
+        subscriptionLoaded: false,
         loading: false,
         error: null
       })
-    }),
-    {
-      name: 'subscription-storage',
-      partialize: (state) => ({ 
-        userSubscription: state.userSubscription 
-      })
-    }
-  )
+    })
 );
+
+// A assinatura vinha do localStorage (dava para editar no navegador). Agora vem sempre do banco.
+try {
+  localStorage.removeItem('subscription-storage');
+} catch {
+  /* storage indisponível */
+}
