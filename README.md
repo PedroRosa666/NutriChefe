@@ -57,7 +57,7 @@ Mensagem ──► Edge Function ai-chat
 
 - **Frontend**: React 18, TypeScript (strict), Vite, Tailwind CSS, Framer Motion, Zustand, React Router, Lucide.
 - **Backend**: Supabase (PostgreSQL com RLS e permissões por coluna, Auth, Storage, Edge Functions em Deno).
-- **IA**: Google Gemini 2.5 Flash, chamado pela Edge Function `ai-chat`.
+- **IA**: Google Gemini (`gemini-3.5-flash` para as respostas e `gemini-3.5-flash-lite` para o plano de busca), chamado pela Edge Function `ai-chat`. Se a cota de um modelo acabar ou ele for aposentado, a função troca sozinha.
 - **Pagamentos**: Stripe Checkout, Customer Portal e webhooks.
 
 ## 🛠️ Como rodar
@@ -111,8 +111,8 @@ npx supabase functions deploy create-portal-session
 npx supabase functions deploy stripe-webhook --no-verify-jwt
 
 npx supabase secrets set GEMINI_API_KEY=... STRIPE_SECRET_KEY=... STRIPE_WEBHOOK_SECRET=... FRONTEND_URL=https://seu-dominio
-# Opcional: mensagens da IA por usuário por hora (padrão 60)
-npx supabase secrets set AI_HOURLY_LIMIT=60
+# Opcionais: mensagens da IA por usuário por hora (padrão 60) e modelos do Gemini
+npx supabase secrets set AI_HOURLY_LIMIT=60 GEMINI_MODEL=gemini-3.5-flash GEMINI_LITE_MODEL=gemini-3.5-flash-lite
 ```
 
 | Função | Para quê |
