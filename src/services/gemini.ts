@@ -86,3 +86,38 @@ export async function assistAI(
 export function isGeminiConfigured(): boolean {
   return configured;
 }
+
+export interface PhotoEstimate {
+  name: string;
+  portion: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  confidence: 'low' | 'medium' | 'high';
+}
+
+/** Reduz a foto para no máximo 1024 px (JPEG) antes de enviar: menos dados, resposta mais rápida. */
+async function shrinkPhoto(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return canvas.toDataURL('image/jpeg', 0.85).split(',')[1] ?? '';
+}
+
+/** Estimativa de calorias e macros de um prato pela foto (Mentoria IA). */
+export async function estimateFoodPhoto(file: File): Promise<PhotoEstimate> {
+  const image = await shrinkPhoto(file);
+  const { data, error } = await supabase.functions.invoke<{ ok: boolean; estimate?: PhotoEstimate; code?: string; error?: string }>(
+    'ai-chat',
+    { body: { action: 'photo', image, mimeType: 'image/jpeg' } }
+  );
+  if (error && !data) throw error;
+  if (!data?.ok || !data.estimate) throw new Error(data?.error ?? data?.code ?? 'photo_failed');
+  return data.estimate;
+}

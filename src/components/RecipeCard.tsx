@@ -7,6 +7,8 @@ import { useAuthStore } from '../store/auth';
 import { useTranslation } from '../hooks/useTranslation';
 import type { Recipe } from '../types/recipe';
 
+export const RECIPE_PLACEHOLDER = '/recipe-placeholder.svg';
+
 interface RecipeCardProps {
   recipe: Recipe;
 }
@@ -92,13 +94,15 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       {/* Imagem + overlays */}
       <div className="relative overflow-hidden">
         <img
-          src={recipe.image}
+          src={recipe.image || RECIPE_PLACEHOLDER}
           alt={recipe.title}
-          className="h-52 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+          decoding="async"
+          className="h-52 w-full bg-emerald-50 object-cover transition-transform duration-300 group-hover:scale-105 dark:bg-slate-800"
           onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src =
-              'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+            // Imagem quebrada: troca pela ilustração local (uma vez, sem loop).
+            const target = e.currentTarget;
+            if (!target.src.endsWith(RECIPE_PLACEHOLDER)) target.src = RECIPE_PLACEHOLDER;
           }}
         />
 

@@ -11,7 +11,8 @@ import { useRecipesStore } from '../store/recipes';
 import { useAuthStore } from '../store/auth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Plus } from 'lucide-react';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { LandingHero, RecipeCardSkeleton } from '../components/recipes/LandingHero';
+import { PantrySearch } from '../components/recipes/PantrySearch';
 import type { Recipe } from '../types/recipe';
 
 export function HomePage() {
@@ -103,6 +104,7 @@ export function HomePage() {
         />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {!isAuthenticated && <LandingHero />}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div className="flex-1">
               <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">
@@ -124,6 +126,12 @@ export function HomePage() {
             )}
           </div>
 
+          {recipes.length > 0 && (
+            <div className="mb-6">
+              <PantrySearch recipes={recipes} />
+            </div>
+          )}
+
           <div className="mb-8">
             <div className="bg-white dark:bg-slate-800/30 rounded-xl p-4 sm:p-5 border border-slate-100 dark:border-slate-700/50">
               <div className="flex flex-wrap items-center gap-2">
@@ -140,8 +148,8 @@ export function HomePage() {
           </div>
 
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <LoadingSpinner size="lg" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }, (_, i) => <RecipeCardSkeleton key={i} />)}
             </div>
           ) : filteredRecipes.length === 0 ? (
             <div className="text-center py-12">

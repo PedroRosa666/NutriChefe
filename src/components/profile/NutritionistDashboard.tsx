@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Award, BookOpen, Star, MessageSquare, CheckCircle2, Circle, Link2, Eye, EyeOff, UserCheck, UserX, Trophy,
@@ -9,6 +9,7 @@ import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { professionalChecklist, useProfessionalProfile } from '../../hooks/useProfessionalProfile';
 import { DashboardMetricCard } from './DashboardMetricCard';
+import { getRecipeAuthorStats, type RecipeStats } from '../../services/care';
 
 export function NutritionistDashboard() {
   const { user } = useAuthStore();
@@ -18,6 +19,16 @@ export function NutritionistDashboard() {
   const userId = user?.id;
   const { profile } = useProfessionalProfile(userId);
   const [copied, setCopied] = useState(false);
+  const [stats, setStats] = useState<RecipeStats[] | null>(null);
+
+  useEffect(() => {
+    getRecipeAuthorStats()
+      .then(setStats)
+      .catch((e) => {
+        console.error('Error loading recipe stats:', e);
+        setStats([]);
+      });
+  }, [userId]);
 
   const userRecipes = useMemo(
     () => recipes.filter((recipe) => recipe.authorId === userId),
@@ -207,6 +218,53 @@ export function NutritionistDashboard() {
           )}
         </section>
       </div>
+
+      <RecipeStatsTable stats={stats} recipes={userRecipes} />
     </div>
+  );
+}
+
+function RecipeStatsTable({ stats, recipes }: { stats: RecipeStats[] | null; recipes: { id: string; title: string }[] }) {
+  const t = useTranslation();
+  if (!stats) return null;
+  const byId = new Map(stats.map((s) => [s.recipe_id, s]));
+  const rows = recipes
+    .map((r) => ({ ...r, ...(byId.get(r.id) ?? { favorites: 0, diary_logs: 0, in_plans: 0 }) }))
+    .sort((a, b) => b.favorites + b.diary_logs + b.in_plans - (a.favorites + a.diary_logs + a.in_plans));
+
+  return (
+    <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t.stats.title}</h3>
+      {!rows.length ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t.stats.empty}</p>
+      ) : (
+        <div className="-mx-5 overflow-x-auto px-5">
+          <table className="w-full min-w-[480px] text-sm">
+            <thead>
+              <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
+                <th className="pb-2 font-medium">{t.stats.recipe}</th>
+                <th className="pb-2 text-right font-medium">{t.stats.favorites}</th>
+                <th className="pb-2 text-right font-medium">{t.stats.diaryLogs}</th>
+                <th className="pb-2 text-right font-medium">{t.stats.inPlans}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td className="max-w-[260px] truncate py-2 pr-3">
+                    <Link to={`/receita/${r.id}`} className="font-medium text-slate-900 hover:text-emerald-600 dark:text-white">
+                      {r.title}
+                    </Link>
+                  </td>
+                  <td className="py-2 text-right tabular-nums text-slate-700 dark:text-slate-200">{r.favorites}</td>
+                  <td className="py-2 text-right tabular-nums text-slate-700 dark:text-slate-200">{r.diary_logs}</td>
+                  <td className="py-2 text-right tabular-nums text-slate-700 dark:text-slate-200">{r.in_plans}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

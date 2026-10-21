@@ -6,6 +6,12 @@ import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useRecipesStore } from '../../store/recipes';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
+import { CommonFoodForm, CustomFoodForm, PhotoEstimateButton } from './DiaryFoodForms';
+import { useSubscriptionStore } from '../../store/subscription';
+import type { PhotoEstimate } from '../../services/gemini';
+import { cn } from '../../lib/utils';
+
+type AddMode = 'recipe' | 'food' | 'custom';
 
 const toISODate = (d: Date) => {
   const year = d.getFullYear();
@@ -69,6 +75,10 @@ export function NutritionDiary() {
   // Texto livre: permite digitar "0,5" sem o campo pular para 1 no meio da digitação.
   const [servings, setServings] = React.useState('1');
   const [adding, setAdding] = React.useState(false);
+  const [mode, setMode] = React.useState<AddMode>('recipe');
+  // Estimativa por foto (Mentoria IA) preenche o formulário "Outro"; a chave remonta o formulário.
+  const canUsePhoto = useSubscriptionStore((s) => s.hasFeatureAccess('ai_mentoring'));
+  const [photo, setPhoto] = React.useState<{ key: number; estimate: PhotoEstimate } | null>(null);
 
   const entries = useMemo(() => allEntries.filter((e) => e.date === date), [allEntries, date]);
   // `allEntries` força o recálculo quando o diário muda (o getter lê o estado direto).
@@ -152,7 +162,41 @@ export function NutritionDiary() {
         </div>
       </div>
 
-      {/* Quick add */}
+      {/* Adicionar: receita do catálogo, alimento comum ou valores digitados */}
+      <div className="space-y-3">
+      <div role="tablist" className="inline-flex rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+        {(['recipe', 'food', 'custom'] as AddMode[]).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            aria-selected={mode === m}
+            onClick={() => setMode(m)}
+            className={cn(
+              'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
+              mode === m
+                ? 'bg-white text-emerald-700 shadow-sm dark:bg-slate-950 dark:text-emerald-300'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+            )}
+          >
+            {m === 'recipe' ? t.foods.tabRecipe : m === 'food' ? t.foods.tabFood : t.foods.tabCustom}
+          </button>
+        ))}
+      </div>
+      {mode === 'food' && <CommonFoodForm date={date} />}
+      {mode === 'custom' && (
+        <div className="space-y-3">
+          {canUsePhoto && (
+            <PhotoEstimateButton onResult={(estimate) => setPhoto((prev) => ({ key: (prev?.key ?? 0) + 1, estimate }))} />
+          )}
+          <CustomFoodForm
+            key={photo?.key ?? 0}
+            date={date}
+            initial={photo ? { name: `${photo.estimate.name} (${photo.estimate.portion})`, values: photo.estimate } : null}
+          />
+        </div>
+      )}
+      {mode === 'recipe' && (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <select
           value={quickRecipeId}
@@ -186,6 +230,8 @@ export function NutritionDiary() {
           {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           {t.profile.addToDiary ?? 'Adicionar'}
         </button>
+      </div>
+      )}
       </div>
 
       {/* Progress */}

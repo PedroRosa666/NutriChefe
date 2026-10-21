@@ -306,6 +306,27 @@ function sortHits(hits: RecipeHit[], sort: SearchSort = 'relevance'): RecipeHit[
   return hits.slice().sort(cmp[sort] ?? byRelevance);
 }
 
+/** Receitas sem nenhum ingrediente das alergias/restrições (com grupos expandidos). */
+export function withoutAllergens<T extends SearchableRecipe>(recipes: T[], allergies: string[]): T[] {
+  const blocked = expandAllergens(allergies);
+  const blockedStems = blocked.terms.map(stems).filter((s) => s.length > 0);
+  if (!blockedStems.length) return recipes;
+  return recipes.filter((r) => !hasExcluded(indexRecipe(r), blockedStems, blocked.except));
+}
+
+/** Receitas que contêm todos os ingredientes informados (mesma regra da busca da IA). */
+export function recipesWithIngredients<T extends SearchableRecipe>(recipes: T[], ingredients: string[]): { recipe: T; matched: string[] }[] {
+  const queries = ingredients.map((name) => ({ name })).filter((q) => stems(q.name).length > 0);
+  return recipes
+    .map((recipe) => {
+      const indexed = indexRecipe(recipe);
+      const matched = queries.filter((q) => ['ingredients', 'title'].includes(findIngredient(indexed, q) ?? '')).map((q) => q.name);
+      return { recipe, matched };
+    })
+    .filter((r) => r.matched.length > 0)
+    .sort((a, b) => b.matched.length - a.matched.length || b.recipe.rating - a.recipe.rating);
+}
+
 export function searchRecipes(
   recipes: SearchableRecipe[],
   query: RecipeSearchQuery,

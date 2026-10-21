@@ -1,9 +1,18 @@
 import { useCallback, useState, memo } from 'react';
-import { UtensilsCrossed, Check } from 'lucide-react';
+import { UtensilsCrossed, Check, ShoppingCart, Loader2 } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
+import { scaleIngredient } from '../../lib/ingredients';
+import { cn } from '../../lib/utils';
+
+const FACTORS = [0.5, 1, 2, 3];
 
 interface IngredientChecklistProps {
   ingredients: string[];
+  /** Multiplicador das quantidades (½x, 1x, 2x, 3x). */
+  factor?: number;
+  onFactorChange?: (factor: number) => void;
+  /** Mostra o botão "Lista de compras" quando informado. */
+  onAddToShopping?: () => Promise<void>;
 }
 
 interface IngredientItemProps {
@@ -53,8 +62,9 @@ const IngredientItem = memo(function IngredientItem({
   );
 });
 
-export function IngredientChecklist({ ingredients }: IngredientChecklistProps) {
+export function IngredientChecklist({ ingredients, factor = 1, onFactorChange, onAddToShopping }: IngredientChecklistProps) {
   const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [adding, setAdding] = useState(false);
   const t = useTranslation();
 
   const toggle = useCallback((index: number) => {
@@ -89,6 +99,52 @@ export function IngredientChecklist({ ingredients }: IngredientChecklistProps) {
           {total} {countLabel}
         </span>
       </div>
+
+      {(onFactorChange || onAddToShopping) && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          {onFactorChange && (
+            <div className="flex items-center gap-2" title={t.scaling.hint}>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t.scaling.amount}</span>
+              <div className="inline-flex rounded-lg bg-gray-100 p-0.5 dark:bg-gray-900/60">
+                {FACTORS.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => onFactorChange(f)}
+                    aria-pressed={factor === f}
+                    className={cn(
+                      'rounded-md px-2.5 py-1 text-xs font-semibold transition-colors',
+                      factor === f
+                        ? 'bg-white text-emerald-700 shadow-sm dark:bg-gray-700 dark:text-emerald-300'
+                        : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                    )}
+                  >
+                    {f === 0.5 ? '½' : f}x
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {onAddToShopping && (
+            <button
+              type="button"
+              disabled={adding}
+              onClick={async () => {
+                setAdding(true);
+                try {
+                  await onAddToShopping();
+                } finally {
+                  setAdding(false);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300"
+            >
+              {adding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShoppingCart className="h-3.5 w-3.5" />}
+              {t.scaling.addToShopping}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="mb-4">
         <div className="flex items-center justify-between mb-1.5">
@@ -130,7 +186,7 @@ export function IngredientChecklist({ ingredients }: IngredientChecklistProps) {
         {ingredients.map((ingredient, index) => (
           <IngredientItem
             key={index}
-            ingredient={ingredient}
+            ingredient={scaleIngredient(ingredient, factor)}
             index={index}
             isChecked={checked.has(index)}
             onToggle={toggle}

@@ -15,6 +15,8 @@
  *         catálogo não tem o ingrediente, ele diz isso e oferece uma sugestão
  *         de preparo marcada como fora do catálogo.
  *   { action: "chat", prompt, history?, context?, aiConfig? } -> { ok, content }
+ *   { action: "photo", image (base64), mimeType } -> { ok, estimate }
+ *       Estimativa de calorias e macros de um prato pela foto (para o diário).
  *
  * Variáveis: GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, AI_HOURLY_LIMIT (opcional)
  */
@@ -621,6 +623,87 @@ async function assist(apiKey: string, supabase: any, body: any) {
 // Acesso
 // =============================================================================
 
+// =============================================================================
+// Estimativa por foto
+// =============================================================================
+const PHOTO_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    isFood: { type: "BOOLEAN" },
+    name: { type: "STRING", description: "Nome curto do prato em português" },
+    portion: { type: "STRING", description: "Porção estimada, ex.: 1 prato (350 g)" },
+    calories: { type: "NUMBER" },
+    protein: { type: "NUMBER" },
+    carbs: { type: "NUMBER" },
+    fat: { type: "NUMBER" },
+    fiber: { type: "NUMBER" },
+    confidence: { type: "STRING", enum: ["low", "medium", "high"] },
+  },
+  required: ["isFood", "name", "portion", "calories", "protein", "carbs", "fat", "fiber", "confidence"],
+};
+
+const PHOTO_MIME = ["image/jpeg", "image/png", "image/webp"];
+const PHOTO_MAX_BASE64 = 11_000_000; // ~8 MB
+const PHOTO_HOURLY_LIMIT = 20;
+const photoUsage = new Map<string, number[]>();
+
+function photoAllowed(userId: string): boolean {
+  const now = Date.now();
+  const recent = (photoUsage.get(userId) ?? []).filter((t) => now - t < 3_600_000);
+  if (recent.length >= PHOTO_HOURLY_LIMIT) return false;
+  recent.push(now);
+  photoUsage.set(userId, recent);
+  return true;
+}
+
+async function estimatePhoto(apiKey: string, body: any) {
+  const data = String(body.image ?? "").replace(/^data:[^,]+,/, "");
+  const mimeType = PHOTO_MIME.includes(body.mimeType) ? body.mimeType : "image/jpeg";
+  if (!data || data.length > PHOTO_MAX_BASE64) return { ok: false, code: "bad_request", error: "Foto inválida." };
+
+  const request = {
+    contents: [{
+      role: "user",
+      parts: [
+        { inlineData: { mimeType, data } },
+        {
+          text:
+            "Você é um nutricionista estimando a refeição da foto para um diário alimentar. " +
+            "Identifique o prato e estime a porção visível e os valores TOTAIS dessa porção " +
+            "(calorias em kcal; proteína, carboidratos, gorduras e fibras em gramas), usando " +
+            "referências como a Tabela TACO. Se a foto não mostrar comida, isFood = false e valores 0.",
+        },
+      ],
+    }],
+    generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: PHOTO_SCHEMA },
+    safetySettings: SAFETY,
+  };
+
+  let text: string;
+  try {
+    text = await callGemini(apiKey, request, MODEL);
+  } catch (err) {
+    if (!(err instanceof QuotaError)) throw err;
+    text = await callGemini(apiKey, request, LITE_MODEL);
+  }
+  const raw = JSON.parse(text);
+  const n = (v: unknown, max: number) => Math.min(max, Math.max(0, Math.round((Number(v) || 0) * 10) / 10));
+  if (!raw?.isFood) return { ok: false, code: "not_food", error: "Não encontrei comida na foto." };
+  return {
+    ok: true,
+    estimate: {
+      name: clip(raw.name, 120),
+      portion: clip(raw.portion, 80),
+      calories: n(raw.calories, 5000),
+      protein: n(raw.protein, 500),
+      carbs: n(raw.carbs, 800),
+      fat: n(raw.fat, 400),
+      fiber: n(raw.fiber, 200),
+      confidence: ["low", "medium", "high"].includes(raw.confidence) ? raw.confidence : "low",
+    },
+  };
+}
+
 async function hasAIAccess(supabase: any, userId: string): Promise<boolean> {
   const { data: profile } = await supabase.from("profiles").select("user_type").eq("id", userId).single();
   if (profile?.user_type === "Nutritionist") return true;
@@ -682,6 +765,13 @@ serve(async (req: Request) => {
     }
 
     const body = await req.json().catch(() => ({}));
+
+    if (body.action === "photo") {
+      if (!photoAllowed(user.id)) {
+        return reply({ ok: false, code: "rate_limited", error: "Limite de fotos por hora atingido. Tente mais tarde." });
+      }
+      return reply(await estimatePhoto(apiKey, body));
+    }
 
     if (body.action === "assist") {
       if (!clip(body.message, MAX_PROMPT_CHARS).trim()) {

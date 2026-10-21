@@ -22,7 +22,7 @@ export interface NutritionLogEntry {
   createdAt: string; // ISO
 }
 
-interface NutritionLogRow {
+export interface NutritionLogRow {
   id: string;
   entry_date: string;
   recipe_id: string | null;
@@ -38,6 +38,8 @@ interface NutritionTrackingState {
 
   fetchEntries: (userId: string) => Promise<void>;
   addRecipeToLog: (recipe: Recipe, servings?: number, date?: string) => Promise<void>;
+  /** Alimento avulso (lista de alimentos comuns ou valores digitados). */
+  addFoodToLog: (title: string, perServing: NutritionTotals, servings?: number, date?: string) => Promise<void>;
   removeEntry: (id: string) => Promise<void>;
   clearDate: (date: string) => Promise<void>;
   reset: () => void;
@@ -80,7 +82,7 @@ const toTotals = (v: Partial<NutritionTotals> | null | undefined): NutritionTota
   fiber: Number(v?.fiber) || 0,
 });
 
-const fromRow = (row: NutritionLogRow): NutritionLogEntry => ({
+export const fromRow = (row: NutritionLogRow): NutritionLogEntry => ({
   id: row.id,
   date: row.entry_date,
   recipeId: row.recipe_id,
@@ -95,6 +97,31 @@ const requireUserId = () => {
   if (!userId) throw new Error('Faça login para usar o diário alimentar.');
   return userId;
 };
+
+async function insertEntry(
+  recipeId: string | null,
+  title: string,
+  perServing: NutritionTotals,
+  servings: number,
+  date?: string
+) {
+  const userId = requireUserId();
+  const { data, error } = await supabase
+    .from('nutrition_log_entries')
+    .insert({
+      user_id: userId,
+      entry_date: date ?? toISODate(new Date()),
+      recipe_id: recipeId,
+      recipe_title: title,
+      servings: sanitizeServings(servings),
+      per_serving: perServing,
+    })
+    .select('id, entry_date, recipe_id, recipe_title, servings, per_serving, created_at')
+    .single();
+
+  if (error) throw error;
+  return fromRow(data);
+}
 
 export function sumEntries(entries: NutritionLogEntry[]): NutritionTotals {
   const totals = zeroTotals();
@@ -152,22 +179,13 @@ export const useNutritionTrackingStore = create<NutritionTrackingState>()((set, 
   },
 
   addRecipeToLog: async (recipe, servings = 1, date) => {
-    const userId = requireUserId();
-    const { data, error } = await supabase
-      .from('nutrition_log_entries')
-      .insert({
-        user_id: userId,
-        entry_date: date ?? toISODate(new Date()),
-        recipe_id: recipe.id,
-        recipe_title: recipe.title,
-        servings: sanitizeServings(servings),
-        per_serving: toTotals(recipe.nutritionFacts),
-      })
-      .select('id, entry_date, recipe_id, recipe_title, servings, per_serving, created_at')
-      .single();
+    const entry = await insertEntry(recipe.id, recipe.title, toTotals(recipe.nutritionFacts), servings, date);
+    set((state) => ({ entries: [entry, ...state.entries] }));
+  },
 
-    if (error) throw error;
-    set((state) => ({ entries: [fromRow(data), ...state.entries] }));
+  addFoodToLog: async (title, perServing, servings = 1, date) => {
+    const entry = await insertEntry(null, title.slice(0, 200), toTotals(perServing), servings, date);
+    set((state) => ({ entries: [entry, ...state.entries] }));
   },
 
   removeEntry: async (id) => {

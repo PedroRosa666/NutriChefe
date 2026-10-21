@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Search, Menu, LogOut, User as UserIcon, Bot, Users, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { Translations } from '../hooks/useTranslation';
@@ -139,6 +139,20 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
     setAuthModalMode(mode);
     setIsAuthModalOpen(true);
   };
+
+  // /login (e /login?modo=cadastro) abre o modal; depois do login volta para ?next= (ex.: link de convite).
+  const location = useLocation();
+  const onLoginRoute = location.pathname === '/login';
+  useEffect(() => {
+    if (!onLoginRoute) return;
+    if (isAuthenticated) {
+      const next = new URLSearchParams(location.search).get('next');
+      navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : '/', { replace: true });
+      return;
+    }
+    setAuthModalMode(new URLSearchParams(location.search).get('modo') === 'cadastro' ? 'signup' : 'signin');
+    setIsAuthModalOpen(true);
+  }, [onLoginRoute, isAuthenticated, location.search, navigate]);
 
   // Verificar se tem acesso à IA (nutricionista ou premium)
   const hasAIAccess = isAuthenticated && (isNutritionist() || hasFeatureAccess('ai_mentoring'));
@@ -390,7 +404,10 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
 
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          if (onLoginRoute && !useAuthStore.getState().isAuthenticated) navigate('/', { replace: true });
+        }}
         initialMode={authModalMode}
       />
     </>

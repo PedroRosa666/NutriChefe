@@ -4,6 +4,7 @@ import { MotionConfig, motion } from 'framer-motion';
 import { pageFade } from '../lib/motion';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { Toast } from '../components/common/Toast';
+import { MobileNav } from '../components/common/MobileNav';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/auth';
 import { useRecipesStore } from '../store/recipes';
@@ -11,6 +12,7 @@ import { useHealthProfileStore } from '../store/health-profile';
 import { useNutritionGoalsStore } from '../store/nutrition-goals';
 import { useNutritionTrackingStore } from '../store/nutrition-tracking';
 import { useSubscriptionStore } from '../store/subscription';
+import { useShoppingListStore } from '../store/shopping-list';
 import { useToastStore } from '../store/toast';
 
 export function RootLayout() {
@@ -57,6 +59,7 @@ export function RootLayout() {
       useNutritionGoalsStore.getState().reset();
       useNutritionTrackingStore.getState().reset();
       useHealthProfileStore.getState().reset();
+      useShoppingListStore.getState().reset();
       // Import dinâmico: o store da IA (e o serviço dele) fica fora do bundle inicial.
       import('../store/ai').then((m) => m.useAIStore.getState().reset());
     }
@@ -66,9 +69,17 @@ export function RootLayout() {
     <ErrorBoundary>
       {/* reducedMotion="user": quem pediu menos movimento no sistema não vê as animações. */}
       <MotionConfig reducedMotion="user">
-        <motion.div key={section} variants={pageFade} initial="initial" animate="animate">
+        {/* No celular, logado, sobra espaço para a barra de navegação inferior. */}
+        <motion.div
+          key={section}
+          variants={pageFade}
+          initial="initial"
+          animate="animate"
+          className={userId ? 'pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0' : undefined}
+        >
           <Outlet />
         </motion.div>
+        <MobileNav />
       </MotionConfig>
       {message && (
         <Toast

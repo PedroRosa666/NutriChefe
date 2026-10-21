@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Flame, Heart, Scale, CalendarCheck, Crown, ArrowRight, HeartPulse, Bot } from 'lucide-react';
+import { Flame, Heart, Scale, CalendarCheck, Crown, ArrowRight, HeartPulse, Bot, BellRing, Stethoscope } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
@@ -11,11 +11,13 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { bmi } from '../../lib/nutrition-calculator';
 import { DashboardMetricCard } from './DashboardMetricCard';
 import { WeeklyCaloriesChart } from '../nutrition/WeeklyCaloriesChart';
+import { MyNutritionistCard } from '../care/MyNutritionistCard';
+import { WeeklyReport } from './WeeklyReport';
 
 export function ClientDashboard() {
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
-  const { goals, activeGoals } = useNutritionGoalsStore();
+  const { goals, activeGoals, setBy } = useNutritionGoalsStore();
   const { entries } = useNutritionTrackingStore();
   const { profile: health } = useHealthProfileStore();
   const { isPremium } = useSubscriptionStore();
@@ -41,9 +43,27 @@ export function ClientDashboard() {
   const categoryLabel = (key: string) => t.categories[key as keyof typeof t.categories] ?? key;
   const caloriePct = goals.calories > 0 ? Math.round((todayTotals.calories / goals.calories) * 100) : 0;
 
+  // Lembrete a partir das 11h, se nada foi registrado hoje.
+  const showReminder = new Date().getHours() >= 11 && !entries.some((e) => e.date === today);
+
   return (
     <div className="space-y-8">
       {/* Avisos que levam à próxima ação */}
+      {showReminder && (
+        <Link
+          to="/perfil?tab=nutrition"
+          className="flex items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 transition hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30"
+        >
+          <BellRing className="h-6 w-6 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">{t.report.reminderTitle}</p>
+            <p className="text-sm text-emerald-800/80 dark:text-emerald-200/80">{t.report.reminderText}</p>
+          </div>
+          <span className="hidden text-sm font-semibold text-emerald-700 sm:inline dark:text-emerald-300">{t.report.reminderAction}</span>
+          <ArrowRight className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        </Link>
+      )}
+
       {healthIncomplete && (
         <Link
           to="/perfil?tab=health"
@@ -107,9 +127,17 @@ export function ClientDashboard() {
       {activeGoals.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              {t.profile.todayProgress}
-            </h3>
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                {t.profile.todayProgress}
+              </h3>
+              {setBy && (
+                <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                  <Stethoscope className="h-3.5 w-3.5" />
+                  {t.care.setBy}
+                </p>
+              )}
+            </div>
             <Link
               to="/perfil?tab=nutrition"
               className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
@@ -150,9 +178,13 @@ export function ClientDashboard() {
         </section>
       )}
 
+      <WeeklyReport />
+
       <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <WeeklyCaloriesChart entries={entries} goal={goals.calories} />
       </section>
+
+      <MyNutritionistCard />
 
       {/* Favoritos recentes */}
       {favoriteRecipesList.length > 0 && (

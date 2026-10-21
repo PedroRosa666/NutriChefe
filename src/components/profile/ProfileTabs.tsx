@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LayoutDashboard, Apple, HeartPulse, Heart, Settings, BookOpen, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Apple, HeartPulse, Heart, Settings, BookOpen, Briefcase, Users, CalendarRange, ShoppingCart } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { RecipeCard } from '../RecipeCard';
@@ -13,18 +13,36 @@ import { ClientDashboard } from './ClientDashboard';
 import { NutritionistDashboard } from './NutritionistDashboard';
 import { HealthProfileForm } from './HealthProfileForm';
 import { AccountSettings } from './AccountSettings';
+import { PatientsPanel } from '../care/PatientsPanel';
+import { PlansSection } from '../plans/PlansSection';
+import { ShoppingListPanel } from '../plans/ShoppingListPanel';
+import { useNutritionGoalsStore } from '../../store/nutrition-goals';
+import { useHealthProfileStore } from '../../store/health-profile';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import { SMOOTH, tabContent } from '../../lib/motion';
 
-type TabKey = 'overview' | 'nutrition' | 'health' | 'recipes' | 'professional' | 'favorites' | 'account';
+type TabKey =
+  | 'overview'
+  | 'plan'
+  | 'nutrition'
+  | 'shopping'
+  | 'health'
+  | 'patients'
+  | 'recipes'
+  | 'professional'
+  | 'favorites'
+  | 'account';
 
-const CLIENT_TABS: TabKey[] = ['overview', 'nutrition', 'health', 'favorites', 'account'];
-const NUTRITIONIST_TABS: TabKey[] = ['overview', 'recipes', 'professional', 'favorites', 'account'];
+const CLIENT_TABS: TabKey[] = ['overview', 'plan', 'nutrition', 'shopping', 'health', 'favorites', 'account'];
+const NUTRITIONIST_TABS: TabKey[] = ['overview', 'patients', 'recipes', 'professional', 'favorites', 'account'];
 
 const ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
   overview: LayoutDashboard,
+  plan: CalendarRange,
   nutrition: Apple,
+  shopping: ShoppingCart,
+  patients: Users,
   health: HeartPulse,
   recipes: BookOpen,
   professional: Briefcase,
@@ -35,6 +53,8 @@ const ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
 export function ProfileTabs() {
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
+  const dailyCalories = useNutritionGoalsStore((s) => s.goals.calories);
+  const health = useHealthProfileStore((s) => s.profile);
   const t = useTranslation();
   // A aba fica na URL (?tab=...): links do painel e o botão voltar funcionam.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -120,6 +140,20 @@ export function ProfileTabs() {
         )}
 
         {activeTab === 'health' && <HealthProfileForm />}
+
+        {activeTab === 'plan' && user && (
+          <PlansSection
+            clientId={user.id}
+            mode="client"
+            dailyCalories={dailyCalories}
+            allergies={health.allergies}
+            preferences={health.dietary_preferences}
+          />
+        )}
+
+        {activeTab === 'shopping' && <ShoppingListPanel />}
+
+        {activeTab === 'patients' && <PatientsPanel />}
 
         {activeTab === 'recipes' && (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

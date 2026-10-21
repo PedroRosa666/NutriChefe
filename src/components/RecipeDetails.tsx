@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   Star,
   Clock,
@@ -14,6 +14,8 @@ import {
   PlusCircle,
   Check,
   Loader2,
+  CookingPot,
+  Copy,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useRecipesStore } from '../store/recipes';
@@ -21,6 +23,11 @@ import { useNutritionTrackingStore } from '../store/nutrition-tracking';
 import { useToastStore } from '../store/toast';
 import { EditRecipeForm } from './recipe/EditRecipeForm';
 import { IngredientChecklist } from './recipe/IngredientChecklist';
+import { CookingMode } from './recipe/CookingMode';
+import { useShoppingListStore } from '../store/shopping-list';
+import { scaleIngredient } from '../lib/ingredients';
+import { createRecipe as createRecipeInDb } from '../services/database';
+import { useNavigate } from 'react-router-dom';
 import type { Recipe } from '../types/recipe';
 import { cn } from '../lib/utils';
 import { useTranslation } from '../hooks/useTranslation';
@@ -59,6 +66,19 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
     comment: string;
   } | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [factor, setFactor] = useState(1);
+  const [cooking, setCooking] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const navigate = useNavigate();
+
+  // Título da aba com o nome da receita (links compartilhados e histórico ficam legíveis).
+  useEffect(() => {
+    const previous = document.title;
+    document.title = `${recipe.title} · NutriChef`;
+    return () => {
+      document.title = previous;
+    };
+  }, [recipe.title]);
 
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   // Texto livre para permitir "0,5" sem o campo pular para 1 durante a digitação.
@@ -124,6 +144,47 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
   const translatedCategory = getCategoryTranslation(recipe.category);
   const isFavorite = favoriteRecipes.includes(recipe.id);
   const isAuthor = user?.id === recipe.authorId;
+
+  const handleAddToShopping = async () => {
+    if (!user) {
+      showToast(t.shopping.loginRequired, 'info');
+      return;
+    }
+    try {
+      await useShoppingListStore.getState().addSources([{ title: recipe.title, ingredients: recipe.ingredients, factor }]);
+      showToast(t.shopping.added, 'success');
+    } catch (error) {
+      console.error('Error adding to shopping list:', error);
+      showToast(t.shopping.error, 'error');
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!user || duplicating) return;
+    setDuplicating(true);
+    try {
+      const copy = await createRecipeInDb({
+        title: `${recipe.title} ${t.stats.copySuffix}`.slice(0, 200),
+        description: recipe.description,
+        image: recipe.image,
+        prepTime: recipe.prepTime,
+        difficulty: recipe.difficulty,
+        category: recipe.category,
+        ingredients: recipe.ingredients,
+        instructions: recipe.instructions,
+        nutritionFacts: recipe.nutritionFacts,
+        authorId: user.id,
+      });
+      await useRecipesStore.getState().fetchRecipes({ silent: true });
+      showToast(t.stats.duplicated, 'success');
+      navigate(`/receita/${copy.id}`, { replace: true });
+    } catch (error) {
+      console.error('Error duplicating recipe:', error);
+      showToast(t.care.errors.unknown, 'error');
+    } finally {
+      setDuplicating(false);
+    }
+  };
 
   const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -281,9 +342,13 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                   <div className="space-y-5">
                     <div className="relative group">
                       <img
-                        src={recipe.image}
+                        src={recipe.image || '/recipe-placeholder.svg'}
                         alt={recipe.title}
                         className="w-full h-64 object-cover rounded-xl shadow-md border border-gray-200 dark:border-gray-700"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.src.endsWith('/recipe-placeholder.svg')) target.src = '/recipe-placeholder.svg';
+                        }}
                       />
                       <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                       <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-lg bg-white/90 dark:bg-gray-900/90 px-3 py-2 text-sm font-semibold shadow-lg backdrop-blur-sm">
@@ -341,7 +406,12 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                       </div>
                     </div>
 
-                    <IngredientChecklist ingredients={recipe.ingredients} />
+                    <IngredientChecklist
+                      ingredients={recipe.ingredients}
+                      factor={factor}
+                      onFactorChange={setFactor}
+                      onAddToShopping={isAuthenticated ? handleAddToShopping : undefined}
+                    />
                   </div>
 
                   {/* COLUNA DIREITA */}
@@ -393,6 +463,15 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                         )}
                         {isAuthor && (
                           <>
+                            <button
+                              onClick={handleDuplicate}
+                              disabled={duplicating}
+                              className="p-2.5 rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 shadow-sm transition-colors disabled:opacity-60 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                              title={t.stats.duplicate}
+                              aria-label={t.stats.duplicate}
+                            >
+                              {duplicating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                            </button>
                             <button
                               onClick={() => setIsEditModalOpen(true)}
                               className="p-2.5 rounded-full border border-blue-200 bg-blue-50 text-blue-500 hover:bg-blue-100 shadow-sm transition-colors dark:bg-blue-900/30 dark:border-blue-700/60 dark:hover:bg-blue-900/50"
@@ -553,12 +632,24 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
 
                     {/* Instruções */}
                     <div className="bg-white dark:bg-gray-800/50 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30">
-                          <UtensilsCrossed className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        {t.recipe.instructions}
-                      </h3>
+                      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                          <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30">
+                            <UtensilsCrossed className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          {t.recipe.instructions}
+                        </h3>
+                        {recipe.instructions.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setCooking(true)}
+                            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+                          >
+                            <CookingPot className="h-4 w-4" />
+                            {t.cooking.start}
+                          </button>
+                        )}
+                      </div>
 
                       <ol className="space-y-3 max-h-80 overflow-y-auto pr-2">
                         {recipe.instructions.map((instruction, index) => (
@@ -904,6 +995,17 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {cooking && (
+          <CookingMode
+            title={recipe.title}
+            steps={recipe.instructions}
+            ingredients={recipe.ingredients.map((i) => scaleIngredient(i, factor))}
+            onClose={() => setCooking(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {isEditModalOpen && (
         <EditRecipeForm

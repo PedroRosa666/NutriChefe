@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useRecipesStore } from '../../store/recipes';
 import { ArrowLeft, LogIn } from 'lucide-react';
 import { ProfileCard } from './ProfileCard';
@@ -14,6 +14,7 @@ interface ProfilePageProps {
 export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
   const { user } = useAuthStore();
   const t = useTranslation();
+  const location = useLocation();
 
   // Acesso direto a /perfil: as receitas (minhas, favoritas, avaliações) ainda não foram carregadas.
   useEffect(() => {
@@ -26,7 +27,7 @@ export function ProfilePage({ onBackToRecipes }: ProfilePageProps) {
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-24 text-center">
         <LogIn className="h-10 w-10 text-emerald-500" />
         <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{t.profile.loginRequired}</h1>
-        <Link to="/login" className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+        <Link to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
           {t.common.signIn}
         </Link>
       </div>

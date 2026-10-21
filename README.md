@@ -1,6 +1,6 @@
 # 🍽️ NutriChef
 
-Plataforma para descobrir, criar e compartilhar receitas saudáveis, que conecta nutricionistas e clientes. Tem diário alimentar, perfil de saúde, assinatura Premium e uma Mentoria IA que encontra receitas do catálogo a partir do que a pessoa escreve, do jeito que ela escrever.
+Plataforma para descobrir, criar e compartilhar receitas saudáveis, que conecta nutricionistas e clientes. Tem diário alimentar, perfil de saúde, plano alimentar semanal, lista de compras, acompanhamento de pacientes pelo nutricionista, assinatura Premium e uma Mentoria IA que encontra receitas do catálogo a partir do que a pessoa escreve, do jeito que ela escrever.
 
 ![NutriChef](https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=400&fit=crop&crop=center)
 
@@ -11,18 +11,27 @@ Plataforma para descobrir, criar e compartilhar receitas saudáveis, que conecta
 - 🍳 **Catálogo de receitas** com filtros por categoria, dificuldade, tempo, avaliação e busca por texto (também pela URL: `/?q=morango`).
 - ⭐ **Avaliações** de 1 a 5 estrelas com comentário (uma por pessoa por receita, editável).
 - ❤️ **Favoritos** sincronizados com a conta.
+- 🧺 **"O que tem em casa?"**: digite os ingredientes e veja as receitas que usam o máximo deles (grátis, sem IA).
+- 🍳 **Na receita**: ajuste de quantidades (½x a 3x), botão para a lista de compras e **modo cozinha** (tela cheia, passo a passo, timer automático pelos minutos do passo e tela sempre acesa).
+- 📱 **Instalável (PWA)** e barra de navegação inferior no celular.
 - 📊 **Informação nutricional** por porção: calorias, proteínas, carboidratos, gorduras e fibras.
 - 🌙 **Modo escuro/claro** e 🌍 **português/inglês**.
 
 ### 🥗 Cliente
 - **Visão geral**: calorias do dia, sequência de dias registrando, peso/IMC, favoritos e progresso das metas.
-- **Diário alimentar**: registre receitas com o número de porções; totais do dia e gráfico dos últimos 7 dias.
+- **Diário alimentar**: registre receitas, alimentos comuns (lista baseada na Tabela TACO) ou qualquer refeição com valores digitados; totais do dia e gráfico dos últimos 7 dias. Com a Mentoria IA, dá para **estimar calorias e macros por foto** do prato.
+- **Plano alimentar semanal**: monte a semana (café, almoço, lanche e jantar) ou gere automaticamente a partir das metas, alergias e preferências; registre no diário com um clique.
+- **Lista de compras**: soma os ingredientes das receitas ou do plano da semana (junta quantidades iguais), marca o que já está no carrinho e compartilha.
+- **Resumo da semana** (médias x metas, variação de peso) para copiar ou imprimir, e lembrete quando nada foi registrado no dia.
+- **Meu nutricionista**: conecte-se pelo código de convite; ele passa a acompanhar diário, metas, saúde e peso (pode ser encerrado a qualquer momento).
 - **Metas nutricionais** salvas na conta, com cálculo automático pelo perfil de saúde (Mifflin-St Jeor + nível de atividade + objetivo).
 - **Perfil de saúde**: idade, sexo, altura, peso, peso-alvo, atividade, objetivo, preferências alimentares e alergias, com histórico e gráfico de peso.
 - **Assinatura Premium** (Stripe) com portal para trocar cartão, ver faturas e cancelar.
 
 ### 👨‍⚕️ Nutricionista
-- Criar, editar e excluir receitas próprias.
+- Criar, editar, duplicar e excluir receitas próprias.
+- **Pacientes**: convite por link/código (WhatsApp), lista com alertas (sem registros há 3+ dias, acima da meta) e ficha do paciente com perfil de saúde, peso, médias dos últimos 7 dias, registros recentes, **metas definidas pelo nutricionista** e **planos alimentares** enviados ao paciente.
+- **Desempenho das receitas**: quantas vezes cada uma foi favoritada, registrada no diário e usada em planos.
 - **Painel**: receitas publicadas, avaliações recebidas, nota média, receita mais bem avaliada e avaliações recentes.
 - **Perfil profissional público**: especialidades, formação, experiência, abordagem, valores, convênios, endereço e contatos, com checklist de completude e botão "Agendar pelo WhatsApp".
 - Acesso à Mentoria IA sem assinatura.
@@ -101,6 +110,7 @@ Migrations recentes importantes:
 | `20261021120000_lock_user_subscriptions` | Impede o próprio usuário de se dar Premium alterando a assinatura. |
 | `20261021130000_client_health_and_tracking` | Cria `nutrition_goals`, `nutrition_log_entries`, `client_health_profiles` e `weight_logs`, só visíveis para o dono. |
 | `20261021140000_protect_profile_private_columns` | Esconde `email` e `stripe_customer_id` de `profiles` e limita o que o usuário pode editar (não pode mudar o próprio tipo de conta). |
+| `20261021150000_patients_plans_shopping` | Vínculo nutricionista–paciente por convite (o nutricionista só lê dados de quem aceitou, enquanto o vínculo estiver ativo), planos alimentares, lista de compras e estatísticas das receitas. |
 
 ### 4. Edge Functions e segredos
 
@@ -117,7 +127,7 @@ npx supabase secrets set AI_HOURLY_LIMIT=60 GEMINI_MODEL=gemini-3.5-flash GEMINI
 
 | Função | Para quê |
 | --- | --- |
-| `ai-chat` | Mentoria IA (plano + busca + resposta). |
+| `ai-chat` | Mentoria IA (plano + busca + resposta) e estimativa de calorias por foto. |
 | `create-checkout-session` | Abre o Checkout do Stripe; bloqueia cobrança em dobro e aceita só URLs do próprio site. |
 | `create-portal-session` | Abre o portal do cliente do Stripe. |
 | `stripe-webhook` | Atualiza `user_subscriptions` (ativa, renova, marca pagamento falho e cancela). |
@@ -143,6 +153,7 @@ npm run dev        # servidor de desenvolvimento
 npm run build      # checagem de tipos + build de produção
 npm run typecheck  # só a checagem de tipos
 npm run lint       # ESLint
+npm test           # testes (Vitest): leitura de ingredientes, lista de compras, gerador de cardápio
 npm run preview    # serve o build localmente
 ```
 
@@ -163,14 +174,14 @@ supabase/
 
 ## 🔐 Segurança
 
-- RLS em todas as tabelas; diário, metas, saúde e peso só são lidos pelo dono.
+- RLS em todas as tabelas; diário, metas, saúde e peso só são lidos pelo dono e pelo nutricionista que ele aceitou (convite de uso único, válido por 7 dias; qualquer um dos dois encerra o vínculo).
 - `email` e `stripe_customer_id` não são legíveis pela chave pública; o usuário não pode alterar o próprio tipo de conta nem a assinatura.
 - Chaves do Gemini e do Stripe só existem como segredos das Edge Functions.
 - Texto vindo de usuários e da IA é renderizado sem HTML; links de contato aceitam só `http(s)`.
 
 ## 🚀 Deploy
 
-O front é publicado no Netlify a partir deste repositório (`npm run build`, pasta `dist`). Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no painel do Netlify. Banco e Edge Functions são publicados pelo Supabase CLI (passos 3 e 4).
+O front é publicado no Netlify a partir deste repositório (`npm run build`, pasta `dist`; `public/_redirects` faz as rotas do app funcionarem ao recarregar a página). Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no painel do Netlify. Banco e Edge Functions são publicados pelo Supabase CLI (passos 3 e 4).
 
 ## 👨‍💻 Autor
 
