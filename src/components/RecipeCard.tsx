@@ -85,10 +85,8 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       onClick={() => navigate(`/receita/${recipe.id}`)}
       className="
         group relative flex h-full cursor-pointer flex-col overflow-hidden
-        rounded-xl border shadow-sm transition-all duration-200
-        translate-y-0 hover:-translate-y-1 hover:shadow-lg hover:border-emerald-300
-        bg-white border-gray-200
-        dark:bg-slate-800 dark:border-slate-700
+        glass-card rounded-xl border transition-[transform,box-shadow,border-color] duration-200
+        translate-y-0 hover:-translate-y-1 hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-500/40
       "
     >
       {/* Imagem + overlays */}

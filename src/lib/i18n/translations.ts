@@ -389,42 +389,76 @@ export const translations = {
     },
 
     premium: {
-      title: 'Unlock AI Mentoring',
-      descriptionPrefix:
-        'To get unlimited access to our AI Mentoring and other exclusive features, subscribe to our ',
-      planName: 'Premium Plan',
-      descriptionSuffix: '!',
+      badge: 'Premium',
+      title: 'Tell it what you have at home. Get recipes made for you.',
+      subtitle:
+        'Mentoria IA finds real recipes from the catalog for any ingredient, respects your allergies and goals, and answers your nutrition and cooking questions.',
+      planName: 'Premium',
       perMonthLabel: 'month',
+      priceNote: 'Billed monthly. Cancel anytime.',
+      trust: 'Secure payment by Stripe • Cancel in your profile, no hassle',
 
+      demo: {
+        label: 'Example',
+        question: 'I have strawberries at home, what can I make?',
+        answer: 'I found a recipe in the catalog that uses strawberries:',
+        recipeTitle: 'Nut tart with berry filling',
+        recipeMeta: '80 min • 390 kcal',
+        contains: 'contains strawberry',
+      },
+
+      featuresTitle: 'What you get',
       features: {
-        mentoringUnlimitedTitle: 'Unlimited AI mentoring',
-        mentoringUnlimitedDescription:
-          '24/7 chat with a nutrition-focused AI assistant.',
-        personalizedConsultationsTitle: 'Personalized consultations',
-        personalizedConsultationsDescription:
-          'AI configured and guided by your nutritionist.',
-        smartRecommendationsTitle: 'Smart recommendations',
-        smartRecommendationsDescription:
-          'Recipe suggestions tailored to your profile.',
-        prioritySupportTitle: 'Priority support',
-        prioritySupportDescription:
-          'Fast and specialized support whenever you need it.',
+        ingredientTitle: 'Search by ingredient, your way',
+        ingredientDescription:
+          '"I have strawberries", "something without lactose", "dinner under 400 kcal": it understands and shows real recipes from the catalog.',
+        personalTitle: 'Answers made for you',
+        personalDescription:
+          'Takes into account your allergies, food preferences, goals and what you already ate today in your diary.',
+        beyondTitle: 'Ideas beyond the catalog',
+        beyondDescription:
+          'No recipe with that ingredient? It says so honestly, shows similar ones and suggests a homemade preparation.',
+        questionsTitle: 'Nutrition and cooking questions',
+        questionsDescription:
+          'Substitutions, preparation steps, calories of a recipe, tips for your goal. Your history stays saved.',
       },
 
-      benefits: {
-        accessNutritionists: 'Access to certified nutritionists',
-        whatsappDirect: 'Direct WhatsApp contact with nutritionists',
-        personalizedGoals: 'Personalized goals and periodization',
-        mealPlans: 'Meal plans adjusted to your profile',
-        weeklyFollowup: 'Weekly follow-up and continuous adjustments',
-        progressReports: 'Progress reports with charts',
-        premiumRecipes: 'Exclusive premium recipes',
-        vipCommunity: 'VIP community and monthly challenges',
+      compareTitle: 'Free vs Premium',
+      compareFree: 'Free',
+      comparePremium: 'Premium',
+      compareRows: {
+        recipes: 'Recipe catalog, favorites and reviews',
+        diary: 'Food diary and nutrition goals',
+        health: 'Health profile and weight history',
+        nutritionists: 'Find nutritionists',
+        ai: 'Mentoria IA (up to 60 messages per hour)',
+        personal: 'Answers based on your profile and diary',
       },
 
-      ctaSubscribe: 'Subscribe to Premium Plan',
+      faqTitle: 'Frequently asked questions',
+      faq: [
+        {
+          q: 'How do I cancel?',
+          a: 'In your profile, Account tab, "Manage subscription". You keep access until the end of the period already paid.',
+        },
+        {
+          q: 'Does the AI replace a nutritionist?',
+          a: 'No. It gives educational guidance and recipe ideas. For an individual plan, talk to a nutritionist; you can find one on the site.',
+        },
+        {
+          q: 'Is there a message limit?',
+          a: 'Up to 60 messages per hour, enough for normal use. The limit protects the service for everyone.',
+        },
+        {
+          q: 'Is payment secure?',
+          a: 'Payment is processed by Stripe. NutriChef does not store your card details.',
+        },
+      ],
+
+      ctaSubscribe: 'Subscribe to Premium',
       ctaLoading: 'Starting...',
-      footerNote: 'Cancel anytime • No commitment • 24/7 support',
+      finalTitle: 'Ready to cook with help?',
+      finalSubtitle: 'Start now and ask about the first ingredient you have at home.',
 
       loginRequired: 'Sign in to subscribe',
       loadPlansError: 'Error loading plans',
@@ -913,42 +947,76 @@ export const translations = {
     },
 
     premium: {
-      title: 'Desbloqueie a Mentoria IA',
-      descriptionPrefix:
-        'Para ter acesso ilimitado à nossa Mentoria IA e outras funcionalidades exclusivas, assine o nosso ',
-      planName: 'Plano Premium',
-      descriptionSuffix: '!',
+      badge: 'Premium',
+      title: 'Diga o que tem em casa. Receba receitas feitas para você.',
+      subtitle:
+        'A Mentoria IA encontra receitas reais do catálogo para qualquer ingrediente, respeita suas alergias e metas e responde suas dúvidas de nutrição e cozinha.',
+      planName: 'Premium',
       perMonthLabel: 'mês',
+      priceNote: 'Cobrança mensal. Cancele quando quiser.',
+      trust: 'Pagamento seguro pela Stripe • Cancele pelo seu perfil, sem burocracia',
 
+      demo: {
+        label: 'Exemplo',
+        question: 'Tenho morangos em casa, o que posso fazer?',
+        answer: 'Encontrei no catálogo uma receita que usa morango:',
+        recipeTitle: 'Torta de castanha com frutas vermelhas',
+        recipeMeta: '80 min • 390 kcal',
+        contains: 'contém morango',
+      },
+
+      featuresTitle: 'O que você ganha',
       features: {
-        mentoringUnlimitedTitle: 'Mentoria IA ilimitada',
-        mentoringUnlimitedDescription:
-          'Chat 24/7 com IA especializada em nutrição.',
-        personalizedConsultationsTitle: 'Consultas personalizadas',
-        personalizedConsultationsDescription:
-          'IA configurada e orientada pelo seu nutricionista.',
-        smartRecommendationsTitle: 'Recomendações inteligentes',
-        smartRecommendationsDescription:
-          'Sugestões de receitas baseadas no seu perfil.',
-        prioritySupportTitle: 'Suporte prioritário',
-        prioritySupportDescription:
-          'Atendimento rápido e especializado.',
+        ingredientTitle: 'Busca por ingrediente, do seu jeito',
+        ingredientDescription:
+          '"Tenho morangos", "algo sem lactose", "jantar até 400 kcal": ela entende e mostra receitas reais do catálogo.',
+        personalTitle: 'Respostas feitas para você',
+        personalDescription:
+          'Considera suas alergias, preferências alimentares, metas e o que você já comeu hoje no diário.',
+        beyondTitle: 'Ideias além do catálogo',
+        beyondDescription:
+          'Não tem receita com aquele ingrediente? Ela avisa com sinceridade, mostra parecidas e sugere um preparo caseiro.',
+        questionsTitle: 'Dúvidas de nutrição e cozinha',
+        questionsDescription:
+          'Substituições, modo de preparo, calorias de uma receita, dicas para a sua meta. O histórico fica salvo.',
       },
 
-      benefits: {
-        accessNutritionists: 'Acesso a nutricionistas certificados',
-        whatsappDirect: 'WhatsApp direto com nutricionistas',
-        personalizedGoals: 'Metas personalizadas e periodização',
-        mealPlans: 'Planos alimentares ajustados ao seu perfil',
-        weeklyFollowup: 'Acompanhamento semanal e ajustes contínuos',
-        progressReports: 'Relatórios de progresso com gráficos',
-        premiumRecipes: 'Receitas premium exclusivas',
-        vipCommunity: 'Comunidade VIP e desafios mensais',
+      compareTitle: 'Gratuito x Premium',
+      compareFree: 'Gratuito',
+      comparePremium: 'Premium',
+      compareRows: {
+        recipes: 'Catálogo de receitas, favoritos e avaliações',
+        diary: 'Diário alimentar e metas nutricionais',
+        health: 'Perfil de saúde e histórico de peso',
+        nutritionists: 'Encontrar nutricionistas',
+        ai: 'Mentoria IA (até 60 mensagens por hora)',
+        personal: 'Respostas baseadas no seu perfil e diário',
       },
 
-      ctaSubscribe: 'Assinar Plano Premium',
+      faqTitle: 'Perguntas frequentes',
+      faq: [
+        {
+          q: 'Como eu cancelo?',
+          a: 'No seu perfil, aba Conta, em "Gerenciar assinatura". O acesso continua até o fim do período já pago.',
+        },
+        {
+          q: 'A IA substitui um nutricionista?',
+          a: 'Não. Ela dá orientações educativas e ideias de receitas. Para um plano individual, fale com um nutricionista; você encontra um aqui no site.',
+        },
+        {
+          q: 'Existe limite de mensagens?',
+          a: 'Até 60 mensagens por hora, o suficiente para o uso normal. O limite protege o serviço para todos.',
+        },
+        {
+          q: 'O pagamento é seguro?',
+          a: 'O pagamento é processado pela Stripe. O NutriChef não guarda os dados do seu cartão.',
+        },
+      ],
+
+      ctaSubscribe: 'Assinar o Premium',
       ctaLoading: 'Iniciando...',
-      footerNote: 'Cancele a qualquer momento • Sem compromisso • Suporte 24/7',
+      finalTitle: 'Pronto para cozinhar com ajuda?',
+      finalSubtitle: 'Comece agora e pergunte sobre o primeiro ingrediente que tiver em casa.',
 
       loginRequired: 'Faça login para assinar',
       loadPlansError: 'Erro ao carregar planos',
