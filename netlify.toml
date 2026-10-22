@@ -1,9 +1,0 @@
-# Usado só enquanto o Netlify estiver no ar; o deploy principal é no Cloudflare Workers (wrangler.jsonc).
-[build]
-  command = "npm run build"
-  publish = "dist"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200

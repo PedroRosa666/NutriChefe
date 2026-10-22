@@ -200,8 +200,6 @@ O deploy pelo terminal usa o `.env` local, porque `VITE_SUPABASE_URL` e `VITE_SU
 - Atualize o segredo `FRONTEND_URL` das Edge Functions: `supabase secrets set FRONTEND_URL=https://seu-dominio`. O checkout e o portal da Stripe só aceitam retorno para essa origem.
 - No Supabase, em Authentication > URL Configuration, coloque o novo domínio em Site URL e adicione `https://seu-dominio/**` em Redirect URLs. Sem isso, o login e a redefinição de senha não funcionam.
 
-O `netlify.toml` continua no repositório só enquanto o site antigo no Netlify estiver no ar.
-
 ## 👨‍💻 Autor
 
 **Desenvolvido por Pedro Henrique de Oliveira Rosa**
