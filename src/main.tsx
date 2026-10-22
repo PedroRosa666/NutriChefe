@@ -4,6 +4,9 @@ import App from './App';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { ThemeProvider } from './components/ThemeProvider';
 import './index.css';
+import { installGlobalErrorReporting } from './lib/error-reporting';
+
+installGlobalErrorReporting();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

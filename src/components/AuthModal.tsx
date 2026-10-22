@@ -20,6 +20,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [userType, setUserType] = useState<UserType>('Client');
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
@@ -63,6 +64,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
         if (await signIn(email, password)) onClose();
         else if (useAuthStore.getState().error === EMAIL_NOT_CONFIRMED_MESSAGE) setNeedsConfirmation(true);
       } else {
+        if (!acceptedPrivacy) return;
         const result = await signUp(email, password, name, userType);
         if (result === 'signed_in') onClose();
         else if (result === 'confirm_email') {
@@ -267,10 +269,28 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
 
             {mode === 'signin' && needsConfirmation && <ResendConfirmation initialEmail={email} />}
 
+            {mode === 'signup' && (
+              <label className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={acceptedPrivacy}
+                  onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                  required
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span>
+                  {t.privacy.signupConsent}{' '}
+                  <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-700 underline dark:text-emerald-400">
+                    {t.privacy.policyLink}
+                  </a>
+                </span>
+              </label>
+            )}
+
             {/* Botão de ação */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (mode === 'signup' && !acceptedPrivacy)}
               className={cn(
                 'mt-2 inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 transition disabled:cursor-not-allowed disabled:bg-emerald-400',
                 loading && 'opacity-80'

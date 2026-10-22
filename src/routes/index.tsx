@@ -65,6 +65,10 @@ export const router = createBrowserRouter([
         element: lazyPage(() => import('../pages/NutritionistProfilePage'), 'NutritionistProfilePage'),
       },
       {
+        path: 'privacidade',
+        element: lazyPage(() => import('../pages/PrivacyPage'), 'PrivacyPage'),
+      },
+      {
         path: 'forgot-password',
         element: lazyPage(() => import('../pages/ForgotPasswordPage'), 'ForgotPasswordPage'),
       },

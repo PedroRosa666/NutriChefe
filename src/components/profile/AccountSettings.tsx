@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Crown, CreditCard, KeyRound, Loader2, LogOut, UserCog } from 'lucide-react';
+import { Crown, CreditCard, Download, KeyRound, Loader2, LogOut, ShieldCheck, Trash2, UserCog } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useSubscriptionStore } from '../../store/subscription';
 import { useToastStore } from '../../store/toast';
@@ -8,6 +8,7 @@ import { useSettingsStore } from '../../store/settings';
 import { useTranslation } from '../../hooks/useTranslation';
 import { supabase } from '../../lib/supabase';
 import { openBillingPortal } from '../../services/subscription';
+import { DeleteAccountError, deleteMyAccount, downloadMyData } from '../../services/privacy';
 
 const inputClass =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100';
@@ -27,6 +28,10 @@ export function AccountSettings() {
   const [confirm, setConfirm] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
   const [openingPortal, setOpeningPortal] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteText, setDeleteText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   if (!user) return null;
 
@@ -177,6 +182,93 @@ export function AccountSettings() {
           <p className="text-xs text-slate-500 dark:text-slate-400">{a.portalHint}</p>
         </section>
       )}
+
+      <section className={cardClass}>
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+          <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          {t.privacy.dataTitle}
+        </h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {t.privacy.dataHint}{' '}
+          <Link to="/privacidade" className="font-semibold text-emerald-700 underline dark:text-emerald-400">
+            {t.privacy.policyLink}
+          </Link>
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              setExporting(true);
+              try {
+                await downloadMyData(user.id, user.email);
+                showToast(t.privacy.exported, 'success');
+              } catch (error) {
+                console.error('Error exporting data:', error);
+                showToast(a.saveError, 'error');
+              } finally {
+                setExporting(false);
+              }
+            }}
+            disabled={exporting}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {t.privacy.download}
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteOpen((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:hover:bg-rose-900/20"
+          >
+            <Trash2 className="h-4 w-4" />
+            {t.privacy.delete}
+          </button>
+        </div>
+        {deleteOpen && (
+          <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-900/50 dark:bg-rose-900/10">
+            <p className="text-sm font-semibold text-rose-800 dark:text-rose-200">{t.privacy.deleteWarningTitle}</p>
+            <p className="text-sm text-rose-800/90 dark:text-rose-200/90">{isNutritionist ? t.privacy.deleteWarningNutritionist : t.privacy.deleteWarningClient}</p>
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold text-rose-800 dark:text-rose-200">{t.privacy.deleteTypeLabel.replace('{word}', t.privacy.deleteWord)}</span>
+              <input value={deleteText} onChange={(e) => setDeleteText(e.target.value)} className={inputClass} autoComplete="off" />
+            </label>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteOpen(false);
+                  setDeleteText('');
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                type="button"
+                disabled={deleting || deleteText.trim().toUpperCase() !== t.privacy.deleteWord}
+                onClick={async () => {
+                  setDeleting(true);
+                  try {
+                    await deleteMyAccount();
+                    showToast(t.privacy.deleted, 'success');
+                    await signOut();
+                  } catch (error) {
+                    console.error('Error deleting account:', error);
+                    const code = error instanceof DeleteAccountError ? error.code : 'unknown';
+                    showToast(code === 'active_subscription' ? t.privacy.deleteActiveSubscription : a.saveError, 'error');
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+              >
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {t.privacy.deleteConfirm}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className={cardClass}>
         <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{a.session}</h3>

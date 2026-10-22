@@ -13,6 +13,8 @@ const MIGRATIONS = [
   '20261023120000_notifications.sql',
   '20261023130000_meal_plan_templates.sql',
   '20261024120000_swap_recipes.sql',
+  '20261024130000_privacy_lgpd.sql',
+  '20261024140000_client_errors.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -32,7 +34,12 @@ const BASE = `
 
   CREATE PUBLICATION supabase_realtime;
 
-  CREATE TABLE profiles (id uuid PRIMARY KEY, full_name text, user_type text);
+  CREATE TABLE auth.users (id uuid PRIMARY KEY);
+  CREATE TABLE profiles (id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE, full_name text, user_type text);
+  CREATE TABLE user_subscriptions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+    status text, stripe_subscription_id text, auto_renew boolean
+  );
   CREATE TABLE recipes (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL, author_id uuid);
   CREATE TABLE favorites (user_id uuid, recipe_id uuid);
   CREATE TABLE nutrition_log_entries (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, recipe_id uuid);

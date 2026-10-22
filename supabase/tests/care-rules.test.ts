@@ -27,6 +27,7 @@ const notifications = (uid: string) =>
 beforeAll(async () => {
   db = await createTestDb();
   await db.exec(`
+    INSERT INTO auth.users (id) VALUES ('${NUTRI}'), ('${OTHER_NUTRI}'), ('${PATIENT}'), ('${STRANGER}');
     INSERT INTO profiles (id, full_name, user_type) VALUES
       ('${NUTRI}', 'Dra. Ana', 'Nutritionist'),
       ('${OTHER_NUTRI}', 'Dr. Bruno', 'Nutritionist'),
@@ -45,6 +46,8 @@ describe('convite e vínculo', () => {
     const invite = await asUser(db, NUTRI, (tx) => one<{ code: string }>(tx, 'SELECT * FROM create_nutritionist_invite()'));
     await asUser(db, PATIENT, (tx) => tx.query('SELECT redeem_nutritionist_invite($1)', [invite.code]));
     expect((await notifications(NUTRI)).map((n) => n.kind)).toContain('patient_joined');
+    const link = (await db.query<{ consent_at: string | null }>('SELECT consent_at FROM nutritionist_clients WHERE client_id = $1', [PATIENT])).rows[0];
+    expect(link.consent_at).not.toBeNull();
   });
 
   it('cliente não cria convite; convite usado não vale de novo', async () => {
@@ -204,5 +207,45 @@ describe('fim do acompanhamento', () => {
     expect((await notifications(NUTRI)).map((n) => n.kind)).toContain('link_ended');
     const plans = await asUser(db, NUTRI, async (tx) => (await tx.query('SELECT id FROM meal_plans')).rows);
     expect(plans).toEqual([]);
+  });
+});
+
+describe('apagar a própria conta (LGPD)', () => {
+  it('com assinatura ativa que renova, recusa', async () => {
+    await db.query(`INSERT INTO user_subscriptions (user_id, status, stripe_subscription_id, auto_renew) VALUES ($1, 'active', 'sub_1', true)`, [PATIENT]);
+    await expect(asUser(db, PATIENT, (tx) => tx.query('SELECT delete_my_account()'))).rejects.toThrow('active_subscription');
+  });
+
+  it('apaga o usuário e, em cascata, perfil, vínculos e avisos', async () => {
+    await asUser(db, STRANGER, (tx) => tx.query('SELECT delete_my_account()'));
+    const left = await db.query<{ n: number }>(
+      `SELECT (SELECT count(*) FROM profiles WHERE id = $1) + (SELECT count(*) FROM nutritionist_clients WHERE client_id = $1)
+            + (SELECT count(*) FROM notifications WHERE user_id = $1) AS n`,
+      [STRANGER]
+    );
+    expect(Number(left.rows[0].n)).toBe(0);
+  });
+
+  it('sem login, não faz nada', async () => {
+    await expect(db.transaction(async (tx) => {
+      await tx.exec('SET LOCAL ROLE anon');
+      await tx.query('SELECT delete_my_account()');
+    })).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe('registro de erros', () => {
+  it('visitante grava erro, mas ninguém lê pelo app', async () => {
+    await db.transaction(async (tx) => {
+      await tx.exec('SET LOCAL ROLE anon');
+      await tx.query(`INSERT INTO client_errors (message) VALUES ('Falhou ao abrir o plano')`);
+    });
+    await expect(asUser(db, NUTRI, (tx) => tx.query('SELECT * FROM client_errors'))).rejects.toThrow(/permission denied/);
+  });
+
+  it('não dá para gravar erro em nome de outro usuário', async () => {
+    await expect(
+      asUser(db, NUTRI, (tx) => tx.query(`INSERT INTO client_errors (user_id, message) VALUES ($1, 'x')`, [PATIENT]))
+    ).rejects.toThrow(/row-level security/);
   });
 });

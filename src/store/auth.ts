@@ -124,7 +124,8 @@ export const useAuthStore = create<AuthState>()(
             email,
             password,
             options: {
-              data: { full_name: name, user_type: type },
+              // Aceite da política de privacidade (LGPD): o formulário só envia com a caixa marcada.
+              data: { full_name: name, user_type: type, privacy_accepted_at: new Date().toISOString() },
               emailRedirectTo: `${window.location.origin}/confirm-email`
             }
           });

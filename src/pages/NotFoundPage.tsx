@@ -1,8 +1,15 @@
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { isRouteErrorResponse, useNavigate, useRouteError } from 'react-router-dom';
 import { Home } from 'lucide-react';
+import { reportError } from '../lib/error-reporting';
 
 export function NotFoundPage() {
   const navigate = useNavigate();
+  // Esta página também é a tela de erro das rotas: um erro de código (não um 404) é registrado.
+  const routeError = useRouteError();
+  useEffect(() => {
+    if (routeError && !isRouteErrorResponse(routeError)) reportError(routeError, 'route');
+  }, [routeError]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">

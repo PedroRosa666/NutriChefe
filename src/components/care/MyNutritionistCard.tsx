@@ -43,8 +43,10 @@ export function MyNutritionistCard() {
     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [inviteFromUrl]);
 
+  const [consent, setConsent] = useState(false);
+
   const connect = async () => {
-    if (!code.trim() || busy) return;
+    if (!code.trim() || busy || !consent) return;
     setBusy(true);
     try {
       await redeemInvite(code);
@@ -144,17 +146,29 @@ export function MyNutritionistCard() {
             />
             <button
               type="submit"
-              disabled={busy || !code.trim()}
+              disabled={busy || !code.trim() || !consent}
               className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
             >
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               {t.care.connect}
             </button>
           </form>
-          <p className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-            {t.care.consentNote}
-          </p>
+          {/* Consentimento específico para compartilhar dados de saúde (LGPD, art. 11). */}
+          <label className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span>
+              <ShieldCheck className="mr-1 inline h-3.5 w-3.5 align-text-bottom text-emerald-600" />
+              {t.care.consentCheckbox}{' '}
+              <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-700 underline dark:text-emerald-400">
+                {t.privacy.policyLink}
+              </a>
+            </span>
+          </label>
         </div>
       )}
     </section>
