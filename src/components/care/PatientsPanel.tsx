@@ -18,6 +18,7 @@ import {
 } from '../../services/care';
 import { pendingSwapCounts } from '../../services/swaps';
 import { loadAdherence } from '../../services/adherence';
+import { unreadByPatient } from '../../services/messages';
 import { sumEntries, toISODate } from '../../store/nutrition-tracking';
 import { Avatar } from './Avatar';
 import { PatientDetail } from './PatientDetail';
@@ -68,7 +69,9 @@ export function PatientsPanel() {
   // ?paciente=<id> abre direto o detalhe (links dos avisos).
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedPatient = searchParams.get('paciente');
-  const careSignal = useNotificationSignal((n) => n.kind === 'swap_requested' || n.kind === 'patient_joined' || n.kind === 'link_ended');
+  const [openChat, setOpenChat] = useState(false);
+  const [unread, setUnread] = useState<Map<string, number>>(new Map());
+  const careSignal = useNotificationSignal((n) => n.kind === 'swap_requested' || n.kind === 'patient_joined' || n.kind === 'link_ended' || n.kind === 'message');
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -79,6 +82,9 @@ export function PatientsPanel() {
       pendingSwapCounts(user.id)
         .then(setPendingSwaps)
         .catch((e) => console.error('Error loading swap counts:', e));
+      unreadByPatient(user.id)
+        .then(setUnread)
+        .catch((e) => console.error('Error loading unread messages:', e));
       // Resumos carregam em paralelo, sem travar a lista.
       list.forEach((p) =>
         summarize(p.person.id, user.id)
@@ -99,9 +105,13 @@ export function PatientsPanel() {
   useEffect(() => {
     if (!requestedPatient || loading) return;
     const match = patients.find((p) => p.person.id === requestedPatient);
-    if (match) setSelected(match);
+    if (match) {
+      setOpenChat(searchParams.get('chat') === '1');
+      setSelected(match);
+    }
     const next = new URLSearchParams(searchParams);
     next.delete('paciente');
+    next.delete('chat');
     setSearchParams(next, { replace: true });
   }, [requestedPatient, loading, patients, searchParams, setSearchParams]);
 
@@ -145,7 +155,12 @@ export function PatientsPanel() {
     return (
       <PatientDetail
         link={selected}
-        onBack={() => setSelected(null)}
+        openChat={openChat}
+        onBack={() => {
+          setSelected(null);
+          setOpenChat(false);
+          load();
+        }}
         onEnded={() => {
           setSelected(null);
           load();
@@ -258,6 +273,12 @@ export function PatientsPanel() {
                     </p>
                   ) : (
                     <p className="text-xs text-slate-400">…</p>
+                  )}
+                  {(unread.get(p.person.id) ?? 0) > 0 && (
+                    <p className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      <MessageCircle className="h-3 w-3" />
+                      {t.messages.unreadCount.replace('{count}', String(unread.get(p.person.id)))}
+                    </p>
                   )}
                   {(pendingSwaps.get(p.person.id) ?? 0) > 0 && (
                     <p className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowLeft, HeartPulse, Loader2, Save, Sparkles, Target, UserMinus, Utensils, CalendarRange } from 'lucide-react';
+import { ArrowLeft, HeartPulse, Loader2, Save, Sparkles, Target, UserMinus, Utensils, CalendarRange, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -12,6 +12,7 @@ import { WeeklyCaloriesChart } from '../nutrition/WeeklyCaloriesChart';
 import { PlansSection } from '../plans/PlansSection';
 import { SwapRequestsList } from '../swaps/SwapRequestsList';
 import { AdherencePanel } from './AdherencePanel';
+import { ChatThread } from './ChatThread';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Avatar } from './Avatar';
 import { fmtNum } from '../../lib/format';
@@ -20,17 +21,20 @@ import { confirmDialog } from '../../store/confirm';
 interface PatientDetailProps {
   link: CareLink;
   onBack: () => void;
+  /** Abre já com a conversa aberta (link de um aviso de mensagem). */
+  openChat?: boolean;
   onEnded: () => void;
 }
 
 const card = 'rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900';
 const fmt = (n: number, digits = 0) => n.toLocaleString(undefined, { maximumFractionDigits: digits });
 
-export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
+export function PatientDetail({ link, onBack, onEnded, openChat = false }: PatientDetailProps) {
   const user = useAuthStore((s) => s.user);
   const { showToast } = useToastStore();
   const t = useTranslation();
   const patientId = link.person.id;
+  const [chatOpen, setChatOpen] = useState(openChat);
 
   const [data, setData] = useState<PatientData | null>(null);
   const [goalsForm, setGoalsForm] = useState<NutritionGoals>(DEFAULT_GOALS);
@@ -147,6 +151,15 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
         </div>
         <button
           type="button"
+          onClick={() => setChatOpen((v) => !v)}
+          aria-expanded={chatOpen}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold ${chatOpen ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300'}`}
+        >
+          <MessageCircle className="h-4 w-4" />
+          {t.messages.title}
+        </button>
+        <button
+          type="button"
           onClick={end}
           className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-900/20"
         >
@@ -154,6 +167,8 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
           {t.care.endLink}
         </button>
       </div>
+
+      {chatOpen && user && <ChatThread nutritionistId={user.id} clientId={patientId} otherName={link.person.full_name ?? ''} />}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className={card}>

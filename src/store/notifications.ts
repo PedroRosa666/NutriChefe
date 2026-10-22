@@ -110,12 +110,15 @@ export function notificationText(n: AppNotification, t: Translations): string {
         return n.data.new ? s.planCreated : s.planUpdated;
       case 'goals_updated':
         return s.goalsUpdated;
+      case 'message':
+        return s.message;
     }
   })();
   return template
     .replace('{name}', n.data.name || s.someone)
     .replace('{item}', item)
-    .replace('{title}', n.data.title ?? '');
+    .replace('{title}', n.data.title ?? '')
+    .replace('{preview}', n.data.preview ?? '');
 }
 
 /** Liga os avisos do usuário logado (Realtime) em qualquer página; aviso novo vira toast. Usar uma vez, no layout. */

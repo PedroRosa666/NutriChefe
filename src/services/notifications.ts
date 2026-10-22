@@ -8,7 +8,8 @@ export type NotificationKind =
   | 'patient_joined'
   | 'link_ended'
   | 'plan_updated'
-  | 'goals_updated';
+  | 'goals_updated'
+  | 'message';
 
 export interface AppNotification {
   id: string;
@@ -22,6 +23,8 @@ export interface AppNotification {
     offered?: boolean;
     title?: string;
     new?: boolean;
+    preview?: string;
+    from_nutritionist?: boolean;
   };
   read_at: string | null;
   created_at: string;
@@ -79,6 +82,9 @@ export function notificationTarget(n: AppNotification): string {
       return '/perfil?tab=plan';
     case 'goals_updated':
       return '/perfil?tab=nutrition';
+    case 'message':
+      // Mensagem do nutricionista: o paciente abre a aba Mensagens; do paciente: o nutricionista abre a conversa dele.
+      return n.data.from_nutritionist ? '/perfil?tab=messages' : `/perfil?tab=patients&paciente=${n.data.client_id ?? ''}&chat=1`;
     default:
       return '/perfil';
   }

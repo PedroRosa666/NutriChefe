@@ -201,6 +201,7 @@ export const translations = {
         patients: 'Patients',
         plan: 'Meal plan',
         shopping: 'Shopping list',
+        messages: 'Messages',
       },
     },
 
@@ -868,6 +869,7 @@ export const translations = {
       planCreated: '{name} created a meal plan for you: {title}',
       planUpdated: '{name} updated your meal plan: {title}',
       goalsUpdated: '{name} set new daily goals for you',
+      message: '{name}: {preview}',
     },
     templates: {
       useTitle: 'Use a template',
@@ -957,6 +959,20 @@ export const translations = {
       noData: 'No meals planned in the last 7 days.',
       noPlan: 'Create a meal plan to follow adherence.',
       lowAlert: 'Low adherence ({percent}%)',
+    },
+    messages: {
+      title: 'Messages',
+      with: 'Conversation with {name}',
+      empty: 'No messages yet. Send the first one!',
+      placeholder: 'Write a message...',
+      send: 'Send',
+      read: 'read',
+      sendError: 'Could not send. Try again.',
+      tooMany: 'Too many messages in a short time. Wait a few minutes.',
+      linkEnded: 'The follow-up has ended, so messages are closed.',
+      unreadCount: '{count} new message(s)',
+      noNutritionist: 'You do not have a nutritionist yet. When you accept an invite, you can talk to them here.',
+      connectHint: 'Connect with a nutritionist',
     },
     nutritionFacts: {
       title: 'Nutrition facts',
@@ -1246,6 +1262,7 @@ export const translations = {
         patients: 'Pacientes',
         plan: 'Plano alimentar',
         shopping: 'Lista de compras',
+        messages: 'Mensagens',
       },
     },
 
@@ -1914,6 +1931,7 @@ export const translations = {
       planCreated: '{name} criou um plano alimentar para você: {title}',
       planUpdated: '{name} atualizou seu plano alimentar: {title}',
       goalsUpdated: '{name} definiu novas metas diárias para você',
+      message: '{name}: {preview}',
     },
     templates: {
       useTitle: 'Usar um modelo',
@@ -2003,6 +2021,20 @@ export const translations = {
       noData: 'Nenhuma refeição prevista nos últimos 7 dias.',
       noPlan: 'Crie um plano alimentar para acompanhar a adesão.',
       lowAlert: 'Adesão baixa ({percent}%)',
+    },
+    messages: {
+      title: 'Mensagens',
+      with: 'Conversa com {name}',
+      empty: 'Nenhuma mensagem ainda. Mande a primeira!',
+      placeholder: 'Escreva uma mensagem...',
+      send: 'Enviar',
+      read: 'lida',
+      sendError: 'Não foi possível enviar. Tente novamente.',
+      tooMany: 'Muitas mensagens em pouco tempo. Espere alguns minutos.',
+      linkEnded: 'O acompanhamento foi encerrado, então as mensagens estão fechadas.',
+      unreadCount: '{count} mensagem(ns) nova(s)',
+      noNutritionist: 'Você ainda não tem nutricionista. Quando aceitar um convite, poderá conversar com ele por aqui.',
+      connectHint: 'Conectar a um nutricionista',
     },
     nutritionFacts: {
       title: 'Informação nutricional',

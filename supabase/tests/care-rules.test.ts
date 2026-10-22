@@ -234,6 +234,40 @@ describe('adesão ao plano', () => {
   });
 });
 
+describe('mensagens', () => {
+  const send = (uid: string, body: string, nutri = NUTRI, client = PATIENT) =>
+    asUser(db, uid, (tx) =>
+      tx.query(`INSERT INTO care_messages (nutritionist_id, client_id, sender_id, body) VALUES ($1, $2, $3, $4)`, [nutri, client, uid, body])
+    );
+  const thread = (uid: string) =>
+    asUser(db, uid, async (tx) => (await tx.query<{ body: string; read_at: string | null }>('SELECT body, read_at FROM care_messages ORDER BY created_at')).rows);
+
+  it('as duas pontas conversam; quem recebe ganha aviso', async () => {
+    await send(PATIENT, 'Posso trocar o arroz por batata?');
+    await send(NUTRI, 'Pode sim!');
+    expect((await thread(PATIENT)).map((m) => m.body)).toEqual(['Posso trocar o arroz por batata?', 'Pode sim!']);
+    expect((await notifications(NUTRI)).map((n) => n.kind)).toContain('message');
+    expect((await notifications(PATIENT)).map((n) => n.kind)).toContain('message');
+  });
+
+  it('quem não é do acompanhamento não lê nem escreve, nem em nome de outro', async () => {
+    expect(await thread(OTHER_NUTRI)).toEqual([]);
+    await expect(send(OTHER_NUTRI, 'oi', OTHER_NUTRI, PATIENT)).rejects.toThrow(/row-level security/);
+    await expect(
+      asUser(db, STRANGER, (tx) =>
+        tx.query(`INSERT INTO care_messages (nutritionist_id, client_id, sender_id, body) VALUES ($1, $2, $2, 'x')`, [NUTRI, PATIENT])
+      )
+    ).rejects.toThrow(/row-level security/);
+  });
+
+  it('marcar como lida vale só para as mensagens recebidas, e ninguém edita mensagem', async () => {
+    await asUser(db, PATIENT, (tx) => tx.query('SELECT mark_messages_read($1, $2)', [NUTRI, PATIENT]));
+    const rows = await thread(PATIENT);
+    expect(rows.map((m) => Boolean(m.read_at))).toEqual([false, true]);
+    await expect(asUser(db, PATIENT, (tx) => tx.query(`UPDATE care_messages SET body = 'editado'`))).rejects.toThrow(/permission denied/);
+  });
+});
+
 // Pedido de troca aberto do paciente (usado antes de encerrar o acompanhamento).
 const requestOpenSwap = async () => {
   const planId = (await db.query<{ id: string }>('SELECT id FROM meal_plans LIMIT 1')).rows[0].id;
@@ -254,6 +288,14 @@ describe('fim do acompanhamento', () => {
     expect((await notifications(NUTRI)).map((n) => n.kind)).toContain('link_ended');
     const plans = await asUser(db, NUTRI, async (tx) => (await tx.query('SELECT id FROM meal_plans')).rows);
     expect(plans).toEqual([]);
+  });
+
+  it('as mensagens também ficam fechadas para os dois', async () => {
+    const seen = await asUser(db, PATIENT, async (tx) => (await tx.query('SELECT id FROM care_messages')).rows);
+    expect(seen).toEqual([]);
+    await expect(
+      asUser(db, PATIENT, (tx) => tx.query(`INSERT INTO care_messages (nutritionist_id, client_id, sender_id, body) VALUES ($1, $2, $2, 'oi')`, [NUTRI, PATIENT]))
+    ).rejects.toThrow(/row-level security/);
   });
 
   it('o paciente também deixa de ver o plano, os itens e os pedidos de troca desse nutricionista', async () => {

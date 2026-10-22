@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeftRight, Bell, CalendarRange, Target, UserMinus, UserPlus, X } from 'lucide-react';
+import { ArrowLeftRight, Bell, CalendarRange, MessageCircle, Target, UserMinus, UserPlus, X } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useSettingsStore } from '../../store/settings';
 import { notificationText, useNotificationsStore } from '../../store/notifications';
@@ -16,6 +16,7 @@ const ICONS = {
   link_ended: UserMinus,
   plan_updated: CalendarRange,
   goals_updated: Target,
+  message: MessageCircle,
 } as const;
 
 function timeAgo(iso: string, locale: string): string {

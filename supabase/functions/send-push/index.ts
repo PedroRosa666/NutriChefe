@@ -20,6 +20,8 @@ type Data = {
   offered?: boolean;
   title?: string;
   new?: boolean;
+  preview?: string;
+  from_nutritionist?: boolean;
 };
 
 // Mesmos textos do sino do app (src/lib/i18n/translations.ts, notifications), em português.
@@ -50,6 +52,12 @@ function message(kind: string, d: Data): { title: string; body: string; url: str
         title: d.new ? "Plano alimentar novo" : "Plano alimentar atualizado",
         body: d.new ? `${name} criou um plano alimentar para você: ${d.title ?? ""}` : `${name} atualizou seu plano alimentar: ${d.title ?? ""}`,
         url: "/perfil?tab=plan",
+      };
+    case "message":
+      return {
+        title: name,
+        body: d.preview ?? "Nova mensagem",
+        url: d.from_nutritionist ? "/perfil?tab=messages" : `${patientUrl}&chat=1`,
       };
     case "goals_updated":
       return { title: "Metas atualizadas", body: `${name} definiu novas metas diárias para você`, url: "/perfil?tab=nutrition" };

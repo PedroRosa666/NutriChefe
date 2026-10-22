@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, type ComponentType } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LayoutDashboard, Apple, HeartPulse, Heart, Settings, BookOpen, Briefcase, Users, CalendarRange, ShoppingCart, Carrot } from 'lucide-react';
+import { LayoutDashboard, Apple, HeartPulse, Heart, Settings, BookOpen, Briefcase, Users, CalendarRange, ShoppingCart, Carrot, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { RecipeCard } from '../RecipeCard';
@@ -27,6 +27,7 @@ const AccountSettings = lazyNamed(() => import('./AccountSettings'), 'AccountSet
 const PatientsPanel = lazyNamed(() => import('../care/PatientsPanel'), 'PatientsPanel');
 const ShoppingListPanel = lazyNamed(() => import('../plans/ShoppingListPanel'), 'ShoppingListPanel');
 const MyFoodsPanel = lazyNamed(() => import('../foods/MyFoodsPanel'), 'MyFoodsPanel');
+const MessagesPanel = lazyNamed(() => import('../care/MessagesPanel'), 'MessagesPanel');
 const PlansSection = lazy(() => import('../plans/PlansSection').then((m) => ({ default: m.PlansSection })));
 
 type TabKey =
@@ -34,6 +35,7 @@ type TabKey =
   | 'plan'
   | 'nutrition'
   | 'shopping'
+  | 'messages'
   | 'health'
   | 'patients'
   | 'recipes'
@@ -42,7 +44,7 @@ type TabKey =
   | 'favorites'
   | 'account';
 
-const CLIENT_TABS: TabKey[] = ['overview', 'plan', 'nutrition', 'shopping', 'health', 'favorites', 'account'];
+const CLIENT_TABS: TabKey[] = ['overview', 'plan', 'nutrition', 'shopping', 'messages', 'health', 'favorites', 'account'];
 const NUTRITIONIST_TABS: TabKey[] = ['overview', 'patients', 'recipes', 'foods', 'professional', 'favorites', 'account'];
 
 const ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
@@ -50,6 +52,7 @@ const ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
   plan: CalendarRange,
   nutrition: Apple,
   shopping: ShoppingCart,
+  messages: MessageCircle,
   patients: Users,
   health: HeartPulse,
   recipes: BookOpen,
@@ -168,6 +171,8 @@ export function ProfileTabs() {
         )}
 
         {activeTab === 'shopping' && <ShoppingListPanel />}
+
+        {activeTab === 'messages' && <MessagesPanel />}
 
         {activeTab === 'patients' && <PatientsPanel />}
 
