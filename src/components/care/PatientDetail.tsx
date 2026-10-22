@@ -17,6 +17,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Avatar } from './Avatar';
 import { fmtNum } from '../../lib/format';
 import { confirmDialog } from '../../store/confirm';
+import { AppointmentsSection } from './Appointments';
 
 interface PatientDetailProps {
   link: CareLink;
@@ -169,6 +170,8 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false }: Patie
       </div>
 
       {chatOpen && user && <ChatThread nutritionistId={user.id} clientId={patientId} otherName={link.person.full_name ?? ''} />}
+
+      <AppointmentsSection clientId={patientId} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className={card}>

@@ -268,6 +268,59 @@ describe('mensagens', () => {
   });
 });
 
+describe('agenda de consultas', () => {
+  const save = (uid: string, startsIn: string, client = PATIENT, id: string | null = null) =>
+    asUser(db, uid, (tx) =>
+      one<{ save_appointment: string }>(
+        tx,
+        `SELECT save_appointment($1, $2, now() + $3::interval, 50::smallint, 'online', 'https://meet.example/x', '')`,
+        [id, client, startsIn]
+      )
+    ).then((r) => r.save_appointment);
+  const kinds = async (uid: string) => (await notifications(uid)).map((n) => n.kind);
+  let id = '';
+
+  it('nutritionista agenda; o paciente vê e recebe aviso; outro nutricionista não vê', async () => {
+    id = await save(NUTRI, '3 days');
+    const seen = await asUser(db, PATIENT, async (tx) => (await tx.query('SELECT mode FROM appointments')).rows);
+    expect(seen).toEqual([{ mode: 'online' }]);
+    expect(await kinds(PATIENT)).toContain('appointment_scheduled');
+    expect(await asUser(db, OTHER_NUTRI, async (tx) => (await tx.query('SELECT id FROM appointments')).rows)).toEqual([]);
+  });
+
+  it('paciente não agenda; ninguém agenda no passado nem com quem não acompanha', async () => {
+    await expect(save(PATIENT, '3 days')).rejects.toThrow('not_allowed');
+    await expect(save(NUTRI, '-2 days')).rejects.toThrow('in_the_past');
+    await expect(save(OTHER_NUTRI, '3 days')).rejects.toThrow('not_allowed');
+  });
+
+  it('lembrete de 1 dia e de 1 hora, uma vez cada, para os dois', async () => {
+    const soon = await save(NUTRI, '30 minutes');
+    // Marcada para daqui a menos de 1 dia: só falta o lembrete de 1 hora.
+    expect(Number((await db.query<{ n: number }>('SELECT send_appointment_reminders() AS n')).rows[0].n)).toBe(1);
+    expect(Number((await db.query<{ n: number }>('SELECT send_appointment_reminders() AS n')).rows[0].n)).toBe(0);
+    expect(await kinds(NUTRI)).toContain('appointment_reminder');
+    await asUser(db, NUTRI, (tx) => tx.query('SELECT cancel_appointment($1)', [soon]));
+  });
+
+  it('paciente cancela; o nutricionista recebe aviso; não dá para cancelar de novo', async () => {
+    await asUser(db, PATIENT, (tx) => tx.query('SELECT cancel_appointment($1)', [id]));
+    expect(await kinds(NUTRI)).toContain('appointment_canceled');
+    await expect(asUser(db, PATIENT, (tx) => tx.query('SELECT cancel_appointment($1)', [id]))).rejects.toThrow('not_allowed');
+  });
+
+  it('o app não escreve direto na tabela', async () => {
+    await expect(
+      asUser(db, NUTRI, (tx) => tx.query(`INSERT INTO appointments (nutritionist_id, client_id, starts_at) VALUES ($1, $2, now())`, [NUTRI, PATIENT]))
+    ).rejects.toThrow(/permission denied/);
+  });
+
+  it('consulta futura fica marcada para o teste do fim do acompanhamento', async () => {
+    id = await save(NUTRI, '5 days');
+    expect(id).toBeTruthy();
+  });
+});
+
 // Pedido de troca aberto do paciente (usado antes de encerrar o acompanhamento).
 const requestOpenSwap = async () => {
   const planId = (await db.query<{ id: string }>('SELECT id FROM meal_plans LIMIT 1')).rows[0].id;
@@ -288,6 +341,12 @@ describe('fim do acompanhamento', () => {
     expect((await notifications(NUTRI)).map((n) => n.kind)).toContain('link_ended');
     const plans = await asUser(db, NUTRI, async (tx) => (await tx.query('SELECT id FROM meal_plans')).rows);
     expect(plans).toEqual([]);
+  });
+
+  it('consultas futuras são canceladas', async () => {
+    const rows = await db.query<{ status: string }>(`SELECT status FROM appointments WHERE client_id = $1 AND starts_at > now()`, [PATIENT]);
+    expect(rows.rows.length).toBeGreaterThan(0);
+    expect(rows.rows.every((r) => r.status === 'canceled')).toBe(true);
   });
 
   it('as mensagens também ficam fechadas para os dois', async () => {

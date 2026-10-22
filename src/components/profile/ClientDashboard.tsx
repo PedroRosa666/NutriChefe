@@ -13,6 +13,7 @@ import { DashboardMetricCard } from './DashboardMetricCard';
 import { WeeklyCaloriesChart } from '../nutrition/WeeklyCaloriesChart';
 import { MyNutritionistCard } from '../care/MyNutritionistCard';
 import { WeeklyReport } from './WeeklyReport';
+import { UpcomingAppointments } from '../care/Appointments';
 
 export function ClientDashboard() {
   const { user } = useAuthStore();
@@ -48,6 +49,8 @@ export function ClientDashboard() {
 
   return (
     <div className="space-y-8">
+      <UpcomingAppointments />
+
       {/* Avisos que levam à próxima ação */}
       {showReminder && (
         <Link

@@ -90,6 +90,11 @@ export function useNotificationSignal(match: (n: AppNotification) => boolean): s
   });
 }
 
+const formatWhen = (iso: string) => {
+  const locale = useSettingsStore.getState().language === 'pt' ? 'pt-BR' : 'en-US';
+  return new Date(iso).toLocaleString(locale, { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+};
+
 /** Texto do aviso no idioma atual. */
 export function notificationText(n: AppNotification, t: Translations): string {
   const s = t.notifications;
@@ -112,13 +117,20 @@ export function notificationText(n: AppNotification, t: Translations): string {
         return s.goalsUpdated;
       case 'message':
         return s.message;
+      case 'appointment_scheduled':
+        return n.data.rescheduled ? s.appointmentRescheduled : s.appointmentScheduled;
+      case 'appointment_canceled':
+        return s.appointmentCanceled;
+      case 'appointment_reminder':
+        return s.appointmentReminder;
     }
   })();
   return template
     .replace('{name}', n.data.name || s.someone)
     .replace('{item}', item)
     .replace('{title}', n.data.title ?? '')
-    .replace('{preview}', n.data.preview ?? '');
+    .replace('{preview}', n.data.preview ?? '')
+    .replace('{when}', n.data.starts_at ? formatWhen(n.data.starts_at) : '');
 }
 
 /** Liga os avisos do usuário logado (Realtime) em qualquer página; aviso novo vira toast. Usar uma vez, no layout. */

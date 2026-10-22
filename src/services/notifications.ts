@@ -1,6 +1,7 @@
 // Avisos dentro do app. São criados só por gatilhos do banco
 // (supabase/migrations/20261023120000_notifications.sql); aqui o app lê, marca como lido e apaga.
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../store/auth';
 
 export type NotificationKind =
   | 'swap_requested'
@@ -9,7 +10,10 @@ export type NotificationKind =
   | 'link_ended'
   | 'plan_updated'
   | 'goals_updated'
-  | 'message';
+  | 'message'
+  | 'appointment_scheduled'
+  | 'appointment_canceled'
+  | 'appointment_reminder';
 
 export interface AppNotification {
   id: string;
@@ -25,6 +29,8 @@ export interface AppNotification {
     new?: boolean;
     preview?: string;
     from_nutritionist?: boolean;
+    starts_at?: string;
+    rescheduled?: boolean;
   };
   read_at: string | null;
   created_at: string;
@@ -82,6 +88,13 @@ export function notificationTarget(n: AppNotification): string {
       return '/perfil?tab=plan';
     case 'goals_updated':
       return '/perfil?tab=nutrition';
+    case 'appointment_scheduled':
+    case 'appointment_canceled':
+    case 'appointment_reminder':
+      // O paciente vê as consultas no painel; o nutricionista, no detalhe do paciente.
+      return n.data.client_id && useAuthStore.getState().user?.type === 'Nutritionist'
+        ? `/perfil?tab=patients&paciente=${n.data.client_id}`
+        : '/perfil';
     case 'message':
       // Mensagem do nutricionista: o paciente abre a aba Mensagens; do paciente: o nutricionista abre a conversa dele.
       return n.data.from_nutritionist ? '/perfil?tab=messages' : `/perfil?tab=patients&paciente=${n.data.client_id ?? ''}&chat=1`;

@@ -22,7 +22,17 @@ type Data = {
   new?: boolean;
   preview?: string;
   from_nutritionist?: boolean;
+  starts_at?: string;
+  rescheduled?: boolean;
 };
+
+// Data da consulta no horário de Brasília (ex.: "qui., 23/10, 14:30").
+const when = (iso?: string) =>
+  iso
+    ? new Date(iso).toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo", weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+      })
+    : "";
 
 // Mesmos textos do sino do app (src/lib/i18n/translations.ts, notifications), em português.
 function message(kind: string, d: Data): { title: string; body: string; url: string } {
@@ -53,6 +63,16 @@ function message(kind: string, d: Data): { title: string; body: string; url: str
         body: d.new ? `${name} criou um plano alimentar para você: ${d.title ?? ""}` : `${name} atualizou seu plano alimentar: ${d.title ?? ""}`,
         url: "/perfil?tab=plan",
       };
+    case "appointment_scheduled":
+      return {
+        title: d.rescheduled ? "Consulta remarcada" : "Consulta marcada",
+        body: d.rescheduled ? `${name} remarcou sua consulta para ${when(d.starts_at)}` : `${name} marcou uma consulta: ${when(d.starts_at)}`,
+        url: "/perfil",
+      };
+    case "appointment_canceled":
+      return { title: "Consulta cancelada", body: `${name} cancelou a consulta de ${when(d.starts_at)}`, url: "/perfil" };
+    case "appointment_reminder":
+      return { title: "Lembrete de consulta", body: `Consulta com ${name} em ${when(d.starts_at)}`, url: "/perfil" };
     case "message":
       return {
         title: name,
