@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, CalendarRange, ListChecks, Pencil, Plus, ShoppingCart, Sparkles, Trash2, PlusCircle, Loader2 } from 'lucide-react';
+import { ArrowLeftRight, CalendarRange, FileDown, ListChecks, Pencil, Plus, ShoppingCart, Sparkles, Trash2, PlusCircle, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useToastStore } from '../../store/toast';
@@ -15,6 +15,7 @@ import { listSwapsForClient, pendingFor, type SwapRequest } from '../../services
 import { SwapRequestDialog } from '../swaps/SwapRequestDialog';
 import { SwapRequestsList } from '../swaps/SwapRequestsList';
 import { MealPlanEditor } from './MealPlanEditor';
+import { PlanPrintView } from './PlanPrintView';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { cn } from '../../lib/utils';
 
@@ -27,9 +28,11 @@ interface PlansSectionProps {
   preferences: string[];
   /** Muda para recarregar os planos (ex.: depois de o nutricionista responder uma troca). */
   reloadKey?: number;
+  /** Nome do paciente no PDF (no modo cliente usa o nome do próprio usuário). */
+  patientName?: string;
 }
 
-export function PlansSection({ clientId, mode, dailyCalories, allergies, preferences, reloadKey = 0 }: PlansSectionProps) {
+export function PlansSection({ clientId, mode, dailyCalories, allergies, preferences, reloadKey = 0, patientName }: PlansSectionProps) {
   const user = useAuthStore((s) => s.user);
   const recipes = useRecipesStore((s) => s.recipes);
   const { showToast } = useToastStore();
@@ -44,6 +47,8 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   const [swaps, setSwaps] = useState<SwapRequest[]>([]);
   const [swapsKey, setSwapsKey] = useState(0);
   const [swapping, setSwapping] = useState<{ item: MealPlanItem; label: string } | null>(null);
+  const [printing, setPrinting] = useState(false);
+  const stopPrinting = useCallback(() => setPrinting(false), []);
   // O paciente recebe aviso quando o nutricionista muda o plano ou responde uma troca: recarrega na hora.
   const planSignal = useNotificationSignal((n) => mode === 'client' && (n.kind === 'plan_updated' || n.kind === 'swap_answered'));
 
@@ -312,6 +317,15 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
               {t.plan.shoppingWeek}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setPrinting(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            title={t.plan.pdfTitle}
+          >
+            <FileDown className="h-4 w-4" />
+            {t.plan.pdf}
+          </button>
           {canEdit && (
             <button
               type="button"
@@ -415,6 +429,15 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
       </div>
 
       {mode === 'client' && <SwapRequestsList clientId={clientId} role="client" refreshKey={swapsKey} onCanceled={() => setSwapsKey((k) => k + 1)} />}
+
+      {printing && (
+        <PlanPrintView
+          plan={plan}
+          recipesById={byId}
+          patientName={patientName ?? (mode === 'client' ? user?.name ?? '' : '')}
+          onDone={stopPrinting}
+        />
+      )}
 
       {swapping && (
         <SwapRequestDialog

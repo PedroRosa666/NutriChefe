@@ -146,13 +146,36 @@
 .recipe-card-footer {
   margin-top: auto;
 }
+/* Plano em PDF: escondido na tela; ao imprimir o plano, só ele aparece (ver PlanPrintView). */
+.plan-print-root {
+  display: none;
+}
+@media print {
+  html.printing-plan body > *:not(.plan-print-root) {
+    display: none !important;
+  }
+  html.printing-plan,
+  html.printing-plan body {
+    background: #fff !important;
+  }
+  html.printing-plan .plan-print-root {
+    display: block;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+}
+
 /* Impressão do resumo semanal: só o cartão marcado com .print-area aparece. */
 @media print {
-  body * {
+  html:not(.printing-plan) body * {
     visibility: hidden;
   }
-  .print-area,
-  .print-area * {
+  html:not(.printing-plan) .print-area,
+  html:not(.printing-plan) .print-area * {
     visibility: visible;
   }
   .print-area {

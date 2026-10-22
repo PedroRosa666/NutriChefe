@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { itemNutrition, itemsCalories, mealBlocks, nextOptionGroup } from '../plan-items';
+import { groupEqualDays, itemNutrition, itemsCalories, itemsTotals, mealBlocks, nextOptionGroup } from '../plan-items';
 import type { MealPlanItem } from '../../services/care';
 import type { Food } from '../../services/foods';
 import type { Recipe } from '../../types/recipe';
@@ -40,5 +40,24 @@ describe('itemsCalories', () => {
 
   it('próximo grupo livre', () => {
     expect(nextOptionGroup([recipe(1), food(pao, 50, 2)])).toBe(3);
+  });
+});
+
+describe('itemsTotals', () => {
+  it('soma os macros contando só a primeira opção de cada grupo', () => {
+    expect(itemsTotals([recipe(1), food(pao, 50, 1), food(tapioca, 60, 1)], recipes)).toEqual({
+      calories: 527, protein: 34.7, carbs: 65, fat: 11.9, fiber: 8.5,
+    });
+  });
+});
+
+describe('groupEqualDays', () => {
+  const on = (day: number, item: MealPlanItem) => ({ ...item, day });
+  it('junta dias seguidos iguais e separa os diferentes', () => {
+    const items = [0, 1, 2, 3, 4].map((d) => on(d, recipe(1))).concat([on(5, food(pao, 50)), on(6, recipe(1))]);
+    expect(groupEqualDays(items).map((g) => g.days)).toEqual([[0, 1, 2, 3, 4], [5], [6]]);
+  });
+  it('não junta dias iguais separados por um dia vazio', () => {
+    expect(groupEqualDays([on(0, recipe(1)), on(2, recipe(1))]).map((g) => g.days)).toEqual([[0], [2]]);
   });
 });

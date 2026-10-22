@@ -305,6 +305,7 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
           allergies={h?.allergies ?? []}
           preferences={h?.dietary_preferences ?? []}
           reloadKey={plansKey}
+          patientName={link.person.full_name ?? ''}
         />
       </section>
     </div>
