@@ -5,8 +5,11 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { ThemeProvider } from './components/ThemeProvider';
 import './index.css';
 import { installGlobalErrorReporting } from './lib/error-reporting';
+import { listenForInstallPrompt, registerServiceWorker } from './lib/push';
 
 installGlobalErrorReporting();
+registerServiceWorker();
+listenForInstallPrompt();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

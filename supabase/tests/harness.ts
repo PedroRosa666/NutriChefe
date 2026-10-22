@@ -15,6 +15,7 @@ const MIGRATIONS = [
   '20261024120000_swap_recipes.sql',
   '20261024130000_privacy_lgpd.sql',
   '20261024140000_client_errors.sql',
+  '20261025120000_push_notifications.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -22,6 +23,7 @@ const MIGRATIONS = [
 const BASE = `
   CREATE ROLE anon NOLOGIN;
   CREATE ROLE authenticated NOLOGIN;
+  CREATE ROLE service_role NOLOGIN;
   GRANT USAGE ON SCHEMA public TO anon, authenticated;
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
@@ -33,6 +35,12 @@ const BASE = `
   GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated;
 
   CREATE PUBLICATION supabase_realtime;
+
+  -- pg_net de mentira: só anota as chamadas HTTP que o banco faria.
+  CREATE SCHEMA net;
+  CREATE TABLE net.calls (url text, body jsonb);
+  CREATE FUNCTION net.http_post(url text, body jsonb, headers jsonb) RETURNS bigint LANGUAGE sql
+    AS $$ INSERT INTO net.calls VALUES (url, body); SELECT 1::bigint $$;
 
   CREATE TABLE auth.users (id uuid PRIMARY KEY);
   CREATE TABLE profiles (id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE, full_name text, user_type text);
@@ -53,7 +61,9 @@ export async function createTestDb(): Promise<PGlite> {
   const db = new PGlite();
   await db.exec(BASE);
   for (const file of MIGRATIONS) {
-    const sql = readFileSync(fileURLToPath(new URL(`../migrations/${file}`, import.meta.url)), 'utf8');
+    const sql = readFileSync(fileURLToPath(new URL(`../migrations/${file}`, import.meta.url)), 'utf8')
+      // pg_net não existe no PGlite: usa o de mentira criado em BASE.
+      .replace(/CREATE EXTENSION IF NOT EXISTS pg_net[^;]*;/, '');
     try {
       await db.exec(sql);
     } catch (error) {

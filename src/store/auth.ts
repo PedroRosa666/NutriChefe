@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { getUserProfile } from '../services/database';
 import { useToastStore } from './toast';
 import type { User, UserType } from '../types/user';
+import { cleanupDeviceOnLogout } from '../lib/push';
 
 interface AuthState {
   user: User | null;
@@ -180,6 +181,8 @@ export const useAuthStore = create<AuthState>()(
 
       signOut: async () => {
         try {
+          // Antes de sair (ainda logado): o aparelho para de receber notificações dessa pessoa.
+          await cleanupDeviceOnLogout();
           await supabase.auth.signOut();
         } catch (e) {
           console.error('signOut error:', e);

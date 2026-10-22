@@ -249,3 +249,36 @@ describe('registro de erros', () => {
     ).rejects.toThrow(/row-level security/);
   });
 });
+
+describe('notificações no celular', () => {
+  const calls = async () => (await db.query<{ body: { notification_id: string } }>('SELECT body FROM net.calls')).rows;
+
+  it('sem aparelho inscrito, não chama o envio', async () => {
+    await db.query('DELETE FROM net.calls');
+    await db.query(`SELECT notify($1, 'goals_updated', $1, '{}'::jsonb)`, [OTHER_NUTRI]);
+    expect(await calls()).toEqual([]);
+  });
+
+  it('com aparelho inscrito, chama o envio uma vez; o envio só é reivindicado uma vez', async () => {
+    await asUser(db, OTHER_NUTRI, (tx) => tx.query(`SELECT save_push_subscription('https://push.example/abc', 'k', 'a', 'teste')`));
+    await db.query('DELETE FROM net.calls');
+    await db.query(`SELECT notify($1, 'patient_joined', $1, '{}'::jsonb)`, [OTHER_NUTRI]);
+    const sent = await calls();
+    expect(sent).toHaveLength(1);
+    const id = sent[0].body.notification_id;
+    expect((await db.query('SELECT * FROM claim_push($1)', [id])).rows).toHaveLength(1);
+    expect((await db.query('SELECT * FROM claim_push($1)', [id])).rows).toHaveLength(0);
+  });
+
+  it('a inscrição passa para quem logou depois no mesmo aparelho; ninguém vê a do outro', async () => {
+    await asUser(db, NUTRI, (tx) => tx.query(`SELECT save_push_subscription('https://push.example/abc', 'k2', 'a2', 'teste')`));
+    const mine = await asUser(db, NUTRI, async (tx) => (await tx.query('SELECT endpoint FROM push_subscriptions')).rows);
+    const other = await asUser(db, OTHER_NUTRI, async (tx) => (await tx.query('SELECT endpoint FROM push_subscriptions')).rows);
+    expect(mine).toHaveLength(1);
+    expect(other).toHaveLength(0);
+  });
+
+  it('o app não consegue reivindicar envio (só a função do servidor)', async () => {
+    await expect(asUser(db, NUTRI, (tx) => tx.query(`SELECT * FROM claim_push(gen_random_uuid())`))).rejects.toThrow(/permission denied/);
+  });
+});

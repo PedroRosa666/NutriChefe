@@ -9,6 +9,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { supabase } from '../../lib/supabase';
 import { openBillingPortal } from '../../services/subscription';
 import { DeleteAccountError, deleteMyAccount, downloadMyData } from '../../services/privacy';
+import { AppDeviceCard } from './AppDeviceCard';
 
 const inputClass =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100';
@@ -182,6 +183,8 @@ export function AccountSettings() {
           <p className="text-xs text-slate-500 dark:text-slate-400">{a.portalHint}</p>
         </section>
       )}
+
+      <AppDeviceCard className={cardClass} />
 
       <section className={cardClass}>
         <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
