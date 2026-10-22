@@ -11,6 +11,7 @@ import { WeightChart } from '../profile/WeightChart';
 import { WeeklyCaloriesChart } from '../nutrition/WeeklyCaloriesChart';
 import { PlansSection } from '../plans/PlansSection';
 import { SwapRequestsList } from '../swaps/SwapRequestsList';
+import { AdherencePanel } from './AdherencePanel';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Avatar } from './Avatar';
 import { fmtNum } from '../../lib/format';
@@ -291,6 +292,8 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
           </button>
         </div>
       </section>
+
+      <AdherencePanel clientId={patientId} reloadKey={plansKey} />
 
       {/* Pedidos de troca: a resposta pode mudar o plano, que então recarrega. */}
       <SwapRequestsList

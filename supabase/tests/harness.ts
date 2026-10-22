@@ -17,6 +17,7 @@ const MIGRATIONS = [
   '20261024140000_client_errors.sql',
   '20261025120000_push_notifications.sql',
   '20261025130000_hide_plans_after_link_ends.sql',
+  '20261026120000_meal_plan_checks.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as

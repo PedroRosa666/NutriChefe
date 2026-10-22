@@ -199,6 +199,41 @@ describe('modelos (RLS)', () => {
   });
 });
 
+describe('adesão ao plano', () => {
+  const planId = async () => (await db.query<{ id: string }>('SELECT id FROM meal_plans LIMIT 1')).rows[0].id;
+  const mark = (uid: string, plan: string, date: string, status = 'ate') =>
+    asUser(db, uid, (tx) =>
+      tx.query(`INSERT INTO meal_plan_checks (client_id, plan_id, check_date, meal, status) VALUES ($1, $2, $3::date, 'lunch', $4)`, [uid, plan, date, status])
+    );
+
+  it('paciente marca a refeição de hoje; o nutricionista do plano vê, outro não', async () => {
+    await mark(PATIENT, await planId(), new Date().toISOString().slice(0, 10));
+    const nutri = await asUser(db, NUTRI, async (tx) => (await tx.query('SELECT status FROM meal_plan_checks')).rows);
+    const other = await asUser(db, OTHER_NUTRI, async (tx) => (await tx.query('SELECT status FROM meal_plan_checks')).rows);
+    expect(nutri).toEqual([{ status: 'ate' }]);
+    expect(other).toEqual([]);
+  });
+
+  it('mesma refeição no mesmo dia: uma marcação só (atualiza)', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    await expect(mark(PATIENT, await planId(), today, 'skipped')).rejects.toThrow(/duplicate|unique/);
+    await asUser(db, PATIENT, (tx) => tx.query(`UPDATE meal_plan_checks SET status = 'other' WHERE check_date = $1::date`, [today]));
+    const rows = await asUser(db, PATIENT, async (tx) => (await tx.query('SELECT status FROM meal_plan_checks')).rows);
+    expect(rows).toEqual([{ status: 'other' }]);
+  });
+
+  it('não marca datas futuras nem em nome de outra pessoa', async () => {
+    const future = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+    await expect(mark(PATIENT, await planId(), future)).rejects.toThrow(/row-level security/);
+    const plan = await planId();
+    await expect(
+      asUser(db, STRANGER, (tx) =>
+        tx.query(`INSERT INTO meal_plan_checks (client_id, plan_id, check_date, meal, status) VALUES ($1, $2, current_date, 'dinner', 'ate')`, [PATIENT, plan])
+      )
+    ).rejects.toThrow(/row-level security/);
+  });
+});
+
 // Pedido de troca aberto do paciente (usado antes de encerrar o acompanhamento).
 const requestOpenSwap = async () => {
   const planId = (await db.query<{ id: string }>('SELECT id FROM meal_plans LIMIT 1')).rows[0].id;

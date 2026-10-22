@@ -11,6 +11,10 @@ import { deletePlan, listPlans, MEAL_SLOTS, planDayOf, type MealPlan, type MealP
 import { itemsCalories, mealBlocks } from '../../lib/plan-items';
 import { foodLogValues } from '../../lib/food-math';
 import { PlanItemRow } from './PlanItemRow';
+import { MealCheckBar } from './MealCheckBar';
+import { dateForPlanDay, type CheckStatus, type MealCheck } from '../../lib/adherence';
+import { deleteCheck, listChecks, saveCheck } from '../../services/adherence';
+import { toISODate } from '../../store/nutrition-tracking';
 import { listSwapsForClient, pendingFor, type SwapRequest } from '../../services/swaps';
 import { SwapRequestDialog } from '../swaps/SwapRequestDialog';
 import { SwapRequestsList } from '../swaps/SwapRequestsList';
@@ -49,6 +53,8 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   const [swaps, setSwaps] = useState<SwapRequest[]>([]);
   const [swapsKey, setSwapsKey] = useState(0);
   const [swapping, setSwapping] = useState<{ item: MealPlanItem; label: string } | null>(null);
+  const [checks, setChecks] = useState<MealCheck[]>([]);
+  const [checkingMeal, setCheckingMeal] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
   const stopPrinting = useCallback(() => setPrinting(false), []);
   // O paciente recebe aviso quando o nutricionista muda o plano, responde uma troca ou encerra o
@@ -78,6 +84,16 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
       .then(setSwaps)
       .catch((error) => console.error('Error loading swaps:', error));
   }, [clientId, mode, swapsKey, planSignal]);
+
+  // Marcações de adesão da última semana (só o próprio paciente marca).
+  useEffect(() => {
+    if (mode !== 'client') return;
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+    listChecks(clientId, toISODate(since))
+      .then(setChecks)
+      .catch((error) => console.error('Error loading meal checks:', error));
+  }, [clientId, mode, planSignal]);
 
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const plan = plans.find((p) => p.id === selectedId) ?? null;
@@ -168,19 +184,23 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     }
   };
 
+  /** Lança um item do plano no diário (de hoje ou da data informada). */
+  const logToDiary = async (item: MealPlanItem, date?: string) => {
+    const tracking = useNutritionTrackingStore.getState();
+    if (item.food_id && item.food && item.grams) {
+      // Alimento: entra com os nutrientes completos da quantidade prescrita.
+      const { totals, extra } = foodLogValues(item.food, item.grams);
+      await tracking.addFoodToLog(`${item.food.name} — ${item.measure_label ?? `${item.grams} g`}`, totals, 1, date, extra);
+    } else {
+      const recipe = item.recipe_id ? byId.get(item.recipe_id) : undefined;
+      if (recipe) await tracking.addRecipeToLog(recipe, item.servings, date);
+    }
+  };
+
   const logItem = async (item: MealPlanItem, key: string) => {
     setLoggingKey(key);
     try {
-      const tracking = useNutritionTrackingStore.getState();
-      if (item.food_id && item.food && item.grams) {
-        // Alimento: entra com os nutrientes completos da quantidade prescrita.
-        const { totals, extra } = foodLogValues(item.food, item.grams);
-        await tracking.addFoodToLog(`${item.food.name} — ${item.measure_label ?? `${item.grams} g`}`, totals, 1, undefined, extra);
-      } else {
-        const recipe = item.recipe_id ? byId.get(item.recipe_id) : undefined;
-        if (!recipe) return;
-        await tracking.addRecipeToLog(recipe, item.servings);
-      }
+      await logToDiary(item);
       showToast(t.plan.logged, 'success');
     } catch (error) {
       console.error('Error logging plan item:', error);
@@ -225,6 +245,46 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   }
 
   const dayItems = plan.items.filter((i) => i.day === day);
+  // A data real do dia escolhido: hoje ou um dia passado desta semana (nunca futuro).
+  const dayDate = dateForPlanDay(day);
+
+  const itemName = (item: MealPlanItem) =>
+    item.food_id ? item.food?.name ?? '' : (item.recipe_id && byId.get(item.recipe_id)?.title) || '';
+
+  const saveMealCheck = async (meal: MealPlanItem['meal'], status: CheckStatus, eaten: MealPlanItem[], note: string) => {
+    const previous = checks.find((c) => c.check_date === dayDate && c.meal === meal);
+    setCheckingMeal(meal);
+    try {
+      const saved = await saveCheck({ clientId, planId: plan.id, date: dayDate, meal, status, chosen: eaten.map(itemName), note });
+      setChecks((prev) => [saved, ...prev.filter((c) => c.id !== saved.id)]);
+      // "Comi" lança a refeição no diário daquele dia (só na primeira vez, para não duplicar).
+      if (status === 'ate' && previous?.status !== 'ate') {
+        for (const item of eaten) await logToDiary(item, dayDate);
+        showToast(t.adherence.savedAte, 'success');
+      } else {
+        showToast(t.adherence.saved, 'success');
+      }
+    } catch (error) {
+      console.error('Error saving meal check:', error);
+      showToast(t.adherence.error, 'error');
+    } finally {
+      setCheckingMeal(null);
+    }
+  };
+
+  const clearMealCheck = async (check: MealCheck) => {
+    setCheckingMeal(check.meal);
+    try {
+      await deleteCheck(check.id);
+      setChecks((prev) => prev.filter((c) => c.id !== check.id));
+      if (check.status === 'ate') showToast(t.adherence.clearedAte, 'info');
+    } catch (error) {
+      console.error('Error clearing meal check:', error);
+      showToast(t.adherence.error, 'error');
+    } finally {
+      setCheckingMeal(null);
+    }
+  };
   const dayKcal = itemsCalories(dayItems, byId);
   const dayHasOptions = dayItems.some((i) => i.option_group !== null);
 
@@ -426,6 +486,20 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
                   );
                 })}
               </div>
+              {mode === 'client' && mealItems.length > 0 && (
+                <MealCheckBar
+                  key={`${dayDate}-${meal}`}
+                  items={mealItems}
+                  check={checks.find((c) => c.check_date === dayDate && c.meal === meal)}
+                  busy={checkingMeal === meal}
+                  itemName={itemName}
+                  onSave={(status, eaten, note) => saveMealCheck(meal, status, eaten, note)}
+                  onClear={() => {
+                    const current = checks.find((c) => c.check_date === dayDate && c.meal === meal);
+                    if (current) clearMealCheck(current);
+                  }}
+                />
+              )}
             </div>
           );
         })}

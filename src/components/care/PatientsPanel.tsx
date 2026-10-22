@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Copy, Loader2, MessageCircle, UserPlus, Users, X, ChevronRight, AlertTriangle, ArrowLeftRight } from 'lucide-react';
+import { Copy, Loader2, MessageCircle, UserPlus, Users, X, ChevronRight, AlertTriangle, ArrowLeftRight, ClipboardCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -17,6 +17,7 @@ import {
   type Invite,
 } from '../../services/care';
 import { pendingSwapCounts } from '../../services/swaps';
+import { loadAdherence } from '../../services/adherence';
 import { sumEntries, toISODate } from '../../store/nutrition-tracking';
 import { Avatar } from './Avatar';
 import { PatientDetail } from './PatientDetail';
@@ -27,11 +28,16 @@ interface PatientSummary {
   days7: number;
   avgKcal7: number;
   goalKcal: number | null;
+  /** % de adesão nos últimos 7 dias ao plano deste nutricionista (null sem plano/dados). */
+  adherence: number | null;
 }
 
 /** Resumo dos últimos 7 dias de cada paciente, para a lista. */
-async function summarize(clientId: string): Promise<PatientSummary> {
-  const data = await getPatientData(clientId, 7);
+async function summarize(clientId: string, nutritionistId: string): Promise<PatientSummary> {
+  const [data, adherence] = await Promise.all([
+    getPatientData(clientId, 7),
+    loadAdherence(clientId, nutritionistId).catch(() => null),
+  ]);
   const since = new Date();
   since.setDate(since.getDate() - 6);
   const min = toISODate(since);
@@ -43,6 +49,7 @@ async function summarize(clientId: string): Promise<PatientSummary> {
     days7: days.size,
     avgKcal7: days.size ? Math.round(total / days.size) : 0,
     goalKcal: data.goals?.calories ?? null,
+    adherence: adherence && adherence.current.planned >= 6 ? adherence.current.percent : null,
   };
 }
 
@@ -74,7 +81,7 @@ export function PatientsPanel() {
         .catch((e) => console.error('Error loading swap counts:', e));
       // Resumos carregam em paralelo, sem travar a lista.
       list.forEach((p) =>
-        summarize(p.person.id)
+        summarize(p.person.id, user.id)
           .then((s) => setSummaries((prev) => ({ ...prev, [p.person.id]: s })))
           .catch((e) => console.error('Error summarizing patient:', e))
       );
@@ -256,6 +263,13 @@ export function PatientsPanel() {
                     <p className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">
                       <ArrowLeftRight className="h-3 w-3" />
                       {t.swaps.pendingCount.replace('{count}', String(pendingSwaps.get(p.person.id)))}
+                    </p>
+                  )}
+                  {/* Adesão baixa: só com refeições suficientes para a % fazer sentido. */}
+                  {s && s.adherence !== null && s.adherence < 50 && (
+                    <p className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">
+                      <ClipboardCheck className="h-3 w-3" />
+                      {t.adherence.lowAlert.replace('{percent}', String(s.adherence))}
                     </p>
                   )}
                   {(inactive || overGoal) && (
