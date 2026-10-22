@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, Carrot, ListChecks, Loader2, Sparkles, Trash2, Save, X } from 'lucide-react';
+import { BookOpen, Carrot, LayoutTemplate, ListChecks, Loader2, Scale, Sparkles, Trash2, Save, X } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { MEAL_SLOTS, planDayOf, savePlan, type MealPlan, type MealPlanItem, type MealSlot } from '../../services/care';
 import { generateWeeklyPlan } from '../../lib/meal-plan-generator';
-import { isItemAvailable, itemsCalories, mealBlocks, nextOptionGroup } from '../../lib/plan-items';
+import { isItemAvailable, itemsCalories, mealBlocks, nextOptionGroup, scaleItemsToTarget } from '../../lib/plan-items';
 import { FoodQuantityPicker, type PickedFood } from '../foods/FoodQuantityPicker';
+import { EquivalentFoods } from '../foods/EquivalentFoods';
 import { PlanItemRow } from './PlanItemRow';
+import { PlanTemplatesPanel } from './PlanTemplatesPanel';
 import { cn } from '../../lib/utils';
 import type { Recipe } from '../../types/recipe';
 
@@ -70,6 +72,7 @@ export function MealPlanEditor({
   const [day, setDay] = useState(() => planDayOf(new Date()));
   const [adder, setAdder] = useState<Adder | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const sortedRecipes = useMemo(() => recipes.slice().sort((a, b) => a.title.localeCompare(b.title)), [recipes]);
@@ -86,6 +89,21 @@ export function MealPlanEditor({
     // O gerador só monta receitas; alimentos e grupos de opções do dia ficam como estavam.
     setItems((prev) => [...prev.filter((i) => i.food_id || i.option_group !== null), ...next]);
     showToast(t.plan.generated, 'success');
+  };
+
+  // Muda as quantidades de cada dia na mesma proporção para chegar perto da meta do paciente.
+  const scaleToGoal = () => {
+    if (!items.length || !dailyCalories) return;
+    setItems((prev) => scaleItemsToTarget(prev, dailyCalories, byId));
+    showToast(t.plan.scaled.replace('{kcal}', String(Math.round(dailyCalories))), 'success');
+  };
+
+  const applyTemplate = (input: { items: MealPlanItem[]; title: string; notes: string }) => {
+    setItems(input.items);
+    setTitle((current) => current || input.title);
+    setNotes((current) => current || input.notes);
+    setAdder(null);
+    setShowTemplates(false);
   };
 
   const addRecipe = (target: Adder, recipeId: string) => {
@@ -223,15 +241,43 @@ export function MealPlanEditor({
           {t.plan.goalHint.replace('{kcal}', String(Math.round(dailyCalories)))}
           {hasOptions && ` ${t.plan.firstOptionNote}`}
         </p>
-        <button
-          type="button"
-          onClick={regenerate}
-          className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300"
-        >
-          <Sparkles className="h-4 w-4" />
-          {items.length ? t.plan.regenerate : t.plan.generate}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setShowTemplates((v) => !v)}
+            aria-expanded={showTemplates}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold',
+              showTemplates
+                ? 'border-sky-400 bg-sky-600 text-white'
+                : 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-800/50 dark:bg-sky-900/20 dark:text-sky-300'
+            )}
+          >
+            <LayoutTemplate className="h-4 w-4" />
+            {t.plan.templatesButton}
+          </button>
+          <button
+            type="button"
+            onClick={scaleToGoal}
+            disabled={!items.length || !dailyCalories}
+            title={t.plan.scaleHint}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <Scale className="h-4 w-4" />
+            {t.plan.scaleToGoal}
+          </button>
+          <button
+            type="button"
+            onClick={regenerate}
+            className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300"
+          >
+            <Sparkles className="h-4 w-4" />
+            {items.length ? t.plan.regenerate : t.plan.generate}
+          </button>
+        </div>
       </div>
+
+      {showTemplates && <PlanTemplatesPanel items={items} title={title} notes={notes} onApply={applyTemplate} />}
 
       {/* Dias da semana com o total de calorias de cada um */}
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
@@ -307,6 +353,21 @@ export function MealPlanEditor({
                         {t.plan.addOption}
                       </button>
                     )}
+                    {/* Lista de substituição pronta: equivalentes da 1ª opção que for alimento. */}
+                    {(() => {
+                      const baseItem = block.items.find((i) => i.food && i.grams);
+                      if (!baseItem?.food || !baseItem.grams) return null;
+                      return (
+                        <EquivalentFoods
+                          key={`${baseItem.food.id}-${baseItem.grams}`}
+                          base={baseItem.food}
+                          grams={baseItem.grams}
+                          exclude={block.items.flatMap((i) => (i.food_id ? [i.food_id] : []))}
+                          pickLabel={t.plan.addAsOption}
+                          onPick={(picked) => addFood({ meal, kind: 'food', group: block.group }, picked)}
+                        />
+                      );
+                    })()}
                   </div>
                 )
               )}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupEqualDays, itemNutrition, itemsCalories, itemsTotals, mealBlocks, nextOptionGroup } from '../plan-items';
+import { groupEqualDays, itemNutrition, itemsCalories, itemsTotals, mealBlocks, nextOptionGroup, scaleItem, scaleItemsToTarget } from '../plan-items';
 import type { MealPlanItem } from '../../services/care';
 import type { Food } from '../../services/foods';
 import type { Recipe } from '../../types/recipe';
@@ -59,5 +59,28 @@ describe('groupEqualDays', () => {
   });
   it('não junta dias iguais separados por um dia vazio', () => {
     expect(groupEqualDays([on(0, recipe(1)), on(2, recipe(1))]).map((g) => g.days)).toEqual([[0], [2]]);
+  });
+});
+
+describe('scaleItem', () => {
+  const paoMedidas: Food = { ...pao, measures: [{ label: '1 fatia', grams: 25 }] };
+  it('receita muda as porções de meia em meia', () => {
+    expect(scaleItem(recipe(1), 1.3).servings).toBe(1.5);
+    expect(scaleItem(recipe(1), 0.1).servings).toBe(0.5);
+  });
+  it('alimento em medida caseira continua na medida', () => {
+    const item = { ...food(paoMedidas, 50), measure_label: '2 × 1 fatia (50 g)' };
+    expect(scaleItem(item, 1.5)).toMatchObject({ grams: 75, measure_label: '3 × 1 fatia (75 g)' });
+  });
+  it('alimento em gramas arredonda de 5 em 5', () => {
+    expect(scaleItem({ ...food(pao, 50), measure_label: '50 g' }, 1.33)).toMatchObject({ grams: 65, measure_label: '65 g' });
+  });
+});
+
+describe('scaleItemsToTarget', () => {
+  it('aproxima cada dia da meta', () => {
+    // 400 kcal no dia; meta 800 -> 2 porções
+    const scaled = scaleItemsToTarget([recipe(1)], 800, recipes);
+    expect(scaled[0].servings).toBe(2);
   });
 });

@@ -2,7 +2,7 @@
 import type { MealPlanItem } from '../services/care';
 import type { NutritionTotals } from '../store/nutrition-tracking';
 import type { Recipe } from '../types/recipe';
-import { nutrientsFor } from './food-math';
+import { nutrientsFor, quantityLabel } from './food-math';
 
 export type PlanBlock =
   | { kind: 'single'; item: MealPlanItem }
@@ -113,4 +113,40 @@ export function groupEqualDays(items: MealPlanItem[]): { days: number[]; items: 
 /** Próximo número livre de grupo de opções numa refeição. */
 export function nextOptionGroup(items: MealPlanItem[]): number {
   return items.reduce((max, i) => Math.max(max, i.option_group ?? 0), 0) + 1;
+}
+
+/** Arredonda para o múltiplo de `step` mais próximo, sem ficar abaixo de `step`. */
+const roundTo = (value: number, step: number) => Math.max(step, Math.round(value / step) * step);
+
+/**
+ * Muda a quantidade de um item pelo fator. Receita: porções de 0,5 em 0,5.
+ * Alimento: se a quantidade estava numa medida caseira do catálogo (ex.: "2 × 1 fatia (50 g)"),
+ * continua nela (meia em meia medida); senão, gramas de 5 em 5.
+ */
+export function scaleItem(item: MealPlanItem, factor: number): MealPlanItem {
+  if (!item.food_id) return { ...item, servings: Math.min(20, roundTo(item.servings * factor, 0.5)) };
+  if (!item.grams) return item;
+  // A medida de rótulo mais longo que aparece no texto ("1 colher de sopa cheia" antes de "1 colher de sopa").
+  const measure = [...(item.food?.measures ?? [])]
+    .sort((x, y) => y.label.length - x.label.length)
+    .find((m) => m.grams > 0 && item.measure_label?.includes(m.label));
+  if (measure) {
+    const amount = roundTo((item.grams * factor) / measure.grams, 0.5);
+    return { ...item, grams: Math.round(amount * measure.grams), measure_label: quantityLabel(amount, measure) };
+  }
+  const grams = roundTo(item.grams * factor, 5);
+  return { ...item, grams, measure_label: `${grams} g` };
+}
+
+/**
+ * Ajusta cada dia do plano para chegar perto da meta de calorias, mudando as quantidades
+ * na mesma proporção (fator limitado entre 0,4 e 2,5 para não distorcer o cardápio).
+ */
+export function scaleItemsToTarget(items: MealPlanItem[], target: number, recipesById: Map<string, Recipe>): MealPlanItem[] {
+  const factors = new Map<number, number>();
+  for (let day = 0; day < 7; day++) {
+    const kcal = itemsCalories(items.filter((i) => i.day === day), recipesById);
+    if (kcal > 0) factors.set(day, Math.min(2.5, Math.max(0.4, target / kcal)));
+  }
+  return items.map((i) => (factors.has(i.day) ? scaleItem(i, factors.get(i.day)!) : i));
 }

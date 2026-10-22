@@ -6,6 +6,7 @@ import { requestSwap } from '../../services/swaps';
 import type { MealPlanItem } from '../../services/care';
 import type { PickedFood } from '../../services/foods';
 import { FoodQuantityPicker } from '../foods/FoodQuantityPicker';
+import { EquivalentFoods } from '../foods/EquivalentFoods';
 
 interface SwapRequestDialogProps {
   planId: string;
@@ -77,7 +78,12 @@ export function SwapRequestDialog({ planId, item, itemLabel, onClose, onSent }: 
               </button>
             </div>
           ) : (
-            <FoodQuantityPicker confirmLabel={s.chooseThis} onConfirm={setRequested} />
+            <>
+              {item.food && item.grams && (
+                <EquivalentFoods base={item.food} grams={item.grams} pickLabel={s.chooseThis} onPick={setRequested} defaultOpen />
+              )}
+              <FoodQuantityPicker confirmLabel={s.chooseThis} onConfirm={setRequested} />
+            </>
           )}
         </div>
 
