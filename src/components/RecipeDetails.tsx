@@ -32,6 +32,7 @@ import type { Recipe } from '../types/recipe';
 import { cn } from '../lib/utils';
 import { useTranslation } from '../hooks/useTranslation';
 import { backdrop, modalPanel } from '../lib/motion';
+import { confirmDialog } from '../store/confirm';
 
 interface RecipeDetailsProps {
   recipe: Recipe;
@@ -223,7 +224,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
   };
 
   const handleDeleteReview = async (reviewId: string) => {
-    if (window.confirm(t.recipe.deleteReviewConfirm || 'Tem certeza que deseja excluir esta avaliação?')) {
+    if (await confirmDialog(t.recipe.deleteReviewConfirm || 'Tem certeza que deseja excluir esta avaliação?')) {
       try {
         await deleteReview(reviewId);
       } catch (error) {
@@ -233,7 +234,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
   };
 
   const handleDelete = async () => {
-    if (deleting || !window.confirm(t.recipe.deleteConfirm)) return;
+    if (deleting || !(await confirmDialog(t.recipe.deleteConfirm))) return;
     setDeleting(true);
     try {
       await deleteRecipe(recipe.id);

@@ -5,7 +5,9 @@ import { pageFade } from '../lib/motion';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { Toast } from '../components/common/Toast';
 import { MobileNav } from '../components/common/MobileNav';
-import { NotificationBell, useLiveNotifications } from '../components/common/NotificationBell';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
+import { NotificationBell } from '../components/common/NotificationBell';
+import { useLiveNotifications } from '../store/notifications';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/auth';
 import { useRecipesStore } from '../store/recipes';
@@ -85,6 +87,7 @@ export function RootLayout() {
           <Outlet />
         </motion.div>
         <MobileNav />
+        <ConfirmDialog />
         {/* Só a home tem cabeçalho (com o sino); nas outras páginas o sino flutua no canto. */}
         {userId && section !== '/' && (
           <div className="fixed right-3 top-3 z-40 md:right-6 md:top-4">

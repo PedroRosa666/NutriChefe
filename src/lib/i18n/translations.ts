@@ -1,6 +1,7 @@
 export const translations = {
   en: {
     common: {
+      confirm: 'Confirm',
       forgotPassword: 'Forgot my password',
       selected: 'Selected',
       search: 'Search for recipes...',
@@ -1015,6 +1016,7 @@ export const translations = {
 
   pt: {
     common: {
+      confirm: 'Confirmar',
       forgotPassword: 'Esqueci minha senha',
       selected: 'Selecionado',
       search: 'Buscar receitas...',

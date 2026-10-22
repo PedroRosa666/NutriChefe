@@ -1,27 +1,33 @@
-import React from 'react';
+import React, { lazy, Suspense, type ComponentType } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LayoutDashboard, Apple, HeartPulse, Heart, Settings, BookOpen, Briefcase, Users, CalendarRange, ShoppingCart, Carrot } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { RecipeCard } from '../RecipeCard';
-import { NutritionGoalsForm } from '../nutrition/NutritionGoalsForm';
-import { ActiveGoalsSelector } from '../nutrition/ActiveGoalsSelector';
-import { NutritionDiary } from '../nutrition/NutritionDiary';
-import { EditProfessionalProfile } from './EditProfessionalProfile';
-import { ClientDashboard } from './ClientDashboard';
-import { NutritionistDashboard } from './NutritionistDashboard';
-import { HealthProfileForm } from './HealthProfileForm';
-import { AccountSettings } from './AccountSettings';
-import { PatientsPanel } from '../care/PatientsPanel';
-import { PlansSection } from '../plans/PlansSection';
-import { ShoppingListPanel } from '../plans/ShoppingListPanel';
-import { MyFoodsPanel } from '../foods/MyFoodsPanel';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useHealthProfileStore } from '../../store/health-profile';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import { SMOOTH, tabContent } from '../../lib/motion';
+
+// Cada aba é carregada só quando aberta: o celular baixa menos código ao entrar no perfil.
+const lazyNamed = <M,>(load: () => Promise<M>, name: keyof M) =>
+  lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
+
+const NutritionGoalsForm = lazyNamed(() => import('../nutrition/NutritionGoalsForm'), 'NutritionGoalsForm');
+const ActiveGoalsSelector = lazyNamed(() => import('../nutrition/ActiveGoalsSelector'), 'ActiveGoalsSelector');
+const NutritionDiary = lazyNamed(() => import('../nutrition/NutritionDiary'), 'NutritionDiary');
+const EditProfessionalProfile = lazyNamed(() => import('./EditProfessionalProfile'), 'EditProfessionalProfile');
+const ClientDashboard = lazyNamed(() => import('./ClientDashboard'), 'ClientDashboard');
+const NutritionistDashboard = lazyNamed(() => import('./NutritionistDashboard'), 'NutritionistDashboard');
+const HealthProfileForm = lazyNamed(() => import('./HealthProfileForm'), 'HealthProfileForm');
+const AccountSettings = lazyNamed(() => import('./AccountSettings'), 'AccountSettings');
+const PatientsPanel = lazyNamed(() => import('../care/PatientsPanel'), 'PatientsPanel');
+const ShoppingListPanel = lazyNamed(() => import('../plans/ShoppingListPanel'), 'ShoppingListPanel');
+const MyFoodsPanel = lazyNamed(() => import('../foods/MyFoodsPanel'), 'MyFoodsPanel');
+const PlansSection = lazy(() => import('../plans/PlansSection').then((m) => ({ default: m.PlansSection })));
 
 type TabKey =
   | 'overview'
@@ -128,6 +134,13 @@ export function ProfileTabs() {
         animate="animate"
         exit="exit"
       >
+        <Suspense
+          fallback={
+            <div className="flex justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          }
+        >
         {activeTab === 'overview' && (isNutritionist ? <NutritionistDashboard /> : <ClientDashboard />)}
 
         {activeTab === 'nutrition' && (
@@ -189,6 +202,7 @@ export function ProfileTabs() {
         )}
 
         {activeTab === 'account' && <AccountSettings />}
+        </Suspense>
       </motion.div>
       </AnimatePresence>
     </div>

@@ -11,6 +11,7 @@ import { useSubscriptionStore } from '../../store/subscription';
 import type { PhotoEstimate } from '../../services/gemini';
 import { cn } from '../../lib/utils';
 import { fmtNum } from '../../lib/format';
+import { confirmDialog } from '../../store/confirm';
 
 type AddMode = 'recipe' | 'food' | 'custom';
 
@@ -115,7 +116,7 @@ export function NutritionDiary() {
 
   const handleClearDay = async () => {
     if (!entries.length) return;
-    if (!window.confirm(t.profile.clearDiaryConfirm)) return;
+    if (!(await confirmDialog(t.profile.clearDiaryConfirm))) return;
     try {
       await clearDate(date);
       showToast(t.profile.diaryCleared, 'info');

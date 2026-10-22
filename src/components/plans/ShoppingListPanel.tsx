@@ -8,6 +8,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { QUICK } from '../../lib/motion';
 import { cn } from '../../lib/utils';
 import type { ShoppingItem } from '../../lib/ingredients';
+import { confirmDialog } from '../../store/confirm';
 
 export function ShoppingListPanel() {
   const user = useAuthStore((s) => s.user);
@@ -126,7 +127,7 @@ export function ShoppingListPanel() {
             )}
             <button
               type="button"
-              onClick={() => window.confirm(t.shopping.clearAllConfirm) && run(clearAll)}
+              onClick={async () => (await confirmDialog(t.shopping.clearAllConfirm)) && run(clearAll)}
               className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-900/20"
             >
               <Trash2 className="h-3.5 w-3.5" />

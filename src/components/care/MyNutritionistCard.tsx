@@ -7,6 +7,7 @@ import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useTranslation } from '../../hooks/useTranslation';
 import { CareError, endLink, listMyNutritionists, redeemInvite, type CareLink } from '../../services/care';
 import { Avatar } from './Avatar';
+import { confirmDialog } from '../../store/confirm';
 
 export function MyNutritionistCard() {
   const user = useAuthStore((s) => s.user);
@@ -67,7 +68,7 @@ export function MyNutritionistCard() {
   };
 
   const disconnect = async (link: CareLink) => {
-    if (!window.confirm(t.care.endLinkConfirmClient)) return;
+    if (!(await confirmDialog(t.care.endLinkConfirmClient))) return;
     try {
       await endLink(link.id);
       setLinks((prev) => prev.filter((l) => l.id !== link.id));

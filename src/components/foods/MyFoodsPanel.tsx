@@ -9,6 +9,7 @@ import type { Food, FoodInput, FoodMeasure } from '../../services/foods';
 import { cn } from '../../lib/utils';
 import { useSettingsStore } from '../../store/settings';
 import { EXTRA_NUTRIENTS, cleanExtraNutrients, type ExtraNutrientKey } from '../../lib/nutrients';
+import { confirmDialog } from '../../store/confirm';
 
 const inputClass =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100';
@@ -122,7 +123,7 @@ export function MyFoodsPanel() {
   };
 
   const erase = async (food: Food) => {
-    if (!window.confirm(f.confirmDelete.replace('{name}', food.name))) return;
+    if (!(await confirmDialog(f.confirmDelete.replace('{name}', food.name)))) return;
     try {
       await remove(food.id);
       showToast(f.deleted, 'success');

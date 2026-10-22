@@ -1,4 +1,10 @@
+import { useEffect } from 'react';
 import { create } from 'zustand';
+import { useAuthStore } from './auth';
+import { useSettingsStore } from './settings';
+import { useToastStore } from './toast';
+import { translations } from '../lib/i18n/translations';
+import type { Translations } from '../hooks/useTranslation';
 import {
   deleteNotification,
   listNotifications,
@@ -82,4 +88,51 @@ export function useNotificationSignal(match: (n: AppNotification) => boolean): s
     const hit = s.items.find(match);
     return hit ? `${hit.id}:${hit.created_at}` : '';
   });
+}
+
+/** Texto do aviso no idioma atual. */
+export function notificationText(n: AppNotification, t: Translations): string {
+  const s = t.notifications;
+  // O rótulo do item vem como "Nome — quantidade": no aviso basta o nome.
+  const item = (n.data.item ?? '').split(' — ')[0];
+  const template = (() => {
+    switch (n.kind) {
+      case 'swap_requested':
+        return s.swapRequested;
+      case 'swap_answered':
+        if (n.data.status === 'approved') return s.swapApproved;
+        return n.data.offered ? s.swapRejectedOffered : s.swapRejected;
+      case 'patient_joined':
+        return s.patientJoined;
+      case 'link_ended':
+        return s.linkEnded;
+      case 'plan_updated':
+        return n.data.new ? s.planCreated : s.planUpdated;
+      case 'goals_updated':
+        return s.goalsUpdated;
+    }
+  })();
+  return template
+    .replace('{name}', n.data.name || s.someone)
+    .replace('{item}', item)
+    .replace('{title}', n.data.title ?? '');
+}
+
+/** Liga os avisos do usuário logado (Realtime) em qualquer página; aviso novo vira toast. Usar uma vez, no layout. */
+export function useLiveNotifications() {
+  const userId = useAuthStore((s) => s.user?.id);
+  const { showToast } = useToastStore();
+  const { start, stop } = useNotificationsStore();
+
+  useEffect(() => {
+    if (!userId) {
+      stop();
+      return;
+    }
+    // O texto do toast usa o idioma do momento em que o aviso chega.
+    start(userId, (n) => {
+      const language = useSettingsStore.getState().language;
+      showToast(notificationText(n, translations[language]), 'info');
+    });
+  }, [userId, start, stop, showToast]);
 }

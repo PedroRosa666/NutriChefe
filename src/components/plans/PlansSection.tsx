@@ -19,6 +19,7 @@ import { PlanPrintView } from './PlanPrintView';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { cn } from '../../lib/utils';
 import { fmtNum } from '../../lib/format';
+import { confirmDialog } from '../../store/confirm';
 
 interface PlansSectionProps {
   clientId: string;
@@ -112,7 +113,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   }
 
   const remove = async () => {
-    if (!plan || !window.confirm(t.plan.deleteConfirm)) return;
+    if (!plan || !(await confirmDialog(t.plan.deleteConfirm))) return;
     try {
       await deletePlan(plan.id);
       showToast(t.plan.deleted, 'info');

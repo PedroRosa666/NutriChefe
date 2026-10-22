@@ -14,6 +14,7 @@ import { SwapRequestsList } from '../swaps/SwapRequestsList';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Avatar } from './Avatar';
 import { fmtNum } from '../../lib/format';
+import { confirmDialog } from '../../store/confirm';
 
 interface PatientDetailProps {
   link: CareLink;
@@ -90,7 +91,7 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
   const goalLabels = t.profile.nutritionGoalsnames;
 
   const end = async () => {
-    if (!window.confirm(t.care.endLinkConfirmNutritionist)) return;
+    if (!(await confirmDialog(t.care.endLinkConfirmNutritionist))) return;
     try {
       await endLink(link.id);
       showToast(t.care.linkEnded, 'info');

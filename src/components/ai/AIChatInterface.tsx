@@ -13,6 +13,7 @@ import { cn } from '../../lib/utils';
 import type { AIResponse } from '../../types/ai';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAIUserContext } from '../../hooks/useAIUserContext';
+import { confirmDialog } from '../../store/confirm';
 
 type RecipeCardData = NonNullable<AIResponse['recipes']>[number];
 
@@ -277,8 +278,8 @@ export function AIChatInterface() {
         <span className="flex-1">{t.aiChat.history}</span>
         {conversations.length > 1 && (
           <button
-            onClick={() => {
-              if (user && window.confirm(t.aiChat.clearHistoryConfirm)) archiveAllConversations(user.id);
+            onClick={async () => {
+              if (user && (await confirmDialog(t.aiChat.clearHistoryConfirm))) archiveAllConversations(user.id);
             }}
             className="normal-case font-medium tracking-normal text-gray-400 hover:text-red-600 transition-colors"
           >
@@ -313,8 +314,8 @@ export function AIChatInterface() {
               </p>
             </button>
             <button
-              onClick={() => {
-                if (window.confirm(t.aiChat.deleteConversationConfirm)) archiveConversation(c.id);
+              onClick={async () => {
+                if (await confirmDialog(t.aiChat.deleteConversationConfirm)) archiveConversation(c.id);
               }}
               className="p-1.5 rounded-md text-gray-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-red-600 transition"
               aria-label={t.aiChat.deleteConversation}

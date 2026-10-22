@@ -6,6 +6,7 @@ import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import type { MealPlanItem } from '../../services/care';
 import { createTemplate, deleteTemplate, listTemplates, templateToItems, type PlanTemplate } from '../../services/templates';
+import { confirmDialog } from '../../store/confirm';
 
 interface PlanTemplatesPanelProps {
   /** Cardápio aberto no editor (para salvar como modelo). */
@@ -69,7 +70,7 @@ export function PlanTemplatesPanel({ items, title, notes, onApply }: PlanTemplat
   };
 
   const remove = async (template: PlanTemplate) => {
-    if (!window.confirm(s.deleteConfirm.replace('{name}', template.title))) return;
+    if (!(await confirmDialog(s.deleteConfirm.replace('{name}', template.title)))) return;
     setBusyId(template.id);
     try {
       await deleteTemplate(template.id);

@@ -3,11 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeftRight, Bell, CalendarRange, Target, UserMinus, UserPlus, X } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
-import { useToastStore } from '../../store/toast';
 import { useSettingsStore } from '../../store/settings';
-import { useNotificationsStore } from '../../store/notifications';
-import { useTranslation, type Translations } from '../../hooks/useTranslation';
-import { translations } from '../../lib/i18n/translations';
+import { notificationText, useNotificationsStore } from '../../store/notifications';
+import { useTranslation } from '../../hooks/useTranslation';
 import { notificationTarget, type AppNotification } from '../../services/notifications';
 import { cn } from '../../lib/utils';
 
@@ -19,34 +17,6 @@ const ICONS = {
   plan_updated: CalendarRange,
   goals_updated: Target,
 } as const;
-
-/** Texto do aviso no idioma atual. */
-export function notificationText(n: AppNotification, t: Translations): string {
-  const s = t.notifications;
-  // O rótulo do item vem como "Nome — quantidade": no aviso basta o nome.
-  const item = (n.data.item ?? '').split(' — ')[0];
-  const template = (() => {
-    switch (n.kind) {
-      case 'swap_requested':
-        return s.swapRequested;
-      case 'swap_answered':
-        if (n.data.status === 'approved') return s.swapApproved;
-        return n.data.offered ? s.swapRejectedOffered : s.swapRejected;
-      case 'patient_joined':
-        return s.patientJoined;
-      case 'link_ended':
-        return s.linkEnded;
-      case 'plan_updated':
-        return n.data.new ? s.planCreated : s.planUpdated;
-      case 'goals_updated':
-        return s.goalsUpdated;
-    }
-  })();
-  return template
-    .replace('{name}', n.data.name || s.someone)
-    .replace('{item}', item)
-    .replace('{title}', n.data.title ?? '');
-}
 
 function timeAgo(iso: string, locale: string): string {
   const seconds = Math.round((new Date(iso).getTime() - Date.now()) / 1000);
@@ -60,25 +30,6 @@ function timeAgo(iso: string, locale: string): string {
     if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit);
   }
   return rtf.format(0, 'minute');
-}
-
-/** Liga os avisos do usuário logado (Realtime) em qualquer página; aviso novo vira toast. Usar uma vez, no layout. */
-export function useLiveNotifications() {
-  const userId = useAuthStore((s) => s.user?.id);
-  const { showToast } = useToastStore();
-  const { start, stop } = useNotificationsStore();
-
-  useEffect(() => {
-    if (!userId) {
-      stop();
-      return;
-    }
-    // O texto do toast usa o idioma do momento em que o aviso chega.
-    start(userId, (n) => {
-      const language = useSettingsStore.getState().language;
-      showToast(notificationText(n, translations[language]), 'info');
-    });
-  }, [userId, start, stop, showToast]);
 }
 
 interface NotificationBellProps {
