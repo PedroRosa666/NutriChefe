@@ -9,3 +9,4 @@ dist/
 # Ferramentas locais
 .claude/
 supabase/.temp/
+.wrangler/

@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CalendarRange, Pencil, Plus, ShoppingCart, Sparkles, Trash2, PlusCircle, Loader2 } from 'lucide-react';
+import { ArrowLeftRight, CalendarRange, ListChecks, Pencil, Plus, ShoppingCart, Sparkles, Trash2, PlusCircle, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useToastStore } from '../../store/toast';
 import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useShoppingListStore } from '../../store/shopping-list';
 import { useTranslation } from '../../hooks/useTranslation';
-import { deletePlan, listPlans, MEAL_SLOTS, planDayOf, type MealPlan } from '../../services/care';
+import { deletePlan, listPlans, MEAL_SLOTS, planDayOf, type MealPlan, type MealPlanItem } from '../../services/care';
+import { itemsCalories, mealBlocks } from '../../lib/plan-items';
+import { foodLogValues } from '../../lib/food-math';
+import { PlanItemRow } from './PlanItemRow';
+import { listSwapsForClient, pendingFor, type SwapRequest } from '../../services/swaps';
+import { SwapRequestDialog } from '../swaps/SwapRequestDialog';
+import { SwapRequestsList } from '../swaps/SwapRequestsList';
 import { MealPlanEditor } from './MealPlanEditor';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { cn } from '../../lib/utils';
@@ -19,9 +24,11 @@ interface PlansSectionProps {
   dailyCalories: number;
   allergies: string[];
   preferences: string[];
+  /** Muda para recarregar os planos (ex.: depois de o nutricionista responder uma troca). */
+  reloadKey?: number;
 }
 
-export function PlansSection({ clientId, mode, dailyCalories, allergies, preferences }: PlansSectionProps) {
+export function PlansSection({ clientId, mode, dailyCalories, allergies, preferences, reloadKey = 0 }: PlansSectionProps) {
   const user = useAuthStore((s) => s.user);
   const recipes = useRecipesStore((s) => s.recipes);
   const { showToast } = useToastStore();
@@ -33,6 +40,9 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   const [editing, setEditing] = useState<{ plan: MealPlan | null; generated: boolean } | null>(null);
   const [day, setDay] = useState(() => planDayOf(new Date()));
   const [loggingKey, setLoggingKey] = useState<string | null>(null);
+  const [swaps, setSwaps] = useState<SwapRequest[]>([]);
+  const [swapsKey, setSwapsKey] = useState(0);
+  const [swapping, setSwapping] = useState<{ item: MealPlanItem; label: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -48,7 +58,15 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, reloadKey]);
+
+  // Pedidos de troca do paciente: marcam os itens com pedido aberto.
+  useEffect(() => {
+    if (mode !== 'client') return;
+    listSwapsForClient(clientId)
+      .then(setSwaps)
+      .catch((error) => console.error('Error loading swaps:', error));
+  }, [clientId, mode, swapsKey]);
 
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const plan = plans.find((p) => p.id === selectedId) ?? null;
@@ -97,15 +115,39 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
 
   const addWeekToShopping = async () => {
     if (!plan) return;
-    // Cada receita entra uma vez, com a soma das porções da semana.
+    // Itens fixos + a 1ª opção de cada grupo (as opções são alternativas: compra-se uma delas).
+    const counted = new Set<string>();
+    const weekItems = plan.items.filter((item) => {
+      if (item.option_group === null) return true;
+      const key = `${item.day}-${item.meal}-${item.option_group}`;
+      if (counted.has(key)) return false;
+      counted.add(key);
+      return true;
+    });
+    // Cada receita entra uma vez, com a soma das porções da semana; cada alimento, com a soma dos gramas.
     const servingsByRecipe = new Map<string, number>();
-    for (const item of plan.items) servingsByRecipe.set(item.recipe_id, (servingsByRecipe.get(item.recipe_id) ?? 0) + item.servings);
-    const sources = [...servingsByRecipe.entries()]
-      .map(([id, servings]) => {
-        const recipe = byId.get(id);
-        return recipe ? { title: recipe.title, ingredients: recipe.ingredients, factor: servings } : null;
-      })
-      .filter((s): s is NonNullable<typeof s> => !!s);
+    const gramsByFood = new Map<string, { name: string; grams: number }>();
+    for (const item of weekItems) {
+      if (item.food_id && item.food && item.grams) {
+        const current = gramsByFood.get(item.food_id);
+        gramsByFood.set(item.food_id, { name: item.food.name, grams: (current?.grams ?? 0) + item.grams });
+      } else if (item.recipe_id) {
+        servingsByRecipe.set(item.recipe_id, (servingsByRecipe.get(item.recipe_id) ?? 0) + item.servings);
+      }
+    }
+    const sources = [
+      ...[...servingsByRecipe.entries()]
+        .map(([id, servings]) => {
+          const recipe = byId.get(id);
+          return recipe ? { title: recipe.title, ingredients: recipe.ingredients, factor: servings } : null;
+        })
+        .filter((s): s is NonNullable<typeof s> => !!s),
+      ...[...gramsByFood.values()].map(({ name, grams }) => ({
+        title: name,
+        ingredients: [`${Math.round(grams)} g de ${name}`],
+        factor: 1,
+      })),
+    ];
     try {
       const count = await useShoppingListStore.getState().addSources(sources);
       showToast(t.plan.shoppingAdded.replace('{count}', String(count)), 'success');
@@ -115,12 +157,19 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     }
   };
 
-  const logItem = async (recipeId: string, servings: number, key: string) => {
-    const recipe = byId.get(recipeId);
-    if (!recipe) return;
+  const logItem = async (item: MealPlanItem, key: string) => {
     setLoggingKey(key);
     try {
-      await useNutritionTrackingStore.getState().addRecipeToLog(recipe, servings);
+      const tracking = useNutritionTrackingStore.getState();
+      if (item.food_id && item.food && item.grams) {
+        // Alimento: entra com os nutrientes completos da quantidade prescrita.
+        const { totals, extra } = foodLogValues(item.food, item.grams);
+        await tracking.addFoodToLog(`${item.food.name} — ${item.measure_label ?? `${item.grams} g`}`, totals, 1, undefined, extra);
+      } else {
+        const recipe = item.recipe_id ? byId.get(item.recipe_id) : undefined;
+        if (!recipe) return;
+        await tracking.addRecipeToLog(recipe, item.servings);
+      }
       showToast(t.plan.logged, 'success');
     } catch (error) {
       console.error('Error logging plan item:', error);
@@ -165,7 +214,63 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   }
 
   const dayItems = plan.items.filter((i) => i.day === day);
-  const dayKcal = dayItems.reduce((s, i) => s + (byId.get(i.recipe_id)?.nutritionFacts.calories ?? 0) * i.servings, 0);
+  const dayKcal = itemsCalories(dayItems, byId);
+  const dayHasOptions = dayItems.some((i) => i.option_group !== null);
+
+  // O paciente pede troca só em planos feitos pelo nutricionista (no próprio plano ele edita direto).
+  const canRequestSwap = mode === 'client' && plan.created_by !== user?.id;
+
+  const itemLabel = (item: MealPlanItem) => {
+    if (item.food_id) return `${item.food?.name ?? ''} — ${item.measure_label ?? `${item.grams} g`}`;
+    const recipe = item.recipe_id ? byId.get(item.recipe_id) : undefined;
+    return `${recipe?.title ?? ''} — ${item.servings} ${t.plan.servingsShort}`;
+  };
+
+  const swapControl = (item: MealPlanItem) => {
+    if (!canRequestSwap) return null;
+    if (pendingFor(swaps, plan.id, item)) {
+      return (
+        <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+          {t.swaps.pendingBadge}
+        </span>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => setSwapping({ item, label: itemLabel(item) })}
+        className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+        aria-label={t.swaps.swapButton}
+        title={t.swaps.swapButton}
+      >
+        <ArrowLeftRight className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+        <span className="hidden sm:inline">{t.swaps.swapButton}</span>
+      </button>
+    );
+  };
+
+  const itemActions = (item: MealPlanItem, key: string) => (
+    <>
+      {logButton(item, key)}
+      {swapControl(item)}
+    </>
+  );
+
+  const logButton = (item: MealPlanItem, key: string) =>
+    mode === 'client' && day === todayIndex ? (
+      <button
+        type="button"
+        onClick={() => logItem(item, key)}
+        disabled={loggingKey === key}
+        aria-label={t.plan.logToDiary}
+        title={t.plan.logToDiary}
+        className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-300 dark:hover:bg-emerald-900/20"
+      >
+        {loggingKey === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlusCircle className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
+        {/* No celular só o ícone, para o nome do item não ficar espremido. */}
+        <span className="hidden sm:inline">{t.plan.logToDiary}</span>
+      </button>
+    ) : null;
 
   return (
     <div className="space-y-5">
@@ -266,8 +371,9 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
           {t.plan.dayTotal}: <span className="font-semibold text-slate-900 dark:text-white">{Math.round(dayKcal)} kcal</span>
         </p>
       </div>
+      {dayHasOptions && <p className="-mt-3 text-xs text-slate-500 dark:text-slate-400">{t.plan.firstOptionNote}</p>}
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {MEAL_SLOTS.map((meal) => {
           const mealItems = dayItems.filter((i) => i.meal === meal);
           return (
@@ -275,32 +381,27 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t.plan.meals[meal]}</p>
               {!mealItems.length && <p className="text-sm text-slate-400 dark:text-slate-500">{t.plan.emptyMeal}</p>}
               <div className="space-y-3">
-                {mealItems.map((item, index) => {
-                  const recipe = byId.get(item.recipe_id);
-                  if (!recipe) return null;
-                  const key = `${item.recipe_id}-${meal}-${index}`;
+                {mealBlocks(mealItems).map((block, blockIndex) => {
+                  if (block.kind === 'single') {
+                    const key = `${meal}-${blockIndex}`;
+                    return <PlanItemRow key={key} item={block.item} recipesById={byId} actions={itemActions(block.item, key)} />;
+                  }
+                  // Lista de substituição: o paciente escolhe uma das opções e registra a que comeu.
                   return (
-                    <div key={key} className="flex items-center gap-3">
-                      <Link to={`/receita/${recipe.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg hover:opacity-90">
-                        <img src={recipe.image} alt="" className="h-12 w-12 flex-shrink-0 rounded-lg bg-slate-100 object-cover dark:bg-slate-800" loading="lazy" />
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{recipe.title}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {item.servings} {t.plan.servingsShort} • {Math.round(recipe.nutritionFacts.calories * item.servings)} kcal
-                          </p>
-                        </div>
-                      </Link>
-                      {mode === 'client' && day === todayIndex && (
-                        <button
-                          type="button"
-                          onClick={() => logItem(recipe.id, item.servings, key)}
-                          disabled={loggingKey === key}
-                          className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-300 dark:hover:bg-emerald-900/20"
-                        >
-                          {loggingKey === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlusCircle className="h-3.5 w-3.5" />}
-                          {t.plan.logToDiary}
-                        </button>
-                      )}
+                    <div key={`${meal}-g${block.group}`} className="space-y-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-3 dark:border-amber-700/50 dark:bg-amber-900/10">
+                      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                        <ListChecks className="h-3.5 w-3.5" />
+                        {t.plan.chooseOne}
+                      </p>
+                      {block.items.map((item, index) => {
+                        const key = `${meal}-g${block.group}-${index}`;
+                        return (
+                          <div key={key}>
+                            {index > 0 && <p className="pb-1 text-center text-xs font-semibold uppercase text-amber-600 dark:text-amber-400">{t.plan.or}</p>}
+                            <PlanItemRow item={item} recipesById={byId} actions={itemActions(item, key)} />
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -309,6 +410,21 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
           );
         })}
       </div>
+
+      {mode === 'client' && <SwapRequestsList clientId={clientId} role="client" refreshKey={swapsKey} onCanceled={() => setSwapsKey((k) => k + 1)} />}
+
+      {swapping && (
+        <SwapRequestDialog
+          planId={plan.id}
+          item={swapping.item}
+          itemLabel={swapping.label}
+          onClose={() => setSwapping(null)}
+          onSent={() => {
+            setSwapping(null);
+            setSwapsKey((k) => k + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

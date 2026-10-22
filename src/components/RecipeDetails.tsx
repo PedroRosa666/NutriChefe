@@ -310,7 +310,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
       />
       <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain" role="dialog" aria-modal="true">
         <div
-          className="min-h-screen flex items-center justify-center p-4 py-8"
+          className="min-h-[100dvh] flex justify-center sm:items-center sm:p-4 sm:py-8"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
           <motion.div
@@ -320,9 +320,10 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
             animate="animate"
             exit="exit"
           >
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl shadow-slate-900/10 border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {/* No celular a receita ocupa a tela toda; a partir de sm vira janela com margem. */}
+            <div className="min-h-[100dvh] bg-white dark:bg-gray-800 sm:min-h-0 sm:rounded-2xl shadow-2xl shadow-slate-900/10 sm:border border-gray-200 dark:border-gray-700 overflow-clip">
               {/* Cabeçalho com botão de fechar */}
-              <div className="flex items-center justify-between px-6 md:px-8 pt-5 pb-4 border-b border-gray-200 dark:border-gray-800">
+              <div className="sticky top-0 z-10 flex items-center justify-between bg-white px-4 pt-3 pb-3 sm:px-6 sm:pt-5 sm:pb-4 md:px-8 border-b border-gray-200 dark:border-gray-800 dark:bg-gray-800">
                 <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   {t.recipe.recipe || 'Receita'}
                 </span>
@@ -335,11 +336,12 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                 </button>
               </div>
 
-              <div className="px-6 md:px-8 pb-8 pt-6">
-                {/* GRID PRINCIPAL */}
-                <div className="grid md:grid-cols-2 gap-6">
+              <div className="px-4 pb-8 pt-4 sm:px-6 sm:pt-6 md:px-8">
+                {/* GRID PRINCIPAL: no celular as duas colunas viram uma lista só (contents),
+                    para o título aparecer no topo em vez de depois dos ingredientes. */}
+                <div className="flex flex-col gap-5 md:grid md:grid-cols-2 md:gap-6">
                   {/* COLUNA ESQUERDA */}
-                  <div className="space-y-5">
+                  <div className="contents md:block md:space-y-5">
                     <div className="relative group">
                       <img
                         src={recipe.image || '/recipe-placeholder.svg'}
@@ -415,11 +417,11 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                   </div>
 
                   {/* COLUNA DIREITA */}
-                  <div className="space-y-5">
+                  <div className="contents md:block md:space-y-5">
                     {/* Título + ações */}
-                    <div className="flex justify-between items-start gap-3">
+                    <div className="order-first flex justify-between items-start gap-3 md:order-none">
                       <div>
-                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-tight mb-3">
+                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-tight mb-3">
                           {recipe.title}
                         </h2>
                         <div className="flex flex-wrap gap-2 items-center">
@@ -552,12 +554,12 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                           {recipe.rating === 0 || !recipe.rating || recipe.reviews.length === 0 ? (
                             <div className="text-center">
                               <div className="text-lg font-bold text-gray-900 dark:text-white">--</div>
-                              <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{t.recipe.noReviews}</div>
+                              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">{t.recipe.noReviews}</div>
                             </div>
                           ) : (
                             <div className="text-center">
                               <div className="text-2xl font-bold text-gray-900 dark:text-white">{recipe.rating.toFixed(1)}</div>
-                              <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
                                 {recipe.reviews.length} {recipe.reviews.length === 1 ? t.recipe.reviewSingular : t.recipe.reviewPlural}
                               </div>
                             </div>
@@ -574,7 +576,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                     </div>
 
                     {/* Fatos nutricionais */}
-                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-5 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
+                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 sm:p-5 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
                       <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
                         <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
                           <Star className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -631,7 +633,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                     </div>
 
                     {/* Instruções */}
-                    <div className="bg-white dark:bg-gray-800/50 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800/50 p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-gray-700">
                       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                           <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30">

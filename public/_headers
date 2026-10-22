@@ -1,0 +1,3 @@
+# Arquivos do build têm hash no nome: podem ficar no cache do navegador por 1 ano.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

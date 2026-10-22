@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Copy, Loader2, MessageCircle, UserPlus, Users, X, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Copy, Loader2, MessageCircle, UserPlus, Users, X, ChevronRight, AlertTriangle, ArrowLeftRight } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -14,6 +14,7 @@ import {
   type CareLink,
   type Invite,
 } from '../../services/care';
+import { pendingSwapCounts } from '../../services/swaps';
 import { sumEntries, toISODate } from '../../store/nutrition-tracking';
 import { Avatar } from './Avatar';
 import { PatientDetail } from './PatientDetail';
@@ -54,6 +55,7 @@ export function PatientsPanel() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<CareLink | null>(null);
+  const [pendingSwaps, setPendingSwaps] = useState<Map<string, number>>(new Map());
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -61,6 +63,9 @@ export function PatientsPanel() {
       const [list, open] = await Promise.all([listMyPatients(user.id), listOpenInvites(user.id)]);
       setPatients(list);
       setInvites(open);
+      pendingSwapCounts(user.id)
+        .then(setPendingSwaps)
+        .catch((e) => console.error('Error loading swap counts:', e));
       // Resumos carregam em paralelo, sem travar a lista.
       list.forEach((p) =>
         summarize(p.person.id)
@@ -162,9 +167,9 @@ export function PatientsPanel() {
           {invites.map((invite) => (
             <div
               key={invite.code}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-800/40 dark:bg-emerald-900/10"
+              className="relative flex flex-wrap items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-800/40 dark:bg-emerald-900/10 sm:pr-12"
             >
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 basis-full pr-8 sm:basis-auto sm:flex-1 sm:pr-0">
                 <p className="font-mono text-lg font-bold tracking-[0.2em] text-emerald-800 dark:text-emerald-200">{invite.code}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {t.care.expiresOn} {new Date(invite.expires_at).toLocaleDateString()}
@@ -190,7 +195,7 @@ export function PatientsPanel() {
               <button
                 type="button"
                 onClick={() => cancelInvite(invite.code)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
+                className="absolute right-2 top-2 rounded-lg p-1.5 text-slate-400 sm:top-1/2 sm:-translate-y-1/2 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
                 aria-label={t.care.cancelInvite}
                 title={t.care.cancelInvite}
               >
@@ -206,7 +211,7 @@ export function PatientsPanel() {
           {t.care.noPatients}
         </p>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {patients.map((p) => {
             const s = summaries[p.person.id];
             const daysSince = s?.lastLog ? Math.floor((Date.now() - new Date(`${s.lastLog}T12:00:00`).getTime()) / 86400000) : null;
@@ -232,8 +237,14 @@ export function PatientsPanel() {
                   ) : (
                     <p className="text-xs text-slate-400">…</p>
                   )}
+                  {(pendingSwaps.get(p.person.id) ?? 0) > 0 && (
+                    <p className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">
+                      <ArrowLeftRight className="h-3 w-3" />
+                      {t.swaps.pendingCount.replace('{count}', String(pendingSwaps.get(p.person.id)))}
+                    </p>
+                  )}
                   {(inactive || overGoal) && (
-                    <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                    <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
                       <AlertTriangle className="h-3 w-3" />
                       {inactive ? t.care.inactiveAlert : t.care.overGoalAlert}
                     </p>

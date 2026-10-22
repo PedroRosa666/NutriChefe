@@ -72,7 +72,7 @@ export function ActiveGoalsSelector() {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+    <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900/90">
       <div className="mb-4 flex items-center gap-2">
         <Settings className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">

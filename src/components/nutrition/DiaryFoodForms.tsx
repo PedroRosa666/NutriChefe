@@ -1,13 +1,11 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Camera, Loader2, Plus } from 'lucide-react';
 import { estimateFoodPhoto, type PhotoEstimate } from '../../services/gemini';
 import { useNutritionTrackingStore, type NutritionTotals } from '../../store/nutrition-tracking';
-import { useSettingsStore } from '../../store/settings';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
-import { COMMON_FOODS, type CommonFood } from '../../lib/foods';
-import { normalizeText } from '../../../supabase/functions/_shared/recipe-search';
-import { cn } from '../../lib/utils';
+import { foodLogValues } from '../../lib/food-math';
+import { FoodQuantityPicker, type PickedFood } from '../foods/FoodQuantityPicker';
 
 const inputClass =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100';
@@ -17,87 +15,29 @@ const parseAmount = (v: string) => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
-/** Alimentos comuns (Tabela TACO): busca, escolhe a porção e registra. */
+/** Catálogo (Tabela TACO + alimentos do nutricionista): busca, escolhe a quantidade e registra. */
 export function CommonFoodForm({ date }: { date: string }) {
   const t = useTranslation();
-  const language = useSettingsStore((s) => s.language);
   const { showToast } = useToastStore();
   const addFoodToLog = useNutritionTrackingStore((s) => s.addFoodToLog);
-  const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<CommonFood | null>(null);
-  const [portions, setPortions] = useState('1');
-  const [adding, setAdding] = useState(false);
 
-  const name = (f: CommonFood) => (language === 'pt' ? f.pt : f.en);
-  const portion = (f: CommonFood) => (language === 'pt' ? f.portionPt : f.portionEn);
-
-  const matches = useMemo(() => {
-    const q = normalizeText(query);
-    const list = q ? COMMON_FOODS.filter((f) => normalizeText(`${f.pt} ${f.en}`).includes(q)) : COMMON_FOODS;
-    return list.slice(0, 8);
-  }, [query]);
-
-  const add = async () => {
-    const amount = parseAmount(portions);
-    if (!selected || !amount) {
-      showToast(t.profile.invalidServings, 'warning');
-      return;
-    }
-    setAdding(true);
+  const log = async ({ food, grams, label }: PickedFood) => {
     try {
-      const { calories, protein, carbs, fat, fiber } = selected;
-      await addFoodToLog(`${name(selected)} (${portion(selected)})`, { calories, protein, carbs, fat, fiber }, amount, date);
+      // Grava também os nutrientes completos da porção (minerais, vitaminas, tipos de gordura).
+      const { totals, extra } = foodLogValues(food, grams);
+      await addFoodToLog(`${food.name} — ${label}`, totals, 1, date, extra);
       showToast(t.profile.loggedToDiary, 'success');
-      setSelected(null);
-      setQuery('');
-      setPortions('1');
     } catch (error) {
       console.error('Error logging food:', error);
       showToast(t.profile.diaryError, 'error');
-    } finally {
-      setAdding(false);
+      throw error;
     }
   };
 
   return (
     <div className="space-y-3">
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t.foods.search} className={inputClass} />
-      <div className="grid max-h-56 gap-1.5 overflow-y-auto sm:grid-cols-2">
-        {matches.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => setSelected(f)}
-            className={cn(
-              'rounded-lg border px-3 py-2 text-left text-sm transition-colors',
-              selected?.id === f.id
-                ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                : 'border-slate-200 hover:border-emerald-300 dark:border-slate-700'
-            )}
-          >
-            <span className="block font-medium text-slate-900 dark:text-white">{name(f)}</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              {portion(f)} • {f.calories} kcal
-            </span>
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-          {t.foods.portions}
-          <input type="number" min={0.5} step={0.5} value={portions} onChange={(e) => setPortions(e.target.value)} className={cn(inputClass, 'w-20')} />
-        </label>
-        <button
-          type="button"
-          onClick={add}
-          disabled={adding || !selected}
-          className="ml-auto inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          {t.foods.add}
-        </button>
-      </div>
-      <p className="text-[11px] text-slate-400">{t.foods.approx}</p>
+      <FoodQuantityPicker confirmLabel={t.foods.add} onConfirm={log} />
+      <p className="text-xs text-slate-400">{t.foods.approx}</p>
     </div>
   );
 }
@@ -155,7 +95,7 @@ export function CustomFoodForm({ date, initial }: { date: string; initial?: { na
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {(Object.keys(EMPTY) as (keyof NutritionTotals)[]).map((key) => (
           <label key={key} className="space-y-1">
-            <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
               {labels[key]} ({key === 'calories' ? 'kcal' : 'g'})
             </span>
             <input

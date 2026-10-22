@@ -47,7 +47,7 @@ export function LandingHero() {
           </Link>
         </div>
 
-        <ul className="mt-8 grid gap-3 sm:grid-cols-3">
+        <ul className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {points.map(({ icon: Icon, text }) => (
             <li key={text} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
               <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-white shadow-sm dark:bg-slate-800">

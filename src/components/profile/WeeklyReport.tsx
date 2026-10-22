@@ -118,7 +118,7 @@ export function WeeklyReport() {
               {tile.icon && <tile.icon className="h-4 w-4 text-slate-400" />}
               {tile.value}
             </p>
-            {tile.sub && <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{tile.sub}</p>}
+            {tile.sub && <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{tile.sub}</p>}
           </div>
         ))}
       </div>

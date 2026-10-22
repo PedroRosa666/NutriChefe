@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, Minus } from 'lucide-react';
 import { useRecipesStore } from '../store/recipes';
 import { useAuthStore } from '../store/auth';
+import { RecipeImageInput } from './recipe/RecipeImageInput';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
 import type { Recipe } from '../types/recipe';
@@ -153,8 +154,8 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
     }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-emerald-50/40 shadow-2xl dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm sm:p-4">
+      <div className="relative h-[100dvh] w-full max-w-3xl overflow-y-auto sm:h-auto sm:max-h-[90vh] sm:rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-emerald-50/40 shadow-2xl dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
         {/* Botão fechar */}
         <button
           onClick={onClose}
@@ -165,7 +166,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
         </button>
 
         {/* Header */}
-        <div className="border-b border-slate-100/80 px-6 pb-4 pt-5 dark:border-slate-800/80 sm:px-7">
+        <div className="border-b border-slate-100/80 px-4 pb-4 pt-5 pr-14 dark:border-slate-800/80 sm:px-7">
           <div className="flex flex-col gap-1">
             <p className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
               {t.recipe.CreateRecipe}
@@ -182,11 +183,11 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
         {/* Formulário */}
         <form
           onSubmit={handleSubmit}
-          className="space-y-8 px-6 pb-7 pt-5 text-sm sm:text-base sm:px-7"
+          className="space-y-8 px-4 pb-7 pt-5 text-base sm:px-7"
         >
           {/* Título / Imagem */}
           <FormSection>
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <div className="space-y-1.5">
                 <label className={labelClass}>{t.recipe.recipeTitle}</label>
                 <input
@@ -202,15 +203,10 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
 
               <div className="space-y-1.5">
                 <label className={labelClass}>{t.recipe.recipeImageURL}</label>
-                <input
-                  type="url"
-                  value={recipe.image}
-                  onChange={(e) =>
-                    setRecipe((prev) => ({ ...prev, image: e.target.value }))
-                  }
-                  className={inputClass}
-                  placeholder="https://example.com/image.jpg"
-                  required
+                <RecipeImageInput
+                  value={recipe.image ?? ''}
+                  onChange={(image) => setRecipe((prev) => ({ ...prev, image }))}
+                  inputClassName={inputClass}
                 />
               </div>
             </div>
@@ -234,7 +230,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
 
           {/* Tempo / dificuldade / categoria */}
           <FormSection>
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
               <div className="space-y-1.5">
                 <label className={labelClass}>
                   {t.recipe.prepTime} (min)

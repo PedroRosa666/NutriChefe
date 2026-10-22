@@ -25,6 +25,9 @@ interface AuthState {
   isNutritionist: () => boolean;
 }
 
+// O AuthModal compara com esta mensagem para oferecer o reenvio da confirmação.
+export const EMAIL_NOT_CONFIRMED_MESSAGE = 'Email não confirmado. Verifique sua caixa de entrada.';
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -75,7 +78,7 @@ export const useAuthStore = create<AuthState>()(
           if (error) {
             let friendly = 'Erro ao fazer login';
             if (error.message.includes('Invalid login credentials')) friendly = 'Email ou senha incorretos.';
-            if (error.message.includes('Email not confirmed')) friendly = 'Email não confirmado. Verifique sua caixa de entrada.';
+            if (error.message.includes('Email not confirmed')) friendly = EMAIL_NOT_CONFIRMED_MESSAGE;
             if (error.message.includes('Too many requests')) friendly = 'Muitas tentativas. Tente mais tarde.';
             if (error.message.includes('Error sending confirmation email')) friendly = 'Erro no serviço de email. Tente novamente mais tarde ou entre em contato com o suporte.';
             useToastStore.getState().showToast(friendly, 'error');

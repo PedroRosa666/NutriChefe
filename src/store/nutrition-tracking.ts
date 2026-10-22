@@ -39,7 +39,7 @@ interface NutritionTrackingState {
   fetchEntries: (userId: string) => Promise<void>;
   addRecipeToLog: (recipe: Recipe, servings?: number, date?: string) => Promise<void>;
   /** Alimento avulso (lista de alimentos comuns ou valores digitados). */
-  addFoodToLog: (title: string, perServing: NutritionTotals, servings?: number, date?: string) => Promise<void>;
+  addFoodToLog: (title: string, perServing: NutritionTotals, servings?: number, date?: string, extra?: Record<string, number>) => Promise<void>;
   removeEntry: (id: string) => Promise<void>;
   clearDate: (date: string) => Promise<void>;
   reset: () => void;
@@ -101,7 +101,8 @@ const requireUserId = () => {
 async function insertEntry(
   recipeId: string | null,
   title: string,
-  perServing: NutritionTotals,
+  // Além dos 5 valores, alimentos do catálogo gravam os nutrientes completos (minerais, vitaminas...).
+  perServing: NutritionTotals | (NutritionTotals & Record<string, number>),
   servings: number,
   date?: string
 ) {
@@ -183,8 +184,8 @@ export const useNutritionTrackingStore = create<NutritionTrackingState>()((set, 
     set((state) => ({ entries: [entry, ...state.entries] }));
   },
 
-  addFoodToLog: async (title, perServing, servings = 1, date) => {
-    const entry = await insertEntry(null, title.slice(0, 200), toTotals(perServing), servings, date);
+  addFoodToLog: async (title, perServing, servings = 1, date, extra = {}) => {
+    const entry = await insertEntry(null, title.slice(0, 200), { ...extra, ...toTotals(perServing) }, servings, date);
     set((state) => ({ entries: [entry, ...state.entries] }));
   },
 

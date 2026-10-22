@@ -181,7 +181,26 @@ supabase/
 
 ## 🚀 Deploy
 
-O front é publicado no Netlify a partir deste repositório (`npm run build`, pasta `dist`; `public/_redirects` faz as rotas do app funcionarem ao recarregar a página). Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no painel do Netlify. Banco e Edge Functions são publicados pelo Supabase CLI (passos 3 e 4).
+O front é publicado no **Cloudflare Workers** como arquivos estáticos (`wrangler.jsonc`). O build gera a pasta `dist`, e `not_found_handling: "single-page-application"` faz as rotas do app funcionarem ao recarregar a página. Banco e Edge Functions continuam sendo publicados pelo Supabase CLI (passos 3 e 4).
+
+**Pelo terminal**
+
+```bash
+npx wrangler login     # uma vez
+npm run cf:dev         # build + teste local em http://localhost:8787
+npm run deploy         # build + publicação
+```
+
+O deploy pelo terminal usa o `.env` local, porque `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` entram no build.
+
+**Pelo GitHub (Workers Builds)**: em Workers & Pages > Create > Import a repository, use o comando de build `npm run build` e o comando de deploy `npx wrangler deploy`. Cadastre `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` em **Settings > Build > Variables and secrets**. Não use as variáveis de runtime do Worker, porque o Vite só lê essas variáveis durante o build.
+
+**Ao trocar de domínio**
+
+- Atualize o segredo `FRONTEND_URL` das Edge Functions: `supabase secrets set FRONTEND_URL=https://seu-dominio`. O checkout e o portal da Stripe só aceitam retorno para essa origem.
+- No Supabase, em Authentication > URL Configuration, coloque o novo domínio em Site URL e adicione `https://seu-dominio/**` em Redirect URLs. Sem isso, o login e a redefinição de senha não funcionam.
+
+O `netlify.toml` continua no repositório só enquanto o site antigo no Netlify estiver no ar.
 
 ## 👨‍💻 Autor
 

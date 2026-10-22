@@ -6,6 +6,7 @@ import { fromRow, toISODate, type NutritionLogEntry, type NutritionLogRow } from
 import type { HealthProfile, WeightLog } from '../store/health-profile';
 import type { GoalKey, NutritionGoals } from '../store/nutrition-goals';
 import type { ShoppingItem } from '../lib/ingredients';
+import { toFood, type Food, type FoodRow } from './foods';
 
 export interface PersonSummary {
   id: string;
@@ -30,12 +31,21 @@ export interface Invite {
 export type MealSlot = 'breakfast' | 'lunch' | 'snack' | 'dinner';
 export const MEAL_SLOTS: MealSlot[] = ['breakfast', 'lunch', 'snack', 'dinner'];
 
+/** Item do plano: uma receita (recipe_id + servings) OU um alimento do catálogo (food_id + grams). */
 export interface MealPlanItem {
   id?: string;
   day: number; // 0 = segunda
   meal: MealSlot;
-  recipe_id: string;
+  recipe_id: string | null;
   servings: number;
+  food_id: string | null;
+  /** Alimento já carregado junto com o plano (para nome e nutrientes). */
+  food?: Food | null;
+  grams: number | null;
+  /** Texto da quantidade do alimento, ex.: "2 × 1 fatia (50 g)". */
+  measure_label: string | null;
+  /** Itens da mesma refeição com o mesmo número são opções equivalentes ("escolha 1"). */
+  option_group: number | null;
   note: string;
 }
 
@@ -214,7 +224,9 @@ export async function setPatientGoals(clientId: string, nutritionistId: string, 
 // ---------------------------------------------------------------- planos
 
 const PLAN_SELECT =
-  'id, client_id, created_by, title, notes, created_at, updated_at, author:profiles!meal_plans_created_by_fkey(full_name), items:meal_plan_items(id, day, meal, recipe_id, servings, note)';
+  'id, client_id, created_by, title, notes, created_at, updated_at, author:profiles!meal_plans_created_by_fkey(full_name), ' +
+  'items:meal_plan_items(id, day, meal, recipe_id, servings, food_id, grams, measure_label, option_group, note, ' +
+  'food:foods(id, taco_id, owner_id, name, category, kcal, protein, carbs, fat, fiber, sodium, nutrients, measures))';
 
 interface PlanRow {
   id: string;
@@ -225,7 +237,21 @@ interface PlanRow {
   created_at: string;
   updated_at: string;
   author: { full_name: string | null } | { full_name: string | null }[] | null;
-  items: { id: string; day: number; meal: MealSlot; recipe_id: string; servings: number | string; note: string }[] | null;
+  items:
+    | {
+        id: string;
+        day: number;
+        meal: MealSlot;
+        recipe_id: string | null;
+        servings: number | string;
+        food_id: string | null;
+        grams: number | string | null;
+        measure_label: string | null;
+        option_group: number | null;
+        note: string;
+        food: FoodRow | FoodRow[] | null;
+      }[]
+    | null;
 }
 
 const toPlan = (row: PlanRow): MealPlan => ({
@@ -238,7 +264,16 @@ const toPlan = (row: PlanRow): MealPlan => ({
   updated_at: row.updated_at,
   authorName: one(row.author)?.full_name ?? null,
   items: (row.items ?? [])
-    .map((i) => ({ ...i, servings: Number(i.servings) || 1 }))
+    .map((i) => {
+      const food = one(i.food);
+      return {
+        ...i,
+        servings: Number(i.servings) || 1,
+        grams: i.grams === null ? null : Number(i.grams),
+        option_group: i.option_group ?? null,
+        food: food ? toFood(food) : null,
+      };
+    })
     .sort((a, b) => a.day - b.day || MEAL_SLOTS.indexOf(a.meal) - MEAL_SLOTS.indexOf(b.meal)),
 });
 
@@ -249,7 +284,7 @@ export async function listPlans(clientId: string): Promise<MealPlan[]> {
     .eq('client_id', clientId)
     .order('updated_at', { ascending: false });
   if (error) throw error;
-  return ((data ?? []) as PlanRow[]).map(toPlan);
+  return ((data ?? []) as unknown as PlanRow[]).map(toPlan);
 }
 
 async function writeItems(planId: string, items: MealPlanItem[]) {
@@ -261,8 +296,12 @@ async function writeItems(planId: string, items: MealPlanItem[]) {
       plan_id: planId,
       day: i.day,
       meal: i.meal,
-      recipe_id: i.recipe_id,
-      servings: i.servings,
+      recipe_id: i.food_id ? null : i.recipe_id,
+      servings: i.food_id ? 1 : i.servings,
+      food_id: i.food_id,
+      grams: i.food_id ? i.grams : null,
+      measure_label: i.food_id ? (i.measure_label ?? '').slice(0, 120) || null : null,
+      option_group: i.option_group,
       note: i.note.slice(0, 300),
     }))
   );
@@ -301,7 +340,7 @@ export async function savePlan(input: {
 
   const { data, error } = await supabase.from('meal_plans').select(PLAN_SELECT).eq('id', planId).single();
   if (error) throw error;
-  return toPlan(data as PlanRow);
+  return toPlan(data as unknown as PlanRow);
 }
 
 export async function deletePlan(planId: string) {

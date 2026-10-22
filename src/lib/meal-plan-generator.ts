@@ -114,7 +114,7 @@ export function generateWeeklyPlan({
       used.set(pick.id, (used.get(pick.id) ?? 0) + 1);
       const kcal = pick.nutritionFacts.calories;
       const servings = kcal > 0 ? Math.min(3, Math.max(0.5, Math.round((target / kcal) * 2) / 2)) : 1;
-      items.push({ day, meal: slot, recipe_id: pick.id, servings, note: '' });
+      items.push({ day, meal: slot, recipe_id: pick.id, servings, food_id: null, grams: null, measure_label: null, option_group: null, note: '' });
     }
   }
 

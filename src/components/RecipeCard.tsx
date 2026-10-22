@@ -163,7 +163,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
     </div>
 
     <div className="flex flex-col leading-tight">
-      <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
         {t.labels.time}
       </span>
       <span className="text-sm font-bold text-gray-900 dark:text-white">
@@ -179,7 +179,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
     </div>
 
     <div className="flex flex-col leading-tight">
-      <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
         {t.labels.rating}
       </span>
       <span className="text-sm font-bold text-gray-900 dark:text-white">
@@ -215,7 +215,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
     </div>
 
     <div className="flex flex-col leading-tight">
-      <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
         {t.labels.level}
       </span>
       <span

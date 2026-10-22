@@ -10,6 +10,7 @@ import { ageFromBirthDate, bmi, suggestGoals } from '../../lib/nutrition-calcula
 import { WeightChart } from '../profile/WeightChart';
 import { WeeklyCaloriesChart } from '../nutrition/WeeklyCaloriesChart';
 import { PlansSection } from '../plans/PlansSection';
+import { SwapRequestsList } from '../swaps/SwapRequestsList';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Avatar } from './Avatar';
 
@@ -31,6 +32,7 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
   const [data, setData] = useState<PatientData | null>(null);
   const [goalsForm, setGoalsForm] = useState<NutritionGoals>(DEFAULT_GOALS);
   const [saving, setSaving] = useState(false);
+  const [plansKey, setPlansKey] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -115,7 +117,7 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
 
   const info = (label: string, value: ReactNode) => (
     <div>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
       <p className="text-sm font-semibold text-slate-900 dark:text-white">{value || '—'}</p>
     </div>
   );
@@ -133,7 +135,8 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
 
       <div className="flex flex-wrap items-center gap-4">
         <Avatar name={link.person.full_name} url={link.person.avatar_url} className="h-14 w-14 text-lg" />
-        <div className="min-w-0 flex-1">
+        {/* basis-48: sem espaço para nome e botão juntos, o botão desce para a linha de baixo. */}
+        <div className="min-w-0 flex-1 basis-48">
           <h2 className="truncate text-xl font-bold text-slate-900 dark:text-white">{link.person.full_name}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {t.care.since} {new Date(link.created_at).toLocaleDateString()}
@@ -149,7 +152,7 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
         </button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className={card}>
           <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
             <HeartPulse className="h-5 w-5 text-sky-500" />
@@ -211,7 +214,7 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
                   <span className="ml-1 text-xs font-medium text-slate-500">{key === 'calories' ? 'kcal' : 'g'}</span>
                 </p>
                 {pct !== null && (
-                  <p className={`text-[11px] font-semibold ${pct > 110 ? 'text-rose-500' : pct >= 85 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  <p className={`text-xs font-semibold ${pct > 110 ? 'text-rose-500' : pct >= 85 ? 'text-emerald-600' : 'text-amber-600'}`}>
                     {pct}% {t.report.vsGoal}
                   </p>
                 )}
@@ -287,6 +290,9 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
         </div>
       </section>
 
+      {/* Pedidos de troca: a resposta pode mudar o plano, que então recarrega. */}
+      <SwapRequestsList clientId={patientId} role="nutritionist" onPlanChanged={() => setPlansKey((k) => k + 1)} />
+
       <section className="space-y-4">
         <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
           <CalendarRange className="h-5 w-5 text-emerald-500" />
@@ -298,6 +304,7 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
           dailyCalories={data.goals?.calories ?? goalsForm.calories}
           allergies={h?.allergies ?? []}
           preferences={h?.dietary_preferences ?? []}
+          reloadKey={plansKey}
         />
       </section>
     </div>

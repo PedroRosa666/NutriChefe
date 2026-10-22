@@ -130,7 +130,7 @@ export function HealthProfileForm() {
         </div>
         <p className="-mt-4 text-sm text-slate-500 dark:text-slate-400">{h.privacyNote}</p>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 sm:gap-4">
           <div>
             <label className={labelClass} htmlFor="hp-birth">{h.birthDate}</label>
             <input id="hp-birth" type="date" className={inputClass} value={form.birth_date ?? ''}
@@ -161,7 +161,8 @@ export function HealthProfileForm() {
             <input id="hp-target" type="number" inputMode="decimal" step="0.1" min={20} max={400} className={inputClass}
               value={form.target_weight_kg ?? ''} onChange={(e) => set('target_weight_kg', toNum(e.target.value))} />
           </div>
-          <div>
+          {/* O nome do nível de atividade é longo: no celular ocupa a linha inteira. */}
+          <div className="col-span-2 sm:col-span-1">
             <label className={labelClass} htmlFor="hp-activity">{h.activityLevel}</label>
             <select id="hp-activity" className={inputClass} value={form.activity_level ?? ''}
               onChange={(e) => set('activity_level', (e.target.value || null) as ActivityLevel | null)}>
@@ -283,7 +284,7 @@ export function HealthProfileForm() {
           ) : (
             <p className="text-xs text-slate-500 dark:text-slate-400">{h.fillToCalculate}</p>
           )}
-          <p className="text-[11px] text-slate-400">{h.disclaimer}</p>
+          <p className="text-xs text-slate-400">{h.disclaimer}</p>
         </section>
 
         {/* Peso */}

@@ -96,3 +96,31 @@ export async function getCroppedImg(
     }, 'image/jpeg', 0.85);
   });
 }
+
+// Reduz a foto no navegador antes do upload: no máximo `maxWidth` de largura, em WebP.
+export async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> {
+  const url = URL.createObjectURL(file);
+  try {
+    const image = await createImage(url);
+    const scale = Math.min(1, maxWidth / image.width);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(image.width * scale);
+    canvas.height = Math.round(image.height * scale);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('No 2d context');
+    }
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    return await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('Canvas is empty'))),
+        'image/webp',
+        quality
+      );
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}

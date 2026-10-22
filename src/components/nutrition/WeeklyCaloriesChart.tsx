@@ -57,7 +57,7 @@ export function WeeklyCaloriesChart({ entries, goal, selectedDate, onSelectDate 
             style={{ bottom: `${goalPct}%` }}
             aria-hidden
           >
-            <span className="absolute -top-4 right-0 text-[10px] text-emerald-600 dark:text-emerald-400">
+            <span className="absolute -top-4 right-0 text-xs text-emerald-600 dark:text-emerald-400">
               {t.profile.goalLabel} {goal}
             </span>
           </div>
@@ -89,7 +89,7 @@ export function WeeklyCaloriesChart({ entries, goal, selectedDate, onSelectDate 
                 />
                 <span
                   className={cn(
-                    'absolute -bottom-5 text-[10px] capitalize',
+                    'absolute -bottom-5 text-xs capitalize',
                     isSelected ? 'font-semibold text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'
                   )}
                 >

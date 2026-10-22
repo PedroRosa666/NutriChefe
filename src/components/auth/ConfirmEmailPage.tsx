@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { ResendConfirmation } from './ResendConfirmation';
 
 /**
  * Página de confirmação de email.
@@ -58,6 +59,18 @@ export default function ConfirmEmailPage() {
           }
         }
 
+        // 4) O supabase-js lê o #access_token assim que o app abre e apaga o hash da URL,
+        //    então quando esta página (carregada sob demanda) monta, a sessão já existe.
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        if (!hashParams.get('error')) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user.email_confirmed_at) {
+            setStatus('ok');
+            setMessage('E-mail confirmado com sucesso! Você já pode acessar o sistema.');
+            return;
+          }
+        }
+
         setStatus('error');
         setMessage('Link inválido ou expirado. Solicite um novo e-mail de confirmação.');
       } catch (err) {
@@ -78,6 +91,11 @@ export default function ConfirmEmailPage() {
         {status === 'ok' && <CheckCircle className="mx-auto text-green-600" />}
         {status === 'error' && <AlertCircle className="mx-auto text-red-600" />}
         <p className="mt-4 text-lg">{message}</p>
+        {status === 'error' && (
+          <div className="mt-6">
+            <ResendConfirmation />
+          </div>
+        )}
       </div>
     </div>
   );

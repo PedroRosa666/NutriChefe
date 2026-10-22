@@ -27,8 +27,8 @@ export function ProfileCard() {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="h-24 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 sm:h-28" />
-      <div className="flex flex-col gap-4 px-6 pb-6 sm:flex-row sm:items-end">
-        <div className="-mt-12 flex-shrink-0 rounded-full ring-4 ring-white dark:ring-slate-900">
+      <div className="flex flex-col gap-4 px-4 pb-6 sm:flex-row sm:items-end sm:px-6">
+        <div className="-mt-10 flex-shrink-0 self-start sm:-mt-12">
           <AvatarUpload currentAvatarUrl={user.avatar_url} size="xl" editable />
         </div>
 

@@ -13,11 +13,11 @@ import { getRecipeAuthorStats, type RecipeStats } from '../../services/care';
 
 export function NutritionistDashboard() {
   const { user } = useAuthStore();
-  const { recipes } = useRecipesStore();
+  const { recipes, loading: recipesLoading } = useRecipesStore();
   const { showToast } = useToastStore();
   const t = useTranslation();
   const userId = user?.id;
-  const { profile } = useProfessionalProfile(userId);
+  const { profile, loading: profileLoading } = useProfessionalProfile(userId);
   const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState<RecipeStats[] | null>(null);
 
@@ -82,6 +82,23 @@ export function NutritionistDashboard() {
       showToast(publicUrl, 'info');
     }
   };
+
+  // Enquanto carrega, blocos cinzas no lugar de "0" e "você ainda não publicou nenhuma receita".
+  if (profileLoading || (recipesLoading && !recipes.length)) {
+    return (
+      <div className="space-y-8" aria-busy="true">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+          <div className="h-72 animate-pulse rounded-2xl bg-slate-100 lg:col-span-2 dark:bg-slate-800" />
+          <div className="h-72 animate-pulse rounded-2xl bg-slate-100 lg:col-span-3 dark:bg-slate-800" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -233,12 +250,28 @@ function RecipeStatsTable({ stats, recipes }: { stats: RecipeStats[] | null; rec
     .sort((a, b) => b.favorites + b.diary_logs + b.in_plans - (a.favorites + a.diary_logs + a.in_plans));
 
   return (
-    <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-800 dark:bg-slate-900">
       <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t.stats.title}</h3>
       {!rows.length ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">{t.stats.empty}</p>
       ) : (
-        <div className="-mx-5 overflow-x-auto px-5">
+        <>
+        {/* Celular: uma linha por receita com os três números embaixo (a tabela não cabe em 360px). */}
+        <ul className="divide-y divide-slate-100 sm:hidden dark:divide-slate-800">
+          {rows.map((r) => (
+            <li key={r.id} className="py-2.5">
+              <Link to={`/receita/${r.id}`} className="block truncate text-sm font-medium text-slate-900 hover:text-emerald-600 dark:text-white">
+                {r.title}
+              </Link>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {t.stats.favorites}: <span className="font-semibold tabular-nums text-slate-700 dark:text-slate-200">{r.favorites}</span>
+                {' · '}{t.stats.diaryLogs}: <span className="font-semibold tabular-nums text-slate-700 dark:text-slate-200">{r.diary_logs}</span>
+                {' · '}{t.stats.inPlans}: <span className="font-semibold tabular-nums text-slate-700 dark:text-slate-200">{r.in_plans}</span>
+              </p>
+            </li>
+          ))}
+        </ul>
+        <div className="-mx-5 hidden overflow-x-auto px-5 sm:block">
           <table className="w-full min-w-[480px] text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
@@ -264,6 +297,7 @@ function RecipeStatsTable({ stats, recipes }: { stats: RecipeStats[] | null; rec
             </tbody>
           </table>
         </div>
+        </>
       )}
     </section>
   );

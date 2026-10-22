@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Loader2, Sparkles, Trash2, Save } from 'lucide-react';
+import { BookOpen, Carrot, ListChecks, Loader2, Sparkles, Trash2, Save, X } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
-import { MEAL_SLOTS, planDayOf, savePlan, type MealPlan, type MealPlanItem } from '../../services/care';
+import { MEAL_SLOTS, planDayOf, savePlan, type MealPlan, type MealPlanItem, type MealSlot } from '../../services/care';
 import { generateWeeklyPlan } from '../../lib/meal-plan-generator';
+import { isItemAvailable, itemsCalories, mealBlocks, nextOptionGroup } from '../../lib/plan-items';
+import { FoodQuantityPicker, type PickedFood } from '../foods/FoodQuantityPicker';
+import { PlanItemRow } from './PlanItemRow';
 import { cn } from '../../lib/utils';
 import type { Recipe } from '../../types/recipe';
 
@@ -21,8 +24,27 @@ interface MealPlanEditorProps {
   onCancel: () => void;
 }
 
+/** Painel de inclusão aberto numa refeição: receita ou alimento, solto ou dentro de um grupo de opções. */
+interface Adder {
+  meal: MealSlot;
+  kind: 'recipe' | 'food';
+  group: number | null;
+}
+
 const inputClass =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100';
+const chipClass =
+  'inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-emerald-400 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:text-emerald-300';
+
+const emptyItem = (day: number, meal: MealSlot, group: number | null): Omit<MealPlanItem, 'recipe_id' | 'food_id'> => ({
+  day,
+  meal,
+  servings: 1,
+  grams: null,
+  measure_label: null,
+  option_group: group,
+  note: '',
+});
 
 export function MealPlanEditor({
   clientId,
@@ -46,15 +68,14 @@ export function MealPlanEditor({
   const [notes, setNotes] = useState(plan?.notes ?? '');
   const [items, setItems] = useState<MealPlanItem[]>(() => plan?.items ?? (startGenerated ? generate() : []));
   const [day, setDay] = useState(() => planDayOf(new Date()));
+  const [adder, setAdder] = useState<Adder | null>(null);
   const [saving, setSaving] = useState(false);
 
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const sortedRecipes = useMemo(() => recipes.slice().sort((a, b) => a.title.localeCompare(b.title)), [recipes]);
+  const hasOptions = items.some((i) => i.option_group !== null);
 
-  const dayCalories = (d: number) =>
-    items
-      .filter((i) => i.day === d)
-      .reduce((sum, i) => sum + (byId.get(i.recipe_id)?.nutritionFacts.calories ?? 0) * i.servings, 0);
+  const dayCalories = (d: number) => itemsCalories(items.filter((i) => i.day === d), byId);
 
   const regenerate = () => {
     const next = generate();
@@ -62,19 +83,40 @@ export function MealPlanEditor({
       showToast(t.plan.generateEmpty, 'warning');
       return;
     }
-    setItems(next);
+    // O gerador só monta receitas; alimentos e grupos de opções do dia ficam como estavam.
+    setItems((prev) => [...prev.filter((i) => i.food_id || i.option_group !== null), ...next]);
     showToast(t.plan.generated, 'success');
   };
 
-  const addItem = (meal: MealPlanItem['meal'], recipeId: string) => {
+  const addRecipe = (target: Adder, recipeId: string) => {
     if (!recipeId) return;
-    setItems((prev) => [...prev, { day, meal, recipe_id: recipeId, servings: 1, note: '' }]);
+    setItems((prev) => [...prev, { ...emptyItem(day, target.meal, target.group), recipe_id: recipeId, food_id: null }]);
+    // Fora de um grupo, fecha; dentro, fica aberto para a próxima opção.
+    if (target.group === null) setAdder(null);
+  };
+
+  const addFood = (target: Adder, picked: PickedFood) => {
+    setItems((prev) => [
+      ...prev,
+      {
+        ...emptyItem(day, target.meal, target.group),
+        recipe_id: null,
+        food_id: picked.food.id,
+        food: picked.food,
+        grams: picked.grams,
+        measure_label: picked.label,
+      },
+    ]);
+    if (target.group === null) setAdder(null);
   };
 
   const updateItem = (target: MealPlanItem, patch: Partial<MealPlanItem>) =>
     setItems((prev) => prev.map((i) => (i === target ? { ...i, ...patch } : i)));
 
   const removeItem = (target: MealPlanItem) => setItems((prev) => prev.filter((i) => i !== target));
+
+  const removeGroup = (meal: MealSlot, group: number) =>
+    setItems((prev) => prev.filter((i) => !(i.day === day && i.meal === meal && i.option_group === group)));
 
   const save = async () => {
     if (!user || saving) return;
@@ -86,7 +128,7 @@ export function MealPlanEditor({
         authorId: user.id,
         title: title || t.plan.title,
         notes,
-        items: items.filter((i) => byId.has(i.recipe_id)),
+        items: items.filter((i) => isItemAvailable(i, byId)),
       });
       showToast(t.plan.saved, 'success');
       onSaved(saved);
@@ -98,9 +140,74 @@ export function MealPlanEditor({
     }
   };
 
+  const itemActions = (item: MealPlanItem) => (
+    <>
+      {!item.food_id && (
+        <input
+          type="number"
+          min={0.5}
+          max={20}
+          step={0.5}
+          value={item.servings}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            if (Number.isFinite(v) && v > 0 && v <= 20) updateItem(item, { servings: v });
+          }}
+          className="w-16 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+          aria-label={t.plan.servingsShort}
+        />
+      )}
+      <button
+        type="button"
+        onClick={() => removeItem(item)}
+        className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
+        aria-label={t.profile.remove}
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </>
+  );
+
+  const adderPanel = (target: Adder) => (
+    <div className="space-y-3 rounded-lg border border-emerald-200 bg-white p-3 dark:border-emerald-800/40 dark:bg-slate-900">
+      <div className="flex items-center justify-between gap-2">
+        <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs font-semibold dark:bg-slate-800">
+          {(['recipe', 'food'] as const).map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              onClick={() => setAdder({ ...target, kind })}
+              className={cn(
+                'rounded-md px-2.5 py-1',
+                target.kind === kind ? 'bg-white text-emerald-700 shadow-sm dark:bg-slate-950 dark:text-emerald-300' : 'text-slate-500 dark:text-slate-400'
+              )}
+            >
+              {kind === 'recipe' ? t.plan.addRecipeButton : t.plan.addFoodButton}
+            </button>
+          ))}
+        </div>
+        <button type="button" onClick={() => setAdder(null)} className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t.plan.closeAdder}>
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      {target.kind === 'recipe' ? (
+        <select value="" onChange={(e) => addRecipe(target, e.target.value)} className={cn(inputClass, 'dark:[color-scheme:dark]')}>
+          <option value="">{t.plan.addRecipe}</option>
+          {sortedRecipes.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.title} ({Math.round(r.nutritionFacts.calories)} kcal)
+            </option>
+          ))}
+        </select>
+      ) : (
+        <FoodQuantityPicker confirmLabel={target.group === null ? t.plan.addToMeal : t.plan.addAsOption} onConfirm={(picked) => addFood(target, picked)} />
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-5 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="grid gap-3 md:grid-cols-2">
+    <div className="space-y-5 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-800 dark:bg-slate-900">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <label className="space-y-1">
           <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{t.plan.titleLabel}</span>
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} placeholder={t.plan.titlePlaceholder} className={inputClass} />
@@ -114,6 +221,7 @@ export function MealPlanEditor({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-slate-500 dark:text-slate-400">
           {t.plan.goalHint.replace('{kcal}', String(Math.round(dailyCalories)))}
+          {hasOptions && ` ${t.plan.firstOptionNote}`}
         </p>
         <button
           type="button"
@@ -133,7 +241,10 @@ export function MealPlanEditor({
             <button
               key={label}
               type="button"
-              onClick={() => setDay(d)}
+              onClick={() => {
+                setDay(d);
+                setAdder(null);
+              }}
               className={cn(
                 'flex min-w-[64px] flex-col items-center rounded-xl border px-3 py-2 text-sm transition-colors',
                 d === day
@@ -142,7 +253,7 @@ export function MealPlanEditor({
               )}
             >
               <span className="font-semibold">{label}</span>
-              <span className={cn('text-[11px]', d === day ? 'text-emerald-100' : 'text-slate-500 dark:text-slate-400')}>
+              <span className={cn('text-xs', d === day ? 'text-emerald-100' : 'text-slate-500 dark:text-slate-400')}>
                 {kcal ? `${kcal} kcal` : '—'}
               </span>
             </button>
@@ -150,61 +261,81 @@ export function MealPlanEditor({
         })}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {MEAL_SLOTS.map((meal) => {
           const mealItems = items.filter((i) => i.day === day && i.meal === meal);
+          const isOpen = (group: number | null) => adder?.meal === meal && adder.group === group;
           return (
-            <div key={meal} className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-950/40">
-              <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{t.plan.meals[meal]}</p>
-              <div className="space-y-2">
-                {mealItems.map((item, index) => {
-                  const recipe = byId.get(item.recipe_id);
-                  if (!recipe) return null;
-                  return (
-                    <div key={`${item.recipe_id}-${index}`} className="flex items-center gap-2 rounded-lg bg-white p-2 dark:bg-slate-900">
-                      <img src={recipe.image} alt="" className="h-9 w-9 flex-shrink-0 rounded-md bg-slate-100 object-cover dark:bg-slate-800" loading="lazy" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{recipe.title}</p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          {Math.round(recipe.nutritionFacts.calories * item.servings)} kcal
-                        </p>
-                      </div>
-                      <input
-                        type="number"
-                        min={0.5}
-                        max={20}
-                        step={0.5}
-                        value={item.servings}
-                        onChange={(e) => {
-                          const v = Number(e.target.value);
-                          if (Number.isFinite(v) && v > 0 && v <= 20) updateItem(item, { servings: v });
-                        }}
-                        className="w-16 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                        aria-label={t.plan.servingsShort}
-                      />
+            <div key={meal} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.plan.meals[meal]}</p>
+
+              {mealBlocks(mealItems).map((block) =>
+                block.kind === 'single' ? (
+                  <div key={items.indexOf(block.item)} className="rounded-lg bg-white p-2 dark:bg-slate-900">
+                    <PlanItemRow item={block.item} recipesById={byId} compact actions={itemActions(block.item)} />
+                  </div>
+                ) : (
+                  <div key={`g${block.group}`} className="space-y-2 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-2 dark:border-amber-700/50 dark:bg-amber-900/10">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                        <ListChecks className="h-3.5 w-3.5" />
+                        {t.plan.chooseOne}
+                      </p>
                       <button
                         type="button"
-                        onClick={() => removeItem(item)}
-                        className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
-                        aria-label={t.profile.remove}
+                        onClick={() => removeGroup(meal, block.group)}
+                        className="rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
+                        aria-label={t.plan.removeGroup}
+                        title={t.plan.removeGroup}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                  );
-                })}
-                <select
-                  value=""
-                  onChange={(e) => addItem(meal, e.target.value)}
-                  className="w-full rounded-lg border border-dashed border-slate-300 bg-transparent px-2 py-1.5 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:text-slate-300 dark:[color-scheme:dark]"
-                >
-                  <option value="">{t.plan.addRecipe}</option>
-                  {sortedRecipes.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.title} ({Math.round(r.nutritionFacts.calories)} kcal)
-                    </option>
-                  ))}
-                </select>
+                    {block.items.map((item, index) => (
+                      <div key={items.indexOf(item)}>
+                        {index > 0 && <p className="py-0.5 text-center text-xs font-semibold uppercase text-amber-600 dark:text-amber-400">{t.plan.or}</p>}
+                        <div className="rounded-lg bg-white p-2 dark:bg-slate-900">
+                          <PlanItemRow item={item} recipesById={byId} compact actions={itemActions(item)} />
+                        </div>
+                      </div>
+                    ))}
+                    {isOpen(block.group) ? (
+                      adderPanel(adder!)
+                    ) : (
+                      <button type="button" onClick={() => setAdder({ meal, kind: 'food', group: block.group })} className={chipClass}>
+                        <ListChecks className="h-3.5 w-3.5" />
+                        {t.plan.addOption}
+                      </button>
+                    )}
+                  </div>
+                )
+              )}
+
+              {isOpen(null) && adderPanel(adder!)}
+              {/* Novo grupo de opções: o painel abre já ligado ao próximo número de grupo. */}
+              {adder?.meal === meal && adder.group !== null && !mealItems.some((i) => i.option_group === adder.group) && (
+                <div className="space-y-2 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-2 dark:border-amber-700/50 dark:bg-amber-900/10">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                    <ListChecks className="h-3.5 w-3.5" />
+                    {t.plan.chooseOne}
+                  </p>
+                  {adderPanel(adder)}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <button type="button" onClick={() => setAdder({ meal, kind: 'recipe', group: null })} className={chipClass}>
+                  <BookOpen className="h-3.5 w-3.5" />
+                  {t.plan.addRecipeButton}
+                </button>
+                <button type="button" onClick={() => setAdder({ meal, kind: 'food', group: null })} className={chipClass}>
+                  <Carrot className="h-3.5 w-3.5" />
+                  {t.plan.addFoodButton}
+                </button>
+                <button type="button" onClick={() => setAdder({ meal, kind: 'food', group: nextOptionGroup(mealItems) })} className={chipClass}>
+                  <ListChecks className="h-3.5 w-3.5" />
+                  {t.plan.addOptionsButton}
+                </button>
               </div>
             </div>
           );

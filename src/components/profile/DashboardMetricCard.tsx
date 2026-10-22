@@ -65,7 +65,7 @@ export function DashboardMetricCard({
             <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl ${styles.pillBg}`}>
               <span className={styles.icon}>{icon}</span>
             </span>
-            <span className="truncate">{label}</span>
+            <span className="line-clamp-2 leading-tight">{label}</span>
           </div>
 
           <div className={`mt-2 text-3xl font-bold leading-none ${styles.value}`}>
@@ -79,7 +79,7 @@ export function DashboardMetricCard({
           )}
         </div>
 
-        <span className={`mt-1 hidden rounded-full px-2 py-1 text-[11px] font-semibold sm:inline-flex ${styles.pillBg} ${styles.pillText}`}>
+        <span className={`mt-1 hidden rounded-full px-2 py-1 text-xs font-semibold sm:inline-flex ${styles.pillBg} ${styles.pillText}`}>
           •
         </span>
       </div>

@@ -54,7 +54,7 @@ export function MobileNav() {
               to={to}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors',
+                'relative flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors',
                 active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'
               )}
             >

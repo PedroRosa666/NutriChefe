@@ -287,6 +287,18 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function resendConfirmationEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: email.toLowerCase().trim(),
+    options: {
+      emailRedirectTo: `${window.location.origin}/confirm-email`,
+    },
+  });
+
+  if (error) throw error;
+}
+
 export async function updatePassword(newPassword: string): Promise<void> {
   const { error } = await supabase.auth.updateUser({
     password: newPassword
@@ -313,8 +325,22 @@ export async function validateRecoveryToken(): Promise<{ valid: boolean; user?: 
     const accessToken = hashParams.get('access_token');
     const type = hashParams.get('type');
 
-    if (!accessToken || type !== 'recovery') {
+    // Link expirado ou já usado: o Supabase redireciona com #error=...
+    if (hashParams.get('error')) {
       return { valid: false };
+    }
+
+    if (!accessToken || type !== 'recovery') {
+      // O supabase-js lê o token do link assim que o app abre e apaga o #hash da URL,
+      // então quando esta página (carregada sob demanda) monta, a sessão já existe.
+      const code = new URLSearchParams(window.location.search).get('code');
+      if (code) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        return error || !data.user ? { valid: false } : { valid: true, user: data.user };
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.user ? { valid: true, user: session.user } : { valid: false };
     }
 
     const { data: { user }, error } = await supabase.auth.getUser(accessToken);

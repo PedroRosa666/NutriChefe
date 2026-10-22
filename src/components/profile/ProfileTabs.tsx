@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LayoutDashboard, Apple, HeartPulse, Heart, Settings, BookOpen, Briefcase, Users, CalendarRange, ShoppingCart } from 'lucide-react';
+import { LayoutDashboard, Apple, HeartPulse, Heart, Settings, BookOpen, Briefcase, Users, CalendarRange, ShoppingCart, Carrot } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { RecipeCard } from '../RecipeCard';
@@ -16,6 +16,7 @@ import { AccountSettings } from './AccountSettings';
 import { PatientsPanel } from '../care/PatientsPanel';
 import { PlansSection } from '../plans/PlansSection';
 import { ShoppingListPanel } from '../plans/ShoppingListPanel';
+import { MyFoodsPanel } from '../foods/MyFoodsPanel';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useHealthProfileStore } from '../../store/health-profile';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -30,12 +31,13 @@ type TabKey =
   | 'health'
   | 'patients'
   | 'recipes'
+  | 'foods'
   | 'professional'
   | 'favorites'
   | 'account';
 
 const CLIENT_TABS: TabKey[] = ['overview', 'plan', 'nutrition', 'shopping', 'health', 'favorites', 'account'];
-const NUTRITIONIST_TABS: TabKey[] = ['overview', 'patients', 'recipes', 'professional', 'favorites', 'account'];
+const NUTRITIONIST_TABS: TabKey[] = ['overview', 'patients', 'recipes', 'foods', 'professional', 'favorites', 'account'];
 
 const ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
   overview: LayoutDashboard,
@@ -45,6 +47,7 @@ const ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
   patients: Users,
   health: HeartPulse,
   recipes: BookOpen,
+  foods: Carrot,
   professional: Briefcase,
   favorites: Heart,
   account: Settings,
@@ -155,6 +158,8 @@ export function ProfileTabs() {
 
         {activeTab === 'patients' && <PatientsPanel />}
 
+        {activeTab === 'foods' && <MyFoodsPanel />}
+
         {activeTab === 'recipes' && (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {userRecipes.map((recipe) => (
@@ -165,7 +170,7 @@ export function ProfileTabs() {
         )}
 
         {activeTab === 'professional' && (
-          <div className="max-w-4xl rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="max-w-4xl rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-6">
               <h2 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">{t.nutritionists.editProfile.title}</h2>
               <p className="text-gray-600 dark:text-gray-400">{t.nutritionists.editProfile.subtitle}</p>

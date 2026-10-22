@@ -82,7 +82,7 @@ export function ShoppingListPanel() {
           {item.quantity && <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">{item.quantity}</span>}
         </p>
         {item.recipes.length > 0 && !item.checked && (
-          <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
+          <p className="truncate text-xs text-slate-400 dark:text-slate-500">
             {t.shopping.from}: {item.recipes.join(', ')}
           </p>
         )}

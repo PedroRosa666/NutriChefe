@@ -34,12 +34,12 @@ export function LanguageSwitch() {
     <div className="relative">
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 shadow-sm"
+        className="flex items-center gap-1.5 px-2 py-2 sm:gap-2 sm:px-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 shadow-sm"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
         <div className="flex items-center gap-2">
-          <Globe className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          <Globe className="hidden w-4 h-4 text-gray-600 dark:text-gray-400 sm:block" />
 
           {/* Bandeira atual */}
           <span className="relative inline-flex h-5 w-7 overflow-hidden rounded-sm ring-1 ring-gray-200 dark:ring-gray-700">

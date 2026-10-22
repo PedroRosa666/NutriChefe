@@ -19,7 +19,7 @@ const sizeClasses = {
   sm: 'w-12 h-12',
   md: 'w-20 h-20',
   lg: 'w-32 h-32',
-  xl: 'w-40 h-40',
+  xl: 'w-28 h-28 sm:w-40 sm:h-40',
 };
 
 const iconSizeClasses = {
@@ -33,21 +33,21 @@ const uploadBtnClasses = {
   sm: 'p-1',
   md: 'p-1.5',
   lg: 'p-2',
-  xl: 'p-2.5',
+  xl: 'p-1.5 sm:p-2.5',
 };
 
 const uploadIconClasses = {
   sm: 'w-3 h-3',
   md: 'w-3.5 h-3.5',
   lg: 'w-4 h-4',
-  xl: 'w-4.5 h-4.5',
+  xl: 'w-4 h-4 sm:w-5 sm:h-5',
 };
 
 const removeBtnClasses = {
   sm: 'p-0.5',
   md: 'p-1',
   lg: 'p-1.5',
-  xl: 'p-1.5',
+  xl: 'p-1 sm:p-1.5',
 };
 
 const removeIconClasses = {
@@ -199,7 +199,7 @@ export function AvatarUpload({
 
   return (
     <>
-      <div className="relative inline-block group">
+      <div className="relative inline-flex group">
         <div
           className={cn(
             sizeClasses[size],

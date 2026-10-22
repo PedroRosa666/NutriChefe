@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Leaf, Eye, EyeOff } from 'lucide-react';
-import { useAuthStore } from '../store/auth';
+import { EMAIL_NOT_CONFIRMED_MESSAGE, useAuthStore } from '../store/auth';
+import { ResendConfirmation } from './auth/ResendConfirmation';
 import { cn } from '../lib/utils';
 import type { UserType } from '../types/user';
 import { useTranslation } from '../hooks/useTranslation';
@@ -21,6 +22,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   const [userType, setUserType] = useState<UserType>('Client');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const t = useTranslation();
 
   const { signIn, signUp } = useAuthStore();
@@ -59,10 +61,14 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
       // Fecha só quando deu certo; em caso de erro o usuário corrige e tenta de novo.
       if (mode === 'signin') {
         if (await signIn(email, password)) onClose();
+        else if (useAuthStore.getState().error === EMAIL_NOT_CONFIRMED_MESSAGE) setNeedsConfirmation(true);
       } else {
         const result = await signUp(email, password, name, userType);
         if (result === 'signed_in') onClose();
-        else if (result === 'confirm_email') setMode('signin');
+        else if (result === 'confirm_email') {
+          setMode('signin');
+          setNeedsConfirmation(true);
+        }
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -91,7 +97,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
             </div>
 
             <div className="flex flex-col">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">
+              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">
                 NutriChef
               </span>
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
@@ -258,6 +264,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                 </button>
               </div>
             )}
+
+            {mode === 'signin' && needsConfirmation && <ResendConfirmation initialEmail={email} />}
 
             {/* Botão de ação */}
             <button

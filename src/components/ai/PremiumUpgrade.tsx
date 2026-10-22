@@ -126,7 +126,7 @@ export function PremiumUpgrade() {
   return (
     <div className="mx-auto max-w-5xl space-y-14 pb-6">
       {/* Hero: proposta + preço à esquerda, exemplo real de uso à direita */}
-      <section className="grid items-center gap-10 md:grid-cols-[1.1fr_1fr]">
+      <section className="grid grid-cols-1 items-center gap-10 md:grid-cols-[1.1fr_1fr]">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
             <Crown className="h-3.5 w-3.5" />
@@ -162,7 +162,7 @@ export function PremiumUpgrade() {
       {/* O que você ganha */}
       <motion.section {...reveal}>
         <h2 className="mb-5 text-xl font-bold text-gray-900 dark:text-white">{p.featuresTitle}</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {features.map(({ icon: Icon, title, text, tone }, i) => (
             <motion.div
               key={title}
@@ -300,7 +300,7 @@ function ChatDemo({ labels }: { labels: { label: string; question: string; answe
             </div>
             <span className="text-sm font-semibold text-gray-900 dark:text-white">NutriBot</span>
           </div>
-          <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-slate-800 dark:text-gray-400">
+          <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 dark:bg-slate-800 dark:text-gray-400">
             {labels.label}
           </span>
         </div>

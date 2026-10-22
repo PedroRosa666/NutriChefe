@@ -48,7 +48,7 @@ describe('generateWeeklyPlan', () => {
   it('ajusta porções para perto da meta diária', () => {
     const items = generateWeeklyPlan({ recipes: catalog, dailyCalories: 2000, allergies: [], preferences: [], seed: 7 });
     const byId = new Map(catalog.map((r) => [r.id, r]));
-    const day0 = items.filter((i) => i.day === 0).reduce((s, i) => s + byId.get(i.recipe_id)!.nutritionFacts.calories * i.servings, 0);
+    const day0 = items.filter((i) => i.day === 0).reduce((s, i) => s + byId.get(i.recipe_id!)!.nutritionFacts.calories * i.servings, 0);
     expect(day0).toBeGreaterThan(1400);
     expect(day0).toBeLessThan(2600);
   });

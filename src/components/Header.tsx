@@ -254,12 +254,14 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
               )}
             </div>
 
-            <div className="md:hidden flex items-center gap-4">
+            <div className="md:hidden flex items-center gap-1">
               <ThemeSwitch />
               <LanguageSwitch />
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                aria-label="Menu"
+                aria-expanded={isMobileMenuOpen}
               >
                 <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
               </button>
@@ -344,7 +346,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                       <Bot className="w-4 h-4" />
                       <span className="text-sm font-medium">{t.labels.aiMentoring}</span>
                       {!hasAIAccess && (
-                        <span className="ml-auto text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2.5 py-1 rounded-full font-bold shadow-md uppercase tracking-wider">
+                        <span className="ml-auto text-xs bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2.5 py-1 rounded-full font-bold shadow-md uppercase tracking-wider">
                           {t.labels.premium}
                         </span>
                       )}

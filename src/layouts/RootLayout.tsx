@@ -13,6 +13,7 @@ import { useNutritionGoalsStore } from '../store/nutrition-goals';
 import { useNutritionTrackingStore } from '../store/nutrition-tracking';
 import { useSubscriptionStore } from '../store/subscription';
 import { useShoppingListStore } from '../store/shopping-list';
+import { useFoodsStore } from '../store/foods';
 import { useToastStore } from '../store/toast';
 
 export function RootLayout() {
@@ -43,6 +44,8 @@ export function RootLayout() {
 
   // Dados que dependem do usuário logado.
   useEffect(() => {
+    // Os alimentos próprios visíveis dependem da conta: recarrega quando ela muda.
+    useFoodsStore.getState().clear();
     if (userId) {
       useSubscriptionStore.getState().fetchUserSubscription(userId);
       useRecipesStore.getState().fetchFavorites(userId);
