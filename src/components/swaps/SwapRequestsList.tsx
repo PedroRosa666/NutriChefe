@@ -3,9 +3,18 @@ import { ArrowLeftRight, Check, Loader2, X } from 'lucide-react';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useNotificationSignal } from '../../store/notifications';
-import { cancelSwap, listSwapsForClient, resolveSwap, type SwapRequest, type SwapStatus } from '../../services/swaps';
-import type { PickedFood } from '../../services/foods';
-import { FoodQuantityPicker } from '../foods/FoodQuantityPicker';
+import {
+  cancelSwap,
+  hasRequestedChoice,
+  listSwapsForClient,
+  resolveSwap,
+  swapChoiceLabel,
+  swapChoiceText,
+  type SwapChoice,
+  type SwapRequest,
+  type SwapStatus,
+} from '../../services/swaps';
+import { SwapChoicePicker } from './SwapChoicePicker';
 import { cn } from '../../lib/utils';
 
 interface SwapRequestsListProps {
@@ -17,6 +26,8 @@ interface SwapRequestsListProps {
   onPlanChanged?: () => void;
   /** Chamado quando o paciente cancela um pedido (a tela do plano tira a marca do item). */
   onCanceled?: () => void;
+  /** Alergias do paciente: receitas com esses ingredientes não aparecem para oferecer. */
+  allergies?: string[];
 }
 
 const STATUS_STYLE: Record<SwapStatus, string> = {
@@ -27,13 +38,13 @@ const STATUS_STYLE: Record<SwapStatus, string> = {
 };
 
 /** Pedidos de troca de um paciente. Paciente acompanha e cancela; nutricionista aprova ou recusa. */
-export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged, onCanceled }: SwapRequestsListProps) {
+export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged, onCanceled, allergies = [] }: SwapRequestsListProps) {
   const t = useTranslation();
   const s = t.swaps;
   const { showToast } = useToastStore();
   const [swaps, setSwaps] = useState<SwapRequest[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [declining, setDeclining] = useState<{ id: string; note: string; counter: PickedFood | null } | null>(null);
+  const [declining, setDeclining] = useState<{ id: string; note: string; counter: SwapChoice | null } | null>(null);
   // Pedido novo (nutricionista) ou resposta (paciente) chegou por aviso: recarrega a lista.
   const signal = useNotificationSignal((n) =>
     role === 'nutritionist' ? n.kind === 'swap_requested' && n.data.client_id === clientId : n.kind === 'swap_answered'
@@ -59,7 +70,7 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
   const where = (r: SwapRequest) => `${t.plan.daysLong[r.day]} • ${t.plan.meals[r.meal]}`;
 
   const approve = async (r: SwapRequest) => {
-    if (!r.requested_food_id) {
+    if (!hasRequestedChoice(r)) {
       showToast(s.approveNeedsFood, 'warning');
       return;
     }
@@ -128,7 +139,7 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
             <p className="font-medium text-slate-900 dark:text-white">{r.original_label}</p>
             <p className="text-slate-600 dark:text-slate-300">
               <span className="font-semibold">{s.wants}:</span>{' '}
-              {r.requestedFoodName ? `${r.requestedFoodName} — ${r.requested_label}` : <em className="text-slate-400">{s.noFood}</em>}
+              {swapChoiceLabel(r, 'requested', t.plan.servingsShort) ?? <em className="text-slate-400">{s.noFood}</em>}
             </p>
             {r.reason && (
               <p className="text-slate-600 dark:text-slate-300">
@@ -140,12 +151,12 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
                 <span className="font-semibold">{s.answer}:</span> {r.response_note}
               </p>
             )}
-            {r.counterFoodName && (
+            {swapChoiceLabel(r, 'counter', t.plan.servingsShort) && (
               <p className="text-emerald-700 dark:text-emerald-300">
-                <span className="font-semibold">{s.offered}:</span> {r.counterFoodName} — {r.counter_label}
+                <span className="font-semibold">{s.offered}:</span> {swapChoiceLabel(r, 'counter', t.plan.servingsShort)}
               </p>
             )}
-            {r.status !== 'pending' && r.status !== 'canceled' && (r.status === 'approved' || r.counter_food_id) && !r.applied && (
+            {r.status !== 'pending' && r.status !== 'canceled' && (r.status === 'approved' || r.counter_food_id || r.counter_recipe_id) && !r.applied && (
               <p className="text-xs text-amber-700 dark:text-amber-300">{s.notApplied}</p>
             )}
 
@@ -165,8 +176,8 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
                 <button
                   type="button"
                   onClick={() => approve(r)}
-                  disabled={busyId === r.id || !r.requested_food_id}
-                  title={r.requested_food_id ? undefined : s.approveNeedsFood}
+                  disabled={busyId === r.id || !hasRequestedChoice(r)}
+                  title={hasRequestedChoice(r) ? undefined : s.approveNeedsFood}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {busyId === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
@@ -198,14 +209,19 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
                 {declining.counter ? (
                   <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800/40 dark:bg-emerald-900/20">
                     <p className="min-w-0 text-emerald-900 dark:text-emerald-100">
-                      {declining.counter.food.name} — {declining.counter.label}
+                      {swapChoiceText(declining.counter, t.plan.servingsShort)}
                     </p>
                     <button type="button" onClick={() => setDeclining({ ...declining, counter: null })} className="flex-shrink-0 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                       {s.changeChoice}
                     </button>
                   </div>
                 ) : (
-                  <FoodQuantityPicker confirmLabel={s.offerThis} onConfirm={(counter) => setDeclining({ ...declining, counter })} />
+                  <SwapChoicePicker
+                    targetKcal={null}
+                    allergies={allergies}
+                    confirmLabel={s.offerThis}
+                    onChoose={(counter) => setDeclining({ ...declining, counter })}
+                  />
                 )}
                 <div className="flex justify-end gap-2">
                   <button type="button" onClick={() => setDeclining(null)} className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">

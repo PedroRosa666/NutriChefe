@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowLeftRight, Loader2, X } from 'lucide-react';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
-import { requestSwap } from '../../services/swaps';
+import { requestSwap, swapChoiceText, type SwapChoice } from '../../services/swaps';
 import type { MealPlanItem } from '../../services/care';
-import type { PickedFood } from '../../services/foods';
-import { FoodQuantityPicker } from '../foods/FoodQuantityPicker';
-import { EquivalentFoods } from '../foods/EquivalentFoods';
+import { useRecipesStore } from '../../store/recipes';
+import { useHealthProfileStore } from '../../store/health-profile';
+import { itemNutrition } from '../../lib/plan-items';
+import { SwapChoicePicker } from './SwapChoicePicker';
 
 interface SwapRequestDialogProps {
   planId: string;
@@ -22,7 +23,14 @@ export function SwapRequestDialog({ planId, item, itemLabel, onClose, onSent }: 
   const t = useTranslation();
   const s = t.swaps;
   const { showToast } = useToastStore();
-  const [requested, setRequested] = useState<PickedFood | null>(null);
+  const [requested, setRequested] = useState<SwapChoice | null>(null);
+  const recipes = useRecipesStore((st) => st.recipes);
+  const allergies = useHealthProfileStore((st) => st.profile.allergies);
+  // Calorias do item atual: base para sugerir receitas e alimentos equivalentes.
+  const currentKcal = useMemo(
+    () => itemNutrition(item, new Map(recipes.map((r) => [r.id, r])))?.calories ?? null,
+    [item, recipes]
+  );
   const [reason, setReason] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -71,19 +79,20 @@ export function SwapRequestDialog({ planId, item, itemLabel, onClose, onSent }: 
           {requested ? (
             <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm dark:border-emerald-800/40 dark:bg-emerald-900/20">
               <p className="min-w-0 text-emerald-900 dark:text-emerald-100">
-                <span className="font-semibold">{s.chosen}:</span> {requested.food.name} — {requested.label}
+                <span className="font-semibold">{s.chosen}:</span> {swapChoiceText(requested, t.plan.servingsShort)}
               </p>
               <button type="button" onClick={() => setRequested(null)} className="flex-shrink-0 text-xs font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300">
                 {s.changeChoice}
               </button>
             </div>
           ) : (
-            <>
-              {item.food && item.grams && (
-                <EquivalentFoods base={item.food} grams={item.grams} pickLabel={s.chooseThis} onPick={setRequested} defaultOpen />
-              )}
-              <FoodQuantityPicker confirmLabel={s.chooseThis} onConfirm={setRequested} />
-            </>
+            <SwapChoicePicker
+              targetKcal={currentKcal}
+              baseFood={item.food && item.grams ? { food: item.food, grams: item.grams } : null}
+              allergies={allergies}
+              confirmLabel={s.chooseThis}
+              onChoose={setRequested}
+            />
           )}
         </div>
 

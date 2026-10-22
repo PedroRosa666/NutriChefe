@@ -291,7 +291,12 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
       </section>
 
       {/* Pedidos de troca: a resposta pode mudar o plano, que então recarrega. */}
-      <SwapRequestsList clientId={patientId} role="nutritionist" onPlanChanged={() => setPlansKey((k) => k + 1)} />
+      <SwapRequestsList
+        clientId={patientId}
+        role="nutritionist"
+        allergies={h?.allergies ?? []}
+        onPlanChanged={() => setPlansKey((k) => k + 1)}
+      />
 
       <section className="space-y-4">
         <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">

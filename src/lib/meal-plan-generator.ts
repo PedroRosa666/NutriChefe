@@ -40,6 +40,10 @@ const toSearchable = (r: Recipe): SearchableRecipe & { source: Recipe } => ({
   source: r,
 });
 
+/** Receitas sem nenhum ingrediente das alergias informadas (mesma regra do gerador e da busca). */
+export const recipesWithoutAllergens = (recipes: Recipe[], allergies: string[]): Recipe[] =>
+  allergies.length ? withoutAllergens(recipes.map(toSearchable), allergies).map((r) => r.source) : recipes;
+
 const text = (r: Recipe) => normalizeText(`${r.title} ${r.description}`);
 const hasAny = (r: Recipe, words: string[]) => {
   const t = text(r);
