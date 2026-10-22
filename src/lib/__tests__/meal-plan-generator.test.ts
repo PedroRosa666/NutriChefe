@@ -53,6 +53,16 @@ describe('generateWeeklyPlan', () => {
     expect(day0).toBeLessThan(2600);
   });
 
+  it('gerar de novo (outra semente) muda o cardápio', () => {
+    const big = Array.from({ length: 30 }, (_, i) => recipe(`r${i}`, `Prato ${i}`, ['arroz'], 350 + i * 7));
+    const sig = (seed: number) =>
+      generateWeeklyPlan({ recipes: big, dailyCalories: 2000, allergies: [], preferences: [], seed })
+        .map((i) => i.recipe_id)
+        .join(',');
+    const results = new Set([1, 2, 3, 4, 5].map(sig));
+    expect(results.size).toBeGreaterThan(1);
+  });
+
   it('sem receitas compatíveis devolve vazio', () => {
     expect(generateWeeklyPlan({ recipes: [], dailyCalories: 2000, allergies: [], preferences: [] })).toEqual([]);
   });

@@ -80,6 +80,12 @@ export function MealPlanEditor({
 
   const dayCalories = (d: number) => itemsCalories(items.filter((i) => i.day === d), byId);
 
+  /** Média de calorias dos dias que têm itens. */
+  const averageDayCalories = (list: MealPlanItem[]) => {
+    const days = [0, 1, 2, 3, 4, 5, 6].map((d) => itemsCalories(list.filter((i) => i.day === d), byId)).filter((k) => k > 0);
+    return days.length ? Math.round(days.reduce((sum, k) => sum + k, 0) / days.length) : 0;
+  };
+
   const regenerate = () => {
     const next = generate();
     if (!next.length) {
@@ -94,8 +100,18 @@ export function MealPlanEditor({
   // Muda as quantidades de cada dia na mesma proporção para chegar perto da meta do paciente.
   const scaleToGoal = () => {
     if (!items.length || !dailyCalories) return;
-    setItems((prev) => scaleItemsToTarget(prev, dailyCalories, byId));
-    showToast(t.plan.scaled.replace('{kcal}', String(Math.round(dailyCalories))), 'success');
+    const next = scaleItemsToTarget(items, dailyCalories, byId);
+    const goal = String(Math.round(dailyCalories));
+    const before = averageDayCalories(items);
+    const after = averageDayCalories(next);
+    const changed = next.some((item, i) => item.servings !== items[i].servings || item.grams !== items[i].grams);
+    if (!changed) {
+      // Porções vão de meia em meia: perto da meta, o ajuste não muda nada.
+      showToast(t.plan.scaleNoChange.replace('{avg}', String(before)).replace('{kcal}', goal), 'info');
+      return;
+    }
+    setItems(next);
+    showToast(t.plan.scaled.replace('{before}', String(before)).replace('{after}', String(after)).replace('{kcal}', goal), 'success');
   };
 
   const applyTemplate = (input: { items: MealPlanItem[]; title: string; notes: string }) => {

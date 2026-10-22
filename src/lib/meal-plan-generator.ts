@@ -101,16 +101,19 @@ export function generateWeeklyPlan({
     const target = Math.max(dailyCalories, 1200) * SLOT_SHARE[slot];
     for (let day = 0; day < 7; day++) {
       // Menos usada primeiro; empate decide pela proximidade da meta da refeição.
-      const pick = candidates
-        .slice()
-        .sort((a, b) => {
-          const ua = used.get(a.id) ?? 0;
-          const ub = used.get(b.id) ?? 0;
-          if (ua !== ub) return ua - ub;
-          const da = Math.abs((a.nutritionFacts.calories || target) - target);
-          const db = Math.abs((b.nutritionFacts.calories || target) - target);
-          return da - db;
-        })[0];
+      const ranked = candidates.slice().sort((a, b) => {
+        const ua = used.get(a.id) ?? 0;
+        const ub = used.get(b.id) ?? 0;
+        if (ua !== ub) return ua - ub;
+        const da = Math.abs((a.nutritionFacts.calories || target) - target);
+        const db = Math.abs((b.nutritionFacts.calories || target) - target);
+        return da - db;
+      });
+      // Sorteia entre as 4 melhores das menos usadas: "gerar de novo" muda o cardápio
+      // (as porções são ajustadas logo abaixo, então a meta continua perto).
+      const minUse = used.get(ranked[0].id) ?? 0;
+      const top = ranked.filter((r) => (used.get(r.id) ?? 0) === minUse).slice(0, 4);
+      const pick = top[Math.floor(rand() * top.length)];
       used.set(pick.id, (used.get(pick.id) ?? 0) + 1);
       const kcal = pick.nutritionFacts.calories;
       const servings = kcal > 0 ? Math.min(3, Math.max(0.5, Math.round((target / kcal) * 2) / 2)) : 1;
