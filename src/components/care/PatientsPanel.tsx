@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Copy, Loader2, MessageCircle, UserPlus, Users, X, ChevronRight, AlertTriangle, ArrowLeftRight } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useNotificationSignal } from '../../store/notifications';
 import {
   CareError,
   createInvite,
@@ -56,6 +58,10 @@ export function PatientsPanel() {
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<CareLink | null>(null);
   const [pendingSwaps, setPendingSwaps] = useState<Map<string, number>>(new Map());
+  // ?paciente=<id> abre direto o detalhe (links dos avisos).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedPatient = searchParams.get('paciente');
+  const careSignal = useNotificationSignal((n) => n.kind === 'swap_requested' || n.kind === 'patient_joined' || n.kind === 'link_ended');
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -81,7 +87,16 @@ export function PatientsPanel() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, careSignal]);
+
+  useEffect(() => {
+    if (!requestedPatient || loading) return;
+    const match = patients.find((p) => p.person.id === requestedPatient);
+    if (match) setSelected(match);
+    const next = new URLSearchParams(searchParams);
+    next.delete('paciente');
+    setSearchParams(next, { replace: true });
+  }, [requestedPatient, loading, patients, searchParams, setSearchParams]);
 
   const newInvite = async () => {
     setCreating(true);

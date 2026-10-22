@@ -5,6 +5,7 @@ import { pageFade } from '../lib/motion';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { Toast } from '../components/common/Toast';
 import { MobileNav } from '../components/common/MobileNav';
+import { NotificationBell, useLiveNotifications } from '../components/common/NotificationBell';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/auth';
 import { useRecipesStore } from '../store/recipes';
@@ -23,6 +24,7 @@ export function RootLayout() {
   // Uma "seção" por primeiro trecho da URL; /receita/:id faz parte da home (é um modal).
   const { pathname } = useLocation();
   const section = pathname.startsWith('/receita/') ? '/' : `/${pathname.split('/')[1] ?? ''}`;
+  useLiveNotifications();
 
   // Sessão: carrega uma vez e acompanha login/logout/expiração em qualquer rota.
   useEffect(() => {
@@ -83,6 +85,12 @@ export function RootLayout() {
           <Outlet />
         </motion.div>
         <MobileNav />
+        {/* Só a home tem cabeçalho (com o sino); nas outras páginas o sino flutua no canto. */}
+        {userId && section !== '/' && (
+          <div className="fixed right-3 top-3 z-40 md:right-6 md:top-4">
+            <NotificationBell floating />
+          </div>
+        )}
       </MotionConfig>
       {message && (
         <Toast

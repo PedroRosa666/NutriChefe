@@ -9,6 +9,7 @@ import { useFiltersStore } from '../store/filters';
 import { AuthModal } from './AuthModal';
 import { ThemeSwitch } from './common/ThemeSwitch';
 import { LanguageSwitch } from './common/LanguageSwitch';
+import { NotificationBell } from './common/NotificationBell';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { User } from '../types/user';
@@ -223,6 +224,8 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                     )}
                   </button>
 
+                  <NotificationBell />
+
                   <div className="h-8 w-px bg-gray-200 dark:bg-gray-600 mx-1" />
 
                   <UserDropdown
@@ -257,6 +260,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
             <div className="md:hidden flex items-center gap-1">
               <ThemeSwitch />
               <LanguageSwitch />
+              <NotificationBell />
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"

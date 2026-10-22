@@ -5,6 +5,7 @@ import { useRecipesStore } from '../../store/recipes';
 import { useToastStore } from '../../store/toast';
 import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useShoppingListStore } from '../../store/shopping-list';
+import { useNotificationSignal } from '../../store/notifications';
 import { useTranslation } from '../../hooks/useTranslation';
 import { deletePlan, listPlans, MEAL_SLOTS, planDayOf, type MealPlan, type MealPlanItem } from '../../services/care';
 import { itemsCalories, mealBlocks } from '../../lib/plan-items';
@@ -43,6 +44,8 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   const [swaps, setSwaps] = useState<SwapRequest[]>([]);
   const [swapsKey, setSwapsKey] = useState(0);
   const [swapping, setSwapping] = useState<{ item: MealPlanItem; label: string } | null>(null);
+  // O paciente recebe aviso quando o nutricionista muda o plano ou responde uma troca: recarrega na hora.
+  const planSignal = useNotificationSignal((n) => mode === 'client' && (n.kind === 'plan_updated' || n.kind === 'swap_answered'));
 
   const load = useCallback(async () => {
     try {
@@ -58,7 +61,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
 
   useEffect(() => {
     load();
-  }, [load, reloadKey]);
+  }, [load, reloadKey, planSignal]);
 
   // Pedidos de troca do paciente: marcam os itens com pedido aberto.
   useEffect(() => {
@@ -66,7 +69,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     listSwapsForClient(clientId)
       .then(setSwaps)
       .catch((error) => console.error('Error loading swaps:', error));
-  }, [clientId, mode, swapsKey]);
+  }, [clientId, mode, swapsKey, planSignal]);
 
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const plan = plans.find((p) => p.id === selectedId) ?? null;

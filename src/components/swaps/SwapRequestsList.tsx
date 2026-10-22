@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeftRight, Check, Loader2, X } from 'lucide-react';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useNotificationSignal } from '../../store/notifications';
 import { cancelSwap, listSwapsForClient, resolveSwap, type SwapRequest, type SwapStatus } from '../../services/swaps';
 import type { PickedFood } from '../../services/foods';
 import { FoodQuantityPicker } from '../foods/FoodQuantityPicker';
@@ -33,6 +34,10 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
   const [swaps, setSwaps] = useState<SwapRequest[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [declining, setDeclining] = useState<{ id: string; note: string; counter: PickedFood | null } | null>(null);
+  // Pedido novo (nutricionista) ou resposta (paciente) chegou por aviso: recarrega a lista.
+  const signal = useNotificationSignal((n) =>
+    role === 'nutritionist' ? n.kind === 'swap_requested' && n.data.client_id === clientId : n.kind === 'swap_answered'
+  );
 
   const load = useCallback(async () => {
     try {
@@ -45,7 +50,7 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
 
   useEffect(() => {
     load();
-  }, [load, refreshKey]);
+  }, [load, refreshKey, signal]);
 
   if (!swaps) return null;
   // O paciente só vê a seção quando há pedidos; o nutricionista vê sempre (com o estado vazio).
