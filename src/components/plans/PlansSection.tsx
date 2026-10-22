@@ -50,8 +50,9 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   const [swapping, setSwapping] = useState<{ item: MealPlanItem; label: string } | null>(null);
   const [printing, setPrinting] = useState(false);
   const stopPrinting = useCallback(() => setPrinting(false), []);
-  // O paciente recebe aviso quando o nutricionista muda o plano ou responde uma troca: recarrega na hora.
-  const planSignal = useNotificationSignal((n) => mode === 'client' && (n.kind === 'plan_updated' || n.kind === 'swap_answered'));
+  // O paciente recebe aviso quando o nutricionista muda o plano, responde uma troca ou encerra o
+  // acompanhamento (os planos dele somem): recarrega na hora.
+  const planSignal = useNotificationSignal((n) => mode === 'client' && (n.kind === 'plan_updated' || n.kind === 'swap_answered' || n.kind === 'link_ended'));
 
   const load = useCallback(async () => {
     try {

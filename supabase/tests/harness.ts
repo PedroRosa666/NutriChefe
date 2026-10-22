@@ -16,6 +16,7 @@ const MIGRATIONS = [
   '20261024130000_privacy_lgpd.sql',
   '20261024140000_client_errors.sql',
   '20261025120000_push_notifications.sql',
+  '20261025130000_hide_plans_after_link_ends.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as

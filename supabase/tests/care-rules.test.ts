@@ -199,14 +199,50 @@ describe('modelos (RLS)', () => {
   });
 });
 
+// Pedido de troca aberto do paciente (usado antes de encerrar o acompanhamento).
+const requestOpenSwap = async () => {
+  const planId = (await db.query<{ id: string }>('SELECT id FROM meal_plans LIMIT 1')).rows[0].id;
+  await asUser(db, PATIENT, (tx) =>
+    tx.query(
+      `SELECT request_food_swap($1, 0::smallint, 'dinner', NULL, NULL, $2, 'Arroz', NULL, NULL, NULL, NULL, NULL, 'Quero outra coisa')`,
+      [planId, FOOD_TACO]
+    )
+  );
+};
+
 describe('fim do acompanhamento', () => {
   it('paciente encerra: nutricionista recebe aviso e deixa de ver o plano', async () => {
+    await requestOpenSwap();
     await asUser(db, PATIENT, (tx) =>
       tx.query(`UPDATE nutritionist_clients SET status = 'ended', ended_at = now() WHERE client_id = $1 AND nutritionist_id = $2`, [PATIENT, NUTRI])
     );
     expect((await notifications(NUTRI)).map((n) => n.kind)).toContain('link_ended');
     const plans = await asUser(db, NUTRI, async (tx) => (await tx.query('SELECT id FROM meal_plans')).rows);
     expect(plans).toEqual([]);
+  });
+
+  it('o paciente também deixa de ver o plano, os itens e os pedidos de troca desse nutricionista', async () => {
+    const seen = await asUser(db, PATIENT, async (tx) => ({
+      plans: (await tx.query('SELECT id FROM meal_plans')).rows,
+      items: (await tx.query('SELECT id FROM meal_plan_items')).rows,
+      swaps: (await tx.query('SELECT id FROM food_swap_requests')).rows,
+    }));
+    expect(seen).toEqual({ plans: [], items: [], swaps: [] });
+  });
+
+  it('pedidos de troca em aberto são cancelados quando o acompanhamento acaba', async () => {
+    const open = await db.query(`SELECT id FROM food_swap_requests WHERE client_id = $1 AND status = 'pending'`, [PATIENT]);
+    expect(open.rows).toEqual([]);
+  });
+
+  it('ao voltar com o mesmo nutricionista, o plano volta a aparecer', async () => {
+    const invite = await asUser(db, NUTRI, (tx) => one<{ code: string }>(tx, 'SELECT * FROM create_nutritionist_invite()'));
+    await asUser(db, PATIENT, (tx) => tx.query('SELECT redeem_nutritionist_invite($1)', [invite.code]));
+    const plans = await asUser(db, PATIENT, async (tx) => (await tx.query('SELECT id FROM meal_plans')).rows);
+    expect(plans).toHaveLength(1);
+    await asUser(db, PATIENT, (tx) =>
+      tx.query(`UPDATE nutritionist_clients SET status = 'ended', ended_at = now() WHERE client_id = $1 AND nutritionist_id = $2`, [PATIENT, NUTRI])
+    );
   });
 });
 

@@ -46,8 +46,10 @@ export function SwapRequestDialog({ planId, item, itemLabel, onClose, onSent }: 
       onSent();
     } catch (error) {
       console.error('Error requesting swap:', error);
-      const pending = error instanceof Error && error.message.includes('already_pending');
-      showToast(pending ? s.alreadyPending : s.error, 'error');
+      // Erro do Supabase não é instância de Error: lê a mensagem direto.
+      const message = String((error as { message?: string } | null)?.message ?? '');
+      // not_allowed: o acompanhamento com quem fez o plano já acabou.
+      showToast(message.includes('already_pending') ? s.alreadyPending : message.includes('not_allowed') ? s.linkEnded : s.error, 'error');
     } finally {
       setSending(false);
     }
