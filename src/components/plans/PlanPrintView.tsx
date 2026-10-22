@@ -5,6 +5,7 @@ import { useSettingsStore } from '../../store/settings';
 import { MEAL_SLOTS, type MealPlan, type MealPlanItem } from '../../services/care';
 import { groupEqualDays, itemNutrition, itemsTotals, mealBlocks } from '../../lib/plan-items';
 import type { Recipe } from '../../types/recipe';
+import { fmtNum } from '../../lib/format';
 
 interface PlanPrintViewProps {
   plan: MealPlan;
@@ -58,7 +59,7 @@ export function PlanPrintView({ plan, recipesById, patientName, onDone }: PlanPr
     return (item.recipe_id && recipesById.get(item.recipe_id)?.title) || '';
   };
   const itemAmount = (item: MealPlanItem) =>
-    item.food_id ? item.measure_label ?? `${item.grams} g` : `${item.servings} ${p.servingsShort}`;
+    item.food_id ? item.measure_label ?? `${item.grams} g` : `${fmtNum(item.servings)} ${p.servingsShort}`;
 
   const itemLine = (item: MealPlanItem) => {
     const kcal = itemNutrition(item, recipesById)?.calories;

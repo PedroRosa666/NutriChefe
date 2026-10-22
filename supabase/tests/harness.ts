@@ -1,0 +1,66 @@
+// Banco de teste: Postgres de verdade (PGlite, em memória) com as migrations reais
+// de pacientes, alimentos, planos, trocas, avisos e modelos. As tabelas mais antigas
+// que elas referenciam (perfis, receitas, diário...) entram como versões mínimas.
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { PGlite, type Transaction } from '@electric-sql/pglite';
+
+const MIGRATIONS = [
+  '20261021150000_patients_plans_shopping.sql',
+  '20261022150000_foods_catalog.sql',
+  '20261022160000_meal_plan_foods.sql',
+  '20261022170000_food_swap_requests.sql',
+  '20261023120000_notifications.sql',
+  '20261023130000_meal_plan_templates.sql',
+  '20261024120000_swap_recipes.sql',
+];
+
+// O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
+// tabelas antigas, só com as colunas que as migrations acima usam.
+const BASE = `
+  CREATE ROLE anon NOLOGIN;
+  CREATE ROLE authenticated NOLOGIN;
+  GRANT USAGE ON SCHEMA public TO anon, authenticated;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
+
+  CREATE SCHEMA auth;
+  GRANT USAGE ON SCHEMA auth TO anon, authenticated;
+  CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE
+    AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+  GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated;
+
+  CREATE PUBLICATION supabase_realtime;
+
+  CREATE TABLE profiles (id uuid PRIMARY KEY, full_name text, user_type text);
+  CREATE TABLE recipes (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL, author_id uuid);
+  CREATE TABLE favorites (user_id uuid, recipe_id uuid);
+  CREATE TABLE nutrition_log_entries (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, recipe_id uuid);
+  CREATE TABLE client_health_profiles (user_id uuid PRIMARY KEY);
+  CREATE TABLE weight_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid);
+  CREATE TABLE nutrition_goals (user_id uuid PRIMARY KEY, calories int);
+  GRANT SELECT ON profiles, recipes TO anon, authenticated;
+`;
+
+export async function createTestDb(): Promise<PGlite> {
+  const db = new PGlite();
+  await db.exec(BASE);
+  for (const file of MIGRATIONS) {
+    const sql = readFileSync(fileURLToPath(new URL(`../migrations/${file}`, import.meta.url)), 'utf8');
+    try {
+      await db.exec(sql);
+    } catch (error) {
+      throw new Error(`Falha na migration ${file}: ${(error as Error).message}`);
+    }
+  }
+  return db;
+}
+
+/** Roda `fn` como o usuário logado `uid` (papel authenticated, com RLS), numa transação. */
+export function asUser<T>(db: PGlite, uid: string, fn: (tx: Transaction) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.exec('SET LOCAL ROLE authenticated');
+    await tx.query(`SELECT set_config('request.jwt.claim.sub', $1, true)`, [uid]);
+    return fn(tx);
+  });
+}

@@ -18,6 +18,7 @@ import { MealPlanEditor } from './MealPlanEditor';
 import { PlanPrintView } from './PlanPrintView';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { cn } from '../../lib/utils';
+import { fmtNum } from '../../lib/format';
 
 interface PlansSectionProps {
   clientId: string;
@@ -231,7 +232,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   const itemLabel = (item: MealPlanItem) => {
     if (item.food_id) return `${item.food?.name ?? ''} — ${item.measure_label ?? `${item.grams} g`}`;
     const recipe = item.recipe_id ? byId.get(item.recipe_id) : undefined;
-    return `${recipe?.title ?? ''} — ${item.servings} ${t.plan.servingsShort}`;
+    return `${recipe?.title ?? ''} — ${fmtNum(item.servings)} ${t.plan.servingsShort}`;
   };
 
   const swapControl = (item: MealPlanItem) => {

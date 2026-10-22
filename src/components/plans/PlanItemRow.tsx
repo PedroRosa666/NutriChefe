@@ -5,6 +5,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { itemNutrition } from '../../lib/plan-items';
 import type { MealPlanItem } from '../../services/care';
 import type { Recipe } from '../../types/recipe';
+import { fmtNum } from '../../lib/format';
 
 interface PlanItemRowProps {
   item: MealPlanItem;
@@ -47,7 +48,7 @@ export function PlanItemRow({ item, recipesById, compact, actions }: PlanItemRow
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{recipe.title}</p>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          {item.servings} {t.plan.servingsShort} • {kcal} kcal
+          {fmtNum(item.servings)} {t.plan.servingsShort} • {kcal} kcal
         </p>
       </div>
     </>

@@ -4,6 +4,7 @@
 import { supabase } from '../lib/supabase';
 import type { MealPlanItem, MealSlot } from './care';
 import type { PickedFood } from './foods';
+import { fmtNum } from '../lib/format';
 
 /** O que se pede ou oferece no lugar do item: um alimento com quantidade OU uma receita com porções. */
 export type SwapChoice = { kind: 'food'; picked: PickedFood } | { kind: 'recipe'; recipeId: string; title: string; servings: number };
@@ -86,7 +87,7 @@ export function swapChoiceLabel(r: SwapRequest, side: 'requested' | 'counter', s
   if (food) return `${food} — ${side === 'requested' ? r.requested_label : r.counter_label}`;
   const recipe = side === 'requested' ? r.requestedRecipeTitle : r.counterRecipeTitle;
   const servings = side === 'requested' ? r.requested_servings : r.counter_servings;
-  return recipe ? `${recipe} — ${servings ?? 1} ${servingsShort}` : null;
+  return recipe ? `${recipe} — ${fmtNum(servings ?? 1)} ${servingsShort}` : null;
 }
 
 /** O pedido tem algo concreto para aplicar (alimento ou receita)? */
@@ -191,5 +192,5 @@ export function pendingFor(swaps: SwapRequest[], planId: string, item: MealPlanI
 export function swapChoiceText(choice: SwapChoice, servingsShort: string): string {
   return choice.kind === 'food'
     ? `${choice.picked.food.name} — ${choice.picked.label}`
-    : `${choice.title} — ${choice.servings} ${servingsShort}`;
+    : `${choice.title} — ${fmtNum(choice.servings)} ${servingsShort}`;
 }

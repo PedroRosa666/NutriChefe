@@ -10,6 +10,7 @@ import { CommonFoodForm, CustomFoodForm, PhotoEstimateButton } from './DiaryFood
 import { useSubscriptionStore } from '../../store/subscription';
 import type { PhotoEstimate } from '../../services/gemini';
 import { cn } from '../../lib/utils';
+import { fmtNum } from '../../lib/format';
 
 type AddMode = 'recipe' | 'food' | 'custom';
 
@@ -281,7 +282,7 @@ export function NutritionDiary() {
                     {e.recipeTitle}
                   </p>
                   <p className="text-xs text-slate-600 dark:text-slate-300">
-                    {t.profile.servings ?? 'Porções'}: <span className="font-medium">{e.servings}</span> • {e.perServing.calories.toFixed(0)} kcal/{t.profile.perServing ?? 'porção'}
+                    {t.profile.servings ?? 'Porções'}: <span className="font-medium">{fmtNum(e.servings)}</span> • {e.perServing.calories.toFixed(0)} kcal/{t.profile.perServing ?? 'porção'}
                   </p>
                 </div>
 

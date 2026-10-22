@@ -13,6 +13,7 @@ import { PlansSection } from '../plans/PlansSection';
 import { SwapRequestsList } from '../swaps/SwapRequestsList';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Avatar } from './Avatar';
+import { fmtNum } from '../../lib/format';
 
 interface PatientDetailProps {
   link: CareLink;
@@ -234,7 +235,7 @@ export function PatientDetail({ link, onBack, onEnded }: PatientDetailProps) {
                 <span className="min-w-0 truncate text-slate-800 dark:text-slate-100">
                   <span className="mr-2 text-xs text-slate-400">{new Date(`${e.date}T12:00:00`).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })}</span>
                   {e.recipeTitle}
-                  {e.servings !== 1 && <span className="text-slate-400"> ×{e.servings}</span>}
+                  {e.servings !== 1 && <span className="text-slate-400"> ×{fmtNum(e.servings)}</span>}
                 </span>
                 <span className="flex-shrink-0 font-medium text-slate-600 dark:text-slate-300">
                   {fmt(e.perServing.calories * e.servings)} kcal

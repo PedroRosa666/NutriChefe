@@ -10,6 +10,7 @@ import type { Recipe } from '../../types/recipe';
 import { FoodQuantityPicker } from '../foods/FoodQuantityPicker';
 import { EquivalentFoods } from '../foods/EquivalentFoods';
 import { cn } from '../../lib/utils';
+import { fmtNum } from '../../lib/format';
 
 interface SwapChoicePickerProps {
   /** Calorias do item atual: as receitas sugeridas vêm com as porções para chegar perto delas. */
@@ -117,7 +118,7 @@ export function SwapChoicePicker({ targetKcal, baseFood, allergies, confirmLabel
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{r.title}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {servings} {t.plan.servingsShort} • {Math.round(r.nutritionFacts.calories * servings)} kcal
+                        {fmtNum(servings)} {t.plan.servingsShort} • {Math.round(r.nutritionFacts.calories * servings)} kcal
                       </p>
                     </div>
                     <button
