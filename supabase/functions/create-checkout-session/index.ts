@@ -13,11 +13,14 @@ const cors = {
 const ok = (data: Record<string, unknown>) =>
   new Response(JSON.stringify({ ok: true, ...data }), { status: 200, headers: cors });
 
-const fail = (msg: string, debug?: Record<string, unknown>) =>
-  new Response(JSON.stringify({ ok: false, error: msg, ...(debug ? { debug } : {}) }), {
+// Detalhes técnicos vão só para o log da função, não para o navegador.
+const fail = (msg: string, debug?: Record<string, unknown>) => {
+  if (debug) console.error(msg, debug);
+  return new Response(JSON.stringify({ ok: false, error: msg }), {
     status: 200, // <-- SEMPRE 200 para o cliente receber a msg
     headers: cors,
   });
+};
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -53,24 +56,16 @@ serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const { priceId, planId, successUrl, cancelUrl } = body as any;
 
-    let selectedPriceId = priceId as string | undefined;
-
-    // Se veio planId mas não veio priceId, buscar do banco
-    if (!selectedPriceId && planId) {
-      const { data: plan, error: planErr } = await supabase
-        .from("subscription_plans")
-        .select("stripe_price_id")
-        .eq("id", planId)
-        .single();
-
-      if (planErr) return fail("Plan lookup failed", { planErr: planErr.message, planId });
-      if (!plan?.stripe_price_id) return fail("Plan has no stripe_price_id", { planId });
-      selectedPriceId = plan.stripe_price_id;
-    }
-
-    if (!selectedPriceId) {
-      return fail("Missing priceId or planId");
-    }
+    // O preço sempre vem de um plano cadastrado (nunca um preço qualquer mandado pelo navegador).
+    // `priceId` só é aceito se for o preço de um plano ativo.
+    let planQuery = supabase.from("subscription_plans").select("id, stripe_price_id").not("stripe_price_id", "is", null);
+    if (planId) planQuery = planQuery.eq("id", planId);
+    else if (priceId) planQuery = planQuery.eq("stripe_price_id", priceId);
+    else return fail("Missing priceId or planId");
+    const { data: plan, error: planErr } = await planQuery.limit(1).maybeSingle();
+    if (planErr) return fail("Plan lookup failed", { planErr: planErr.message, planId, priceId });
+    if (!plan?.stripe_price_id) return fail("Plano não encontrado.", { planId, priceId });
+    const selectedPriceId = plan.stripe_price_id as string;
 
     // Evita cobrança em dobro: quem já tem assinatura paga ativa vai para o portal.
     const { data: activeSub } = await supabase

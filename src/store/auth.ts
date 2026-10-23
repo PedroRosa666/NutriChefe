@@ -56,7 +56,8 @@ export const useAuthStore = create<AuthState>()(
             email: u.email ?? '',
             name: profile?.full_name || (u.user_metadata?.full_name as string) || '',
             created_at: u.created_at,
-            type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+            // O perfil manda (o usuário consegue editar user_metadata, mas não profiles.user_type).
+            type: ((profile?.user_type as UserType) || (u.user_metadata?.user_type as UserType)) ?? 'Client',
             avatar_url: profile?.avatar_url || null,
             profile: undefined
           };
@@ -96,7 +97,8 @@ export const useAuthStore = create<AuthState>()(
             email: u.email ?? '',
             name: profile?.full_name || (u.user_metadata?.full_name as string) || '',
             created_at: u.created_at,
-            type: ((u.user_metadata?.user_type as UserType) || (profile?.user_type as UserType)) ?? 'Client',
+            // O perfil manda (o usuário consegue editar user_metadata, mas não profiles.user_type).
+            type: ((profile?.user_type as UserType) || (u.user_metadata?.user_type as UserType)) ?? 'Client',
             avatar_url: profile?.avatar_url || null,
             profile: undefined
           };

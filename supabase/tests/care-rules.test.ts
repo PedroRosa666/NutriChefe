@@ -432,7 +432,7 @@ describe('notificações no celular', () => {
   });
 
   it('com aparelho inscrito, chama o envio uma vez; o envio só é reivindicado uma vez', async () => {
-    await asUser(db, OTHER_NUTRI, (tx) => tx.query(`SELECT save_push_subscription('https://push.example/abc', 'k', 'a', 'teste')`));
+    await asUser(db, OTHER_NUTRI, (tx) => tx.query(`SELECT save_push_subscription('https://fcm.googleapis.com/fcm/send/abc', 'k', 'a', 'teste')`));
     await db.query('DELETE FROM net.calls');
     await db.query(`SELECT notify($1, 'patient_joined', $1, '{}'::jsonb)`, [OTHER_NUTRI]);
     const sent = await calls();
@@ -443,7 +443,7 @@ describe('notificações no celular', () => {
   });
 
   it('a inscrição passa para quem logou depois no mesmo aparelho; ninguém vê a do outro', async () => {
-    await asUser(db, NUTRI, (tx) => tx.query(`SELECT save_push_subscription('https://push.example/abc', 'k2', 'a2', 'teste')`));
+    await asUser(db, NUTRI, (tx) => tx.query(`SELECT save_push_subscription('https://fcm.googleapis.com/fcm/send/abc', 'k2', 'a2', 'teste')`));
     const mine = await asUser(db, NUTRI, async (tx) => (await tx.query('SELECT endpoint FROM push_subscriptions')).rows);
     const other = await asUser(db, OTHER_NUTRI, async (tx) => (await tx.query('SELECT endpoint FROM push_subscriptions')).rows);
     expect(mine).toHaveLength(1);

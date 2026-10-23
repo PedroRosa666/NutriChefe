@@ -130,12 +130,7 @@ export async function startCheckout({
 
   if (invokeError && !result) throw new Error(`Checkout failed: ${invokeError.message}`);
   if (!result) throw new Error('Checkout failed: sem resposta do servidor');
-  if (result.error) {
-    const hint = result.debug?.priceId
-      ? ` (priceId: ${result.debug.priceId}${result.debug?.message ? ` • ${result.debug.message}` : ''})`
-      : '';
-    throw new Error(`Checkout failed: ${result.error}${hint}`);
-  }
+  if (result.error) throw new Error(`Checkout failed: ${result.error}`);
   if (!result.url) throw new Error('Falha ao criar sessão de pagamento (sem URL)');
 
   redirectTo(result.url as string);

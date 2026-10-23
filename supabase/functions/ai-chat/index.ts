@@ -18,7 +18,7 @@
  *   { action: "photo", image (base64), mimeType } -> { ok, estimate }
  *       Estimativa de calorias e macros de um prato pela foto (para o diário).
  *
- * Variáveis: GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, AI_HOURLY_LIMIT (opcional)
+ * Variáveis: GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, AI_HOURLY_LIMIT e AI_DAILY_LIMIT (opcionais)
  */
 // deno-lint-ignore-file no-explicit-any
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -644,17 +644,6 @@ const PHOTO_SCHEMA = {
 
 const PHOTO_MIME = ["image/jpeg", "image/png", "image/webp"];
 const PHOTO_MAX_BASE64 = 11_000_000; // ~8 MB
-const PHOTO_HOURLY_LIMIT = 20;
-const photoUsage = new Map<string, number[]>();
-
-function photoAllowed(userId: string): boolean {
-  const now = Date.now();
-  const recent = (photoUsage.get(userId) ?? []).filter((t) => now - t < 3_600_000);
-  if (recent.length >= PHOTO_HOURLY_LIMIT) return false;
-  recent.push(now);
-  photoUsage.set(userId, recent);
-  return true;
-}
 
 async function estimatePhoto(apiKey: string, body: any) {
   const data = String(body.image ?? "").replace(/^data:[^,]+,/, "");
@@ -723,18 +712,25 @@ async function hasAIAccess(supabase: any, userId: string): Promise<boolean> {
   return Array.isArray(features) && features.includes("ai_mentoring");
 }
 
-async function withinRateLimit(supabase: any, userId: string, limit: number): Promise<boolean> {
-  const { data: convs } = await supabase.from("ai_conversations").select("id").eq("client_id", userId);
-  const ids = (convs ?? []).map((c: any) => c.id);
-  if (!ids.length) return true;
-  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { count } = await supabase
-    .from("ai_messages")
-    .select("id", { count: "exact", head: true })
-    .in("conversation_id", ids)
-    .eq("sender_type", "user")
-    .gte("created_at", since);
-  return (count ?? 0) <= limit;
+// Limites contados no banco (tabela ai_usage, gravada só por esta função): por hora e por dia.
+const LIMITS = {
+  chat: { hour: Number(Deno.env.get("AI_HOURLY_LIMIT") || 60), day: Number(Deno.env.get("AI_DAILY_LIMIT") || 300) },
+  photo: { hour: 20, day: 60 },
+};
+
+async function consumeQuota(supabase: any, userId: string, kind: "chat" | "photo"): Promise<boolean> {
+  const { data, error } = await supabase.rpc("consume_ai_quota", {
+    p_user: userId,
+    p_kind: kind,
+    p_per_hour: LIMITS[kind].hour,
+    p_per_day: LIMITS[kind].day,
+  });
+  if (error) {
+    // Sem a contagem não dá para garantir o limite: recusa.
+    console.error("consume_ai_quota failed", error.message);
+    return false;
+  }
+  return data === true;
 }
 
 serve(async (req: Request) => {
@@ -743,7 +739,6 @@ serve(async (req: Request) => {
   try {
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const hourlyLimit = Number(Deno.env.get("AI_HOURLY_LIMIT") || 60);
 
     const token = (req.headers.get("Authorization") || "").replace("Bearer ", "");
     const { data: { user } } = await supabase.auth.getUser(token);
@@ -756,21 +751,21 @@ serve(async (req: Request) => {
     // Sem chave configurada: o app usa o modo limitado (busca local, sem texto gerado).
     if (!apiKey) return reply({ ok: false, code: "not_configured", limited: true });
 
-    if (!(await withinRateLimit(supabase, user.id, hourlyLimit))) {
-      return reply({
-        ok: false,
-        code: "rate_limited",
-        error: "Você atingiu o limite de mensagens por hora. Tente novamente mais tarde.",
-      });
-    }
-
     const body = await req.json().catch(() => ({}));
 
     if (body.action === "photo") {
-      if (!photoAllowed(user.id)) {
-        return reply({ ok: false, code: "rate_limited", error: "Limite de fotos por hora atingido. Tente mais tarde." });
+      if (!(await consumeQuota(supabase, user.id, "photo"))) {
+        return reply({ ok: false, code: "rate_limited", error: "Limite de fotos atingido. Tente mais tarde." });
       }
       return reply(await estimatePhoto(apiKey, body));
+    }
+
+    if (!(await consumeQuota(supabase, user.id, "chat"))) {
+      return reply({
+        ok: false,
+        code: "rate_limited",
+        error: "Você atingiu o limite de mensagens. Tente novamente mais tarde.",
+      });
     }
 
     if (body.action === "assist") {

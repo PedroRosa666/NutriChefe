@@ -20,6 +20,7 @@ const MIGRATIONS = [
   '20261026120000_meal_plan_checks.sql',
   '20261026130000_care_messages.sql',
   '20261026140000_appointments.sql',
+  '20261027120000_security_hardening.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -47,18 +48,38 @@ const BASE = `
     AS $$ INSERT INTO net.calls VALUES (url, body); SELECT 1::bigint $$;
 
   CREATE TABLE auth.users (id uuid PRIMARY KEY);
-  CREATE TABLE profiles (id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE, full_name text, user_type text);
+  CREATE TABLE profiles (
+    id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE, full_name text, user_type text,
+    profile_visibility text DEFAULT 'public', last_seen timestamptz DEFAULT now()
+  );
+  ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
   CREATE TABLE user_subscriptions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
     status text, stripe_subscription_id text, auto_renew boolean
   );
-  CREATE TABLE recipes (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL, author_id uuid);
+  CREATE TABLE recipes (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL, author_id uuid, description text, image text,
+    prep_time int, difficulty text, rating numeric DEFAULT 0, category text, ingredients text[], instructions text[],
+    nutrition_facts jsonb, updated_at timestamptz
+  );
+  ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Qualquer pessoa pode visualizar receitas" ON recipes FOR SELECT TO anon, authenticated USING (true);
+  CREATE POLICY "Autores podem atualizar suas receitas" ON recipes FOR UPDATE TO authenticated USING (auth.uid() = author_id);
+  CREATE TABLE reviews (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), recipe_id uuid REFERENCES recipes(id) ON DELETE CASCADE, user_id uuid, rating int);
+  ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Qualquer pessoa pode visualizar avaliações" ON reviews FOR SELECT TO anon, authenticated USING (true);
+  CREATE POLICY "Usuários podem criar avaliações" ON reviews FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+  CREATE FUNCTION public.update_recipe_rating() RETURNS trigger LANGUAGE plpgsql AS $fn$ BEGIN RETURN NULL; END; $fn$;
+  CREATE TRIGGER update_recipe_rating_trigger AFTER INSERT OR UPDATE OR DELETE ON reviews FOR EACH ROW EXECUTE FUNCTION public.update_recipe_rating();
   CREATE TABLE favorites (user_id uuid, recipe_id uuid);
   CREATE TABLE nutrition_log_entries (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, recipe_id uuid);
   CREATE TABLE client_health_profiles (user_id uuid PRIMARY KEY);
   CREATE TABLE weight_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid);
   CREATE TABLE nutrition_goals (user_id uuid PRIMARY KEY, calories int);
-  GRANT SELECT ON profiles, recipes TO anon, authenticated;
+  GRANT SELECT ON recipes TO anon, authenticated;
+  -- Como em produção (20261021140000): leitura de perfis só por coluna.
+  REVOKE ALL ON profiles FROM anon, authenticated;
+  GRANT SELECT (id, full_name, user_type, profile_visibility, last_seen) ON profiles TO anon, authenticated;
 `;
 
 export async function createTestDb(): Promise<PGlite> {

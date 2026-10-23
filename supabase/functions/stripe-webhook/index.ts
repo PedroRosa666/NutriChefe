@@ -51,7 +51,8 @@ serve(async (req: Request) => {
           mapStripeStatus(sub.status),
           sub.items?.data?.[0]?.price?.id,
           periodEndIso(sub),
-          sub.cancel_at_period_end === true ? false : undefined,
+          // Também volta a true quando a pessoa reativa a renovação.
+          sub.cancel_at_period_end !== true,
         );
         break;
       }
@@ -132,6 +133,11 @@ async function upsertSubscription(
     updated_at: new Date().toISOString(),
     stripe_subscription_id: stripeSubId,
   };
+  if (priceId && !planId && status === "active") {
+    // Preço que não é de nenhum plano do app: não libera nada (cancelamentos e atrasos continuam valendo).
+    console.error("Ignoring activation with unknown Stripe price", priceId, "user", userId);
+    return;
+  }
   if (planId) payload.plan_id = planId;
   if (expiresAt) payload.expires_at = expiresAt;
   if (autoRenew !== undefined) payload.auto_renew = autoRenew;
