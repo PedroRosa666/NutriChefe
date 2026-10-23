@@ -10,6 +10,7 @@ const recipe = (id: string, title: string, ingredients: string[], calories: numb
   prepTime: 20,
   difficulty: 'easy',
   rating: 4,
+  reviewCount: 0,
   category,
   ingredients,
   instructions: [],

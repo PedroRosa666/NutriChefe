@@ -1735,6 +1735,7 @@ export type Database = {
           premium_only: boolean
           prep_time: number
           rating: number | null
+          review_count: number
           title: string
           updated_at: string | null
         }
@@ -1753,6 +1754,7 @@ export type Database = {
           premium_only?: boolean
           prep_time: number
           rating?: number | null
+          review_count?: number
           title: string
           updated_at?: string | null
         }
@@ -1771,6 +1773,7 @@ export type Database = {
           premium_only?: boolean
           prep_time?: number
           rating?: number | null
+          review_count?: number
           title?: string
           updated_at?: string | null
         }
@@ -2335,6 +2338,40 @@ export type Database = {
       search_match: {
         Args: { p_haystack: string; p_query: string }
         Returns: boolean
+      }
+      search_recipes: {
+        Args: {
+          p_category?: string
+          p_difficulty?: string
+          p_min_rating?: number
+          p_prep?: string
+          p_query?: string
+        }
+        Returns: {
+          author_id: string
+          category: string
+          created_at: string | null
+          description: string
+          difficulty: string
+          hidden_at: string | null
+          id: string
+          image: string
+          ingredients: Json
+          instructions: Json
+          nutrition_facts: Json
+          premium_only: boolean
+          prep_time: number
+          rating: number | null
+          review_count: number
+          title: string
+          updated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "recipes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       send_appointment_reminders: { Args: never; Returns: number }
       submit_crn_verification: {

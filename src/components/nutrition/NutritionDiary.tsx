@@ -4,7 +4,7 @@ import { Trash2, CalendarDays, Plus, XCircle, Loader2, Pencil, Check, X } from '
 import { WeeklyCaloriesChart } from './WeeklyCaloriesChart';
 import { DIARY_MEALS, mealForTime, useNutritionTrackingStore, type DiaryMeal, type NutritionLogEntry } from '../../store/nutrition-tracking';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
-import { useRecipesStore } from '../../store/recipes';
+import { useRecipeIndex } from '../../hooks/useRecipeIndex';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { CommonFoodForm, CustomFoodForm, PhotoEstimateButton } from './DiaryFoodForms';
@@ -67,7 +67,7 @@ function ProgressRow({
 
 export function NutritionDiary() {
   const t = useTranslation();
-  const { recipes } = useRecipesStore();
+  const { recipes } = useRecipeIndex();
   const { showToast } = useToastStore();
   const { goals } = useNutritionGoalsStore();
   const { entries: allEntries, addRecipeToLog, updateEntry, removeEntry, clearDate, getTotalsForDate } =

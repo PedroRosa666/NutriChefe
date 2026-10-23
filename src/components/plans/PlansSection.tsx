@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeftRight, CalendarRange, FileDown, ListChecks, Pencil, Plus, ShoppingCart, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
-import { useRecipesStore } from '../../store/recipes';
+import { useRecipeIndex } from '../../hooks/useRecipeIndex';
 import { useToastStore } from '../../store/toast';
 import { toTotals, useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useShoppingListStore } from '../../store/shopping-list';
@@ -41,7 +41,7 @@ interface PlansSectionProps {
 
 export function PlansSection({ clientId, mode, dailyCalories, allergies, preferences, reloadKey = 0, patientName }: PlansSectionProps) {
   const user = useAuthStore((s) => s.user);
-  const recipes = useRecipesStore((s) => s.recipes);
+  const { recipes } = useRecipeIndex();
   const { showToast } = useToastStore();
   const t = useTranslation();
 

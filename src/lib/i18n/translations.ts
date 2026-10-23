@@ -68,6 +68,7 @@ export const translations = {
       createRecipe: 'Create Recipe',
       noRecipes: 'No recipes found. Try other words or clear the filters.',
       noRecipesGuest: 'No recipes found. Try other words, clear the filters or log in to see more.',
+      loadMore: 'Show more recipes',
     },
 
     profile: {
@@ -1779,6 +1780,7 @@ export const translations = {
       createRecipe: 'Criar receita',
       noRecipes: 'Nenhuma receita encontrada. Tente outras palavras ou limpe os filtros.',
       noRecipesGuest: 'Nenhuma receita encontrada. Tente outras palavras, limpe os filtros ou entre para ver mais.',
+      loadMore: 'Ver mais receitas',
     },
 
     profile: {

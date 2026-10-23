@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { LayoutDashboard, NotebookPen, HeartPulse, Heart, Settings, BookOpen, Briefcase, Users, CalendarRange, ShoppingCart, Carrot, MessageCircle, Plus, Library } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
+import { useFavoriteRecipes } from '../../hooks/useFavoriteRecipes';
 import { RecipeCard } from '../RecipeCard';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
@@ -55,7 +56,8 @@ const FADE_PX = 44;
 
 export function ProfileTabs() {
   const { user } = useAuthStore();
-  const { recipes, favoriteRecipes } = useRecipesStore();
+  const userRecipes = useRecipesStore((s) => s.mine);
+  const { recipes: userFavorites } = useFavoriteRecipes();
   const dailyCalories = useNutritionGoalsStore((s) => s.goals.calories);
   const health = useHealthProfileStore((s) => s.profile);
   const t = useTranslation();
@@ -110,8 +112,6 @@ export function ProfileTabs() {
     setSearchParams(next);
   };
 
-  const userRecipes = recipes.filter((recipe) => recipe.authorId === user?.id);
-  const userFavorites = recipes.filter((recipe) => favoriteRecipes.includes(recipe.id));
 
   const empty = (text: string) => (
     <p className="col-span-full rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">

@@ -8,6 +8,7 @@ import { cn } from '../lib/utils';
 import { getSpecializationTranslation } from '../lib/i18n/translations';
 import { useSettingsStore } from '../store/settings';
 import { SMOOTH } from '../lib/motion';
+import { averageRating } from '../lib/ratings';
 import { matchesSearch } from '../lib/search';
 
 interface NutritionistProfile {
@@ -73,7 +74,7 @@ export function NutritionistsPage() {
       const proIds = new Set(((await supabase.rpc('pro_nutritionist_ids')).data as string[] | null) ?? []);
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, professional_bio, specializations, years_of_experience, consultation_price, clinic_address, accepting_new_clients, crn_region, crn_number, recipes!recipes_author_id_fkey(id, reviews(rating))')
+        .select('id, full_name, avatar_url, professional_bio, specializations, years_of_experience, consultation_price, clinic_address, accepting_new_clients, crn_region, crn_number, recipes!recipes_author_id_fkey(id, rating, review_count)')
         .eq('user_type', 'Nutritionist')
         .eq('profile_visibility', 'public')
         .eq('crn_status', 'approved')
@@ -84,8 +85,7 @@ export function NutritionistsPage() {
       setNutritionists(
         (profiles ?? [])
           .map((profile) => {
-            const authorRecipes: Array<{ reviews: { rating: number }[] | null }> = profile.recipes ?? [];
-            const ratings = authorRecipes.flatMap((r) => (r.reviews ?? []).map((rv) => rv.rating));
+            const authorRecipes = profile.recipes ?? [];
             return {
               id: profile.id,
               full_name: profile.full_name || 'Nutricionista',
@@ -98,7 +98,7 @@ export function NutritionistsPage() {
               crn: profile.crn_number ? `CRN-${profile.crn_region} ${profile.crn_number}` : null,
               featured: proIds.has(profile.id),
               published_recipes_count: authorRecipes.length,
-              average_rating: ratings.length ? ratings.reduce((sum, x) => sum + x, 0) / ratings.length : 0,
+              average_rating: averageRating(authorRecipes),
               avatar_url: profile.avatar_url || null,
             };
           })

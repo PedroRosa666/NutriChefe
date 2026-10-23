@@ -75,7 +75,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
   const displayRating = () => {
     const noReviewsLabel = t.recipe.noReviews;
 
-    if (recipe.rating === 0 || !recipe.rating || recipe.reviews?.length === 0) {
+    if (!recipe.rating || !recipe.reviewCount) {
       return noReviewsLabel;
     }
 

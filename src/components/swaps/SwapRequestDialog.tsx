@@ -5,7 +5,7 @@ import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { requestSwap, swapChoiceText, type SwapChoice } from '../../services/swaps';
 import type { MealPlanItem } from '../../services/care';
-import { useRecipesStore } from '../../store/recipes';
+import { useRecipeIndex } from '../../hooks/useRecipeIndex';
 import { useHealthProfileStore } from '../../store/health-profile';
 import { itemNutrition } from '../../lib/plan-items';
 import { SwapChoicePicker } from './SwapChoicePicker';
@@ -25,7 +25,7 @@ export function SwapRequestDialog({ planId, item, itemLabel, onClose, onSent }: 
   const s = t.swaps;
   const { showToast } = useToastStore();
   const [requested, setRequested] = useState<SwapChoice | null>(null);
-  const recipes = useRecipesStore((st) => st.recipes);
+  const { recipes } = useRecipeIndex();
   // Alergias e dietas (vegana, sem glúten...): a troca sugerida respeita as duas.
   const health = useHealthProfileStore((st) => st.profile);
   const allergies = useMemo(() => blockedTerms(health.allergies, health.dietary_preferences), [health.allergies, health.dietary_preferences]);

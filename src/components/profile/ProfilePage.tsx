@@ -17,11 +17,10 @@ export function ProfilePage() {
   const tab = searchParams.get('tab');
   const role = useAppRole();
 
-  // Acesso direto a /perfil: as receitas (minhas, favoritas, avaliações) ainda não foram carregadas.
+  // As receitas do próprio usuário (painel, conteúdo, avaliações recebidas).
   useEffect(() => {
-    const { recipes, loading, fetchRecipes } = useRecipesStore.getState();
-    if (!recipes.length && !loading) fetchRecipes();
-  }, []);
+    if (user) useRecipesStore.getState().loadMine();
+  }, [user]);
 
   if (!user) {
     // Link de convite: quem chega por ele quase sempre ainda não tem conta.

@@ -29,6 +29,7 @@ const MIGRATIONS = [
   '20261101120000_diary_meals.sql',
   '20261102120000_ai_push_security.sql',
   '20261102130000_checks_search_billing.sql',
+  '20261103120000_recipe_catalog.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as

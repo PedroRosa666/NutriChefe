@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Refrigerator, X, Plus } from 'lucide-react';
@@ -6,6 +6,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { recipesWithIngredients, type SearchableRecipe } from '../../../supabase/functions/_shared/recipe-search';
 import { QUICK } from '../../lib/motion';
 import type { Recipe } from '../../types/recipe';
+import { useRecipesStore } from '../../store/recipes';
 
 const toSearchable = (r: Recipe): SearchableRecipe & { source: Recipe } => ({
   id: r.id,
@@ -22,10 +23,16 @@ const toSearchable = (r: Recipe): SearchableRecipe & { source: Recipe } => ({
 });
 
 /** "O que tem em casa?": ingredientes em chips e receitas que usam o máximo deles. */
-export function PantrySearch({ recipes }: { recipes: Recipe[] }) {
+export function PantrySearch() {
   const t = useTranslation();
   const [items, setItems] = useState<string[]>([]);
   const [draft, setDraft] = useState('');
+  // Procura em todo o catálogo, não só na página da grade: o índice só baixa quando a
+  // pessoa coloca o primeiro ingrediente.
+  const recipes = useRecipesStore((s) => s.index);
+  useEffect(() => {
+    if (items.length) useRecipesStore.getState().ensureIndex();
+  }, [items.length]);
 
   const searchable = useMemo(() => recipes.map(toSearchable), [recipes]);
   const results = useMemo(

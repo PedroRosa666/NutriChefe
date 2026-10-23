@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useOutlet, useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { Header } from '../components/Header';
@@ -14,8 +14,6 @@ import { Plus } from 'lucide-react';
 import { LandingHero, RecipeCardSkeleton } from '../components/recipes/LandingHero';
 import { PantrySearch } from '../components/recipes/PantrySearch';
 import { ExclusiveShelf } from '../components/recipes/ExclusiveShelf';
-import type { Recipe } from '../types/recipe';
-import { matchesSearch } from '../lib/search';
 import { fitsOwnDiet } from '../lib/recipe-diet';
 
 export function HomePage() {
@@ -38,7 +36,11 @@ export function HomePage() {
   useEffect(() => {
     if (queryFromUrl) setSearchQuery(queryFromUrl);
   }, [queryFromUrl, setSearchQuery]);
-  const { recipes, loading, fetchRecipes } = useRecipesStore();
+  const cards = useRecipesStore((s) => s.cards);
+  const loading = useRecipesStore((s) => s.cardsLoading);
+  const loadingMore = useRecipesStore((s) => s.cardsLoadingMore);
+  const hasMore = useRecipesStore((s) => s.cardsHasMore);
+  const failed = useRecipesStore((s) => s.cardsError);
   const { isAuthenticated, isNutritionist } = useAuthStore();
 
   // Links antigos do app instalado (/?inicio=1): só limpa o parâmetro, o Início são as receitas.
@@ -54,12 +56,22 @@ export function HomePage() {
   const outlet = useOutlet();
   const location = useLocation();
 
-  // A sessão é inicializada no RootLayout; aqui só carregamos as receitas.
-  // Voltando para a home com a lista já carregada, atualiza em silêncio
-  // (antes a grade virava um spinner e as imagens recarregavam).
+  // Busca e filtros rodam no servidor, de página em página. A digitação espera uma pausa
+  // curta antes de buscar; voltar para a home com a mesma busca atualiza em silêncio
+  // (a grade não vira spinner nem recarrega as imagens).
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   useEffect(() => {
-    fetchRecipes({ silent: useRecipesStore.getState().recipes.length > 0 });
-  }, [fetchRecipes]);
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+  const filters = useMemo(
+    () => ({ query: debouncedQuery, category, difficulty: difficulty || null, minRating: minRating || null, prepTimeRange: prepTimeRange || null }),
+    [debouncedQuery, category, difficulty, minRating, prepTimeRange]
+  );
+  useEffect(() => {
+    // Com resultados na tela, eles ficam até chegarem os novos (sem piscar o esqueleto a cada letra).
+    useRecipesStore.getState().loadCards(filters, { silent: useRecipesStore.getState().cards.length > 0 });
+  }, [filters]);
 
   // Baixa o código do modal de receita enquanto a pessoa olha a lista.
   useEffect(() => {
@@ -72,40 +84,26 @@ export function HomePage() {
     return () => clearTimeout(id);
   }, []);
 
-  const normalizeKey = (key: string) => {
-    return key.toLowerCase().replace(/\s+/g, '');
-  };
+  // Categoria de dieta: além do rótulo, os ingredientes precisam servir (rótulo errado não engana o filtro).
+  const isDietCategory = ['vegan', 'vegetarian', 'glutenFree'].includes(category);
+  const filteredRecipes = isDietCategory ? cards.filter(fitsOwnDiet) : cards;
 
-  const matchesPrepTime = (recipe: Recipe) => {
-    if (!prepTimeRange) return true;
+  // Página que ficou quase vazia depois do filtro de dieta: busca a próxima sozinha.
+  useEffect(() => {
+    if (!loading && !loadingMore && hasMore && filteredRecipes.length < 6) useRecipesStore.getState().loadMoreCards();
+  }, [loading, loadingMore, hasMore, filteredRecipes.length]);
 
-    switch (prepTimeRange) {
-      case 'quick':
-        return recipe.prepTime <= 15;
-      case 'medium':
-        return recipe.prepTime <= 30;
-      case 'long':
-        return recipe.prepTime > 30;
-      default:
-        return true;
-    }
-  };
-
-  const filteredRecipes = recipes.filter(recipe => {
-    const normalizedRecipeCategory = normalizeKey(recipe.category);
-    const normalizedSelectedCategory = normalizeKey(category);
-
-    // Categoria de dieta: além do rótulo, os ingredientes precisam servir (rótulo errado não engana o filtro).
-    const matchesCategory = normalizedSelectedCategory === 'all'
-      || (normalizedRecipeCategory === normalizedSelectedCategory && fitsOwnDiet(recipe));
-    const categoryLabel = t.categories[recipe.category as keyof typeof t.categories] ?? recipe.category;
-    const matchesQuery = matchesSearch(searchQuery, recipe.title, recipe.description, categoryLabel);
-    const matchesDifficulty = !difficulty || recipe.difficulty === difficulty;
-    const matchesRating = !minRating || recipe.rating >= minRating;
-    const matchesTime = matchesPrepTime(recipe);
-
-    return matchesCategory && matchesQuery && matchesDifficulty && matchesRating && matchesTime;
-  });
+  // Rolagem infinita: chegando perto do fim da grade, carrega a próxima página.
+  const sentinel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !hasMore) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) useRecipesStore.getState().loadMoreCards();
+    }, { rootMargin: '600px 0px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, filteredRecipes.length]);
 
   return (
     <div className="min-h-screen text-gray-900 dark:text-gray-100">
@@ -137,11 +135,9 @@ export function HomePage() {
             )}
           </div>
 
-          {recipes.length > 0 && (
-            <div className="mb-6">
-              <PantrySearch recipes={recipes} />
-            </div>
-          )}
+          <div className="mb-6">
+            <PantrySearch />
+          </div>
 
           <div className="mb-8">
             <div className="bg-white dark:bg-slate-800/60 rounded-xl p-3.5 sm:p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -171,7 +167,7 @@ export function HomePage() {
             <div className="text-center py-12">
               <p className="text-gray-500 dark:text-gray-400 mb-4">{isAuthenticated ? t.home.noRecipes : t.home.noRecipesGuest}</p>
               {/* Nada com a busca/filtros atuais (que ficam guardados entre as páginas): um toque desfaz. */}
-              {recipes.length > 0 && (
+              {!failed && (
                 <button
                   onClick={() => useFiltersStore.getState().resetFilters()}
                   className="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900/20 transition-colors"
@@ -179,9 +175,9 @@ export function HomePage() {
                   {t.profileUi.clearFilters}
                 </button>
               )}
-              {recipes.length === 0 && !loading && (
+              {failed && (
                 <button
-                  onClick={() => fetchRecipes()}
+                  onClick={() => useRecipesStore.getState().loadCards(filters)}
                   className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                 >
                   {t.common.retry}
@@ -196,6 +192,18 @@ export function HomePage() {
                   recipe={recipe}
                 />
               ))}
+            </div>
+          )}
+          {!loading && hasMore && (
+            <div ref={sentinel} className="mt-8 flex justify-center">
+              <button
+                type="button"
+                onClick={() => useRecipesStore.getState().loadMoreCards()}
+                disabled={loadingMore}
+                className="rounded-lg border border-emerald-200 px-5 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900/20"
+              >
+                {loadingMore ? t.common.loading : t.home.loadMore}
+              </button>
             </div>
           )}
         </main>

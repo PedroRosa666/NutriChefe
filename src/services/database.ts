@@ -1,5 +1,5 @@
 import type { User as AuthUser } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { sqlArg, supabase } from '../lib/supabase';
 import type { Recipe } from '../types/recipe';
 import { PUBLIC_PROFILE_COLUMNS } from '../lib/profile-columns';
 import { feedback } from '../lib/i18n/current';
@@ -13,6 +13,7 @@ interface DatabaseRecipe {
   prep_time: number;
   difficulty: 'easy' | 'medium' | 'hard';
   rating: number;
+  review_count?: number;
   category: string;
   ingredients: string[] | null;
   instructions: string[] | null;
@@ -38,7 +39,7 @@ interface DatabaseRecipe {
   }>;
 }
 
-// Select padrão de receita com autor e avaliações
+// Receita completa (página da receita, receitas do próprio autor): com preparo e avaliações.
 const RECIPE_SELECT = `
   *,
   profiles!recipes_author_id_fkey(full_name, user_type, avatar_url),
@@ -52,7 +53,25 @@ const RECIPE_SELECT = `
   )
 `;
 
-type RecipeInput = Omit<Recipe, 'id' | 'rating' | 'reviews' | 'createdAt' | 'updatedAt'>;
+// Cartão / índice: o necessário para a grade, os filtros, o gerador de plano e as trocas.
+// Sem modo de preparo nem avaliações (a nota e a contagem vêm prontas do banco).
+const CARD_SELECT = `
+  id, title, description, image, prep_time, difficulty, rating, review_count, category, ingredients,
+  nutrition_facts, author_id, created_at, updated_at, premium_only,
+  profiles!recipes_author_id_fkey(full_name, user_type, avatar_url)
+`;
+
+export const RECIPES_PAGE_SIZE = 24;
+
+export interface RecipeFilters {
+  query: string;
+  category: string;
+  difficulty: string | null;
+  minRating: number | null;
+  prepTimeRange: string | null;
+}
+
+export type RecipeInput = Omit<Recipe, 'id' | 'rating' | 'reviewCount' | 'full' | 'reviews' | 'createdAt' | 'updatedAt'>;
 
 function toNutritionFacts(facts: Partial<Recipe['nutritionFacts']> | null | undefined): Recipe['nutritionFacts'] {
   return {
@@ -66,10 +85,12 @@ function toNutritionFacts(facts: Partial<Recipe['nutritionFacts']> | null | unde
 
 // Função para converter receita do banco para o formato da aplicação
 function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
+  // Cartões não trazem as avaliações: nota e contagem vêm das colunas mantidas pelo banco.
   const reviews = dbRecipe.reviews || [];
-  const averageRating = reviews.length > 0
-    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-    : 0;
+  const full = dbRecipe.reviews !== undefined;
+  const averageRating = full
+    ? reviews.length > 0 ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0
+    : Number(dbRecipe.rating) || 0;
 
   return {
     id: dbRecipe.id,
@@ -79,6 +100,8 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
     prepTime: dbRecipe.prep_time,
     difficulty: dbRecipe.difficulty,
     rating: Number(averageRating.toFixed(1)),
+    reviewCount: full ? reviews.length : Number(dbRecipe.review_count) || 0,
+    full,
     category: dbRecipe.category,
     ingredients: dbRecipe.ingredients ?? [],
     instructions: dbRecipe.instructions ?? [],
@@ -170,14 +193,78 @@ export async function deleteRecipe(recipeId: string) {
   if (error) throw error;
 }
 
-export async function getRecipes() {
+const toRecipes = (rows: unknown[] | null) => (rows ?? []).map((r) => convertDatabaseRecipeToAppRecipe(r as DatabaseRecipe));
+
+/** Uma página da grade, com a busca e os filtros aplicados no servidor (search_recipes). */
+export async function searchRecipes(filters: RecipeFilters, page: number): Promise<{ recipes: Recipe[]; hasMore: boolean }> {
+  const from = page * RECIPES_PAGE_SIZE;
+  // Pede um a mais para saber se existe a próxima página sem contar o total.
+  const { data, error } = await supabase
+    .rpc('search_recipes', {
+      p_query: filters.query.trim(),
+      p_category: filters.category === 'all' ? sqlArg(null) : filters.category,
+      p_difficulty: sqlArg(filters.difficulty),
+      p_min_rating: sqlArg(filters.minRating),
+      p_prep: sqlArg(filters.prepTimeRange),
+    })
+    .select(CARD_SELECT)
+    .order('created_at', { ascending: false })
+    .order('id')
+    .range(from, from + RECIPES_PAGE_SIZE);
+  if (error) throw error;
+  const rows = toRecipes(data);
+  return { recipes: rows.slice(0, RECIPES_PAGE_SIZE), hasMore: rows.length > RECIPES_PAGE_SIZE };
+}
+
+/**
+ * Índice leve de todo o catálogo visível (cartões, sem preparo nem avaliações), em páginas
+ * de 1000. Para o que precisa escolher entre todas as receitas: gerador de plano, editor,
+ * trocas, diário e "O que tem em casa?". Carregado só quando uma dessas telas abre.
+ */
+export async function getRecipeIndex(): Promise<Recipe[]> {
+  const all: Recipe[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('recipes')
+      .select(CARD_SELECT)
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(from, from + 999);
+    if (error) throw error;
+    all.push(...toRecipes(data));
+    if (!data || data.length < 1000) return all;
+  }
+}
+
+/** Cartões destas receitas (favoritos, itens de um plano). */
+export async function getRecipesByIds(ids: string[]): Promise<Recipe[]> {
+  const unique = [...new Set(ids)].filter(Boolean);
+  if (!unique.length) return [];
+  const out: Recipe[] = [];
+  for (let i = 0; i < unique.length; i += 200) {
+    const { data, error } = await supabase.from('recipes').select(CARD_SELECT).in('id', unique.slice(i, i + 200));
+    if (error) throw error;
+    out.push(...toRecipes(data));
+  }
+  return out;
+}
+
+/** Receita completa, com preparo e avaliações (página da receita). */
+export async function getRecipeById(recipeId: string): Promise<Recipe | null> {
+  const { data, error } = await supabase.from('recipes').select(RECIPE_SELECT).eq('id', recipeId).maybeSingle();
+  if (error) throw error;
+  return data ? convertDatabaseRecipeToAppRecipe(data as unknown as DatabaseRecipe) : null;
+}
+
+/** Receitas completas de um autor (painel e conteúdo do nutricionista). */
+export async function getRecipesByAuthor(authorId: string): Promise<Recipe[]> {
   const { data, error } = await supabase
     .from('recipes')
     .select(RECIPE_SELECT)
+    .eq('author_id', authorId)
     .order('created_at', { ascending: false });
-
   if (error) throw error;
-  return (data ?? []).map((r) => convertDatabaseRecipeToAppRecipe(r as unknown as DatabaseRecipe));
+  return toRecipes(data);
 }
 
 // Funções de avaliações

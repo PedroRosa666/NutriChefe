@@ -22,7 +22,8 @@ import { getMyCrnStatus, type CrnStatus } from '../../services/verification';
 
 export function NutritionistDashboard() {
   const { user } = useAuthStore();
-  const { recipes, loading: recipesLoading } = useRecipesStore();
+  const recipes = useRecipesStore((s) => s.mine);
+  const recipesLoading = !useRecipesStore((s) => s.mineLoaded);
   const { showToast } = useToastStore();
   const t = useTranslation();
   const userId = user?.id;
@@ -47,10 +48,7 @@ export function NutritionistDashboard() {
       });
   }, [userId]);
 
-  const userRecipes = useMemo(
-    () => recipes.filter((recipe) => recipe.authorId === userId),
-    [recipes, userId],
-  );
+  const userRecipes = recipes;
 
   const totalReviews = useMemo(
     () => userRecipes.reduce((acc, recipe) => acc + recipe.reviews.length, 0),

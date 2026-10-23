@@ -6,6 +6,13 @@ export interface Recipe {
   prepTime: number;
   difficulty: 'easy' | 'medium' | 'hard'; // Armazenado no formato original
   rating: number;
+  /** Quantas avaliações (vem pronto do banco; `reviews` só é carregado na receita completa). */
+  reviewCount: number;
+  /**
+   * true quando veio completa (modo de preparo e avaliações). Cartões da grade e do índice
+   * trazem `instructions` e `reviews` vazios.
+   */
+  full?: boolean;
   category: string;
   ingredients: string[];
   instructions: string[];

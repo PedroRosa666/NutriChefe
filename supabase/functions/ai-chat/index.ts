@@ -271,13 +271,12 @@ async function loadCatalog(supabase: any): Promise<SearchableRecipe[]> {
   const { data, error } = await supabase
     .from("recipes")
     .select(
-      "id, title, description, image, category, ingredients, instructions, prep_time, difficulty, nutrition_facts, created_at, profiles!recipes_author_id_fkey(full_name), reviews(rating)",
+      "id, title, description, image, category, ingredients, instructions, prep_time, difficulty, nutrition_facts, rating, created_at, profiles!recipes_author_id_fkey(full_name)",
     )
     // Receitas escondidas pela moderação não entram nas respostas da IA.
     .is("hidden_at", null);
   if (error) throw error;
   const recipes: SearchableRecipe[] = (data ?? []).map((r: any) => {
-    const ratings = (r.reviews ?? []).map((x: any) => Number(x.rating) || 0);
     return {
       id: r.id,
       title: String(r.title ?? "").trim(),
@@ -287,7 +286,8 @@ async function loadCatalog(supabase: any): Promise<SearchableRecipe[]> {
       instructions: Array.isArray(r.instructions) ? r.instructions.map(String) : [],
       prepTime: Number(r.prep_time) || 0,
       difficulty: r.difficulty ?? "",
-      rating: ratings.length ? Math.round((ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length) * 10) / 10 : 0,
+      // Nota mantida pelo banco (sem baixar as avaliações).
+      rating: Number(r.rating) || 0,
       calories: Number(r.nutrition_facts?.calories) || 0,
       protein: Number(r.nutrition_facts?.protein) || 0,
       author: r.profiles?.full_name ?? "",

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { MotionConfig, motion } from 'framer-motion';
 import { pageFade } from '../lib/motion';
@@ -82,6 +82,7 @@ export function RootLayout() {
   }, [userId]);
 
   // Dados que dependem do usuário logado.
+  const accountSeen = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     // Os alimentos próprios visíveis dependem da conta: recarrega quando ela muda.
     useFoodsStore.getState().clear();
@@ -96,8 +97,10 @@ export function RootLayout() {
     useShoppingListStore.getState().reset();
     useUnreadMessagesStore.getState().reset();
     import('../store/ai').then((m) => m.useAIStore.getState().reset());
-    // As receitas exclusivas só vêm para quem tem Premium: a lista muda com a conta.
-    if (useRecipesStore.getState().recipes.length > 0) useRecipesStore.getState().fetchRecipes({ silent: true });
+    // As receitas exclusivas só vêm para quem tem Premium: a lista muda com a conta. Na
+    // primeira vez (abrindo o app) a tela inicial já busca com a conta atual.
+    if (accountSeen.current !== undefined && accountSeen.current !== (userId ?? null)) useRecipesStore.getState().refresh();
+    accountSeen.current = userId ?? null;
     if (userId) {
       useSubscriptionStore.getState().fetchUserSubscription(userId);
       usePremiumStore.getState().fetch(userId);

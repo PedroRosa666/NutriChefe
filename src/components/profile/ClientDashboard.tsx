@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Scale, Crown, ArrowRight, HeartPulse, Bot, BellRing, Stethoscope, UtensilsCrossed, Heart, ShoppingCart } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
-import { useRecipesStore } from '../../store/recipes';
+import { useFavoriteRecipes } from '../../hooks/useFavoriteRecipes';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { toISODate, sumEntries, useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useHealthProfileStore } from '../../store/health-profile';
@@ -23,7 +23,7 @@ import { listMyNutritionists } from '../../services/care';
 
 export function ClientDashboard() {
   const { user } = useAuthStore();
-  const { recipes, favoriteRecipes } = useRecipesStore();
+  const { recipes: favoriteRecipesList } = useFavoriteRecipes();
   const { goals, activeGoals, setBy } = useNutritionGoalsStore();
   const { entries } = useNutritionTrackingStore();
   const { profile: health } = useHealthProfileStore();
@@ -51,7 +51,6 @@ export function ClientDashboard() {
 
   if (!user || user.type !== 'Client') return null;
 
-  const favoriteRecipesList = recipes.filter((recipe) => favoriteRecipes.includes(recipe.id));
   const isPremiumUser = isPremium();
   const currentBmi = health.height_cm && health.weight_kg ? bmi(health.height_cm, health.weight_kg) : null;
   const healthIncomplete = !health.height_cm || !health.weight_kg || !health.goal || !health.activity_level;

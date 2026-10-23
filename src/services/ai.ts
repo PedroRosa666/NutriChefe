@@ -20,31 +20,25 @@ const defaultSuggestions = () => [...feedback().ai.defaultSuggestions];
 // =============================================================================
 // Modo local (sem IA)
 // =============================================================================
+// O mesmo índice de receitas das outras ferramentas (baixado uma vez e reaproveitado).
 async function fetchCatalog(): Promise<SearchableRecipe[]> {
-  const { data, error } = await supabase
-    .from('recipes')
-    .select('id, title, description, image, category, ingredients, prep_time, difficulty, nutrition_facts, created_at, profiles!recipes_author_id_fkey(full_name), reviews(rating)');
-  if (error) throw error;
-  return (data ?? []).map((r) => {
-    const ratings = (r.reviews ?? []).map((x: { rating: number }) => Number(x.rating) || 0);
-    const author = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
-    const facts = (r.nutrition_facts ?? {}) as { calories?: number; protein?: number };
-    return {
-      id: r.id,
-      title: String(r.title ?? '').trim(),
-      description: String(r.description ?? '').trim(),
-      category: r.category ?? '',
-      ingredients: Array.isArray(r.ingredients) ? r.ingredients.map(String) : [],
-      prepTime: Number(r.prep_time) || 0,
-      difficulty: r.difficulty ?? '',
-      rating: ratings.length ? Math.round((ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length) * 10) / 10 : 0,
-      calories: Number(facts.calories) || 0,
-      protein: Number(facts.protein) || 0,
-      author: (author as { full_name?: string } | null)?.full_name ?? '',
-      image: r.image ?? '',
-      createdAt: r.created_at ?? undefined,
-    };
-  });
+  const { useRecipesStore } = await import('../store/recipes');
+  const index = await useRecipesStore.getState().ensureIndex();
+  return index.map((r) => ({
+    id: r.id,
+    title: r.title.trim(),
+    description: r.description.trim(),
+    category: r.category,
+    ingredients: r.ingredients,
+    prepTime: r.prepTime,
+    difficulty: r.difficulty,
+    rating: r.rating,
+    calories: r.nutritionFacts.calories,
+    protein: r.nutritionFacts.protein,
+    author: r.authorName ?? '',
+    image: r.image,
+    createdAt: r.createdAt ?? undefined,
+  }));
 }
 
 const GREETING_RE = /^(oi+|ola|ol[aá]|bom dia|boa tarde|boa noite|hey|e ai|tudo bem)\b/i;

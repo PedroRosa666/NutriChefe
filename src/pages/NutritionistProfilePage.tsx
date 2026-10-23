@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fromJson, supabase } from '../lib/supabase';
+import { averageRating as averageOfRecipes } from '../lib/ratings';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
 import { PUBLIC_PROFILE_COLUMNS } from '../lib/profile-columns';
@@ -180,7 +181,7 @@ export function NutritionistProfilePage() {
         // Receitas do autor (para a contagem, a nota média e a vitrine).
         const { data: recipesData } = await supabase
           .from('recipes')
-          .select('id, title, image, prep_time, nutrition_facts, reviews(rating)')
+          .select('id, title, image, prep_time, nutrition_facts, rating, review_count')
           .eq('author_id', id)
           .order('created_at', { ascending: false });
 
@@ -195,8 +196,7 @@ export function NutritionistProfilePage() {
             calories: Number((r.nutrition_facts as { calories?: number } | null)?.calories) || null,
           }))
         );
-        const ratings = recipesData.flatMap((r) => (r.reviews ?? []).map((rv) => rv.rating));
-        setAverageRating(ratings.length ? ratings.reduce((sum, x) => sum + x, 0) / ratings.length : 0);
+        setAverageRating(averageOfRecipes(recipesData));
       } catch (error) {
         console.error('Error loading profile:', error);
       } finally {

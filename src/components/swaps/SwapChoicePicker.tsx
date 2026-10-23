@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BookOpen, Carrot, Search } from 'lucide-react';
-import { useRecipesStore } from '../../store/recipes';
+import { useRecipeIndex } from '../../hooks/useRecipeIndex';
 import { useTranslation } from '../../hooks/useTranslation';
 import { normalizeText } from '../../../supabase/functions/_shared/recipe-search';
 import { recipesWithoutAllergens } from '../../lib/meal-plan-generator';
@@ -34,7 +34,7 @@ const servingsFor = (recipe: Recipe, kcal: number | null) => {
 export function SwapChoicePicker({ targetKcal, baseFood, allergies, confirmLabel, onChoose }: SwapChoicePickerProps) {
   const t = useTranslation();
   const s = t.swaps;
-  const recipes = useRecipesStore((st) => st.recipes);
+  const { recipes } = useRecipeIndex();
   const [kind, setKind] = useState<'food' | 'recipe'>('food');
   const [query, setQuery] = useState('');
 

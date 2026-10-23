@@ -179,7 +179,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
         nutritionFacts: recipe.nutritionFacts,
         authorId: user.id,
       });
-      await useRecipesStore.getState().fetchRecipes({ silent: true });
+      await useRecipesStore.getState().refresh(copy.id);
       showToast(t.stats.duplicated, 'success');
       navigate(`/receita/${copy.id}`, { replace: true });
     } catch (error) {
@@ -216,7 +216,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
     if (!editingReview) return;
 
     try {
-      await updateReview(editingReview.id, {
+      await updateReview(recipe.id, editingReview.id, {
         rating: editingReview.rating,
         comment: editingReview.comment,
       });
@@ -229,7 +229,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
   const handleDeleteReview = async (reviewId: string) => {
     if (await confirmDialog(t.recipe.deleteReviewConfirm)) {
       try {
-        await deleteReview(reviewId);
+        await deleteReview(recipe.id, reviewId);
       } catch (error) {
         console.error('Error deleting review:', error);
       }

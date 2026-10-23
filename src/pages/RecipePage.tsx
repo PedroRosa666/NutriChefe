@@ -14,32 +14,30 @@ export function RecipePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
-  const { recipes, fetchRecipes } = useRecipesStore();
-  const [fetchDone, setFetchDone] = useState(recipes.length > 0);
-
-  // Acesso direto pelo link: a lista ainda não foi carregada.
+  // A receita completa (preparo e avaliações) é carregada ao abrir; o cartão da grade, se já
+  // estiver na tela, aparece enquanto isso.
+  const recipe = useRecipesStore((s) => (id ? s.details[id] : undefined));
+  const [fetchDone, setFetchDone] = useState(!!recipe);
   useEffect(() => {
-    if (recipes.length > 0) {
-      setFetchDone(true);
-      return;
-    }
+    if (!id) return;
     let cancelled = false;
-    fetchRecipes().finally(() => {
-      if (!cancelled) setFetchDone(true);
-    });
+    useRecipesStore
+      .getState()
+      .loadRecipe(id)
+      .catch((error) => console.error('Error loading recipe:', error))
+      .finally(() => {
+        if (!cancelled) setFetchDone(true);
+      });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchRecipes]);
+  }, [id]);
 
   // "default" = primeira página aberta nesta aba (link direto): não há para onde voltar.
   const close = useCallback(() => {
     if (location.key !== 'default') navigate(-1);
     else navigate('/', { replace: true });
   }, [location.key, navigate]);
-
-  const recipe = recipes.find(r => r.id === id);
 
   // Não está na lista: pode ser uma receita exclusiva (a vitrine diz qual).
   const [locked, setLocked] = useState<RecipeTeaser | null | undefined>(undefined);
