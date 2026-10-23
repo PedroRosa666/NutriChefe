@@ -19,6 +19,7 @@ import { useShoppingListStore } from '../store/shopping-list';
 import { useFoodsStore } from '../store/foods';
 import { useToastStore } from '../store/toast';
 import { usePremiumStore } from '../store/premium';
+import { DemoBanner } from '../components/admin/DemoBanner';
 
 export function RootLayout() {
   const { message, type, hideToast } = useToastStore();
@@ -51,6 +52,16 @@ export function RootLayout() {
   useEffect(() => {
     // Os alimentos próprios visíveis dependem da conta: recarrega quando ela muda.
     useFoodsStore.getState().clear();
+    // Troca de conta (logout, ou de uma conta direto para outra, como no Laboratório do admin):
+    // nada do usuário anterior pode ficar na memória.
+    useSubscriptionStore.getState().reset();
+    usePremiumStore.getState().reset();
+    useRecipesStore.getState().clearUserData();
+    useNutritionGoalsStore.getState().reset();
+    useNutritionTrackingStore.getState().reset();
+    useHealthProfileStore.getState().reset();
+    useShoppingListStore.getState().reset();
+    import('../store/ai').then((m) => m.useAIStore.getState().reset());
     if (userId) {
       useSubscriptionStore.getState().fetchUserSubscription(userId);
       usePremiumStore.getState().fetch(userId);
@@ -61,22 +72,12 @@ export function RootLayout() {
         useNutritionTrackingStore.getState().fetchEntries(userId);
         useHealthProfileStore.getState().fetchHealthProfile(userId);
       }
-    } else {
-      // Logout: nada do usuário anterior pode ficar na memória.
-      useSubscriptionStore.getState().reset();
-      usePremiumStore.getState().reset();
-      useRecipesStore.getState().clearUserData();
-      useNutritionGoalsStore.getState().reset();
-      useNutritionTrackingStore.getState().reset();
-      useHealthProfileStore.getState().reset();
-      useShoppingListStore.getState().reset();
-      // Import dinâmico: o store da IA (e o serviço dele) fica fora do bundle inicial.
-      import('../store/ai').then((m) => m.useAIStore.getState().reset());
     }
   }, [userId, isClient]);
 
   return (
     <ErrorBoundary>
+      <DemoBanner />
       {/* reducedMotion="user": quem pediu menos movimento no sistema não vê as animações. */}
       <MotionConfig reducedMotion="user">
         {/* No celular, logado, sobra espaço para a barra de navegação inferior. */}

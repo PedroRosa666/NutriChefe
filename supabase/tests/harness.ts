@@ -23,6 +23,7 @@ const MIGRATIONS = [
   '20261027120000_security_hardening.sql',
   '20261027130000_nutritionist_verification.sql',
   '20261028120000_nutritionist_premium.sql',
+  '20261029120000_admin_panel.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -49,20 +50,21 @@ const BASE = `
   CREATE FUNCTION net.http_post(url text, body jsonb, headers jsonb) RETURNS bigint LANGUAGE sql
     AS $$ INSERT INTO net.calls VALUES (url, body); SELECT 1::bigint $$;
 
-  CREATE TABLE auth.users (id uuid PRIMARY KEY);
+  CREATE TABLE auth.users (id uuid PRIMARY KEY, email text, last_sign_in_at timestamptz, banned_until timestamptz);
   CREATE TABLE profiles (
     id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE, full_name text, user_type text,
-    profile_visibility text DEFAULT 'public', last_seen timestamptz DEFAULT now()
+    profile_visibility text DEFAULT 'public', last_seen timestamptz DEFAULT now(), created_at timestamptz DEFAULT now()
   );
   ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
   CREATE TABLE subscription_plans (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, description text, price numeric NOT NULL,
-    currency text NOT NULL, billing_period text NOT NULL, features jsonb, is_active boolean, stripe_price_id text
+    currency text NOT NULL, billing_period text NOT NULL, features jsonb, is_active boolean, stripe_price_id text,
+    updated_at timestamptz DEFAULT now()
   );
   CREATE TABLE user_subscriptions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
     plan_id uuid REFERENCES subscription_plans(id), status text, stripe_subscription_id text, auto_renew boolean,
-    expires_at timestamptz
+    expires_at timestamptz, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
   );
   CREATE TABLE recipes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL, author_id uuid, description text, image text,
@@ -72,17 +74,23 @@ const BASE = `
   ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
   CREATE POLICY "Qualquer pessoa pode visualizar receitas" ON recipes FOR SELECT TO anon, authenticated USING (true);
   CREATE POLICY "Autores podem atualizar suas receitas" ON recipes FOR UPDATE TO authenticated USING (auth.uid() = author_id);
-  CREATE TABLE reviews (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), recipe_id uuid REFERENCES recipes(id) ON DELETE CASCADE, user_id uuid, rating int);
+  CREATE TABLE reviews (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), recipe_id uuid REFERENCES recipes(id) ON DELETE CASCADE, user_id uuid, rating int, comment text, created_at timestamptz DEFAULT now());
   ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
   CREATE POLICY "Qualquer pessoa pode visualizar avaliações" ON reviews FOR SELECT TO anon, authenticated USING (true);
   CREATE POLICY "Usuários podem criar avaliações" ON reviews FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
   CREATE FUNCTION public.update_recipe_rating() RETURNS trigger LANGUAGE plpgsql AS $fn$ BEGIN RETURN NULL; END; $fn$;
   CREATE TRIGGER update_recipe_rating_trigger AFTER INSERT OR UPDATE OR DELETE ON reviews FOR EACH ROW EXECUTE FUNCTION public.update_recipe_rating();
   CREATE TABLE favorites (user_id uuid, recipe_id uuid);
-  CREATE TABLE nutrition_log_entries (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, recipe_id uuid, entry_date date);
-  CREATE TABLE client_health_profiles (user_id uuid PRIMARY KEY);
-  CREATE TABLE weight_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid);
-  CREATE TABLE nutrition_goals (user_id uuid PRIMARY KEY, calories int);
+  CREATE TABLE nutrition_log_entries (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, recipe_id uuid, entry_date date, recipe_title text,
+    servings numeric, per_serving jsonb
+  );
+  CREATE TABLE client_health_profiles (
+    user_id uuid PRIMARY KEY, birth_date date, sex text, height_cm numeric, weight_kg numeric, target_weight_kg numeric,
+    activity_level text, goal text, dietary_preferences text[], allergies text[], notes text, updated_at timestamptz
+  );
+  CREATE TABLE weight_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, logged_on date, weight_kg numeric);
+  CREATE TABLE nutrition_goals (user_id uuid PRIMARY KEY, calories int, protein int, carbs int, fat int, fiber int, set_by uuid);
   GRANT SELECT ON recipes TO anon, authenticated;
   -- Como em produção (20261021140000): leitura de perfis só por coluna.
   REVOKE ALL ON profiles FROM anon, authenticated;

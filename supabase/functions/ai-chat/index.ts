@@ -270,7 +270,9 @@ async function loadCatalog(supabase: any): Promise<SearchableRecipe[]> {
     .from("recipes")
     .select(
       "id, title, description, image, category, ingredients, instructions, prep_time, difficulty, nutrition_facts, created_at, profiles!recipes_author_id_fkey(full_name), reviews(rating)",
-    );
+    )
+    // Receitas escondidas pela moderação não entram nas respostas da IA.
+    .is("hidden_at", null);
   if (error) throw error;
   const recipes: SearchableRecipe[] = (data ?? []).map((r: any) => {
     const ratings = (r.reviews ?? []).map((x: any) => Number(x.rating) || 0);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Check, ExternalLink, ShieldCheck, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { AlertTriangle, ArrowLeft, BadgeCheck, Check, Crown, ExternalLink, EyeOff, FlaskConical, LayoutDashboard, Megaphone, ShieldCheck, Users, X } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useToastStore } from '../store/toast';
 import { useTranslation } from '../hooks/useTranslation';
@@ -12,6 +12,13 @@ import {
   reviewVerification,
   type CrnVerification,
 } from '../services/verification';
+import { AdminOverview } from '../components/admin/AdminOverview';
+import { AdminUsers } from '../components/admin/AdminUsers';
+import { AdminPlans } from '../components/admin/AdminPlans';
+import { AdminErrors } from '../components/admin/AdminErrors';
+import { AdminModeration } from '../components/admin/AdminModeration';
+import { AdminAnnouncements } from '../components/admin/AdminAnnouncements';
+import { AdminLab } from '../components/admin/AdminLab';
 
 // Consulta pública do Conselho Federal de Nutricionistas (busca por nome ou registro).
 const CFN_LOOKUP_URL = 'https://cfn.org.br/';
@@ -150,30 +157,77 @@ function VerificationRow({ v, onDone }: { v: CrnVerification; onDone: () => void
   );
 }
 
-/** Painel do administrador: por enquanto, a fila de verificação do CRN. */
-export function AdminPage() {
-  const user = useAuthStore((s) => s.user);
+function AdminVerifications() {
   const t = useTranslation();
   const a = t.admin;
-  const [allowed, setAllowed] = useState<boolean | null>(null);
   const [items, setItems] = useState<CrnVerification[] | null>(null);
-
   const load = useCallback(() => {
     listPendingVerifications()
       .then(setItems)
       .catch(() => setItems([]));
   }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (items === null) {
+    return (
+      <div className="flex justify-center py-16">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+  return (
+    <section>
+      <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+        {a.pendingTitle} ({items.length})
+      </h2>
+      {items.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">
+          {a.empty}
+        </p>
+      ) : (
+        <ul className="space-y-4">
+          {items.map((v) => (
+            <VerificationRow key={v.user_id} v={v} onDone={load} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+const TABS = [
+  { key: 'overview', icon: LayoutDashboard },
+  { key: 'crn', icon: BadgeCheck },
+  { key: 'users', icon: Users },
+  { key: 'plans', icon: Crown },
+  { key: 'errors', icon: AlertTriangle },
+  { key: 'moderation', icon: EyeOff },
+  { key: 'announcements', icon: Megaphone },
+  { key: 'lab', icon: FlaskConical },
+] as const;
+type AdminTab = (typeof TABS)[number]['key'];
+
+/** Painel do administrador (só para quem está em app_admins). */
+export function AdminPage() {
+  const user = useAuthStore((s) => s.user);
+  const t = useTranslation();
+  const a = t.admin;
+  const p = t.adminPanel;
+  const [params, setParams] = useSearchParams();
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  const requested = params.get('tab');
+  const tab: AdminTab = (TABS.find((x) => x.key === requested)?.key ?? 'overview') as AdminTab;
+  const open = (next: string) => setParams({ tab: next }, { replace: true });
 
   useEffect(() => {
     if (!user?.id) return setAllowed(false);
-    isAdmin().then((ok) => {
-      setAllowed(ok);
-      if (ok) load();
-    });
-  }, [user?.id, load]);
+    isAdmin().then(setAllowed);
+  }, [user?.id]);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
       <Link to="/" className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-emerald-700 dark:text-slate-300">
         <ArrowLeft className="h-4 w-4" />
         {a.back}
@@ -181,31 +235,42 @@ export function AdminPage() {
       <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-white">
         <ShieldCheck className="h-6 w-6 text-emerald-600" />
         {a.title}
+        <span className="rounded-full bg-slate-900 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white dark:bg-white dark:text-slate-900">Admin</span>
       </h1>
 
-      {allowed === null || (allowed && items === null) ? (
+      {allowed === null ? (
         <div className="flex justify-center py-16">
           <LoadingSpinner size="lg" />
         </div>
       ) : !allowed ? (
         <p className="mt-6 text-slate-600 dark:text-slate-300">{a.notAllowed}</p>
       ) : (
-        <section className="mt-6">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-            {a.pendingTitle} ({items?.length ?? 0})
-          </h2>
-          {items && items.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">
-              {a.empty}
-            </p>
-          ) : (
-            <ul className="space-y-4">
-              {items?.map((v) => (
-                <VerificationRow key={v.user_id} v={v} onDone={load} />
-              ))}
-            </ul>
-          )}
-        </section>
+        <>
+          <nav className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-2" aria-label={a.title}>
+            {TABS.map(({ key, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => open(key)}
+                aria-current={tab === key ? 'page' : undefined}
+                className={`inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ${tab === key ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'}`}
+              >
+                <Icon className="h-4 w-4" />
+                {p.tabs[key]}
+              </button>
+            ))}
+          </nav>
+          <div className="mt-4">
+            {tab === 'overview' && <AdminOverview onOpen={open} />}
+            {tab === 'crn' && <AdminVerifications />}
+            {tab === 'users' && <AdminUsers />}
+            {tab === 'plans' && <AdminPlans />}
+            {tab === 'errors' && <AdminErrors />}
+            {tab === 'moderation' && <AdminModeration />}
+            {tab === 'announcements' && <AdminAnnouncements />}
+            {tab === 'lab' && <AdminLab />}
+          </div>
+        </>
       )}
     </main>
   );

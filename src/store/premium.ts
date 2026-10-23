@@ -12,11 +12,14 @@ interface PremiumState {
   aiViaNutritionist: string | null;
   activePatients: number;
   freePatientLimit: number;
+  isAdmin: boolean;
+  /** Conta de demonstração do Laboratório do administrador. */
+  isDemo: boolean;
   fetch: (userId: string) => Promise<void>;
   reset: () => void;
 }
 
-const EMPTY = { loaded: false, nutritionistPro: false, aiViaNutritionist: null, activePatients: 0, freePatientLimit: 5 };
+const EMPTY = { loaded: false, nutritionistPro: false, aiViaNutritionist: null, activePatients: 0, freePatientLimit: 5, isAdmin: false, isDemo: false };
 
 export const usePremiumStore = create<PremiumState>()((set) => ({
   ...EMPTY,
@@ -35,6 +38,8 @@ export const usePremiumStore = create<PremiumState>()((set) => ({
       aiViaNutritionist: data.ai_via_nutritionist ?? null,
       activePatients: Number(data.active_patients) || 0,
       freePatientLimit: Number(data.free_patient_limit) || 5,
+      isAdmin: data.admin === true,
+      isDemo: data.demo === true,
     });
   },
   reset: () => set(EMPTY),

@@ -1,8 +1,9 @@
 import type { ComponentType } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bot, CalendarRange, Home, ShoppingCart, User, Users } from 'lucide-react';
+import { Bot, CalendarRange, Home, ShieldCheck, ShoppingCart, User, Users } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
+import { usePremiumStore } from '../../store/premium';
 import { useTranslation } from '../../hooks/useTranslation';
 import { SMOOTH } from '../../lib/motion';
 import { cn } from '../../lib/utils';
@@ -20,6 +21,7 @@ export function MobileNav() {
   const user = useAuthStore((s) => s.user);
   const { pathname, search } = useLocation();
   const t = useTranslation();
+  const isAdmin = usePremiumStore((s) => s.isAdmin);
   if (!user) return null;
 
   const tab = new URLSearchParams(search).get('tab');
@@ -41,6 +43,12 @@ export function MobileNav() {
           { key: 'ai', to: '/mentoria-ia', label: t.nav.ai, icon: Bot, active: pathname === '/mentoria-ia' },
           { key: 'profile', to: '/perfil', label: t.nav.profile, icon: User, active: onProfile && !['plan', 'shopping'].includes(tab ?? '') },
         ];
+
+  // Administrador: a aba Admin entra no lugar da IA.
+  if (isAdmin) {
+    const ai = items.findIndex((i) => i.key === 'ai');
+    items[ai] = { key: 'admin', to: '/admin', label: 'Admin', icon: ShieldCheck, active: pathname === '/admin' };
+  }
 
   return (
     <nav

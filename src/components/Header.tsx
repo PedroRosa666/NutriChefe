@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Menu, LogOut, User as UserIcon, Bot, Users, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { Translations } from '../hooks/useTranslation';
@@ -12,7 +12,7 @@ import { NotificationBell } from './common/NotificationBell';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { User } from '../types/user';
-import { useCanUseAI } from '../store/premium';
+import { useCanUseAI, usePremiumStore } from '../store/premium';
 
 interface UserDropdownProps {
   user: User | null;
@@ -133,6 +133,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, signOut } = useAuthStore();
   const canUseAI = useCanUseAI();
+  const isAdmin = usePremiumStore((s) => s.isAdmin);
   const { searchQuery, setSearchQuery } = useFiltersStore();
   const t = useTranslation();
 
@@ -172,6 +173,14 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
               >
                 NutriChef
               </motion.h1>
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="ml-2 rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white dark:bg-white dark:text-slate-900"
+                >
+                  Admin
+                </Link>
+              )}
             </div>
             
             <div className="hidden md:block flex-1 max-w-2xl mx-8">

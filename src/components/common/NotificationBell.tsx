@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlarmClock, ArrowLeftRight, BadgeCheck, Bell, CalendarClock, CalendarRange, CalendarX, Contact, MessageCircle, Target, UserMinus, UserPlus, X } from 'lucide-react';
+import { AlarmClock, ArrowLeftRight, BadgeCheck, Bell, CalendarClock, CalendarRange, CalendarX, Contact, Megaphone, MessageCircle, Target, UserMinus, UserPlus, X } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useSettingsStore } from '../../store/settings';
 import { notificationText, useNotificationsStore } from '../../store/notifications';
@@ -22,6 +22,7 @@ const ICONS = {
   appointment_reminder: AlarmClock,
   verification_requested: Contact,
   verification_reviewed: BadgeCheck,
+  announcement: Megaphone,
 } as const;
 
 function timeAgo(iso: string, locale: string): string {
