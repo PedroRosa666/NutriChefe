@@ -392,7 +392,8 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
               transition={{ duration: 0.18, ease: 'easeOut' }}
               className="overflow-hidden md:hidden"
             >
-              <div className="px-4 pb-3">
+              {/* Folga em cima e embaixo: o campo não encosta na linha dos ícones (nem corta o contorno de foco). */}
+              <div className="border-t border-slate-200/60 px-4 pb-3 pt-2.5 dark:border-white/10">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
@@ -406,7 +407,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                       if (e.key === 'Escape') setIsSearchOpen(false);
                     }}
                     placeholder={t.common.search}
-                    className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm text-slate-900 shadow-sm outline-none focus:border-transparent focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-[rgb(var(--nc-top))] dark:text-white dark:placeholder:text-slate-400 [&::-webkit-search-cancel-button]:hidden"
+                    className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm text-slate-900 shadow-sm outline-none transition-colors focus:border-emerald-500 dark:border-white/10 dark:focus:border-emerald-400 dark:bg-[rgb(var(--nc-top))] dark:text-white dark:placeholder:text-slate-400 [&::-webkit-search-cancel-button]:hidden"
                   />
                   {searchQuery && (
                     <button
