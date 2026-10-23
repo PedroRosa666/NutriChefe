@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Bot, Carrot, Crown, LayoutTemplate, ListChecks, Loader2, Scale, Search, Sparkles, Trash2, Save, X } from 'lucide-react';
+import { BookOpen, Bot, Carrot, ChevronDown, Crown, LayoutTemplate, ListChecks, Loader2, Scale, Search, Sparkles, Trash2, Save, X } from 'lucide-react';
 import { confirmDialog } from '../../store/confirm';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
@@ -82,6 +82,17 @@ export function MealPlanEditor({
   const [saving, setSaving] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [recipeQuery, setRecipeQuery] = useState('');
+  // Menu "Preencher plano": fecha ao tocar fora.
+  const [fillOpen, setFillOpen] = useState(false);
+  const fillMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!fillOpen) return;
+    const close = (e: MouseEvent) => {
+      if (!fillMenuRef.current?.contains(e.target as Node)) setFillOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [fillOpen]);
 
   // Alterações não salvas: comparadas com o que abriu (um plano gerado na abertura já conta como mudança).
   const initial = useRef(JSON.stringify({ title: plan?.title ?? '', notes: plan?.notes ?? '', items: plan?.items ?? [] }));
@@ -353,21 +364,72 @@ export function MealPlanEditor({
           {t.plan.goalHint.replace('{kcal}', String(Math.round(dailyCalories)))}
           {hasOptions && ` ${t.plan.firstOptionNote}`}
         </p>
+        {/* Um menu para as três formas de preencher o plano; "Ajustar à meta" fica à parte (não troca itens). */}
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setShowTemplates((v) => !v)}
-            aria-expanded={showTemplates}
-            className={cn(
-              'inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold',
-              showTemplates
-                ? 'border-sky-400 bg-sky-600 text-white'
-                : 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-800/50 dark:bg-sky-900/20 dark:text-sky-300'
+          <div className="relative" ref={fillMenuRef}>
+            <button
+              type="button"
+              onClick={() => setFillOpen((v) => !v)}
+              aria-expanded={fillOpen}
+              aria-haspopup="menu"
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              <Sparkles className="h-4 w-4" />
+              {t.plan.fillMenu}
+              <ChevronDown className={cn('h-4 w-4 transition-transform', fillOpen && 'rotate-180')} />
+            </button>
+            {fillOpen && (
+              <div
+                role="menu"
+                className="absolute left-0 z-20 mt-1.5 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900 sm:left-auto sm:right-0"
+              >
+                {[
+                  {
+                    key: 'template',
+                    icon: LayoutTemplate,
+                    label: t.plan.templatesButton,
+                    hint: t.plan.fillTemplateHint,
+                    onClick: () => setShowTemplates(true),
+                  },
+                  {
+                    key: 'auto',
+                    icon: Sparkles,
+                    label: items.length ? t.plan.regenerate : t.plan.generate,
+                    hint: t.plan.fillAutoHint,
+                    onClick: regenerate,
+                  },
+                  ...(aiAllowed
+                    ? [
+                        {
+                          key: 'ai',
+                          icon: aiUnlocked ? Bot : Crown,
+                          label: t.plan.aiBuild,
+                          hint: aiUnlocked ? t.plan.fillAiHint : t.plan.fillAiLockedHint,
+                          onClick: () => setAiOpen(true),
+                        },
+                      ]
+                    : []),
+                ].map(({ key, icon: Icon, label, hint, onClick }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setFillOpen(false);
+                      onClick();
+                    }}
+                    className="flex w-full items-start gap-3 border-b border-slate-100 px-3 py-2.5 text-left last:border-b-0 hover:bg-emerald-50 dark:border-slate-800 dark:hover:bg-emerald-900/20"
+                  >
+                    <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{label}</span>
+                      <span className="block text-xs text-slate-500 dark:text-slate-400">{hint}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
             )}
-          >
-            <LayoutTemplate className="h-4 w-4" />
-            {t.plan.templatesButton}
-          </button>
+          </div>
           <button
             type="button"
             onClick={scaleToGoal}
@@ -378,24 +440,6 @@ export function MealPlanEditor({
             <Scale className="h-4 w-4" />
             {t.plan.scaleToGoal}
           </button>
-          <button
-            type="button"
-            onClick={regenerate}
-            className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-300"
-          >
-            <Sparkles className="h-4 w-4" />
-            {items.length ? t.plan.regenerate : t.plan.generate}
-          </button>
-          {aiAllowed && (
-            <button
-              type="button"
-              onClick={() => setAiOpen((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
-            >
-              {aiUnlocked ? <Bot className="h-4 w-4" /> : <Crown className="h-4 w-4" />}
-              {t.plan.aiBuild}
-            </button>
-          )}
         </div>
       </div>
 
@@ -443,7 +487,21 @@ export function MealPlanEditor({
         </p>
       )}
 
-      {showTemplates && <PlanTemplatesPanel items={items} title={title} notes={notes} onApply={applyTemplate} />}
+      {showTemplates && (
+        <div className="space-y-2">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowTemplates(false)}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              <X className="h-3.5 w-3.5" />
+              {t.plan.closeTemplates}
+            </button>
+          </div>
+          <PlanTemplatesPanel items={items} title={title} notes={notes} onApply={applyTemplate} />
+        </div>
+      )}
 
       {/* Dias da semana com o total de calorias de cada um */}
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">

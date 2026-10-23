@@ -773,6 +773,12 @@ export const translations = {
       nutritionistSendsHere: 'If you have a nutritionist, the plan they send shows up here.',
       lastWeek: 'last week',
       discardConfirmGeneric: 'Discard the changes you have not saved?',
+      fillMenu: 'Fill plan',
+      fillTemplateHint: 'Start from a saved template',
+      fillAutoHint: 'Recipes picked by the goal and allergies',
+      fillAiHint: 'Describe what you want and the AI builds the week',
+      fillAiLockedHint: 'Part of Premium',
+      closeTemplates: 'Close templates',
     },
 
     shopping: {
@@ -1396,6 +1402,10 @@ export const translations = {
       stepRecipeHint: 'Your recipes appear on your public profile and can go into plans.',
       adminBadge: 'Administrator',
       clearSearch: 'Clear search',
+      entryUpdated: 'Entry updated',
+      otherMeal: 'Other',
+      mealLabel: 'Meal',
+      editEntry: 'Edit entry',
     },
     adminPanel: {
       tabs: { overview: 'Overview', crn: 'CRN', users: 'Users', plans: 'Plans', errors: 'Errors', moderation: 'Moderation', announcements: 'Announcements', lab: 'Lab' },
@@ -1511,7 +1521,7 @@ export const translations = {
     },
     attention: {
       title: 'Needs attention',
-      allGood: 'All patients are logging and there is nothing pending.',
+      allGood: 'All caught up: no patient needs your attention right now.',
       lockedText: 'Patients needing attention: {n}. The patient list shows the alerts for each one; Premium Nutritionist gathers them here, with the reasons.',
       unlock: 'See with Premium',
       noName: 'Patient',
@@ -2528,6 +2538,12 @@ export const translations = {
       nutritionistSendsHere: 'Se você tem nutricionista, o plano que ele enviar aparece aqui.',
       lastWeek: 'semana passada',
       discardConfirmGeneric: 'Descartar as alterações que não foram salvas?',
+      fillMenu: 'Preencher plano',
+      fillTemplateHint: 'Comece de um modelo salvo',
+      fillAutoHint: 'Receitas escolhidas pela meta e pelas alergias',
+      fillAiHint: 'Diga o que quer e a IA monta a semana',
+      fillAiLockedHint: 'Faz parte do Premium',
+      closeTemplates: 'Fechar modelos',
     },
 
     shopping: {
@@ -3151,6 +3167,10 @@ export const translations = {
       stepRecipeHint: 'Suas receitas aparecem no seu perfil público e podem entrar nos planos.',
       adminBadge: 'Administrador',
       clearSearch: 'Limpar busca',
+      entryUpdated: 'Registro atualizado',
+      otherMeal: 'Outros',
+      mealLabel: 'Refeição',
+      editEntry: 'Editar registro',
     },
     adminPanel: {
       tabs: { overview: 'Visão geral', crn: 'CRN', users: 'Usuários', plans: 'Planos', errors: 'Erros', moderation: 'Moderação', announcements: 'Comunicados', lab: 'Laboratório' },
@@ -3266,7 +3286,7 @@ export const translations = {
     },
     attention: {
       title: 'Precisa de atenção',
-      allGood: 'Todos os pacientes estão registrando e não há nada pendente.',
+      allGood: 'Tudo em dia: nenhum paciente precisa da sua atenção agora.',
       lockedText: 'Pacientes que precisam de atenção: {n}. A lista de pacientes mostra os avisos de cada um; o Premium Nutricionista junta tudo aqui, com os motivos.',
       unlock: 'Ver com o Premium',
       noName: 'Paciente',

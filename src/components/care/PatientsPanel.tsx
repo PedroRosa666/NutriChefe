@@ -18,7 +18,8 @@ import {
   type Invite,
 } from '../../services/care';
 import { pendingSwapCounts } from '../../services/swaps';
-import { loadAdherence } from '../../services/adherence';
+import { listChecks, loadAdherence } from '../../services/adherence';
+import { isInactive, lastActivity } from '../../lib/patient-activity';
 import { unreadByPatient } from '../../services/messages';
 import { sumEntries, toISODate } from '../../store/nutrition-tracking';
 import { Avatar } from './Avatar';
@@ -30,6 +31,8 @@ import { getMyCrnStatus, type CrnStatus } from '../../services/verification';
 
 interface PatientSummary {
   lastLog: string | null;
+  /** Último uso do app: diário ou marcação de refeição (mesma regra do painel). */
+  lastActive: string | null;
   days7: number;
   avgKcal7: number;
   goalKcal: number | null;
@@ -39,18 +42,20 @@ interface PatientSummary {
 
 /** Resumo dos últimos 7 dias de cada paciente, para a lista. */
 async function summarize(clientId: string, nutritionistId: string): Promise<PatientSummary> {
-  const [data, adherence] = await Promise.all([
-    getPatientData(clientId, 7),
-    loadAdherence(clientId, nutritionistId).catch(() => null),
-  ]);
   const since = new Date();
   since.setDate(since.getDate() - 6);
   const min = toISODate(since);
+  const [data, adherence, checks] = await Promise.all([
+    getPatientData(clientId, 7),
+    loadAdherence(clientId, nutritionistId).catch(() => null),
+    listChecks(clientId, min).catch(() => []),
+  ]);
   const recent = data.entries.filter((e) => e.date >= min);
   const days = new Set(recent.map((e) => e.date));
   const total = sumEntries(recent).calories;
   return {
     lastLog: data.entries[0]?.date ?? null,
+    lastActive: lastActivity(data.entries[0]?.date, checks[0]?.check_date),
     days7: days.size,
     avgKcal7: days.size ? Math.round(total / days.size) : 0,
     goalKcal: data.goals?.calories ?? null,
@@ -369,8 +374,7 @@ export function PatientsPanel() {
             .filter((p) => !query.trim() || (p.person.full_name ?? '').toLowerCase().includes(query.trim().toLowerCase()))
             .map((p) => {
             const s = summaries[p.person.id];
-            const daysSince = s?.lastLog ? Math.floor((Date.now() - new Date(`${s.lastLog}T12:00:00`).getTime()) / 86400000) : null;
-            const inactive = s && (daysSince === null || daysSince >= 3);
+            const inactive = s && isInactive(s.lastActive);
             const overGoal = s && s.goalKcal && s.avgKcal7 > s.goalKcal * 1.1;
             return (
               <button

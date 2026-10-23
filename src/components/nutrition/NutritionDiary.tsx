@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Trash2, CalendarDays, Plus, XCircle, Loader2 } from 'lucide-react';
+import { Trash2, CalendarDays, Plus, XCircle, Loader2, Pencil, Check, X } from 'lucide-react';
 import { WeeklyCaloriesChart } from './WeeklyCaloriesChart';
-import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
+import { DIARY_MEALS, mealForTime, useNutritionTrackingStore, type DiaryMeal, type NutritionLogEntry } from '../../store/nutrition-tracking';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useRecipesStore } from '../../store/recipes';
 import { useToastStore } from '../../store/toast';
@@ -70,7 +70,7 @@ export function NutritionDiary() {
   const { recipes } = useRecipesStore();
   const { showToast } = useToastStore();
   const { goals } = useNutritionGoalsStore();
-  const { entries: allEntries, addRecipeToLog, removeEntry, clearDate, getTotalsForDate } =
+  const { entries: allEntries, addRecipeToLog, updateEntry, removeEntry, clearDate, getTotalsForDate } =
     useNutritionTrackingStore();
 
   const [date, setDate] = React.useState(() => toISODate(new Date()));
@@ -80,6 +80,10 @@ export function NutritionDiary() {
   const [adding, setAdding] = React.useState(false);
   // Quase tudo que se registra é alimento avulso: começa nele.
   const [mode, setMode] = React.useState<AddMode>('food');
+  // Refeição do que vai ser registrado: começa na do horário.
+  const [meal, setMeal] = React.useState<DiaryMeal>(() => mealForTime());
+  // Registro em edição (porções e refeição).
+  const [editing, setEditing] = React.useState<{ id: string; servings: string; meal: DiaryMeal | null } | null>(null);
   // Estimativa por foto (Mentoria IA) preenche o formulário "Outro"; a chave remonta o formulário.
   const canUsePhoto = useCanUseAI();
   const [photo, setPhoto] = React.useState<{ key: number; estimate: PhotoEstimate } | null>(null);
@@ -113,7 +117,7 @@ export function NutritionDiary() {
     }
     setAdding(true);
     try {
-      await addRecipeToLog(recipe, amount, date);
+      await addRecipeToLog(recipe, amount, date, meal);
       showToast(t.profile.loggedToDiary, 'success');
       setQuickRecipeId('');
       setServings('1');
@@ -136,6 +140,115 @@ export function NutritionDiary() {
       showToast(t.profile.diaryError, 'error');
     }
   };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const amount = parseFloat(editing.servings.replace(',', '.'));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showToast(t.profile.invalidServings, 'warning');
+      return;
+    }
+    try {
+      await updateEntry(editing.id, { servings: amount, meal: editing.meal });
+      setEditing(null);
+      showToast(t.profileUi.entryUpdated, 'success');
+    } catch (error) {
+      console.error('Error updating diary entry:', error);
+      showToast(t.profile.diaryError, 'error');
+    }
+  };
+
+  // Registros do dia agrupados por refeição, na ordem do dia; sem refeição (antigos) por último.
+  const groups = useMemo(() => {
+    const order: (DiaryMeal | null)[] = [...DIARY_MEALS, null];
+    return order
+      .map((m) => ({ meal: m, list: entries.filter((e) => e.meal === m) }))
+      .filter((g) => g.list.length > 0);
+  }, [entries]);
+
+  const mealLabel = (m: DiaryMeal | null) => (m ? t.plan.meals[m] : t.profileUi.otherMeal);
+
+  const entryRow = (e: NutritionLogEntry) =>
+    editing?.id === e.id ? (
+      <div key={e.id} className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-800/50 dark:bg-emerald-900/10">
+        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{e.recipeTitle}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+            {t.profile.servings}
+            <input
+              type="number"
+              min={0.1}
+              step={0.1}
+              inputMode="decimal"
+              value={editing.servings}
+              onChange={(ev) => setEditing({ ...editing, servings: ev.target.value })}
+              className="w-20 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            />
+          </label>
+          <select
+            value={editing.meal ?? ''}
+            onChange={(ev) => setEditing({ ...editing, meal: (ev.target.value || null) as DiaryMeal | null })}
+            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark]"
+            aria-label={t.profileUi.mealLabel}
+          >
+            {DIARY_MEALS.map((m) => (
+              <option key={m} value={m}>
+                {t.plan.meals[m]}
+              </option>
+            ))}
+            <option value="">{t.profileUi.otherMeal}</option>
+          </select>
+          <div className="ml-auto flex gap-1">
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              className="rounded-lg p-2 text-slate-500 hover:bg-white dark:text-slate-400 dark:hover:bg-slate-900"
+              aria-label={t.common.cancel}
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={saveEdit}
+              className="rounded-lg bg-emerald-600 p-2 text-white hover:bg-emerald-700"
+              aria-label={t.common.save}
+            >
+              <Check className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <div
+        key={e.id}
+        className="flex items-start justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950"
+      >
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{e.recipeTitle}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-300">
+            {t.profile.servings}: <span className="font-medium">{fmtNum(e.servings)}</span> • {Math.round(e.perServing.calories * e.servings)} kcal
+          </p>
+        </div>
+        <div className="flex shrink-0">
+          <button
+            type="button"
+            onClick={() => setEditing({ id: e.id, servings: String(e.servings), meal: e.meal })}
+            className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-900"
+            aria-label={t.profileUi.editEntry}
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRemove(e.id)}
+            className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-900"
+            aria-label={t.profile.remove}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    );
 
   const handleRemove = async (id: string) => {
     try {
@@ -169,6 +282,26 @@ export function NutritionDiary() {
 
       {/* Adicionar: receita do catálogo, alimento comum ou valores digitados */}
       <div ref={addRef} className="scroll-mt-20 space-y-3">
+      {/* Em qual refeição entra o que for registrado agora. */}
+      <div role="radiogroup" aria-label={t.profileUi.mealLabel} className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
+        {DIARY_MEALS.map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={meal === m}
+            onClick={() => setMeal(m)}
+            className={cn(
+              'whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+              meal === m
+                ? 'border-emerald-500 bg-emerald-600 text-white'
+                : 'border-slate-200 text-slate-600 hover:border-emerald-300 dark:border-slate-700 dark:text-slate-300'
+            )}
+          >
+            {t.plan.meals[m]}
+          </button>
+        ))}
+      </div>
       <div role="tablist" className="inline-flex rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
         {(['food', 'recipe', 'custom'] as AddMode[]).map((m) => (
           <button
@@ -188,7 +321,7 @@ export function NutritionDiary() {
           </button>
         ))}
       </div>
-      {mode === 'food' && <CommonFoodForm date={date} />}
+      {mode === 'food' && <CommonFoodForm date={date} meal={meal} />}
       {mode === 'custom' && (
         <div className="space-y-3">
           {canUsePhoto && (
@@ -197,6 +330,7 @@ export function NutritionDiary() {
           <CustomFoodForm
             key={photo?.key ?? 0}
             date={date}
+            meal={meal}
             initial={photo ? { name: `${photo.estimate.name} (${photo.estimate.portion})`, values: photo.estimate } : null}
           />
         </div>
@@ -277,29 +411,16 @@ export function NutritionDiary() {
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            {entries.map((e) => (
-              <div
-                key={e.id}
-                className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                    {e.recipeTitle}
-                  </p>
-                  <p className="text-xs text-slate-600 dark:text-slate-300">
-                    {t.profile.servings}: <span className="font-medium">{fmtNum(e.servings)}</span> • {e.perServing.calories.toFixed(0)} kcal/{t.profile.perServing}
+          <div className="space-y-4">
+            {groups.map((g) => (
+              <div key={g.meal ?? 'other'} className="space-y-2">
+                <div className="flex items-baseline justify-between px-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{mealLabel(g.meal)}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {Math.round(g.list.reduce((sum, e) => sum + e.perServing.calories * e.servings, 0))} kcal
                   </p>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleRemove(e.id)}
-                  className="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-white hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-900"
-                  aria-label={t.profile.remove}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                {g.list.map(entryRow)}
               </div>
             ))}
             {/* Apagar o dia inteiro é raro: fica no fim da lista, longe da data. */}

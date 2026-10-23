@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Camera, Loader2, Plus } from 'lucide-react';
 import { estimateFoodPhoto, type PhotoEstimate } from '../../services/gemini';
-import { useNutritionTrackingStore, type NutritionTotals } from '../../store/nutrition-tracking';
+import { useNutritionTrackingStore, type DiaryMeal, type NutritionTotals } from '../../store/nutrition-tracking';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { foodLogValues } from '../../lib/food-math';
@@ -16,7 +16,7 @@ const parseAmount = (v: string) => {
 };
 
 /** Catálogo (Tabela TACO + alimentos do nutricionista): busca, escolhe a quantidade e registra. */
-export function CommonFoodForm({ date }: { date: string }) {
+export function CommonFoodForm({ date, meal }: { date: string; meal?: DiaryMeal | null }) {
   const t = useTranslation();
   const { showToast } = useToastStore();
   const addFoodToLog = useNutritionTrackingStore((s) => s.addFoodToLog);
@@ -25,7 +25,7 @@ export function CommonFoodForm({ date }: { date: string }) {
     try {
       // Grava também os nutrientes completos da porção (minerais, vitaminas, tipos de gordura).
       const { totals, extra } = foodLogValues(food, grams);
-      await addFoodToLog(`${food.name} — ${label}`, totals, 1, date, extra);
+      await addFoodToLog(`${food.name} — ${label}`, totals, 1, date, extra, meal);
       showToast(t.profile.loggedToDiary, 'success');
     } catch (error) {
       console.error('Error logging food:', error);
@@ -45,7 +45,15 @@ export function CommonFoodForm({ date }: { date: string }) {
 const EMPTY: Record<keyof NutritionTotals, string> = { calories: '', protein: '', carbs: '', fat: '', fiber: '' };
 
 /** Qualquer coisa fora da lista: nome + valores digitados (ou vindos da estimativa por foto). */
-export function CustomFoodForm({ date, initial }: { date: string; initial?: { name: string; values: Partial<NutritionTotals> } | null }) {
+export function CustomFoodForm({
+  date,
+  initial,
+  meal,
+}: {
+  date: string;
+  initial?: { name: string; values: Partial<NutritionTotals> } | null;
+  meal?: DiaryMeal | null;
+}) {
   const t = useTranslation();
   const { showToast } = useToastStore();
   const addFoodToLog = useNutritionTrackingStore((s) => s.addFoodToLog);
@@ -73,7 +81,9 @@ export function CustomFoodForm({ date, initial }: { date: string; initial?: { na
         name.trim(),
         { calories: kcal, protein: num(values.protein), carbs: num(values.carbs), fat: num(values.fat), fiber: num(values.fiber) },
         1,
-        date
+        date,
+        {},
+        meal
       );
       showToast(t.profile.loggedToDiary, 'success');
       setName('');

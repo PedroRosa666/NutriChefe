@@ -4,6 +4,19 @@ import { useAuthStore } from './auth';
 import type { Recipe } from '../types/recipe';
 import { feedback } from '../lib/i18n/current';
 
+/** Refeições do diário: as mesmas do plano alimentar. */
+export type DiaryMeal = 'breakfast' | 'lunch' | 'snack' | 'dinner';
+export const DIARY_MEALS: DiaryMeal[] = ['breakfast', 'lunch', 'snack', 'dinner'];
+
+/** Refeição provável pelo horário (o padrão ao registrar; a pessoa pode trocar). */
+export function mealForTime(date = new Date()): DiaryMeal {
+  const minutes = date.getHours() * 60 + date.getMinutes();
+  if (minutes < 10 * 60 + 30) return 'breakfast';
+  if (minutes < 15 * 60) return 'lunch';
+  if (minutes < 18 * 60 + 30) return 'snack';
+  return 'dinner';
+}
+
 export interface NutritionTotals {
   calories: number;
   protein: number;
@@ -20,6 +33,8 @@ export interface NutritionLogEntry {
   servings: number;
   // snapshot (per serving) at the moment the user logs it
   perServing: NutritionTotals;
+  /** Refeição; registros antigos não têm (aparecem em "Outros"). */
+  meal: DiaryMeal | null;
   createdAt: string; // ISO
 }
 
@@ -30,6 +45,7 @@ export interface NutritionLogRow {
   recipe_title: string;
   servings: number | string;
   per_serving: Partial<NutritionTotals> | null;
+  meal?: string | null;
   created_at: string;
 }
 
@@ -38,9 +54,18 @@ interface NutritionTrackingState {
   loading: boolean;
 
   fetchEntries: (userId: string) => Promise<void>;
-  addRecipeToLog: (recipe: Recipe, servings?: number, date?: string) => Promise<void>;
+  addRecipeToLog: (recipe: Recipe, servings?: number, date?: string, meal?: DiaryMeal | null) => Promise<void>;
   /** Alimento avulso (lista de alimentos comuns ou valores digitados). */
-  addFoodToLog: (title: string, perServing: NutritionTotals, servings?: number, date?: string, extra?: Record<string, number>) => Promise<void>;
+  addFoodToLog: (
+    title: string,
+    perServing: NutritionTotals,
+    servings?: number,
+    date?: string,
+    extra?: Record<string, number>,
+    meal?: DiaryMeal | null
+  ) => Promise<void>;
+  /** Corrige um registro: porções e refeição. */
+  updateEntry: (id: string, patch: { servings?: number; meal?: DiaryMeal | null }) => Promise<void>;
   removeEntry: (id: string) => Promise<void>;
   clearDate: (date: string) => Promise<void>;
   reset: () => void;
@@ -90,8 +115,11 @@ export const fromRow = (row: NutritionLogRow): NutritionLogEntry => ({
   recipeTitle: row.recipe_title,
   servings: Number(row.servings) || 1,
   perServing: toTotals(row.per_serving),
+  meal: DIARY_MEALS.includes(row.meal as DiaryMeal) ? (row.meal as DiaryMeal) : null,
   createdAt: row.created_at,
 });
+
+const ENTRY_COLUMNS = 'id, entry_date, recipe_id, recipe_title, servings, per_serving, meal, created_at';
 
 const requireUserId = () => {
   const userId = useAuthStore.getState().user?.id;
@@ -105,7 +133,8 @@ async function insertEntry(
   // Além dos 5 valores, alimentos do catálogo gravam os nutrientes completos (minerais, vitaminas...).
   perServing: NutritionTotals | (NutritionTotals & Record<string, number>),
   servings: number,
-  date?: string
+  date?: string,
+  meal?: DiaryMeal | null
 ) {
   const userId = requireUserId();
   const { data, error } = await supabase
@@ -117,8 +146,10 @@ async function insertEntry(
       recipe_title: title,
       servings: sanitizeServings(servings),
       per_serving: perServing,
+      // Sem refeição informada: a do horário (registro de hoje) ou nenhuma (outro dia).
+      meal: meal !== undefined ? meal : !date || date === toISODate(new Date()) ? mealForTime() : null,
     })
-    .select('id, entry_date, recipe_id, recipe_title, servings, per_serving, created_at')
+    .select(ENTRY_COLUMNS)
     .single();
 
   if (error) throw error;
@@ -167,7 +198,7 @@ export const useNutritionTrackingStore = create<NutritionTrackingState>()((set, 
     since.setDate(since.getDate() - HISTORY_DAYS);
     const { data, error } = await supabase
       .from('nutrition_log_entries')
-      .select('id, entry_date, recipe_id, recipe_title, servings, per_serving, created_at')
+      .select(ENTRY_COLUMNS)
       .eq('user_id', userId)
       .gte('entry_date', toISODate(since))
       .order('created_at', { ascending: false });
@@ -180,14 +211,27 @@ export const useNutritionTrackingStore = create<NutritionTrackingState>()((set, 
     set({ entries: (data ?? []).map(fromRow), loading: false });
   },
 
-  addRecipeToLog: async (recipe, servings = 1, date) => {
-    const entry = await insertEntry(recipe.id, recipe.title, toTotals(recipe.nutritionFacts), servings, date);
+  addRecipeToLog: async (recipe, servings = 1, date, meal) => {
+    const entry = await insertEntry(recipe.id, recipe.title, toTotals(recipe.nutritionFacts), servings, date, meal);
     set((state) => ({ entries: [entry, ...state.entries] }));
   },
 
-  addFoodToLog: async (title, perServing, servings = 1, date, extra = {}) => {
-    const entry = await insertEntry(null, title.slice(0, 200), { ...extra, ...toTotals(perServing) }, servings, date);
+  addFoodToLog: async (title, perServing, servings = 1, date, extra = {}, meal) => {
+    const entry = await insertEntry(null, title.slice(0, 200), { ...extra, ...toTotals(perServing) }, servings, date, meal);
     set((state) => ({ entries: [entry, ...state.entries] }));
+  },
+
+  updateEntry: async (id, patch) => {
+    const previous = get().entries;
+    const changes: { servings?: number; meal?: DiaryMeal | null } = {};
+    if (patch.servings !== undefined) changes.servings = sanitizeServings(patch.servings);
+    if (patch.meal !== undefined) changes.meal = patch.meal;
+    set({ entries: previous.map((e) => (e.id === id ? { ...e, ...changes } : e)) });
+    const { error } = await supabase.from('nutrition_log_entries').update(changes).eq('id', id);
+    if (error) {
+      set({ entries: previous });
+      throw error;
+    }
   },
 
   removeEntry: async (id) => {

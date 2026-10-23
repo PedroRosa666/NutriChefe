@@ -232,10 +232,10 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     if (item.food_id && item.food && item.grams) {
       // Alimento: entra com os nutrientes completos da quantidade prescrita.
       const { totals, extra } = foodLogValues(item.food, item.grams);
-      await tracking.addFoodToLog(`${item.food.name} — ${item.measure_label ?? `${item.grams} g`}`, totals, 1, date, extra);
+      await tracking.addFoodToLog(`${item.food.name} — ${item.measure_label ?? `${item.grams} g`}`, totals, 1, date, extra, item.meal);
     } else {
       const recipe = item.recipe_id ? byId.get(item.recipe_id) : undefined;
-      if (recipe) await tracking.addRecipeToLog(recipe, item.servings, date);
+      if (recipe) await tracking.addRecipeToLog(recipe, item.servings, date, item.meal);
     }
   };
 

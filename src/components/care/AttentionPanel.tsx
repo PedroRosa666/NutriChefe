@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowLeftRight, ChevronRight, Crown, MessageCircle, MoonStar } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, CheckCircle2, ChevronRight, Crown, MessageCircle, MoonStar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../hooks/useTranslation';
 import { usePremiumStore } from '../../store/premium';
-import { toISODate } from '../../store/nutrition-tracking';
+import { daysSince, isInactive, lastActivity } from '../../lib/patient-activity';
 
 interface AttentionRow {
   client_id: string;
@@ -15,11 +15,6 @@ interface AttentionRow {
   unread_messages: number;
 }
 
-/** Dias sem registro no diário nem marcação de refeição a partir dos quais o paciente "sumiu". */
-const INACTIVE_DAYS = 3;
-
-const daysSince = (iso: string | null) =>
-  iso ? Math.floor((new Date(toISODate(new Date())).getTime() - new Date(iso).getTime()) / 86400000) : null;
 
 /** "Precisa de atenção": pacientes com trocas pendentes, mensagens não lidas ou sem registrar há dias. */
 export function AttentionPanel() {
@@ -44,9 +39,8 @@ export function AttentionPanel() {
 
   const flagged = rows
     .map((r) => {
-      const last = [r.last_log, r.last_check].filter(Boolean).sort().pop() ?? null;
-      const idle = daysSince(last);
-      return { ...r, idle, inactive: idle === null || idle >= INACTIVE_DAYS };
+      const last = lastActivity(r.last_log, r.last_check);
+      return { ...r, idle: daysSince(last), inactive: isInactive(last) };
     })
     .filter((r) => r.pending_swaps > 0 || r.unread_messages > 0 || r.inactive)
     .sort((x, y) => y.pending_swaps + y.unread_messages - (x.pending_swaps + x.unread_messages) || (y.idle ?? 99) - (x.idle ?? 99));
@@ -54,11 +48,14 @@ export function AttentionPanel() {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <h3 className="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
-        <AlertTriangle className="h-5 w-5 text-amber-500" />
+        {flagged.length ? <AlertTriangle className="h-5 w-5 text-amber-500" /> : <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
         {a.title}
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-          {flagged.length}
-        </span>
+        {/* Contador só quando há alguém: um "0" em destaque parecia alerta. */}
+        {flagged.length > 0 && (
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+            {flagged.length}
+          </span>
+        )}
       </h3>
 
       {flagged.length === 0 ? (
