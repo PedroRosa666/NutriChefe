@@ -5,6 +5,7 @@ import { getUserProfile } from '../services/database';
 import { useToastStore } from './toast';
 import type { User, UserType } from '../types/user';
 import { cleanupDeviceOnLogout } from '../lib/push';
+import { forgetSavedAdminSession } from '../services/admin';
 import { feedback } from '../lib/i18n/current';
 import { translations } from '../lib/i18n/translations';
 
@@ -215,6 +216,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           // Antes de sair (ainda logado): o aparelho para de receber notificações dessa pessoa.
           await cleanupDeviceOnLogout();
+          // Saiu de propósito: não guarda mais o caminho de volta para a conta do admin.
+          forgetSavedAdminSession();
           await supabase.auth.signOut();
         } catch (e) {
           console.error('signOut error:', e);

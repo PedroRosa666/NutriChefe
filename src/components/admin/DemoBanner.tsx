@@ -4,7 +4,7 @@ import { FlaskConical } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { usePremiumStore } from '../../store/premium';
 import { useTranslation } from '../../hooks/useTranslation';
-import { hasSavedAdminSession, returnToAdmin } from '../../services/admin';
+import { returnToAdmin } from '../../services/admin';
 
 /** Faixa fixa enquanto o administrador está numa conta demo do Laboratório. */
 export function DemoBanner() {
@@ -14,7 +14,9 @@ export function DemoBanner() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
 
-  if (!user || !isDemo || !hasSavedAdminSession()) return null;
+  // Em toda conta demo (não só com a sessão do admin guardada): sem ela, o botão sai e leva ao login,
+  // em vez de deixar o admin preso na conta demo.
+  if (!user || !isDemo) return null;
 
   const back = async () => {
     setBusy(true);

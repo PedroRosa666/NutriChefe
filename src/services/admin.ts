@@ -131,7 +131,36 @@ export const demoToggle = (what: 'patient_premium' | 'nutritionist_premium' | 'c
   fn({ action: 'demo_toggle', what, on });
 export const simulate = (what: 'swap' | 'message') => fn({ action: 'simulate', what });
 
+// Sessão do administrador guardada enquanto ele usa uma conta demo. Fica no localStorage (como a
+// própria sessão do Supabase): no sessionStorage ela sumia ao fechar o app, e o admin ficava preso na
+// conta demo. Sai no "Voltar ao admin", no "Sair" e depois de 30 dias.
 const ADMIN_SESSION_KEY = 'nc-admin-session';
+const ADMIN_SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+
+interface SavedAdminSession {
+  access_token: string;
+  refresh_token: string;
+  saved_at: number;
+}
+
+function readSavedAdminSession(): SavedAdminSession | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) ?? 'null') as SavedAdminSession | null;
+    if (saved?.refresh_token && Date.now() - Number(saved.saved_at) < ADMIN_SESSION_MAX_AGE) return saved;
+  } catch {
+    /* storage indisponível ou valor inválido */
+  }
+  return null;
+}
+
+export function forgetSavedAdminSession() {
+  try {
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem(ADMIN_SESSION_KEY); // versão antiga guardava aqui
+  } catch {
+    /* storage indisponível */
+  }
+}
 
 /** Entra na conta demo guardando a sessão do administrador neste navegador, para voltar em um toque. */
 export async function enterDemo(as: 'patient' | 'nutritionist'): Promise<void> {
@@ -139,37 +168,26 @@ export async function enterDemo(as: 'patient' | 'nutritionist'): Promise<void> {
   const session = current.session;
   if (!session) throw new Error('unauthenticated');
   const { token_hash } = await fn<{ ok: boolean; token_hash: string }>({ action: 'demo_login', as });
+  // Só o admin chega aqui (demo_login confere): a sessão atual é sempre a dele, a mais nova.
+  const saved: SavedAdminSession = { access_token: session.access_token, refresh_token: session.refresh_token, saved_at: Date.now() };
   try {
-    sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ access_token: session.access_token, refresh_token: session.refresh_token }));
+    localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(saved));
   } catch {
     throw new Error('storage_unavailable');
   }
   const { error } = await supabase.auth.verifyOtp({ token_hash, type: 'magiclink' });
   if (error) {
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    forgetSavedAdminSession();
     throw error;
-  }
-}
-
-export function hasSavedAdminSession(): boolean {
-  try {
-    return Boolean(sessionStorage.getItem(ADMIN_SESSION_KEY));
-  } catch {
-    return false;
   }
 }
 
 /** Volta para a conta do administrador. Sem sessão guardada (ou expirada), sai e pede login. */
 export async function returnToAdmin(): Promise<boolean> {
-  let saved: { access_token: string; refresh_token: string } | null = null;
-  try {
-    saved = JSON.parse(sessionStorage.getItem(ADMIN_SESSION_KEY) ?? 'null');
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-  } catch {
-    saved = null;
-  }
+  const saved = readSavedAdminSession();
+  forgetSavedAdminSession();
   if (saved) {
-    const { error } = await supabase.auth.setSession(saved);
+    const { error } = await supabase.auth.setSession({ access_token: saved.access_token, refresh_token: saved.refresh_token });
     if (!error) return true;
   }
   await supabase.auth.signOut();
