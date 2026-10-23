@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "cf:dev": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:status": "node scripts/db.mjs status",
+    "db:push": "node scripts/db.mjs push"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
