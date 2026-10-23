@@ -15,6 +15,15 @@ export type TabKey =
   | 'favorites'
   | 'account';
 
+/**
+ * Para qual público a navegação é montada. A conta de administrador (app_admins) é do tipo
+ * paciente no cadastro, mas não acompanha nada como paciente: vê só a Conta e o painel /admin.
+ */
+export type Role = 'client' | 'nutritionist' | 'admin';
+
+export const roleOf = (userType: string | undefined, isAdmin: boolean): Role =>
+  userType === 'Nutritionist' ? 'nutritionist' : isAdmin ? 'admin' : 'client';
+
 export type SectionKey = 'home' | 'plan' | 'messages' | 'patients' | 'profile';
 
 /** Um item da faixa de abas. Com mais de uma aba, elas viram um seletor dentro do item. */
@@ -48,20 +57,22 @@ const NUTRITIONIST_SECTIONS: Section[] = [
   },
 ];
 
-export const sectionsFor = (isNutritionist: boolean) => (isNutritionist ? NUTRITIONIST_SECTIONS : CLIENT_SECTIONS);
+const ADMIN_SECTIONS: Section[] = [{ key: 'profile', items: [one('account')] }];
 
-export const tabsFor = (isNutritionist: boolean): TabKey[] =>
-  sectionsFor(isNutritionist).flatMap((s) => s.items.flatMap((i) => i.tabs));
+export const sectionsFor = (role: Role) =>
+  role === 'nutritionist' ? NUTRITIONIST_SECTIONS : role === 'admin' ? ADMIN_SECTIONS : CLIENT_SECTIONS;
 
-/** Seção de uma aba; aba desconhecida ou ausente cai no Início. */
-export function sectionOfTab(isNutritionist: boolean, tab: string | null): Section {
-  const sections = sectionsFor(isNutritionist);
+export const tabsFor = (role: Role): TabKey[] => sectionsFor(role).flatMap((s) => s.items.flatMap((i) => i.tabs));
+
+/** Seção de uma aba; aba desconhecida ou ausente cai na primeira seção (o painel do dia). */
+export function sectionOfTab(role: Role, tab: string | null): Section {
+  const sections = sectionsFor(role);
   return sections.find((s) => s.items.some((i) => i.tabs.includes(tab as TabKey))) ?? sections[0];
 }
 
 /** Endereço de entrada de cada seção. */
-export function sectionHref(isNutritionist: boolean, key: SectionKey): string {
-  const section = sectionsFor(isNutritionist).find((s) => s.key === key);
+export function sectionHref(role: Role, key: SectionKey): string {
+  const section = sectionsFor(role).find((s) => s.key === key);
   const tab = section?.items[0].tabs[0];
   return !tab || tab === 'overview' ? '/perfil' : `/perfil?tab=${tab}`;
 }

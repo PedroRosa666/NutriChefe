@@ -1394,6 +1394,7 @@ export const translations = {
       stepPatientHint: 'Send the link by WhatsApp; the patient connects with one tap.',
       stepRecipe: 'Publish a recipe',
       stepRecipeHint: 'Your recipes appear on your public profile and can go into plans.',
+      adminBadge: 'Administrator',
     },
     adminPanel: {
       tabs: { overview: 'Overview', crn: 'CRN', users: 'Users', plans: 'Plans', errors: 'Errors', moderation: 'Moderation', announcements: 'Announcements', lab: 'Lab' },
@@ -3147,6 +3148,7 @@ export const translations = {
       stepPatientHint: 'Envie o link pelo WhatsApp; o paciente se conecta com um toque.',
       stepRecipe: 'Publicar uma receita',
       stepRecipeHint: 'Suas receitas aparecem no seu perfil público e podem entrar nos planos.',
+      adminBadge: 'Administrador',
     },
     adminPanel: {
       tabs: { overview: 'Visão geral', crn: 'CRN', users: 'Usuários', plans: 'Planos', errors: 'Erros', moderation: 'Moderação', announcements: 'Comunicados', lab: 'Laboratório' },

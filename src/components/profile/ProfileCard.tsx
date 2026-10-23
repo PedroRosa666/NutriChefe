@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Mail, ChefHat, Crown, CalendarDays, ExternalLink, User as UserIcon, BadgeCheck, Settings } from 'lucide-react';
+import { Mail, ChefHat, Crown, CalendarDays, ExternalLink, User as UserIcon, BadgeCheck, Settings, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useSubscriptionStore } from '../../store/subscription';
 import { useSettingsStore } from '../../store/settings';
@@ -21,11 +21,18 @@ function useAccountBadge() {
   const user = useAuthStore((s) => s.user);
   const { isPremium } = useSubscriptionStore();
   const nutritionistPro = usePremiumStore((s) => s.nutritionistPro);
+  const isAdmin = usePremiumStore((s) => s.isAdmin);
   const t = useTranslation();
   const isNutritionist = user?.type === 'Nutritionist';
   const premium = isNutritionist ? nutritionistPro : isPremium();
 
-  const badge = isNutritionist ? (
+  // Conta de administrador (cadastrada como paciente): o selo diz o que ela é de fato.
+  const badge = isAdmin && !isNutritionist ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-xs font-semibold text-white dark:bg-white dark:text-slate-900">
+      <ShieldCheck className="h-3.5 w-3.5" />
+      {t.profileUi.adminBadge}
+    </span>
+  ) : isNutritionist ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
       <ChefHat className="h-3.5 w-3.5" />
       {premium ? t.nutritionistPremium.badge : t.profile.nutricionist}
@@ -41,7 +48,7 @@ function useAccountBadge() {
       {t.profile.client}
     </span>
   );
-  return { badge, premium, isNutritionist };
+  return { badge, premium, isNutritionist, isAdmin };
 }
 
 /** Cabeçalho da aba Conta: identidade, plano e atalhos do perfil. O convite ao Premium fica só no Início. */
@@ -49,7 +56,7 @@ export function ProfileCard() {
   const { user } = useAuthStore();
   const { language } = useSettingsStore();
   const t = useTranslation();
-  const { badge, premium, isNutritionist } = useAccountBadge();
+  const { badge, premium, isNutritionist, isAdmin } = useAccountBadge();
 
   if (!user) return null;
 
@@ -103,7 +110,7 @@ export function ProfileCard() {
               {t.profile.viewPublicProfile}
             </Link>
           )}
-          {premium && !isNutritionist && (
+          {premium && !isNutritionist && !isAdmin && (
             <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
               <BadgeCheck className="h-4 w-4" />
               {t.profile.clientPremium}

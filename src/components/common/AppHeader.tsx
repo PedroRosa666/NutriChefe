@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Bot, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useCanUseAI, usePremiumStore } from '../../store/premium';
-import { useAppNav } from '../../hooks/useAppNav';
+import { useAppNav, useAppRole } from '../../hooks/useAppNav';
 import { useTranslation } from '../../hooks/useTranslation';
 import { NotificationBell } from './NotificationBell';
 import { ThemeSwitch } from './ThemeSwitch';
@@ -21,6 +21,7 @@ export function AppHeader() {
   const items = useAppNav();
   const canUseAI = useCanUseAI();
   const isAdmin = usePremiumStore((s) => s.isAdmin);
+  const role = useAppRole();
   const t = useTranslation();
   const navigate = useNavigate();
   if (!user) return null;
@@ -62,7 +63,8 @@ export function AppHeader() {
               <Bot className="h-5 w-5" />
             </Link>
           )}
-          {isAdmin && (
+          {/* Na conta só de admin o Admin já está na navegação. */}
+          {isAdmin && role !== 'admin' && (
             <Link to="/admin" className={iconButton} title="Admin" aria-label="Admin">
               <ShieldCheck className="h-5 w-5" />
             </Link>

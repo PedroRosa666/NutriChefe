@@ -12,6 +12,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import { SMOOTH, tabContent } from '../../lib/motion';
 import { sectionOfTab, tabsFor, type TabKey } from '../../lib/app-sections';
+import { useAppRole } from '../../hooks/useAppNav';
 
 // Cada aba é carregada só quando aberta: o celular baixa menos código ao entrar no perfil.
 const lazyNamed = <M,>(load: () => Promise<M>, name: keyof M) =>
@@ -62,11 +63,12 @@ export function ProfileTabs() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const isNutritionist = user?.type === 'Nutritionist';
-  const tabs = tabsFor(isNutritionist);
+  const role = useAppRole();
+  const tabs = tabsFor(role);
   const requested = searchParams.get('tab') as TabKey | null;
-  const activeTab: TabKey = requested && tabs.includes(requested) ? requested : 'overview';
+  const activeTab: TabKey = requested && tabs.includes(requested) ? requested : tabs[0];
   // A navegação principal escolhe a seção; aqui ficam só as abas dentro dela.
-  const section = sectionOfTab(isNutritionist, activeTab);
+  const section = sectionOfTab(role, activeTab);
   const activeItem = section.items.find((i) => i.tabs.includes(activeTab)) ?? section.items[0];
   const [creatingRecipe, setCreatingRecipe] = useState(false);
   // Atalho "Nova receita" do painel (?nova=1): abre o formulário e tira o parâmetro da URL.

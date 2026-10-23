@@ -7,6 +7,7 @@ import { ProfileTabs } from './ProfileTabs';
 import { useAuthStore } from '../../store/auth';
 import { useTranslation } from '../../hooks/useTranslation';
 import { sectionOfTab } from '../../lib/app-sections';
+import { useAppRole } from '../../hooks/useAppNav';
 
 export function ProfilePage() {
   const { user } = useAuthStore();
@@ -14,6 +15,7 @@ export function ProfilePage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const tab = searchParams.get('tab');
+  const role = useAppRole();
 
   // Acesso direto a /perfil: as receitas (minhas, favoritas, avaliações) ainda não foram carregadas.
   useEffect(() => {
@@ -58,11 +60,11 @@ export function ProfilePage() {
 
   // Na seção Perfil, quem está logado aparece no topo (o cartão completo só na aba Conta).
   // Nas outras seções o conteúdo começa logo abaixo do cabeçalho.
-  const section = sectionOfTab(user.type === 'Nutritionist', tab).key;
+  const section = sectionOfTab(role, tab).key;
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 pb-8 pt-4 sm:px-6 sm:pt-6 lg:px-8">
-      {section === 'profile' && (tab === 'account' ? <ProfileCard /> : <ProfileStrip />)}
+      {section === 'profile' && (tab === 'account' || role === 'admin' ? <ProfileCard /> : <ProfileStrip />)}
       <ProfileTabs />
     </div>
   );
