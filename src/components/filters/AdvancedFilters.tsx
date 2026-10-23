@@ -126,18 +126,34 @@ export function AdvancedFilters() {
 
       <AnimatePresence>
         {isOpen && (
+          // No celular o painel abre como folha de baixo para cima (acima da barra de navegação),
+          // rolando por dentro; antes ele descia pela página e ficava cortado atrás da barra.
           <motion.div
-            ref={dropdownRef}
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            key="filters-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-[2px] sm:hidden"
+            aria-hidden="true"
+          />
+        )}
+        {isOpen && (
+          <motion.div
+            key="filters-panel"
+            ref={dropdownRef}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ duration: 0.18 }}
+            role="dialog"
+            aria-modal="true"
             className={cn(
-              "absolute top-full mt-2 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-5 z-50 max-h-[80vh] overflow-y-auto",
-              "right-0",
+              "bg-white dark:bg-slate-900 shadow-lg border border-slate-200 dark:border-slate-700 p-5 overflow-y-auto overscroll-contain",
+              "fixed inset-x-0 bottom-0 z-[61] max-h-[85dvh] rounded-t-2xl pb-[calc(1.25rem+env(safe-area-inset-bottom))]",
+              "sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:z-50 sm:mt-2 sm:max-h-[80vh] sm:w-80 sm:rounded-xl sm:pb-5",
               dropdownPosition === 'left' && "sm:right-0 sm:left-auto",
-              dropdownPosition === 'right' && "sm:left-0 sm:right-auto",
-              "w-72 sm:w-80"
+              dropdownPosition === 'right' && "sm:left-0 sm:right-auto"
             )}
           >
             <div className="flex items-center justify-between mb-4">
