@@ -1,7 +1,7 @@
 // Pedidos de troca de item do plano: o paciente pede, o nutricionista aprova ou recusa
 // (podendo oferecer outro alimento). Toda escrita passa pelas funções do banco
 // (supabase/migrations/20261022170000_food_swap_requests.sql), que conferem as permissões.
-import { supabase } from '../lib/supabase';
+import { sqlArg, supabase } from '../lib/supabase';
 import type { MealPlanItem, MealSlot } from './care';
 import type { PickedFood } from './foods';
 import { fmtNum } from '../lib/format';
@@ -132,15 +132,15 @@ export async function requestSwap(input: {
     p_plan: input.planId,
     p_day: item.day,
     p_meal: item.meal,
-    p_option_group: item.option_group,
-    p_original_recipe: item.food_id ? null : item.recipe_id,
-    p_original_food: item.food_id,
+    p_option_group: sqlArg(item.option_group),
+    p_original_recipe: sqlArg(item.food_id ? null : item.recipe_id),
+    p_original_food: sqlArg(item.food_id),
     p_original_label: input.originalLabel,
-    p_requested_food: food?.food.id ?? null,
-    p_requested_grams: food?.grams ?? null,
-    p_requested_label: food?.label ?? null,
-    p_requested_recipe: recipe?.recipeId ?? null,
-    p_requested_servings: recipe?.servings ?? null,
+    p_requested_food: sqlArg(food?.food.id ?? null),
+    p_requested_grams: sqlArg(food?.grams ?? null),
+    p_requested_label: sqlArg(food?.label ?? null),
+    p_requested_recipe: sqlArg(recipe?.recipeId ?? null),
+    p_requested_servings: sqlArg(recipe?.servings ?? null),
     p_reason: input.reason.trim(),
   });
   if (error) throw error;
@@ -165,11 +165,11 @@ export async function resolveSwap(input: {
     p_request: input.requestId,
     p_approve: input.approve,
     p_note: input.note.trim(),
-    p_counter_food: food?.food.id ?? null,
-    p_counter_grams: food?.grams ?? null,
-    p_counter_label: food?.label ?? null,
-    p_counter_recipe: recipe?.recipeId ?? null,
-    p_counter_servings: recipe?.servings ?? null,
+    p_counter_food: sqlArg(food?.food.id ?? null),
+    p_counter_grams: sqlArg(food?.grams ?? null),
+    p_counter_label: sqlArg(food?.label ?? null),
+    p_counter_recipe: sqlArg(recipe?.recipeId ?? null),
+    p_counter_servings: sqlArg(recipe?.servings ?? null),
   });
   if (error) throw error;
   return Boolean(data);

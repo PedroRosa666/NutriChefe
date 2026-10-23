@@ -2,7 +2,7 @@
 // Mentoria IA: conversas no Supabase e orquestração das respostas.
 // O caminho principal é a Edge Function `ai-chat` (Gemini + busca no catálogo).
 // Sem a IA (chave ausente ou rede), a mesma busca roda aqui com um plano local.
-import { supabase } from '../lib/supabase';
+import { supabase, toJson } from '../lib/supabase';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
 import { assistAI, type AIUserContext } from './gemini';
 import {
@@ -42,7 +42,7 @@ async function fetchCatalog(): Promise<SearchableRecipe[]> {
       protein: Number(facts.protein) || 0,
       author: (author as { full_name?: string } | null)?.full_name ?? '',
       image: r.image ?? '',
-      createdAt: r.created_at,
+      createdAt: r.created_at ?? undefined,
     };
   });
 }
@@ -195,9 +195,9 @@ export async function getAIMessages(conversationId: string): Promise<AIMessage[]
 export async function createAIMessage(
   message: Omit<AIMessage, 'id' | 'created_at' | 'updated_at'>
 ): Promise<AIMessage> {
-  const { data, error } = await supabase.from('ai_messages').insert([message]).select().single();
+  const { data, error } = await supabase.from('ai_messages').insert([{ ...message, metadata: toJson(message.metadata) }]).select().single();
   if (error) throw error;
-  return data as AIMessage;
+  return data as unknown as AIMessage;
 }
 
 // =============================================================================

@@ -15,7 +15,6 @@ interface SubscriptionState {
   fetchUserSubscription: (userId: string) => Promise<void>;
   hasFeatureAccess: (feature: string) => boolean;
   isPremium: () => boolean;
-  createSubscription: (subscription: Omit<UserSubscription, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   reset: () => void;
 }
 
@@ -63,21 +62,6 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       isPremium: () => {
         return get().hasFeatureAccess('ai_mentoring');
-      },
-
-      createSubscription: async (subscription) => {
-        set({ loading: true, error: null });
-        try {
-          const newSubscription = await subscriptionService.createSubscription(subscription);
-          set({ userSubscription: newSubscription, loading: false });
-          useToastStore.getState().showToast(feedback().subscription.activated, 'success');
-        } catch (error) {
-          console.error('Error creating subscription:', error);
-          const errorMessage = error instanceof Error ? error.message : feedback().subscription.createError;
-          set({ error: errorMessage, loading: false });
-          useToastStore.getState().showToast(feedback().subscription.activateError, 'error');
-          throw error;
-        }
       },
 
       reset: () => set({

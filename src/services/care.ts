@@ -1,7 +1,7 @@
 // Acompanhamento nutricionista <-> paciente, planos alimentares e lista de compras.
 // As permissões ficam no banco (RLS + funções em 20261021150000_patients_plans_shopping.sql):
 // o nutricionista só enxerga dados de quem aceitou um convite e enquanto o vínculo estiver ativo.
-import { supabase } from '../lib/supabase';
+import { fromJson, sqlArg, supabase, toJson } from '../lib/supabase';
 import { fromRow, toISODate, type NutritionLogEntry, type NutritionLogRow } from '../store/nutrition-tracking';
 import type { HealthProfile, WeightLog } from '../store/health-profile';
 import type { GoalKey, NutritionGoals } from '../store/nutrition-goals';
@@ -183,7 +183,7 @@ export async function getPatientData(clientId: string, days = 30): Promise<Patie
   return {
     health: h
       ? {
-          ...h,
+          ...(h as Partial<HealthProfile>),
           height_cm: num(h.height_cm),
           weight_kg: num(h.weight_kg),
           target_weight_kg: num(h.target_weight_kg),
@@ -198,7 +198,7 @@ export async function getPatientData(clientId: string, days = 30): Promise<Patie
           carbs: Number(goals.data.carbs),
           fat: Number(goals.data.fat),
           fiber: Number(goals.data.fiber),
-          active_goals: goals.data.active_goals ?? [],
+          active_goals: (goals.data.active_goals ?? []) as GoalKey[],
           set_by: goals.data.set_by ?? null,
         }
       : null,
@@ -309,7 +309,7 @@ export async function savePlan(input: {
     note: i.note,
   }));
   const { data: planId, error: saveError } = await supabase.rpc('save_meal_plan', {
-    p_plan: input.id ?? null,
+    p_plan: sqlArg(input.id),
     p_client: input.clientId,
     p_title: input.title,
     p_notes: input.notes,
@@ -335,13 +335,13 @@ export const planDayOf = (date: Date) => (date.getDay() + 6) % 7;
 export async function getShoppingList(userId: string): Promise<ShoppingItem[]> {
   const { data, error } = await supabase.from('shopping_lists').select('items').eq('user_id', userId).maybeSingle();
   if (error) throw error;
-  return Array.isArray(data?.items) ? (data.items as ShoppingItem[]) : [];
+  return Array.isArray(data?.items) ? fromJson<ShoppingItem[]>(data.items) : [];
 }
 
 export async function saveShoppingList(userId: string, items: ShoppingItem[]) {
   const { error } = await supabase
     .from('shopping_lists')
-    .upsert({ user_id: userId, items, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    .upsert({ user_id: userId, items: toJson(items), updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
   if (error) throw error;
 }
 

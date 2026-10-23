@@ -1,5 +1,6 @@
 // Direitos do titular (LGPD): baixar uma cópia dos próprios dados e apagar a conta.
 import { supabase } from '../lib/supabase';
+import type { Database } from '../types/database';
 
 import { PUBLIC_PROFILE_COLUMNS } from '../lib/profile-columns';
 
@@ -7,7 +8,9 @@ import { PUBLIC_PROFILE_COLUMNS } from '../lib/profile-columns';
 // usuário: planos que um nutricionista fez para pacientes ficam de fora (são dados dos
 // pacientes); conversas e consultas entram dos dois lados, porque a pessoa participa delas.
 // Ao criar uma tabela com dados de usuário, acrescente-a aqui (o teste confere as colunas).
-export const EXPORT_SOURCES: { key: string; table: string; columns: string[]; select?: string }[] = [
+type TableName = keyof Database['public']['Tables'];
+
+export const EXPORT_SOURCES: { key: string; table: TableName; columns: string[]; select?: string }[] = [
   { key: 'profile', table: 'profiles', columns: ['id'], select: PUBLIC_PROFILE_COLUMNS },
   { key: 'health_profile', table: 'client_health_profiles', columns: ['user_id'] },
   { key: 'nutrition_goals', table: 'nutrition_goals', columns: ['user_id'] },
@@ -35,11 +38,18 @@ export const EXPORT_SOURCES: { key: string; table: string; columns: string[]; se
 
 const PAGE = 1000;
 
+interface PageQuery {
+  eq: (column: string, value: string) => PageQuery;
+  or: (filter: string) => PageQuery;
+  range: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: Error | null }>;
+}
+
 /** Todas as linhas de uma fonte, em páginas (o servidor devolve no máximo ~1000 por vez). */
 async function readAll(source: (typeof EXPORT_SOURCES)[number], userId: string): Promise<unknown[]> {
   const rows: unknown[] = [];
   for (let from = 0; ; from += PAGE) {
-    let query = supabase.from(source.table).select(source.select ?? '*');
+    // Tabela escolhida em tempo de execução: o tipo da consulta fica genérico.
+    let query = supabase.from(source.table).select(source.select ?? '*') as unknown as PageQuery;
     query = source.columns.length === 1
       ? query.eq(source.columns[0], userId)
       : query.or(source.columns.map((c) => `${c}.eq.${userId}`).join(','));

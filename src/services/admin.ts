@@ -2,8 +2,10 @@
 // Edge Function `admin` (suspender contas e Laboratório com as contas demo).
 import { supabase } from '../lib/supabase';
 
-async function rpc<T>(name: string, args?: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.rpc(name, args);
+type RpcName = Parameters<typeof supabase.rpc>[0];
+
+async function rpc<T>(name: RpcName, args?: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.rpc(name, args as never);
   if (error) throw error;
   return data as T;
 }

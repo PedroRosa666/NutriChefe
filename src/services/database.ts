@@ -136,7 +136,7 @@ export async function createRecipe(recipe: RecipeInput) {
     .single();
 
   if (error) throw error;
-  return convertDatabaseRecipeToAppRecipe(data);
+  return convertDatabaseRecipeToAppRecipe(data as unknown as DatabaseRecipe);
 }
 
 export async function updateRecipe(recipeId: string, updates: Partial<Recipe>) {
@@ -158,7 +158,7 @@ export async function updateRecipe(recipeId: string, updates: Partial<Recipe>) {
     .single();
 
   if (error) throw error;
-  return convertDatabaseRecipeToAppRecipe(data);
+  return convertDatabaseRecipeToAppRecipe(data as unknown as DatabaseRecipe);
 }
 
 export async function deleteRecipe(recipeId: string) {
@@ -177,7 +177,7 @@ export async function getRecipes() {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return (data ?? []).map(convertDatabaseRecipeToAppRecipe);
+  return (data ?? []).map((r) => convertDatabaseRecipeToAppRecipe(r as unknown as DatabaseRecipe));
 }
 
 export async function getRecipeById(recipeId: string) {
@@ -188,7 +188,7 @@ export async function getRecipeById(recipeId: string) {
     .maybeSingle();
 
   if (error) throw error;
-  return data ? convertDatabaseRecipeToAppRecipe(data) : null;
+  return data ? convertDatabaseRecipeToAppRecipe(data as unknown as DatabaseRecipe) : null;
 }
 
 // Funções de avaliações

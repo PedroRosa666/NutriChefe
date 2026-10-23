@@ -23,7 +23,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabase';
+import { fromJson, supabase } from '../lib/supabase';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
 import { PUBLIC_PROFILE_COLUMNS } from '../lib/profile-columns';
@@ -165,7 +165,7 @@ export function NutritionistProfilePage() {
           approach: profileData.approach || '',
           consultation_price: Number(profileData.consultation_price) || 0,
           consultation_duration: profileData.consultation_duration || 60,
-          consultation_types: profileData.consultation_types || [],
+          consultation_types: fromJson<Array<{ type: string; price: number }>>(profileData.consultation_types) || [],
           accepts_health_insurance: profileData.accepts_health_insurance || false,
           health_insurances: profileData.health_insurances || [],
           phone: profileData.phone || '',

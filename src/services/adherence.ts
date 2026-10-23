@@ -1,5 +1,5 @@
 // Marcações de adesão ao plano (supabase/migrations/20261026120000_meal_plan_checks.sql).
-import { supabase } from '../lib/supabase';
+import { supabase, toJson } from '../lib/supabase';
 import { dateRange, summarizeAdherence, type AdherenceSummary, type CheckStatus, type MealCheck } from '../lib/adherence';
 import { toISODate } from '../store/nutrition-tracking';
 import { listPlans, type MealPlan, type MealSlot } from './care';
@@ -76,7 +76,7 @@ export async function saveCheckWithDiary(input: {
     p_status: input.status,
     p_chosen: (input.chosen ?? []).slice(0, 20).map((c) => c.slice(0, 200)),
     p_note: (input.note ?? '').trim().slice(0, 300),
-    p_entries: input.status === 'ate' ? input.entries.slice(0, 30) : [],
+    p_entries: toJson(input.status === 'ate' ? input.entries.slice(0, 30) : []),
   });
   if (error) throw error;
   const row = data as Record<string, unknown>;

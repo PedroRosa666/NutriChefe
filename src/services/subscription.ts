@@ -11,7 +11,7 @@ export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
     .order('price', { ascending: true });
 
   if (error) throw error;
-  return data || [];
+  return (data ?? []) as unknown as SubscriptionPlan[];
 }
 
 /**
@@ -31,48 +31,12 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
     .limit(20);
 
   if (error) throw error;
-  const rows = (data ?? []) as UserSubscription[];
+  const rows = (data ?? []) as unknown as UserSubscription[];
   const now = Date.now();
   const current = rows.find(
     (s) => s.status === 'active' && (!s.expires_at || new Date(s.expires_at).getTime() > now)
   );
   return current ?? rows[0] ?? null;
-}
-
-/** Cria uma assinatura (uso interno/admin; para cobrança use o Stripe Checkout). */
-export async function createSubscription(
-  subscription: Omit<UserSubscription, 'id' | 'created_at' | 'updated_at'>
-): Promise<UserSubscription> {
-  const { data, error } = await supabase
-    .from('user_subscriptions')
-    .insert(subscription)
-    .select(`
-      *,
-      plan:subscription_plans(*)
-    `)
-    .single();
-
-  if (error) throw error;
-  return data!;
-}
-
-/** Atualiza uma assinatura existente por id. */
-export async function updateSubscription(
-  subscriptionId: string,
-  updates: Partial<UserSubscription>
-): Promise<UserSubscription> {
-  const { data, error } = await supabase
-    .from('user_subscriptions')
-    .update(updates)
-    .eq('id', subscriptionId)
-    .select(`
-      *,
-      plan:subscription_plans(*)
-    `)
-    .single();
-
-  if (error) throw error;
-  return data!;
 }
 
 async function getAccessToken(): Promise<string> {

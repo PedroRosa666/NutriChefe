@@ -1,15 +1,13 @@
 // Premium do cliente (20261030120000_client_premium.sql): números das conquistas e vitrine das
 // receitas exclusivas para quem ainda não assina.
-import { supabase } from '../lib/supabase';
+import { fromJson, supabase } from '../lib/supabase';
 import type { Progress } from '../lib/achievements';
 
 export async function getMyProgress(): Promise<Progress> {
   const { data, error } = await supabase.rpc('my_progress');
   if (error) throw error;
-  return {
-    ...data,
-    weight_change: data.weight_change === null ? null : Number(data.weight_change),
-  } as Progress;
+  const p = fromJson<Progress & { weight_change: unknown }>(data);
+  return { ...p, weight_change: p.weight_change === null ? null : Number(p.weight_change) } as Progress;
 }
 
 export interface RecipeTeaser {

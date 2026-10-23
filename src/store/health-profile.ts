@@ -87,12 +87,13 @@ export const useHealthProfileStore = create<HealthProfileState>()((set, get) => 
       profile: row
         ? {
             birth_date: row.birth_date ?? null,
-            sex: row.sex ?? null,
+            // Valores guardados pelo próprio app (o banco confere com CHECK).
+            sex: (row.sex ?? null) as HealthProfile['sex'],
             height_cm: num(row.height_cm),
             weight_kg: num(row.weight_kg),
             target_weight_kg: num(row.target_weight_kg),
-            activity_level: row.activity_level ?? null,
-            goal: row.goal ?? null,
+            activity_level: (row.activity_level ?? null) as HealthProfile['activity_level'],
+            goal: (row.goal ?? null) as HealthProfile['goal'],
             dietary_preferences: row.dietary_preferences ?? [],
             allergies: row.allergies ?? [],
             notes: row.notes ?? '',

@@ -1,7 +1,7 @@
 // Recursos Premium do usuário logado, decididos no banco (my_premium, 20261028120000_nutritionist_premium.sql):
 // IA própria, Premium Nutricionista e IA incluída pelo nutricionista que acompanha o paciente.
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { fromJson, supabase } from '../lib/supabase';
 import { useAuthStore } from './auth';
 import { useSubscriptionStore } from './subscription';
 
@@ -32,14 +32,18 @@ export const usePremiumStore = create<PremiumState>()((set) => ({
       set({ ...EMPTY, loaded: true });
       return;
     }
+    const p = fromJson<{
+      nutritionist_pro?: boolean; ai_via_nutritionist?: string | null; active_patients?: number;
+      free_patient_limit?: number; admin?: boolean; demo?: boolean;
+    }>(data);
     set({
       loaded: true,
-      nutritionistPro: data.nutritionist_pro === true,
-      aiViaNutritionist: data.ai_via_nutritionist ?? null,
-      activePatients: Number(data.active_patients) || 0,
-      freePatientLimit: Number(data.free_patient_limit) || 5,
-      isAdmin: data.admin === true,
-      isDemo: data.demo === true,
+      nutritionistPro: p.nutritionist_pro === true,
+      aiViaNutritionist: p.ai_via_nutritionist ?? null,
+      activePatients: Number(p.active_patients) || 0,
+      freePatientLimit: Number(p.free_patient_limit) || 5,
+      isAdmin: p.admin === true,
+      isDemo: p.demo === true,
     });
   },
   reset: () => set(EMPTY),

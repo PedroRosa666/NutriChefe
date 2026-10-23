@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { supabase, toJson } from '../lib/supabase';
 import { useAuthStore } from './auth';
 import type { Recipe } from '../types/recipe';
 import { feedback } from '../lib/i18n/current';
@@ -145,7 +145,7 @@ async function insertEntry(
       recipe_id: recipeId,
       recipe_title: title,
       servings: sanitizeServings(servings),
-      per_serving: perServing,
+      per_serving: toJson(perServing),
       // Sem refeição informada: a do horário (registro de hoje) ou nenhuma (outro dia).
       meal: meal !== undefined ? meal : !date || date === toISODate(new Date()) ? mealForTime() : null,
     })
@@ -153,7 +153,7 @@ async function insertEntry(
     .single();
 
   if (error) throw error;
-  return fromRow(data);
+  return fromRow(data as unknown as NutritionLogRow);
 }
 
 export function sumEntries(entries: NutritionLogEntry[]): NutritionTotals {
@@ -208,7 +208,7 @@ export const useNutritionTrackingStore = create<NutritionTrackingState>()((set, 
       set({ loading: false });
       return;
     }
-    set({ entries: (data ?? []).map(fromRow), loading: false });
+    set({ entries: ((data ?? []) as unknown as NutritionLogRow[]).map(fromRow), loading: false });
   },
 
   addRecipeToLog: async (recipe, servings = 1, date, meal) => {

@@ -1,6 +1,6 @@
 // Catálogo de alimentos: Tabela TACO (para todos) + alimentos próprios de cada nutricionista
 // (visíveis só para ele e para os pacientes com acompanhamento ativo; regra no RLS da tabela).
-import { supabase } from '../lib/supabase';
+import { supabase, toJson } from '../lib/supabase';
 import { cleanExtraNutrients, type ExtraNutrients } from '../lib/nutrients';
 
 export interface FoodMeasure {
@@ -73,10 +73,13 @@ export async function listFoods(): Promise<Food[]> {
   return ((data ?? []) as FoodRow[]).map(toFood);
 }
 
+// Medidas e nutrientes extras vão em colunas jsonb.
+const toRow = (input: FoodInput) => ({ ...input, nutrients: toJson(input.nutrients), measures: toJson(input.measures) });
+
 export async function createFood(ownerId: string, input: FoodInput): Promise<Food> {
   const { data, error } = await supabase
     .from('foods')
-    .insert([{ ...input, owner_id: ownerId }])
+    .insert([{ ...toRow(input), owner_id: ownerId }])
     .select(COLUMNS)
     .single();
   if (error) throw error;
@@ -84,7 +87,7 @@ export async function createFood(ownerId: string, input: FoodInput): Promise<Foo
 }
 
 export async function updateFood(id: string, input: FoodInput): Promise<Food> {
-  const { data, error } = await supabase.from('foods').update(input).eq('id', id).select(COLUMNS).single();
+  const { data, error } = await supabase.from('foods').update(toRow(input)).eq('id', id).select(COLUMNS).single();
   if (error) throw error;
   return toFood(data as FoodRow);
 }

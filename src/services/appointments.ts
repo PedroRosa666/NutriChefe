@@ -1,6 +1,6 @@
 // Agenda de consultas (supabase/migrations/20261026140000_appointments.sql).
 // O nutricionista agenda e remarca; qualquer um dos dois cancela. Tudo pelas funções do banco.
-import { supabase } from '../lib/supabase';
+import { sqlArg, supabase } from '../lib/supabase';
 
 export type AppointmentMode = 'in_person' | 'online';
 
@@ -57,7 +57,7 @@ export async function saveAppointment(input: {
   notes: string;
 }): Promise<string> {
   const { data, error } = await supabase.rpc('save_appointment', {
-    p_id: input.id ?? null,
+    p_id: sqlArg(input.id),
     p_client: input.clientId,
     p_starts_at: input.startsAt.toISOString(),
     p_duration_min: input.durationMin,
