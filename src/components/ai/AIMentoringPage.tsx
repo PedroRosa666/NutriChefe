@@ -57,5 +57,3 @@ export function AIMentoringPage({ onBack }: AIMentoringPageProps) {
     </div>
   );
 }
-
-export default AIMentoringPage;

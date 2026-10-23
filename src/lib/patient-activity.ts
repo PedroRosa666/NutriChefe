@@ -2,7 +2,7 @@
 // Conta qualquer sinal de uso: registro no diário ou marcação de refeição do plano.
 
 /** Dias sem registro no diário nem marcação de refeição a partir dos quais o paciente está inativo. */
-export const INACTIVE_DAYS = 3;
+const INACTIVE_DAYS = 3;
 
 const dayStart = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00`).getTime();
 

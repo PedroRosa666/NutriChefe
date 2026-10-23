@@ -26,7 +26,7 @@ export async function listTemplates(ownerId: string): Promise<PlanTemplate[]> {
   return (data ?? []) as unknown as PlanTemplate[];
 }
 
-export const toTemplateItems = (items: MealPlanItem[]): TemplateItem[] =>
+const toTemplateItems = (items: MealPlanItem[]): TemplateItem[] =>
   items.map((i) => ({
     day: i.day,
     meal: i.meal,

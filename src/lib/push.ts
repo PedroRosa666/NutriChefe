@@ -9,7 +9,7 @@ export type PushState = 'unsupported' | 'needs-install' | 'denied' | 'off' | 'on
 
 /** iPhone/iPad: notificações só funcionam com o app instalado na tela de início (iOS 16.4+). */
 export const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
-export const isStandalone = () =>
+const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 
 export function registerServiceWorker(): void {

@@ -18,36 +18,6 @@ export async function listChecks(clientId: string, since: string): Promise<MealC
   return (data ?? []) as unknown as MealCheck[];
 }
 
-/** Grava (ou troca) a marcação de uma refeição num dia. */
-export async function saveCheck(input: {
-  clientId: string;
-  planId: string;
-  date: string;
-  meal: MealSlot;
-  status: CheckStatus;
-  chosen?: string[];
-  note?: string;
-}): Promise<MealCheck> {
-  const { data, error } = await supabase
-    .from('meal_plan_checks')
-    .upsert(
-      {
-        client_id: input.clientId,
-        plan_id: input.planId,
-        check_date: input.date,
-        meal: input.meal,
-        status: input.status,
-        chosen: (input.chosen ?? []).slice(0, 20).map((c) => c.slice(0, 200)),
-        note: (input.note ?? '').trim().slice(0, 300),
-      },
-      { onConflict: 'client_id,plan_id,check_date,meal' }
-    )
-    .select(COLUMNS)
-    .single();
-  if (error) throw error;
-  return data as unknown as MealCheck;
-}
-
 /** Um item do plano como vai para o diário quando a pessoa marca "Comi". */
 export interface CheckDiaryEntry {
   recipe_id: string | null;

@@ -59,7 +59,7 @@ const NUTRITIONIST_SECTIONS: Section[] = [
 
 const ADMIN_SECTIONS: Section[] = [{ key: 'profile', items: [one('account')] }];
 
-export const sectionsFor = (role: Role) =>
+const sectionsFor = (role: Role) =>
   role === 'nutritionist' ? NUTRITIONIST_SECTIONS : role === 'admin' ? ADMIN_SECTIONS : CLIENT_SECTIONS;
 
 export const tabsFor = (role: Role): TabKey[] => sectionsFor(role).flatMap((s) => s.items.flatMap((i) => i.tabs));

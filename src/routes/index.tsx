@@ -30,7 +30,7 @@ function lazyPage<T>(load: () => Promise<T>, name: keyof T, overlay = false) {
 }
 
 /** Carregado também em segundo plano pela home, para a 1ª receita abrir sem espera. */
-export const loadRecipePage = () => import('../pages/RecipePage');
+const loadRecipePage = () => import('../pages/RecipePage');
 
 export const router = createBrowserRouter([
   {

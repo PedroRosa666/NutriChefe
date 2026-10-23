@@ -36,7 +36,7 @@ interface HealthProfileState {
   reset: () => void;
 }
 
-export const EMPTY_HEALTH_PROFILE: HealthProfile = {
+const EMPTY_HEALTH_PROFILE: HealthProfile = {
   birth_date: null,
   sex: null,
   height_cm: null,

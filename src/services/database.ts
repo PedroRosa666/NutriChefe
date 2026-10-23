@@ -180,17 +180,6 @@ export async function getRecipes() {
   return (data ?? []).map((r) => convertDatabaseRecipeToAppRecipe(r as unknown as DatabaseRecipe));
 }
 
-export async function getRecipeById(recipeId: string) {
-  const { data, error } = await supabase
-    .from('recipes')
-    .select(RECIPE_SELECT)
-    .eq('id', recipeId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data ? convertDatabaseRecipeToAppRecipe(data as unknown as DatabaseRecipe) : null;
-}
-
 // Funções de avaliações
 export async function addReview(recipeId: string, review: {
   user_id: string;

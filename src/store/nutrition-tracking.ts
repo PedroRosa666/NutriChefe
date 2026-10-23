@@ -77,7 +77,7 @@ interface NutritionTrackingState {
 // Janela carregada do banco: suficiente para gráficos semanais/mensais e sequência de dias.
 const HISTORY_DAYS = 90;
 
-export const zeroTotals = (): NutritionTotals => ({
+const zeroTotals = (): NutritionTotals => ({
   calories: 0,
   protein: 0,
   carbs: 0,
@@ -173,19 +173,6 @@ export function sumEntries(entries: NutritionLogEntry[]): NutritionTotals {
     fat: Math.round(totals.fat * 10) / 10,
     fiber: Math.round(totals.fiber * 10) / 10,
   };
-}
-
-/** Dias seguidos (até hoje ou ontem) com pelo menos um registro. */
-export function getStreak(entries: NutritionLogEntry[]): number {
-  const days = new Set(entries.map((e) => e.date));
-  const cursor = new Date();
-  if (!days.has(toISODate(cursor))) cursor.setDate(cursor.getDate() - 1);
-  let streak = 0;
-  while (days.has(toISODate(cursor))) {
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
 }
 
 export const useNutritionTrackingStore = create<NutritionTrackingState>()((set, get) => ({

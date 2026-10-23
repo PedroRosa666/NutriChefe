@@ -3,7 +3,7 @@
 import { normalizeText } from '../../supabase/functions/_shared/recipe-search';
 
 /** As palavras da busca, já normalizadas (vazio quando não há o que buscar). */
-export function searchWords(query: string): string[] {
+function searchWords(query: string): string[] {
   return normalizeText(query).split(' ').filter(Boolean);
 }
 
