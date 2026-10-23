@@ -131,7 +131,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, signOut, isNutritionist } = useAuthStore();
+  const { user, isAuthenticated, signOut } = useAuthStore();
   const { hasFeatureAccess } = useSubscriptionStore();
   const { searchQuery, setSearchQuery } = useFiltersStore();
   const t = useTranslation();
@@ -156,7 +156,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
   }, [onLoginRoute, isAuthenticated, location.search, navigate]);
 
   // Verificar se tem acesso à IA (nutricionista ou premium)
-  const hasAIAccess = isAuthenticated && (isNutritionist() || hasFeatureAccess('ai_mentoring'));
+  const hasAIAccess = isAuthenticated && hasFeatureAccess('ai_mentoring');
   return (
     <>
       {/* Mesmo tom do topo do degradê, translúcido: sem corte entre cabeçalho e página. */}

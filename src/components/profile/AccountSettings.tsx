@@ -135,54 +135,52 @@ export function AccountSettings() {
         </button>
       </form>
 
-      {!isNutritionist && (
-        <section className={cardClass}>
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
-            <CreditCard className="h-4 w-4 text-amber-500" /> {a.subscription}
-          </h3>
-          <dl className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <dt className="text-xs text-slate-500 dark:text-slate-400">{a.plan}</dt>
-              <dd className="font-semibold text-slate-900 dark:text-white">{userSubscription?.plan?.name ?? a.freePlan}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500 dark:text-slate-400">{a.statusLabel}</dt>
-              <dd className={`font-semibold ${premium ? 'text-emerald-600' : status === 'pending' ? 'text-amber-600' : 'text-slate-700 dark:text-slate-200'}`}>
-                {statusLabel}
-              </dd>
-            </div>
-            {userSubscription?.stripe_subscription_id && (
-              <>
-                <div>
-                  <dt className="text-xs text-slate-500 dark:text-slate-400">{a.since}</dt>
-                  <dd className="text-slate-700 dark:text-slate-200">{formatDate(userSubscription.started_at)}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-slate-500 dark:text-slate-400">
-                    {userSubscription.auto_renew ? a.renewsOn : a.endsOn}
-                  </dt>
-                  <dd className="text-slate-700 dark:text-slate-200">{formatDate(userSubscription.expires_at)}</dd>
-                </div>
-              </>
-            )}
-          </dl>
-          {status === 'pending' && <p className="text-xs text-amber-600">{a.pendingHint}</p>}
-
-          {userSubscription?.stripe_subscription_id ? (
-            <button type="button" onClick={handlePortal} disabled={openingPortal}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
-              {openingPortal ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-              {a.manageSubscription}
-            </button>
-          ) : (
-            <Link to="/mentoria-ia"
-              className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">
-              <Crown className="h-4 w-4" /> {t.profile.upgradePremium}
-            </Link>
+      <section className={cardClass}>
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+          <CreditCard className="h-4 w-4 text-amber-500" /> {a.subscription}
+        </h3>
+        <dl className="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <dt className="text-xs text-slate-500 dark:text-slate-400">{a.plan}</dt>
+            <dd className="font-semibold text-slate-900 dark:text-white">{userSubscription?.plan?.name ?? a.freePlan}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500 dark:text-slate-400">{a.statusLabel}</dt>
+            <dd className={`font-semibold ${premium ? 'text-emerald-600' : status === 'pending' ? 'text-amber-600' : 'text-slate-700 dark:text-slate-200'}`}>
+              {statusLabel}
+            </dd>
+          </div>
+          {userSubscription?.stripe_subscription_id && (
+            <>
+              <div>
+                <dt className="text-xs text-slate-500 dark:text-slate-400">{a.since}</dt>
+                <dd className="text-slate-700 dark:text-slate-200">{formatDate(userSubscription.started_at)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-slate-500 dark:text-slate-400">
+                  {userSubscription.auto_renew ? a.renewsOn : a.endsOn}
+                </dt>
+                <dd className="text-slate-700 dark:text-slate-200">{formatDate(userSubscription.expires_at)}</dd>
+              </div>
+            </>
           )}
-          <p className="text-xs text-slate-500 dark:text-slate-400">{a.portalHint}</p>
-        </section>
-      )}
+        </dl>
+        {status === 'pending' && <p className="text-xs text-amber-600">{a.pendingHint}</p>}
+
+        {userSubscription?.stripe_subscription_id ? (
+          <button type="button" onClick={handlePortal} disabled={openingPortal}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+            {openingPortal ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+            {a.manageSubscription}
+          </button>
+        ) : (
+          <Link to="/mentoria-ia"
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">
+            <Crown className="h-4 w-4" /> {t.profile.upgradePremium}
+          </Link>
+        )}
+        <p className="text-xs text-slate-500 dark:text-slate-400">{a.portalHint}</p>
+      </section>
 
       <AppDeviceCard className={cardClass} />
 

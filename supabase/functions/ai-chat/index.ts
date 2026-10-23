@@ -694,9 +694,7 @@ async function estimatePhoto(apiKey: string, body: any) {
 }
 
 async function hasAIAccess(supabase: any, userId: string): Promise<boolean> {
-  const { data: profile } = await supabase.from("profiles").select("user_type").eq("id", userId).single();
-  if (profile?.user_type === "Nutritionist") return true;
-
+  // Pacientes e nutricionistas: só com Premium ativo.
   const { data: sub } = await supabase
     .from("user_subscriptions")
     .select("status, expires_at, plan:subscription_plans(features)")

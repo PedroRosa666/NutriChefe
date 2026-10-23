@@ -16,7 +16,7 @@ export function ProfileCard() {
   if (!user) return null;
 
   const isNutritionist = user.type === 'Nutritionist';
-  const isPremiumUser = !isNutritionist && isPremium();
+  const isPremiumUser = isPremium();
   const memberSince = user.created_at
     ? new Date(user.created_at).toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US', {
         month: 'long',
@@ -79,7 +79,7 @@ export function ProfileCard() {
               {t.profile.viewPublicProfile}
             </Link>
           )}
-          {!isNutritionist && !isPremiumUser && (
+          {!isPremiumUser && (
             <Link
               to="/mentoria-ia"
               className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-600"

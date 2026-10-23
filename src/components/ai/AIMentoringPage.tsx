@@ -11,13 +11,13 @@ interface AIMentoringPageProps {
 }
 
 export function AIMentoringPage({ onBack }: AIMentoringPageProps) {
-  const { user, isNutritionist } = useAuthStore();
+  const { user } = useAuthStore();
   const { hasFeatureAccess, subscriptionLoaded } = useSubscriptionStore();
   const t = useTranslation();
 
-  const hasAIAccess = user && (isNutritionist() || hasFeatureAccess('ai_mentoring'));
+  const hasAIAccess = user && hasFeatureAccess('ai_mentoring');
   // Enquanto a assinatura carrega, não mostra a tela de venda para quem já é Premium.
-  const checkingAccess = Boolean(user) && !isNutritionist() && !subscriptionLoaded;
+  const checkingAccess = Boolean(user) && !subscriptionLoaded;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
