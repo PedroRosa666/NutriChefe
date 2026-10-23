@@ -38,8 +38,8 @@ export function ForgotPasswordPage() {
         className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-8"
       >
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-            <Mail className="w-6 h-6 text-green-600 dark:text-green-400" />
+          <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+            <Mail className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{fp.title}</h1>
@@ -48,9 +48,9 @@ export function ForgotPasswordPage() {
         </div>
 
         {success && (
-          <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg flex items-start gap-2">
-            <CheckCircle className="w-4 h-4 mt-0.5 text-green-600 dark:text-green-400" />
-            <p className="text-sm text-green-700 dark:text-green-300">
+          <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-start gap-2">
+            <CheckCircle className="w-4 h-4 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+            <p className="text-sm text-emerald-700 dark:text-emerald-300">
               {fp.pageSent}
             </p>
           </div>
@@ -77,7 +77,7 @@ export function ForgotPasswordPage() {
               placeholder={t.feedback.auth.emailPlaceholder}
               required
               disabled={loading}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
             />
           </div>
 
@@ -86,7 +86,7 @@ export function ForgotPasswordPage() {
             disabled={loading || !email.trim()}
             className={cn(
               'w-full py-2.5 rounded-lg text-white font-medium transition-colors flex items-center justify-center gap-2',
-              loading || !email.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+              loading || !email.trim() ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'
             )}
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}

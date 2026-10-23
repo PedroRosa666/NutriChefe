@@ -822,7 +822,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                       <div className="flex gap-2">
                         <button
                           type="submit"
-                          className="px-5 py-2.5 bg-blue-600 text-white text-base rounded-lg hover:bg-blue-700 transition-colors"
+                          className="px-5 py-2.5 bg-emerald-600 text-white text-base font-semibold rounded-lg hover:bg-emerald-700 transition-colors"
                         >
                           {t.common.save}
                         </button>

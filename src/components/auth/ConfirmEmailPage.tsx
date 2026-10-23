@@ -88,7 +88,7 @@ export default function ConfirmEmailPage() {
     <div className="min-h-[60vh] flex items-center justify-center">
       <div className="max-w-md w-full text-center p-8">
         {status === 'loading' && <Loader2 className="mx-auto animate-spin" />}
-        {status === 'ok' && <CheckCircle className="mx-auto text-green-600" />}
+        {status === 'ok' && <CheckCircle className="mx-auto text-emerald-600" />}
         {status === 'error' && <AlertCircle className="mx-auto text-red-600" />}
         <p className="mt-4 text-lg">{t.feedback.confirmEmail[message]}</p>
         {status === 'error' && (

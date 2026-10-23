@@ -19,7 +19,7 @@ export function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
   }, [message, duration, onClose]);
 
   const icons = {
-    success: <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />,
+    success: <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
     error: <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />,
     info: <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />,
     warning: <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -33,7 +33,7 @@ export function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
         exit={{ opacity: 0, y: 50 }}
         className={cn(
           "fixed bottom-4 right-4 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm z-50",
-          type === 'success' && "bg-green-50/95 dark:bg-green-900/90 border-2 border-green-500 dark:border-green-400",
+          type === 'success' && "bg-emerald-50/95 dark:bg-emerald-900/90 border-2 border-emerald-500 dark:border-emerald-400",
           type === 'error' && "bg-red-50/95 dark:bg-red-900/90 border-2 border-red-500 dark:border-red-400",
           type === 'info' && "bg-blue-50/95 dark:bg-blue-900/90 border-2 border-blue-500 dark:border-blue-400",
           type === 'warning' && "bg-amber-50/95 dark:bg-amber-900/90 border-2 border-amber-500 dark:border-amber-400"

@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Award, BookOpen, Star, MessageSquare, CheckCircle2, Circle, Link2, Eye, EyeOff, UserCheck, UserX, Trophy,
+  BookOpen, CheckCircle2, Circle, Link2, Eye, EyeOff, UserCheck, UserX, Trophy, UserPlus, Carrot, ExternalLink,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { professionalChecklist, useProfessionalProfile } from '../../hooks/useProfessionalProfile';
-import { DashboardMetricCard } from './DashboardMetricCard';
+import { DashboardHero, firstNameOf, useGreeting } from './DashboardHero';
+import { usePremiumStore } from '../../store/premium';
 import { getRecipeAuthorStats, type RecipeStats } from '../../services/care';
 import { UpcomingAppointments } from '../care/Appointments';
 import { CrnVerificationCard } from '../care/CrnVerificationCard';
@@ -67,8 +68,12 @@ export function NutritionistDashboard() {
     [userRecipes],
   );
 
+  const greeting = useGreeting();
+  const { nutritionistPro, activePatients, freePatientLimit } = usePremiumStore();
+
   // Hooks acima precisam rodar sempre, antes de qualquer retorno antecipado.
   if (!user || user.type !== 'Nutritionist') return null;
+  const firstName = firstNameOf(user.name, t.recipe.authorFallbackName);
 
   const checklist = professionalChecklist(profile ? { ...profile, avatar_url: user.avatar_url ?? profile.avatar_url } : null);
   const done = checklist.filter((c) => c.done).length;
@@ -105,40 +110,39 @@ export function NutritionistDashboard() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      <DashboardHero
+        title={`${greeting}, ${firstName}!`}
+        subtitle={t.profileUi.nutritionistHint}
+        stats={[
+          {
+            label: t.profileUi.activePatients,
+            value: String(activePatients),
+            hint: nutritionistPro
+              ? t.profileUi.unlimitedPatients
+              : t.profileUi.patientsOfLimit.replace('{n}', String(activePatients)).replace('{max}', String(freePatientLimit)),
+          },
+          {
+            label: t.profile.publishedRecipes,
+            value: String(userRecipes.length),
+            hint: totalReviews ? `${totalReviews} ${t.profile.totalReviews.toLowerCase()}` : undefined,
+          },
+          {
+            label: t.profile.averageRating,
+            value: averageRating ? averageRating.toFixed(1) : '—',
+            hint: totalReviews ? undefined : t.profile.publishToGetReviews,
+          },
+        ]}
+        actions={[
+          { to: '/perfil?tab=patients', label: t.profileUi.invitePatient, icon: UserPlus },
+          { to: '/perfil?tab=recipes', label: t.profile.myRecipes, icon: BookOpen },
+          { to: '/perfil?tab=foods', label: t.profileUi.myFoods, icon: Carrot },
+          { to: `/nutricionista/${user.id}`, label: t.profileUi.publicProfile, icon: ExternalLink },
+        ]}
+      />
       <CrnVerificationCard />
       <AttentionPanel />
       <UpcomingAppointments />
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <DashboardMetricCard
-          icon={<BookOpen className="h-4 w-4" />}
-          label={t.profile.publishedRecipes}
-          value={userRecipes.length}
-          helperText={userRecipes.length ? undefined : t.profile.noRecipesYet}
-          tone="emerald"
-        />
-        <DashboardMetricCard
-          icon={<MessageSquare className="h-4 w-4" />}
-          label={t.profile.totalReviews}
-          value={totalReviews}
-          tone="sky"
-        />
-        <DashboardMetricCard
-          icon={<Star className="h-4 w-4" />}
-          label={t.profile.averageRating}
-          value={averageRating ? averageRating.toFixed(1) : '—'}
-          helperText={totalReviews ? undefined : t.profile.publishToGetReviews}
-          tone="amber"
-        />
-        <DashboardMetricCard
-          icon={<Award className="h-4 w-4" />}
-          label={t.profile.experience}
-          value={profile?.years_of_experience ? `${profile.years_of_experience}` : '—'}
-          helperText={profile?.years_of_experience ? t.profile.yearsLabel : t.health.notInformed}
-          tone="slate"
-        />
-      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         {/* Perfil público: completude e status */}

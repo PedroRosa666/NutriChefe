@@ -97,8 +97,8 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
         {step === 'email' && (
           <div>
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Mail className="w-6 h-6 text-green-600 dark:text-green-400" />
+              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                <Mail className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -120,7 +120,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
                   placeholder={t.feedback.auth.emailPlaceholder}
                   required
                   disabled={loading}
@@ -141,7 +141,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
                   "w-full py-2.5 rounded-lg text-white font-medium transition-colors flex items-center justify-center gap-2",
                   loading || !email.trim()
                     ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-green-600 hover:bg-green-700"
+                    : "bg-emerald-600 hover:bg-emerald-700"
                 )}
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -159,8 +159,8 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
 
         {step === 'sent' && (
           <div className="text-center">
-            <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+            <div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
               {fp.sentTitle}
@@ -176,7 +176,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
             <div className="space-y-3">
               <button
                 onClick={handleClose}
-                className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                className="w-full py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
               >
                 {t.common.close}
               </button>
@@ -204,7 +204,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
             <div className="space-y-3">
               <button
                 onClick={handleRetry}
-                className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                className="w-full py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
               >
                 {t.common.retry}
               </button>

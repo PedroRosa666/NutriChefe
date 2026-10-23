@@ -20,7 +20,7 @@ const sizeClasses = {
   sm: 'w-12 h-12',
   md: 'w-20 h-20',
   lg: 'w-32 h-32',
-  xl: 'w-28 h-28 sm:w-40 sm:h-40',
+  xl: 'w-24 h-24 sm:w-32 sm:h-32',
 };
 
 const iconSizeClasses = {

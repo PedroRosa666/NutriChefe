@@ -91,7 +91,7 @@ export function LanguageSwitch() {
                   }}
                   className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
                     language === lang.value
-                      ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400'
                       : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
                   }`}
                   initial={{ opacity: 0, x: -20 }}
@@ -111,7 +111,7 @@ export function LanguageSwitch() {
                   <div className="flex flex-col">
                     <span className="font-medium">{lang.label}</span>
                     {language === lang.value && (
-                      <span className="text-xs text-green-600 dark:text-green-400">
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400">
                         {selectedLabel}
                       </span>
                     )}
@@ -119,7 +119,7 @@ export function LanguageSwitch() {
 
                   {language === lang.value && (
                     <motion.div
-                      className="ml-auto h-2 w-2 rounded-full bg-green-500"
+                      className="ml-auto h-2 w-2 rounded-full bg-emerald-500"
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ delay: 0.1 }}

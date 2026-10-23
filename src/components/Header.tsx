@@ -6,7 +6,7 @@ import type { Translations } from '../hooks/useTranslation';
 import { useAuthStore } from '../store/auth';
 import { useFiltersStore } from '../store/filters';
 import { AuthModal } from './AuthModal';
-import { ThemeSwitch } from './common/ThemeSwitch';
+import { AppearanceSettings, ThemeSwitch } from './common/ThemeSwitch';
 import { LanguageSwitch } from './common/LanguageSwitch';
 import { NotificationBell } from './common/NotificationBell';
 import { useTranslation } from '../hooks/useTranslation';
@@ -166,7 +166,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <motion.h1 
-                className="text-2xl font-bold text-green-600 dark:text-green-400 cursor-pointer"
+                className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 cursor-pointer"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
@@ -190,7 +190,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t.common.search}
-                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
                 <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
@@ -248,7 +248,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                 <div className="flex items-center space-x-2 ml-2">
                   <motion.button
                     onClick={() => handleOpenAuth('signin')}
-                    className="px-4 py-2 rounded-lg text-sm font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
@@ -256,7 +256,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                   </motion.button>
                   <motion.button
                     onClick={() => handleOpenAuth('signup')}
-                    className="px-4 py-2 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 transition-colors"
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
@@ -266,9 +266,8 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
               )}
             </div>
 
+            {/* No celular, tema e idioma ficam dentro do menu: no topo, só o sino e o menu. */}
             <div className="md:hidden flex items-center gap-1">
-              <ThemeSwitch />
-              <LanguageSwitch />
               <NotificationBell />
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -291,13 +290,14 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
               className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
               <div className="px-4 py-3 space-y-3">
+                <AppearanceSettings />
                 <div className="relative">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={t.common.search}
-                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 </div>
@@ -396,7 +396,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                         handleOpenAuth('signin');
                         setIsMobileMenuOpen(false);
                       }}
-                      className="w-full px-4 py-2 rounded-lg text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                      className="w-full px-4 py-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
                     >
                       {t.common.signIn}
                     </button>
@@ -405,7 +405,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                         handleOpenAuth('signup');
                         setIsMobileMenuOpen(false);
                       }}
-                      className="w-full px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+                      className="w-full px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
                     >
                       {t.common.signUp}
                     </button>

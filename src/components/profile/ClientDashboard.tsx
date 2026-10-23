@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Flame, Heart, Scale, CalendarCheck, Crown, ArrowRight, HeartPulse, Bot, BellRing, Stethoscope } from 'lucide-react';
+import { Scale, Crown, ArrowRight, HeartPulse, Bot, BellRing, Stethoscope, UtensilsCrossed, CalendarRange, ShoppingCart } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
-import { getStreak, toISODate, sumEntries, useNutritionTrackingStore } from '../../store/nutrition-tracking';
+import { toISODate, sumEntries, useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useHealthProfileStore } from '../../store/health-profile';
 import { useSubscriptionStore } from '../../store/subscription';
 import { useTranslation } from '../../hooks/useTranslation';
 import { bmi } from '../../lib/nutrition-calculator';
-import { DashboardMetricCard } from './DashboardMetricCard';
+import { DashboardHero, firstNameOf, ProgressRing, useGreeting } from './DashboardHero';
 import { WeeklyCaloriesChart } from '../nutrition/WeeklyCaloriesChart';
 import { MyNutritionistCard } from '../care/MyNutritionistCard';
 import { WeeklyReport } from './WeeklyReport';
@@ -25,10 +25,10 @@ export function ClientDashboard() {
   const { profile: health } = useHealthProfileStore();
   const { isPremium } = useSubscriptionStore();
   const t = useTranslation();
+  const greeting = useGreeting();
 
   const today = toISODate(new Date());
   const todayTotals = useMemo(() => sumEntries(entries.filter((e) => e.date === today)), [entries, today]);
-  const streak = useMemo(() => getStreak(entries), [entries]);
   const daysLogged30 = useMemo(() => {
     const since = new Date();
     since.setDate(since.getDate() - 29);
@@ -45,12 +45,52 @@ export function ClientDashboard() {
   const goalLabels = t.profile.nutritionGoalsnames;
   const categoryLabel = (key: string) => t.categories[key as keyof typeof t.categories] ?? key;
   const caloriePct = goals.calories > 0 ? Math.round((todayTotals.calories / goals.calories) * 100) : 0;
+  const kcalLeft = Math.round(goals.calories - todayTotals.calories);
+  const firstName = firstNameOf(user.name, t.recipe.authorFallbackName);
 
   // Lembrete a partir das 11h, se nada foi registrado hoje.
   const showReminder = new Date().getHours() >= 11 && !entries.some((e) => e.date === today);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      <DashboardHero
+        title={`${greeting}, ${firstName}!`}
+        subtitle={t.profileUi.todayHint}
+        aside={
+          <ProgressRing value={todayTotals.calories} max={goals.calories}>
+            <span className="text-xl font-bold leading-none">{Math.round(todayTotals.calories)}</span>
+            <span className="mt-0.5 text-[10px] uppercase tracking-wide text-emerald-50">kcal</span>
+          </ProgressRing>
+        }
+        stats={[
+          {
+            label: t.profileUi.caloriesToday,
+            value: goals.calories > 0 ? `${caloriePct}%` : '—',
+            hint: goals.calories <= 0
+              ? t.profileUi.noGoal
+              : kcalLeft >= 0
+                ? t.profileUi.kcalLeft.replace('{n}', String(kcalLeft))
+                : t.profileUi.kcalOver.replace('{n}', String(-kcalLeft)),
+          },
+          {
+            label: t.health.currentWeight,
+            value: health.weight_kg ? `${health.weight_kg} kg` : '—',
+            hint: currentBmi ? `${t.health.bmi}: ${currentBmi}` : t.health.notInformed,
+          },
+          {
+            label: t.profile.favorites,
+            value: String(favoriteRecipesList.length),
+            hint: `${daysLogged30} ${daysLogged30 === 1 ? t.profile.dayLoggedLast30 : t.profile.daysLoggedLast30}`,
+          },
+        ]}
+        actions={[
+          { to: '/perfil?tab=nutrition', label: t.profileUi.logMeal, icon: UtensilsCrossed },
+          { to: '/perfil?tab=plan', label: t.profileUi.todayPlan, icon: CalendarRange },
+          { to: '/perfil?tab=shopping', label: t.profileUi.shopping, icon: ShoppingCart },
+          { to: '/perfil?tab=health', label: t.profileUi.logWeight, icon: Scale },
+        ]}
+      />
+
       <UpcomingAppointments />
 
       {/* Avisos que levam à próxima ação */}
@@ -83,55 +123,11 @@ export function ClientDashboard() {
         </Link>
       )}
 
-      {!isPremiumUser && (
-        <Link
-          to="/mentoria-ia"
-          className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 transition hover:from-amber-100 dark:border-amber-800/40 dark:from-amber-900/20 dark:to-orange-900/20"
-        >
-          <Bot className="h-6 w-6 flex-shrink-0 text-amber-600 dark:text-amber-400" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{t.profile.premiumCtaTitle}</p>
-            <p className="text-sm text-amber-800/80 dark:text-amber-300/80">{t.profile.premiumCtaDescription}</p>
-          </div>
-          <Crown className="h-5 w-5 text-amber-500" />
-        </Link>
-      )}
-
-      {/* Métricas */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <DashboardMetricCard
-          icon={<Flame className="h-4 w-4" />}
-          label={t.profile.caloriesToday}
-          value={`${Math.round(todayTotals.calories)}`}
-          helperText={`${caloriePct}% ${t.profile.ofGoal} (${goals.calories} kcal)`}
-          tone="amber"
-        />
-        <DashboardMetricCard
-          icon={<CalendarCheck className="h-4 w-4" />}
-          label={t.profile.streak}
-          value={`${streak}`}
-          helperText={`${daysLogged30} ${daysLogged30 === 1 ? t.profile.dayLoggedLast30 : t.profile.daysLoggedLast30}`}
-          tone="emerald"
-        />
-        <DashboardMetricCard
-          icon={<Scale className="h-4 w-4" />}
-          label={t.health.currentWeight}
-          value={health.weight_kg ? `${health.weight_kg} kg` : '—'}
-          helperText={currentBmi ? `${t.health.bmi}: ${currentBmi}` : t.health.notInformed}
-          tone="sky"
-        />
-        <DashboardMetricCard
-          icon={<Heart className="h-4 w-4" />}
-          label={t.profile.favorites}
-          value={favoriteRecipesList.length}
-          tone="rose"
-        />
-      </div>
 
       {/* Progresso do dia */}
       {activeGoals.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
+        <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t.profile.todayProgress}
@@ -145,13 +141,14 @@ export function ClientDashboard() {
             </div>
             <Link
               to="/perfil?tab=nutrition"
-              className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+              className="whitespace-nowrap text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
             >
               {t.profile.viewDiaryAndGoals}
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Uma linha por meta: nome, quanto já foi e a barra (vermelha se passou de 110%). */}
+          <ul className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
             {(['calories', 'protein', 'carbs', 'fat', 'fiber'] as const).map((key) => {
               if (!activeGoals.includes(key)) return null;
               const goal = goals[key] ?? 0;
@@ -159,27 +156,26 @@ export function ClientDashboard() {
               const pct = goal > 0 ? value / goal : 0;
               const unit = key === 'calories' ? 'kcal' : 'g';
               return (
-                <div
-                  key={key}
-                  className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{goalLabels[key]}</p>
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white">{Math.round(pct * 100)}%</span>
+                <li key={key}>
+                  <div className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="font-semibold text-slate-900 dark:text-white">{goalLabels[key]}</span>
+                    <span className="text-slate-600 dark:text-slate-300">
+                      <span className="font-semibold text-slate-900 dark:text-white">{value.toFixed(0)}</span> / {goal.toFixed(0)} {unit}
+                      <span className={`ml-2 text-xs font-semibold ${pct > 1.1 ? 'text-rose-600' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                        {Math.round(pct * 100)}%
+                      </span>
+                    </span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                    {value.toFixed(0)} / {goal.toFixed(0)} {unit} • {t.profile.remaining}: {Math.max(0, goal - value).toFixed(0)} {unit}
-                  </p>
-                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
                     <div
                       className={`h-full rounded-full transition-all ${pct > 1.1 ? 'bg-rose-500' : 'bg-emerald-500'}`}
                       style={{ width: `${Math.min(100, Math.round(pct * 100))}%` }}
                     />
                   </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </section>
       )}
 
@@ -194,6 +190,20 @@ export function ClientDashboard() {
       </section>
 
       <MyNutritionistCard />
+
+      {!isPremiumUser && (
+        <Link
+          to="/mentoria-ia"
+          className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 transition hover:from-amber-100 dark:border-amber-800/40 dark:from-amber-900/20 dark:to-orange-900/20"
+        >
+          <Bot className="h-6 w-6 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{t.profile.premiumCtaTitle}</p>
+            <p className="text-sm text-amber-800/80 dark:text-amber-300/80">{t.profile.premiumCtaDescription}</p>
+          </div>
+          <Crown className="h-5 w-5 text-amber-500" />
+        </Link>
+      )}
 
       {/* Favoritos recentes */}
       {favoriteRecipesList.length > 0 && (

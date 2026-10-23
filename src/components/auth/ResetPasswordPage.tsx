@@ -107,7 +107,7 @@ export function ResetPasswordPage() {
   };
 
   const passwordStrength = getPasswordStrength(password);
-  const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500'];
+  const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-emerald-500'];
   const strengthLabels = rp.strengthLabels;
 
   // Loading inicial
@@ -119,7 +119,7 @@ export function ResetPasswordPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-8 text-center"
         >
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-green-600" />
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-emerald-600" />
           <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
             {rp.checkingTitle}
           </h1>
@@ -139,8 +139,8 @@ export function ResetPasswordPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-8 text-center"
         >
-          <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-6">
-            <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+          <div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-6">
+            <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             {rp.successTitle}
@@ -150,7 +150,7 @@ export function ResetPasswordPage() {
           </p>
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
             <motion.div
-              className="bg-green-600 h-2 rounded-full"
+              className="bg-emerald-600 h-2 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: '100%' }}
               transition={{ duration: 3 }}
@@ -158,7 +158,7 @@ export function ResetPasswordPage() {
           </div>
           <button
             onClick={() => window.location.href = '/login'}
-            className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+            className="w-full py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
           >
             {rp.goToLogin}
           </button>
@@ -186,7 +186,7 @@ export function ResetPasswordPage() {
           </p>
           <button
             onClick={() => window.location.href = '/forgot-password'}
-            className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+            className="w-full py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
           >
             {rp.requestNewLink}
           </button>
@@ -203,8 +203,8 @@ export function ResetPasswordPage() {
         className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-8"
       >
         <div className="flex items-center gap-3 mb-8">
-          <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-            <Lock className="w-6 h-6 text-green-600 dark:text-green-400" />
+          <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+            <Lock className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -244,7 +244,7 @@ export function ResetPasswordPage() {
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
                 placeholder={rp.newPasswordPlaceholder}
                 required
                 disabled={loading}
@@ -289,7 +289,7 @@ export function ResetPasswordPage() {
                 id="confirmPassword"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
                 placeholder={rp.confirmPasswordPlaceholder}
                 required
                 disabled={loading}
@@ -324,7 +324,7 @@ export function ResetPasswordPage() {
               "w-full py-2.5 rounded-lg text-white font-medium transition-colors flex items-center justify-center gap-2",
               loading || password !== confirmPassword || password.length < 6
                 ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-600 hover:bg-green-700"
+                : "bg-emerald-600 hover:bg-emerald-700"
             )}
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -335,7 +335,7 @@ export function ResetPasswordPage() {
         <div className="mt-6 text-center">
           <button
             onClick={() => window.location.href = '/login'}
-            className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
+            className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium"
             disabled={loading}
           >
             {rp.backToLogin}
