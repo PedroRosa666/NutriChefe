@@ -11,6 +11,7 @@ import { professionalChecklist, useProfessionalProfile } from '../../hooks/usePr
 import { DashboardMetricCard } from './DashboardMetricCard';
 import { getRecipeAuthorStats, type RecipeStats } from '../../services/care';
 import { UpcomingAppointments } from '../care/Appointments';
+import { CrnVerificationCard } from '../care/CrnVerificationCard';
 
 export function NutritionistDashboard() {
   const { user } = useAuthStore();
@@ -103,6 +104,7 @@ export function NutritionistDashboard() {
 
   return (
     <div className="space-y-8">
+      <CrnVerificationCard />
       <UpcomingAppointments />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

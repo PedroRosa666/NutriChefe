@@ -33,6 +33,7 @@ beforeAll(async () => {
       ('${OTHER_NUTRI}', 'Dr. Bruno', 'Nutritionist'),
       ('${PATIENT}', 'Carla', 'Client'),
       ('${STRANGER}', 'Diego', 'Client');
+    UPDATE profiles SET crn_status = 'approved' WHERE user_type = 'Nutritionist';
     INSERT INTO recipes (id, title) VALUES ('${RECIPE_A}', 'Omelete'), ('${RECIPE_B}', 'Panqueca de aveia');
     INSERT INTO foods (id, taco_id, owner_id, name, category, kcal, protein, carbs, fat) VALUES
       ('${FOOD_TACO}', 1, NULL, 'Arroz', 'Cereais', 124, 2.6, 25.8, 1),

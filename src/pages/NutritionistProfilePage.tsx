@@ -16,6 +16,7 @@ import {
   XCircle,
   ArrowLeft,
   DollarSign,
+  BadgeCheck,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from '../hooks/useTranslation';
@@ -31,6 +32,7 @@ import { useSettingsStore } from '../store/settings';
 interface NutritionistFullProfile {
   id: string;
   full_name: string;
+  crn: string | null;
   professional_bio: string;
   specializations: string[];
   years_of_experience: number;
@@ -86,6 +88,7 @@ export function NutritionistProfilePage() {
         setProfile({
           id: profileData.id,
           full_name: profileData.full_name || 'Nutricionista',
+          crn: profileData.crn_status === 'approved' && profileData.crn_number ? `CRN-${profileData.crn_region} ${profileData.crn_number}` : null,
           professional_bio: profileData.professional_bio || '',
           specializations: profileData.specializations || [],
           years_of_experience: profileData.years_of_experience || 0,
@@ -186,6 +189,12 @@ export function NutritionistProfilePage() {
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                       {profile.full_name}
                     </h1>
+                    {profile.crn && (
+                      <p className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                        <BadgeCheck className="h-3.5 w-3.5" />
+                        {t.verification.verified} · {profile.crn}
+                      </p>
+                    )}
                     <div className="flex flex-wrap gap-3 mb-3">
                       {profile.years_of_experience > 0 && (
                         <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">

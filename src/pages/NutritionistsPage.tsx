@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Star, Clock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { BadgeCheck, User, Star, Clock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
@@ -16,6 +16,7 @@ interface NutritionistProfile {
   consultation_price: number;
   clinic_address: string;
   accepting_new_clients: boolean;
+  crn: string | null;
   published_recipes_count: number;
   average_rating: number;
   avatar_url?: string | null;
@@ -34,9 +35,10 @@ export function NutritionistsPage() {
         // Uma consulta só: perfis + receitas + notas (antes eram 3 consultas por nutricionista).
         const { data: profiles, error } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, professional_bio, specializations, years_of_experience, consultation_price, clinic_address, accepting_new_clients, recipes!recipes_author_id_fkey(id, reviews(rating))')
+          .select('id, full_name, avatar_url, professional_bio, specializations, years_of_experience, consultation_price, clinic_address, accepting_new_clients, crn_region, crn_number, recipes!recipes_author_id_fkey(id, reviews(rating))')
           .eq('user_type', 'Nutritionist')
           .eq('profile_visibility', 'public')
+          .eq('crn_status', 'approved')
           .order('years_of_experience', { ascending: false });
 
         if (error) throw error;
@@ -54,6 +56,7 @@ export function NutritionistsPage() {
               consultation_price: profile.consultation_price || 0,
               clinic_address: profile.clinic_address || '',
               accepting_new_clients: profile.accepting_new_clients ?? true,
+              crn: profile.crn_number ? `CRN-${profile.crn_region} ${profile.crn_number}` : null,
               published_recipes_count: authorRecipes.length,
               average_rating: ratings.length ? ratings.reduce((sum, n) => sum + n, 0) / ratings.length : 0,
               avatar_url: profile.avatar_url || null,
@@ -129,6 +132,11 @@ export function NutritionistsPage() {
                   <h3 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-2">
                     {nutritionist.full_name}
                   </h3>
+                  <p className="mb-3 flex items-center justify-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                    <BadgeCheck className="h-3.5 w-3.5" />
+                    {t.verification.verified}
+                    {nutritionist.crn && <span className="text-slate-500 dark:text-slate-400">· {nutritionist.crn}</span>}
+                  </p>
 
                   <div className="flex items-center justify-center gap-4 mb-4">
                     {nutritionist.years_of_experience > 0 && (

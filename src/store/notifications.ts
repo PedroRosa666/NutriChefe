@@ -123,6 +123,10 @@ export function notificationText(n: AppNotification, t: Translations): string {
         return s.appointmentCanceled;
       case 'appointment_reminder':
         return s.appointmentReminder;
+      case 'verification_requested':
+        return s.verificationRequested;
+      case 'verification_reviewed':
+        return n.data.approved ? s.verificationApproved : s.verificationRejected;
     }
   })();
   return template
@@ -130,7 +134,9 @@ export function notificationText(n: AppNotification, t: Translations): string {
     .replace('{item}', item)
     .replace('{title}', n.data.title ?? '')
     .replace('{preview}', n.data.preview ?? '')
-    .replace('{when}', n.data.starts_at ? formatWhen(n.data.starts_at) : '');
+    .replace('{when}', n.data.starts_at ? formatWhen(n.data.starts_at) : '')
+    .replace('{crn}', n.data.crn ?? '')
+    .replace('{reason}', n.data.reason ?? '');
 }
 
 /** Liga os avisos do usuário logado (Realtime) em qualquer página; aviso novo vira toast. Usar uma vez, no layout. */

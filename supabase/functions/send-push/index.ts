@@ -24,6 +24,9 @@ type Data = {
   from_nutritionist?: boolean;
   starts_at?: string;
   rescheduled?: boolean;
+  crn?: string;
+  approved?: boolean;
+  reason?: string;
 };
 
 // Data da consulta no horário de Brasília (ex.: "qui., 23/10, 14:30").
@@ -73,6 +76,12 @@ function message(kind: string, d: Data): { title: string; body: string; url: str
       return { title: "Consulta cancelada", body: `${name} cancelou a consulta de ${when(d.starts_at)}`, url: "/perfil" };
     case "appointment_reminder":
       return { title: "Lembrete de consulta", body: `Consulta com ${name} em ${when(d.starts_at)}`, url: "/perfil" };
+    case "verification_requested":
+      return { title: "CRN para conferir", body: `${name} (${d.crn ?? ""}) enviou os documentos`, url: "/admin" };
+    case "verification_reviewed":
+      return d.approved
+        ? { title: "CRN verificado", body: "Seu CRN foi verificado. Você já pode convidar pacientes.", url: "/perfil" }
+        : { title: "Verificação do CRN", body: `Não aprovada: ${d.reason ?? ""}`, url: "/perfil" };
     case "message":
       return {
         title: name,

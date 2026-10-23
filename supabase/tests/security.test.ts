@@ -103,3 +103,52 @@ describe('excluir a conta', () => {
     await expect(asUser(db, STRANGER, (tx) => tx.query('SELECT delete_my_account()'))).rejects.toThrow(/active_subscription/);
   });
 });
+
+describe('verificação do CRN', () => {
+  const NEW_NUTRI = '00000000-0000-4000-8000-00000000002a';
+  const ADMIN = '00000000-0000-4000-8000-00000000002b';
+  const submit = (uid: string, card = `${uid}/card.webp`) =>
+    asUser(db, uid, (tx) =>
+      tx.query(`SELECT submit_crn_verification('Fulana de Tal', 3::smallint, '12.345', $1, $2)`, [card, `${uid}/selfie.webp`])
+    );
+  const status = async (uid: string) =>
+    (await db.query<{ crn_status: string; crn_number: string | null }>(`SELECT crn_status, crn_number FROM profiles WHERE id = $1`, [uid])).rows[0];
+
+  beforeAll(async () => {
+    await db.exec(`
+      INSERT INTO auth.users (id) VALUES ('${NEW_NUTRI}'), ('${ADMIN}');
+      INSERT INTO profiles (id, full_name, user_type) VALUES ('${NEW_NUTRI}', 'Fulana', 'Nutritionist'), ('${ADMIN}', 'Admin', 'Client');
+      INSERT INTO app_admins (user_id) VALUES ('${ADMIN}');
+    `);
+  });
+
+  it('sem CRN aprovado, o nutricionista não cria convite', async () => {
+    expect((await status(NEW_NUTRI)).crn_status).toBe('none');
+    await expect(asUser(db, NEW_NUTRI, (tx) => tx.query('SELECT create_nutritionist_invite()'))).rejects.toThrow(/crn_not_verified/);
+  });
+
+  it('envio só com fotos da própria pasta; paciente não envia; o administrador recebe aviso', async () => {
+    await expect(submit(NEW_NUTRI, `${PATIENT}/card.webp`)).rejects.toThrow(/invalid_files/);
+    await expect(submit(PATIENT)).rejects.toThrow(/only_nutritionists/);
+    await submit(NEW_NUTRI);
+    expect((await status(NEW_NUTRI)).crn_status).toBe('pending');
+    const n = await asUser(db, ADMIN, async (tx) => (await tx.query<{ kind: string; data: { crn: string } }>('SELECT kind, data FROM notifications')).rows);
+    expect(n).toEqual([expect.objectContaining({ kind: 'verification_requested', data: expect.objectContaining({ crn: 'CRN-3 12345' }) })]);
+  });
+
+  it('só o administrador vê os pedidos e aprova; quem não é admin não consegue', async () => {
+    expect((await asUser(db, STRANGER, (tx) => tx.query('SELECT * FROM nutritionist_verifications'))).rows).toHaveLength(0);
+    expect((await asUser(db, ADMIN, (tx) => tx.query('SELECT * FROM nutritionist_verifications'))).rows).toHaveLength(1);
+    await expect(asUser(db, NEW_NUTRI, (tx) => tx.query(`SELECT review_crn_verification('${NEW_NUTRI}', true, '')`))).rejects.toThrow(/not_allowed/);
+    await expect(asUser(db, ADMIN, (tx) => tx.query(`SELECT review_crn_verification('${NEW_NUTRI}', false, '')`))).rejects.toThrow(/reason_required/);
+    await asUser(db, ADMIN, (tx) => tx.query(`SELECT review_crn_verification('${NEW_NUTRI}', true, '')`));
+    expect(await status(NEW_NUTRI)).toEqual({ crn_status: 'approved', crn_number: '12345' });
+    await asUser(db, NEW_NUTRI, (tx) => tx.query('SELECT create_nutritionist_invite()'));
+    const n = await asUser(db, NEW_NUTRI, async (tx) => (await tx.query<{ kind: string; data: { approved: boolean } }>('SELECT kind, data FROM notifications')).rows);
+    expect(n).toEqual([expect.objectContaining({ kind: 'verification_reviewed', data: expect.objectContaining({ approved: true }) })]);
+  });
+
+  it('o próprio nutricionista não muda o status do CRN', async () => {
+    await expect(asUser(db, PRIVATE_NUTRI, (tx) => tx.query(`UPDATE profiles SET crn_status = 'approved' WHERE id = '${PRIVATE_NUTRI}'`))).rejects.toThrow(/permission denied/);
+  });
+});

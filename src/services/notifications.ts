@@ -13,7 +13,9 @@ export type NotificationKind =
   | 'message'
   | 'appointment_scheduled'
   | 'appointment_canceled'
-  | 'appointment_reminder';
+  | 'appointment_reminder'
+  | 'verification_requested'
+  | 'verification_reviewed';
 
 export interface AppNotification {
   id: string;
@@ -31,6 +33,9 @@ export interface AppNotification {
     from_nutritionist?: boolean;
     starts_at?: string;
     rescheduled?: boolean;
+    crn?: string;
+    approved?: boolean;
+    reason?: string;
   };
   read_at: string | null;
   created_at: string;
@@ -95,6 +100,8 @@ export function notificationTarget(n: AppNotification): string {
       return n.data.client_id && useAuthStore.getState().user?.type === 'Nutritionist'
         ? `/perfil?tab=patients&paciente=${n.data.client_id}`
         : '/perfil';
+    case 'verification_requested':
+      return '/admin';
     case 'message':
       // Mensagem do nutricionista: o paciente abre a aba Mensagens; do paciente: o nutricionista abre a conversa dele.
       return n.data.from_nutritionist ? '/perfil?tab=messages' : `/perfil?tab=patients&paciente=${n.data.client_id ?? ''}&chat=1`;

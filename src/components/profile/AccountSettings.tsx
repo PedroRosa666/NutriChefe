@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Crown, CreditCard, Download, KeyRound, Loader2, LogOut, ShieldCheck, Trash2, UserCog } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { openBillingPortal } from '../../services/subscription';
 import { DeleteAccountError, deleteMyAccount, downloadMyData } from '../../services/privacy';
 import { AppDeviceCard } from './AppDeviceCard';
+import { isAdmin } from '../../services/verification';
 
 const inputClass =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100';
@@ -33,6 +34,12 @@ export function AccountSettings() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteText, setDeleteText] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [admin, setAdmin] = useState(false);
+
+  const userId = user?.id;
+  useEffect(() => {
+    if (userId) isAdmin().then(setAdmin);
+  }, [userId]);
 
   if (!user) return null;
 
@@ -100,6 +107,12 @@ export function AccountSettings() {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {admin && (
+        <Link to="/admin" className={`${cardClass} flex items-center gap-3 border-emerald-300 hover:border-emerald-500 lg:col-span-2`}>
+          <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-sm font-semibold text-slate-900 dark:text-white">{t.admin.title}</span>
+        </Link>
+      )}
       <form onSubmit={handleName} className={cardClass}>
         <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
           <UserCog className="h-4 w-4 text-emerald-500" /> {t.profile.personalInfo}
