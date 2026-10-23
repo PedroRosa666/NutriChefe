@@ -195,3 +195,66 @@
     font-size: 16px !important;
   }
 }
+
+/* Barras de rolagem no estilo do site (computador e app instalado; no celular o sistema usa a
+   barra fina sobreposta). Fininhas, arredondadas, sem as setas do Windows, em verde suave. */
+@layer base {
+  :root {
+    --nc-scroll-thumb: 16 185 129;
+    --nc-scroll-alpha: 0.35;
+    --nc-scroll-alpha-hover: 0.6;
+  }
+  .dark {
+    --nc-scroll-thumb: 52 211 153;
+    --nc-scroll-alpha: 0.3;
+    --nc-scroll-alpha-hover: 0.55;
+  }
+
+  /* Firefox e Chrome 121+ */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--nc-scroll-thumb) / var(--nc-scroll-alpha)) transparent;
+  }
+
+  /* Chrome, Edge e Safari antigos */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+    background-color: rgb(var(--nc-scroll-thumb) / var(--nc-scroll-alpha));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--nc-scroll-thumb) / var(--nc-scroll-alpha-hover));
+  }
+  ::-webkit-scrollbar-button,
+  ::-webkit-scrollbar-corner {
+    display: none;
+    background: transparent;
+  }
+
+  /* Faixas que rolam para o lado (abas, filtros, dias da semana): a barra só aparece
+     ao passar o mouse, e bem fina, para não cortar o visual. */
+  .overflow-x-auto {
+    scrollbar-color: transparent transparent;
+  }
+  .overflow-x-auto:hover {
+    scrollbar-color: rgb(var(--nc-scroll-thumb) / var(--nc-scroll-alpha)) transparent;
+  }
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 6px;
+  }
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    border-width: 1px;
+    background-color: transparent;
+  }
+  .overflow-x-auto:hover::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--nc-scroll-thumb) / var(--nc-scroll-alpha));
+  }
+}
