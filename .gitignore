@@ -10,3 +10,4 @@ dist/
 .claude/
 supabase/.temp/
 .wrangler/
+.vscode/

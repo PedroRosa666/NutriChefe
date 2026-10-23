@@ -1,78 +1,77 @@
 # 🍽️ NutriChef
 
-Plataforma para descobrir, criar e compartilhar receitas saudáveis, que conecta nutricionistas e clientes. Tem diário alimentar, perfil de saúde, plano alimentar semanal, lista de compras, acompanhamento de pacientes pelo nutricionista, assinatura Premium e uma Mentoria IA que encontra receitas do catálogo a partir do que a pessoa escreve, do jeito que ela escrever.
+Plataforma de receitas saudáveis que conecta nutricionistas e pacientes. Tem catálogo de receitas, diário alimentar, perfil de saúde, plano alimentar semanal, lista de compras, acompanhamento de pacientes, mensagens, consultas, notificações, assinatura Premium e uma Mentoria IA que encontra receitas do catálogo a partir do que a pessoa escreve.
 
-![NutriChef](https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=400&fit=crop&crop=center)
+**No ar:** https://app.nutrichefe.workers.dev
 
 ## ✨ Funcionalidades
 
 ### Para todos
-- 🔐 **Conta completa**: cadastro com confirmação de e-mail, login, recuperação de senha e troca de senha no perfil.
-- 🍳 **Catálogo de receitas** com filtros por categoria, dificuldade, tempo, avaliação e busca por texto (também pela URL: `/?q=morango`).
-- ⭐ **Avaliações** de 1 a 5 estrelas com comentário (uma por pessoa por receita, editável).
-- ❤️ **Favoritos** sincronizados com a conta.
-- 🧺 **"O que tem em casa?"**: digite os ingredientes e veja as receitas que usam o máximo deles (grátis, sem IA).
-- 🍳 **Na receita**: ajuste de quantidades (½x a 3x), botão para a lista de compras e **modo cozinha** (tela cheia, passo a passo, timer automático pelos minutos do passo e tela sempre acesa).
-- 📱 **Instalável (PWA)** e barra de navegação inferior no celular.
-- 📊 **Informação nutricional** por porção: calorias, proteínas, carboidratos, gorduras e fibras.
-- 🌙 **Modo escuro/claro** e 🌍 **português/inglês**.
+- 🔐 **Conta**: cadastro com confirmação de e-mail, login, recuperação e troca de senha.
+- 🍳 **Catálogo de receitas** com categorias, filtros (dificuldade, tempo, nota) e busca que ignora acento, maiúsculas e ordem das palavras ("salmao toscana" acha "Salmão à Toscana").
+- 🥦 **Dietas conferidas pelos ingredientes**: o filtro "Vegana", por exemplo, não mostra receita com ovo ou laticínio, mesmo que esteja com esse rótulo.
+- ⭐ **Avaliações** de 1 a 5 estrelas com comentário e ❤️ **favoritos**.
+- 🧺 **"O que tem em casa?"**: digite os ingredientes e veja o que dá para cozinhar.
+- 👩‍🍳 **Na receita**: quantidades de ½x a 3x, lista de compras e modo cozinha (passo a passo, timer e tela sempre acesa).
+- 🔎 **Encontre um nutricionista**: só profissionais com CRN verificado.
+- 📱 **App instalável (PWA)**: abre sem internet, recebe notificações e tem barra de navegação no celular.
+- 🌙 **Modo claro/escuro** e 🌍 **português/inglês**.
 
-### 🥗 Cliente
-- **Visão geral**: calorias do dia, sequência de dias registrando, peso/IMC, favoritos e progresso das metas.
-- **Diário alimentar**: registre receitas, alimentos comuns (lista baseada na Tabela TACO) ou qualquer refeição com valores digitados; totais do dia e gráfico dos últimos 7 dias. Com a Mentoria IA, dá para **estimar calorias e macros por foto** do prato.
-- **Plano alimentar semanal**: monte a semana (café, almoço, lanche e jantar) ou gere automaticamente a partir das metas, alergias e preferências; registre no diário com um clique.
-- **Lista de compras**: soma os ingredientes das receitas ou do plano da semana (junta quantidades iguais), marca o que já está no carrinho e compartilha.
-- **Resumo da semana** (médias x metas, variação de peso) para copiar ou imprimir, e lembrete quando nada foi registrado no dia.
-- **Meu nutricionista**: conecte-se pelo código de convite; ele passa a acompanhar diário, metas, saúde e peso (pode ser encerrado a qualquer momento).
-- **Metas nutricionais** salvas na conta, com cálculo automático pelo perfil de saúde (Mifflin-St Jeor + nível de atividade + objetivo).
-- **Perfil de saúde**: idade, sexo, altura, peso, peso-alvo, atividade, objetivo, preferências alimentares e alergias, com histórico e gráfico de peso.
-- **Assinatura Premium** (Stripe) com portal para trocar cartão, ver faturas e cancelar.
+### 🥗 Paciente
+- **Meu dia**: calorias e metas do dia, sequência de registros, peso e próximos passos.
+- **Diário alimentar por refeição** (café, almoço, lanche, jantar): receitas, alimentos da Tabela TACO ou valores digitados, com edição de cada registro.
+- **Plano alimentar semanal**: o próprio ou o enviado pelo nutricionista. O botão "Comi" lança a refeição no diário sem duplicar; também dá para pedir troca de um item ao nutricionista.
+- **Lista de compras** gerada das receitas ou do plano da semana.
+- **Perfil de saúde** (idade, altura, peso, objetivo, alergias, dietas) com histórico e gráfico de peso.
+- **Metas** calculadas pelo perfil (Mifflin-St Jeor) ou definidas pelo nutricionista.
+- **Meu nutricionista**: conecta por convite; mensagens e consultas. Qualquer um dos dois pode encerrar, e o acesso aos dados acaba na hora.
+- **Seus dados (LGPD)**: baixar uma cópia completa ou excluir a conta.
 
 ### 👨‍⚕️ Nutricionista
-- Criar, editar, duplicar e excluir receitas próprias.
-- **Pacientes**: convite por link/código (WhatsApp), lista com alertas (sem registros há 3+ dias, acima da meta) e ficha do paciente com perfil de saúde, peso, médias dos últimos 7 dias, registros recentes, **metas definidas pelo nutricionista** e **planos alimentares** enviados ao paciente.
-- **Desempenho das receitas**: quantas vezes cada uma foi favoritada, registrada no diário e usada em planos.
-- **Painel**: receitas publicadas, avaliações recebidas, nota média, receita mais bem avaliada e avaliações recentes.
-- **Perfil profissional público**: especialidades, formação, experiência, abordagem, valores, convênios, endereço e contatos, com checklist de completude e botão "Agendar pelo WhatsApp".
-- Acesso à Mentoria IA sem assinatura.
+- **Verificação do CRN** (carteira + selfie, aprovada pelo admin) antes de convidar pacientes.
+- **Painel**: pacientes que precisam de atenção (3 dias sem registrar, trocas pendentes, mensagens), consultas e desempenho das receitas.
+- **Pacientes**: convite por link ou WhatsApp; ficha com resumo, plano, metas, consultas e mensagens.
+- **Planos alimentares**: montar à mão, partir de um modelo, gerar automaticamente ou montar com IA (Premium), e ajustar à meta.
+- **Conteúdo**: receitas próprias e alimentos próprios (visíveis só para os seus pacientes).
+- **Perfil profissional público** com contatos e "Agendar pelo WhatsApp".
+- **Plano grátis**: até 5 pacientes ativos. **Premium Nutricionista**: pacientes ilimitados, IA para montar planos, assistente com o seu nome para os pacientes (incluído para eles), relatórios e destaque na lista.
 
-### 🤖 Mentoria IA
-- Entende pedidos em linguagem natural: "quero receitas com morangos", "tenho uns morangos sobrando, o que faço?", "algo doce sem lactose", "jantar leve até 400 kcal", "e mais rápidas?".
-- **Busca receitas reais do catálogo** pelo ingrediente pedido (plural, sinônimo, erro de digitação ou inglês) e mostra cartões com foto, tempo, calorias e "contém: morango".
-- Respeita **alergias e preferências** do perfil de saúde e pedidos como "sem leite": nunca sugere receitas com esses ingredientes.
-- Se o catálogo não tem o ingrediente, diz isso e oferece receitas com ingredientes parecidos e uma sugestão de preparo marcada como **"fora do catálogo"**.
-- Responde dúvidas sobre uma receita específica ("como faço a primeira?", "quantas calorias tem?") e perguntas gerais de nutrição.
-- Histórico de conversas, sugestões de próxima pergunta e personalização pelo nutricionista (nome, personalidade e instruções).
+### 💎 Premium do paciente
+Mentoria IA, estimativa de calorias por foto, cardápio pela IA, receitas exclusivas, relatório e desafios. O paciente de um nutricionista Premium usa a IA sem assinar.
+
+### 🛡️ Administrador
+Visão geral, aprovação de CRN, moderação de receitas e avaliações, usuários e planos de cortesia, comunicados, erros do app e um Laboratório com contas demo.
 
 ## 🧠 Como a Mentoria IA funciona
 
 ```
 Mensagem ──► Edge Function ai-chat
-              1. Gemini monta um PLANO em JSON: intenção, ingredientes obrigatórios
-                 (com variações), exclusões (alergias expandidas), categoria,
-                 tempo, calorias, tipo de prato e receitas que combinam com a ocasião.
+              1. Gemini monta um PLANO em JSON: intenção, ingredientes, exclusões
+                 (alergias e dietas do perfil), categoria, tempo e calorias.
               2. BUSCA no catálogo real (supabase/functions/_shared/recipe-search.ts):
                  casamento por radical ("morangos" = "morango"; "sal" ≠ "salmão"),
-                 filtros soltos um a um se não houver resultado, substitutos se o
-                 ingrediente não existir no catálogo.
+                 filtros soltos um a um se não houver resultado.
               3. Gemini escreve a resposta usando SÓ as receitas encontradas.
           ◄── { content, recipes (cartões), suggestions, meta }
 ```
 
-- A chave do Gemini fica só no servidor; a função confere acesso (nutricionista ou Premium com `ai_mentoring`) e o limite de mensagens por hora.
-- Sem a chave, ou se a IA cair, o app usa a **mesma busca** com um plano montado localmente pelo vocabulário do catálogo: a pessoa continua recebendo receitas, só sem o texto gerado.
+- A chave do Gemini fica só no servidor. A função confere quem pode usar (assinatura própria ou paciente de nutricionista Premium) e o limite de mensagens.
+- Alergias e dietas valem como restrição: a IA nunca sugere receita com o que a pessoa não pode comer.
+- Sem a chave, ou se a IA falhar, o app usa a **mesma busca** com um plano montado localmente.
 
 ## 🚀 Tecnologias
 
-- **Frontend**: React 18, TypeScript (strict), Vite, Tailwind CSS, Framer Motion, Zustand, React Router, Lucide.
-- **Backend**: Supabase (PostgreSQL com RLS e permissões por coluna, Auth, Storage, Edge Functions em Deno).
-- **IA**: Google Gemini (`gemini-3.5-flash` para as respostas e `gemini-3.5-flash-lite` para o plano de busca), chamado pela Edge Function `ai-chat`. Se a cota de um modelo acabar ou ele for aposentado, a função troca sozinha.
+- **Frontend**: React 18, TypeScript (strict), Vite 7, Tailwind CSS 3, Framer Motion, Zustand, React Router 7, Lucide.
+- **Backend**: Supabase (PostgreSQL com RLS, Auth, Storage, Realtime, Edge Functions em Deno, pg_net).
+- **IA**: Google Gemini (`gemini-3.5-flash` e `gemini-3.5-flash-lite`), chamado pela Edge Function `ai-chat`.
 - **Pagamentos**: Stripe Checkout, Customer Portal e webhooks.
+- **Notificações**: Web Push (VAPID) pelo service worker.
+- **Hospedagem**: Cloudflare Workers (arquivos estáticos).
 
 ## 🛠️ Como rodar
 
 ### Pré-requisitos
-- Node.js 18+
+- Node.js 22+
 - Projeto no Supabase (e, para pagamentos, conta no Stripe)
 - [Supabase CLI](https://supabase.com/docs/guides/cli) (`npx supabase ...` funciona)
 
@@ -86,57 +85,60 @@ npm install
 
 ### 2. Variáveis do front (`.env`)
 
+Copie `.env.example` para `.env` e preencha:
+
 ```env
 VITE_SUPABASE_URL=sua_url_do_supabase
 VITE_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
 ```
 
-A chave do Gemini **não** vai no `.env`: tudo com `VITE_` fica público no navegador. Ela é segredo da Edge Function (passo 4).
+Tudo com `VITE_` fica público no navegador: chaves secretas (Gemini, Stripe) **nunca** vão aqui.
 
-No Supabase (Authentication > URL Configuration), inclua nas **Redirect URLs** os endereços `/confirm-email` e `/reset-password` do site (ex.: `http://localhost:5173/confirm-email`).
+No Supabase, em Authentication > URL Configuration, coloque o site em **Site URL** e adicione `https://seu-dominio/**` (e `http://localhost:5173/**`) em **Redirect URLs**.
 
 ### 3. Banco de dados
 
 ```bash
 npx supabase login
 npx supabase link --project-ref SEU_PROJECT_REF
-npx supabase db push
+npm run db:push      # roda as migrations (a senha do banco vem da variável SUPABASE_DB_PASSWORD)
+npm run db:types     # regera src/types/database.ts a partir do banco
 ```
 
-Migrations recentes importantes:
-
-| Migration | O que faz |
-| --- | --- |
-| `20261021120000_lock_user_subscriptions` | Impede o próprio usuário de se dar Premium alterando a assinatura. |
-| `20261021130000_client_health_and_tracking` | Cria `nutrition_goals`, `nutrition_log_entries`, `client_health_profiles` e `weight_logs`, só visíveis para o dono. |
-| `20261021140000_protect_profile_private_columns` | Esconde `email` e `stripe_customer_id` de `profiles` e limita o que o usuário pode editar (não pode mudar o próprio tipo de conta). |
-| `20261021150000_patients_plans_shopping` | Vínculo nutricionista–paciente por convite (o nutricionista só lê dados de quem aceitou, enquanto o vínculo estiver ativo), planos alimentares, lista de compras e estatísticas das receitas. |
+As migrations em `supabase/migrations` são o histórico completo do banco: tabelas, políticas de segurança (RLS), funções e gatilhos. Rode `npm run db:types` sempre que mudar o banco; consultas a tabelas ou colunas que não existem deixam de compilar.
 
 ### 4. Edge Functions e segredos
 
 ```bash
-npx supabase functions deploy ai-chat
-npx supabase functions deploy create-checkout-session
-npx supabase functions deploy create-portal-session
+npx supabase functions deploy ai-chat --no-verify-jwt
+npx supabase functions deploy admin --no-verify-jwt
+npx supabase functions deploy create-checkout-session --no-verify-jwt
+npx supabase functions deploy create-portal-session --no-verify-jwt
 npx supabase functions deploy stripe-webhook --no-verify-jwt
+npx supabase functions deploy send-push --no-verify-jwt
 
 npx supabase secrets set GEMINI_API_KEY=... STRIPE_SECRET_KEY=... STRIPE_WEBHOOK_SECRET=... FRONTEND_URL=https://seu-dominio
-# Opcionais: mensagens da IA por usuário por hora (padrão 60) e modelos do Gemini
-npx supabase secrets set AI_HOURLY_LIMIT=60 GEMINI_MODEL=gemini-3.5-flash GEMINI_LITE_MODEL=gemini-3.5-flash-lite
+npx supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:voce@exemplo.com
+# Opcionais: limites da IA e modelos do Gemini
+npx supabase secrets set AI_HOURLY_LIMIT=60 AI_DAILY_LIMIT=300 GEMINI_MODEL=gemini-3.5-flash GEMINI_LITE_MODEL=gemini-3.5-flash-lite
 ```
+
+As funções conferem o login por conta própria (por isso `--no-verify-jwt`).
 
 | Função | Para quê |
 | --- | --- |
-| `ai-chat` | Mentoria IA (plano + busca + resposta) e estimativa de calorias por foto. |
-| `create-checkout-session` | Abre o Checkout do Stripe; bloqueia cobrança em dobro e aceita só URLs do próprio site. |
+| `ai-chat` | Mentoria IA, plano pela IA e estimativa de calorias por foto. |
+| `admin` | Ações do administrador que precisam do servidor (suspender contas, contas demo). |
+| `create-checkout-session` | Abre o Checkout do Stripe só para planos ativos, sem cobrança em dobro. |
 | `create-portal-session` | Abre o portal do cliente do Stripe. |
-| `stripe-webhook` | Atualiza `user_subscriptions` (ativa, renova, marca pagamento falho e cancela). |
+| `stripe-webhook` | Mantém `user_subscriptions` igual ao Stripe (ativa, renova, pagamento falho, cancela). |
+| `send-push` | Envia as notificações para os aparelhos (chamada pelo banco a cada aviso novo). |
 
 ### 5. Stripe
 
-- Webhook apontando para `https://SEU_PROJETO.supabase.co/functions/v1/stripe-webhook` com os eventos `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated` e `customer.subscription.deleted`. O segredo `whsec_...` desse destino vai em `STRIPE_WEBHOOK_SECRET`.
-- Salve uma vez as configurações do **Customer Portal** (Configurações > Faturamento > Portal do cliente).
-- Preencha `stripe_price_id` do plano Premium na tabela `subscription_plans`.
+- Webhook para `https://SEU_PROJETO.supabase.co/functions/v1/stripe-webhook` com os eventos `checkout.session.completed` e `customer.subscription.created`, `.updated` e `.deleted`. O segredo `whsec_...` vai em `STRIPE_WEBHOOK_SECRET`.
+- Salve uma vez as configurações do **Customer Portal**.
+- Preencha `stripe_price_id` dos planos em `subscription_plans`.
 
 ### 6. Rode
 
@@ -153,52 +155,54 @@ npm run dev        # servidor de desenvolvimento
 npm run build      # checagem de tipos + build de produção
 npm run typecheck  # só a checagem de tipos
 npm run lint       # ESLint
-npm test           # testes (Vitest): leitura de ingredientes, lista de compras, gerador de cardápio
+npm test           # testes (Vitest), inclusive das regras do banco num Postgres em memória
 npm run preview    # serve o build localmente
+npm run cf:dev     # build + teste local no Cloudflare (http://localhost:8787)
+npm run db:status  # migrations que faltam rodar (não muda nada)
+npm run db:push    # roda as migrations novas
+npm run db:types   # regera os tipos do banco
 ```
+
+Os testes não falam com o Supabase de verdade: as regras do banco (RLS, funções) rodam em PGlite com as migrations reais.
 
 ## 🗂️ Estrutura
 
 ```
 src/
-  components/      # UI por área (ai, profile, nutrition, recipes, auth...)
+  components/      # UI por área (ai, admin, care, nutrition, plans, profile, recipes...)
   pages/           # páginas carregadas sob demanda pelo roteador
-  store/           # estado global (Zustand): auth, receitas, assinatura, diário, metas, saúde, IA
-  services/        # acesso ao Supabase, IA e assinatura
-  lib/             # utilidades (calculadora nutricional, links de contato, i18n...)
+  store/           # estado global (Zustand)
+  services/        # acesso ao Supabase, IA, assinatura e notificações
+  hooks/           # hooks compartilhados (tradução, navegação...)
+  lib/             # regras puras: busca, dietas, gerador de plano, cálculos, i18n...
+  types/           # tipos do app e do banco (database.ts é gerado)
+public/            # ícones, manifesto, service worker (sw.js) e cabeçalhos (_headers)
 supabase/
   migrations/      # esquema do banco e políticas de segurança
   functions/       # Edge Functions (Deno)
-    _shared/       # busca de receitas usada pela IA e pelo app
+    _shared/       # busca de receitas e regras de dieta, usadas pela IA e pelo app
+  templates/       # modelos dos e-mails de conta
+  tests/           # testes das regras do banco
+scripts/db.mjs     # migrations pela Supabase CLI
 ```
 
 ## 🔐 Segurança
 
-- RLS em todas as tabelas; diário, metas, saúde e peso só são lidos pelo dono e pelo nutricionista que ele aceitou (convite de uso único, válido por 7 dias; qualquer um dos dois encerra o vínculo).
-- `email` e `stripe_customer_id` não são legíveis pela chave pública; o usuário não pode alterar o próprio tipo de conta nem a assinatura.
-- Chaves do Gemini e do Stripe só existem como segredos das Edge Functions.
-- Texto vindo de usuários e da IA é renderizado sem HTML; links de contato aceitam só `http(s)`.
+- RLS em todas as tabelas. Diário, metas, saúde, peso e conversas com a IA só são lidos pelo dono e pelo nutricionista que ele aceitou, e só enquanto o acompanhamento estiver ativo.
+- `email` e `stripe_customer_id` não são legíveis pela chave pública. O usuário não altera o próprio tipo de conta, a assinatura nem os participantes de uma conversa.
+- Ações de administrador são conferidas no banco (`app_admins`), não só na tela.
+- Chaves do Gemini, do Stripe e do VAPID só existem como segredos das Edge Functions.
+- Dados guardados para uso sem internet ficam separados por conta e são apagados ao sair.
+- Cabeçalhos de segurança no site (`public/_headers`): `nosniff`, proteção contra iframe e política de conteúdo (em modo de observação).
+- Texto de usuários e da IA é renderizado sem HTML; links de contato aceitam só `http(s)`.
 
 ## 🚀 Deploy
 
-O front é publicado no **Cloudflare Workers** como arquivos estáticos (`wrangler.jsonc`). O build gera a pasta `dist`, e `not_found_handling: "single-page-application"` faz as rotas do app funcionarem ao recarregar a página. Banco e Edge Functions continuam sendo publicados pelo Supabase CLI (passos 3 e 4).
+- **Site**: cada push na `main` é publicado sozinho pelo Cloudflare Workers Builds (build `npm run build`). `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` ficam em Settings > Build > Variables and secrets, porque o Vite só as lê durante o build. Também dá para publicar pelo terminal com `npm run deploy` (usa o `.env` local).
+- **Banco e funções**: pelo Supabase CLI (passos 3 e 4).
+- **CI** (`.github/workflows/ci.yml`): a cada push confere tipos, lint, testes, build e os tipos das Edge Functions (Deno).
 
-**Pelo terminal**
-
-```bash
-npx wrangler login     # uma vez
-npm run cf:dev         # build + teste local em http://localhost:8787
-npm run deploy         # build + publicação
-```
-
-O deploy pelo terminal usa o `.env` local, porque `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` entram no build.
-
-**Pelo GitHub (Workers Builds)**: em Workers & Pages > Create > Import a repository, use o comando de build `npm run build` e o comando de deploy `npx wrangler deploy`. Cadastre `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` em **Settings > Build > Variables and secrets**. Não use as variáveis de runtime do Worker, porque o Vite só lê essas variáveis durante o build.
-
-**Ao trocar de domínio**
-
-- Atualize o segredo `FRONTEND_URL` das Edge Functions: `supabase secrets set FRONTEND_URL=https://seu-dominio`. O checkout e o portal da Stripe só aceitam retorno para essa origem.
-- No Supabase, em Authentication > URL Configuration, coloque o novo domínio em Site URL e adicione `https://seu-dominio/**` em Redirect URLs. Sem isso, o login e a redefinição de senha não funcionam.
+**Ao trocar de domínio**: atualize o segredo `FRONTEND_URL` (o checkout e o portal do Stripe só voltam para essa origem) e, no Supabase, o Site URL e as Redirect URLs.
 
 ## 👨‍💻 Autor
 
