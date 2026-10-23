@@ -52,6 +52,8 @@ export const translations = {
 
     filters: {
       advanced: 'Advanced Filters',
+      short: 'Filters',
+      categoriesTitle: 'Categories',
       minRating: 'Minimum Rating',
       clearAll: 'Clear All Filters',
       prepTime: {
@@ -1150,6 +1152,8 @@ export const translations = {
 
     filters: {
       advanced: 'Filtros Avançados',
+      short: 'Filtros',
+      categoriesTitle: 'Categorias',
       minRating: 'Avaliação Mínima',
       clearAll: 'Limpar Todos os Filtros',
       prepTime: {

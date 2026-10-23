@@ -133,16 +133,17 @@ export function HomePage() {
           )}
 
           <div className="mb-8">
-            <div className="bg-white dark:bg-slate-800/30 rounded-xl p-4 sm:p-5 border border-slate-100 dark:border-slate-700/50">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="bg-white dark:bg-slate-800/60 rounded-xl p-3.5 sm:p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t.filters.categoriesTitle}</h3>
+                <AdvancedFilters />
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 <CategoryFilter
                   categories={CATEGORIES}
                   selectedCategory={category}
                   onSelectCategory={setCategory}
                 />
-                <div className="ml-auto">
-                  <AdvancedFilters />
-                </div>
               </div>
             </div>
           </div>
