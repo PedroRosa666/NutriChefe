@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef, type ComponentType } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LayoutDashboard, Apple, HeartPulse, Heart, Settings, BookOpen, Briefcase, Users, CalendarRange, ShoppingCart, Carrot, MessageCircle } from 'lucide-react';
@@ -63,6 +63,9 @@ const ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
   account: Settings,
 };
 
+/** Largura máxima do esmaecimento nas bordas da faixa de abas. */
+const FADE_PX = 44;
+
 export function ProfileTabs() {
   const { user } = useAuthStore();
   const { recipes, favoriteRecipes } = useRecipesStore();
@@ -77,13 +80,16 @@ export function ProfileTabs() {
   const requested = searchParams.get('tab') as TabKey | null;
   const activeTab: TabKey = requested && tabs.includes(requested) ? requested : 'overview';
 
-  // Faixa de abas que rola para o lado: sombras nas bordas mostram que há mais abas.
+  // Faixa de abas que rola para o lado: as bordas esmaecem para mostrar que há mais abas.
+  // O esmaecimento cresce junto com o que falta rolar, então aparece e some aos poucos.
   const stripRef = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState({ left: false, right: false });
   const updateEdges = useCallback(() => {
     const el = stripRef.current;
     if (!el) return;
-    setEdges({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+    const left = Math.min(el.scrollLeft, FADE_PX);
+    const right = Math.min(Math.max(el.scrollWidth - el.clientWidth - el.scrollLeft, 0), FADE_PX);
+    el.style.setProperty('--fade-l', `${left}px`);
+    el.style.setProperty('--fade-r', `${right}px`);
   }, []);
   useEffect(() => {
     updateEdges();
@@ -114,8 +120,8 @@ export function ProfileTabs() {
 
   return (
     <div className="space-y-6">
-      <div className="relative -mx-4 sm:mx-0">
-      <div ref={stripRef} onScroll={updateEdges} className="overflow-x-auto px-4 sm:px-0">
+      <div className="-mx-4 sm:mx-0">
+      <div ref={stripRef} onScroll={updateEdges} className="scroll-fade-x overflow-x-auto px-4 sm:px-0">
         <div role="tablist" className="inline-flex min-w-max gap-1 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
           {tabs.map((tab) => {
             const Icon = ICONS[tab];
@@ -148,14 +154,6 @@ export function ProfileTabs() {
           })}
         </div>
       </div>
-      {edges.left && (
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[rgb(var(--nc-page))] to-transparent" />
-      )}
-      {edges.right && (
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex w-10 items-center justify-end bg-gradient-to-l from-[rgb(var(--nc-page))] to-transparent pr-1">
-          <span className="sr-only">{t.profileUi.moreTabs}</span>
-        </div>
-      )}
       </div>
 
       <AnimatePresence mode="wait" initial={false}>

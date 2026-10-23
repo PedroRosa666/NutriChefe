@@ -258,3 +258,15 @@
     background-color: rgb(var(--nc-scroll-thumb) / var(--nc-scroll-alpha));
   }
 }
+
+/* Bordas de uma faixa que rola para o lado: o conteúdo esmaece suavemente.
+   --fade-l/--fade-r vêm do JS (0 a ~44px) e acompanham a rolagem. */
+@property --fade-l { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --fade-r { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.scroll-fade-x {
+  --fade-l: 0px;
+  --fade-r: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+  transition: --fade-l 0.3s ease-out, --fade-r 0.3s ease-out;
+}
