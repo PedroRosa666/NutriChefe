@@ -230,7 +230,16 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
       </AnimatePresence>
 
       {/* Mesmo tom do topo do degradê, translúcido: sem corte entre cabeçalho e página. */}
-      <header className="sticky top-0 z-50 bg-[rgb(var(--nc-top)/0.72)] backdrop-blur-md backdrop-saturate-150">
+      {/* Com a busca aberta o topo fica opaco e com sombra: as receitas rolando por baixo não aparecem
+          através do campo (antes, translúcido, parecia que cartão e busca estavam encavalados). */}
+      <header
+        className={cn(
+          'sticky top-0 z-50 backdrop-blur-md backdrop-saturate-150 transition-[background-color,box-shadow] duration-200',
+          isSearchOpen
+            ? 'bg-[rgb(var(--nc-top)/0.97)] shadow-lg shadow-slate-900/10 md:bg-[rgb(var(--nc-top)/0.72)] md:shadow-none dark:shadow-black/30'
+            : 'bg-[rgb(var(--nc-top)/0.72)]'
+        )}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
