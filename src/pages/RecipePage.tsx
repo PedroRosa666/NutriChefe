@@ -5,10 +5,12 @@ import { RecipeDetails } from '../components/RecipeDetails';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { LockedRecipe } from '../components/recipes/ExclusiveShelf';
 import { getPremiumTeasers, type RecipeTeaser } from '../services/progress';
+import { useTranslation } from '../hooks/useTranslation';
 
 // Renderizada dentro da home (rota filha): a receita abre como modal por cima
 // da lista, que continua montada. Fechar volta para onde a pessoa estava.
 export function RecipePage() {
+  const t = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams<{ id: string }>();
@@ -68,13 +70,13 @@ export function RecipePage() {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 backdrop-blur-[3px] p-4">
         <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 text-center shadow-2xl">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Receita não encontrada
+            {t.feedback.recipes.notFound}
           </h1>
           <button
             onClick={() => navigate('/', { replace: true })}
             className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
-            Voltar ao Início
+            {t.feedback.recipes.backHome}
           </button>
         </div>
       </div>

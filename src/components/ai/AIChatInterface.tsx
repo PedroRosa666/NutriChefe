@@ -15,6 +15,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useAIUserContext } from '../../hooks/useAIUserContext';
 import { confirmDialog } from '../../store/confirm';
 import { usePremiumStore } from '../../store/premium';
+import { appLocale } from '../../lib/format';
 
 type RecipeCardData = NonNullable<AIResponse['recipes']>[number];
 
@@ -30,20 +31,16 @@ function renderInline(text: string) {
   );
 }
 
+// Texto (rótulo e pergunta enviada) vem de t.feedback.ai.quickPrompts.
 const QUICK_PROMPTS = [
-  { icon: <Cherry className="w-4 h-4" />, label: 'Tenho morangos em casa', prompt: 'Tenho morangos em casa, o que posso fazer?' },
-  { icon: <Moon className="w-4 h-4" />, label: 'Jantar leve', prompt: 'Uma ideia de jantar leve, até 450 kcal' },
-  { icon: <Dumbbell className="w-4 h-4" />, label: 'Rica em proteína', prompt: 'Receitas ricas em proteína com frango' },
-  { icon: <Leaf className="w-4 h-4" />, label: 'Vegana e rápida', prompt: 'Receitas veganas prontas em até 20 minutos' },
-];
+  { icon: <Cherry className="w-4 h-4" />, key: 'strawberries' },
+  { icon: <Moon className="w-4 h-4" />, key: 'lightDinner' },
+  { icon: <Dumbbell className="w-4 h-4" />, key: 'protein' },
+  { icon: <Leaf className="w-4 h-4" />, key: 'quickVegan' },
+] as const;
 
-const CATEGORY_LABELS: Record<string, string> = {
-  vegan: 'Vegana',
-  vegetarian: 'Vegetariana',
-  glutenFree: 'Sem glúten',
-  lowCarb: 'Low carb',
-  highProtein: 'Proteica',
-};
+// Títulos padrão gravados no banco (em português); na tela viram a data da conversa.
+const DEFAULT_TITLES = ['Nova conversa com IA', 'Nova conversa'];
 
 export function AIChatInterface() {
   const { user } = useAuthStore();
@@ -66,6 +63,7 @@ export function AIChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const t = useTranslation();
+  const categoryLabels: Record<string, string> = t.feedback.ai.categoryLabels;
   const geminiConfigured = isGeminiConfigured();
 
   useEffect(() => {
@@ -207,7 +205,7 @@ export function AIChatInterface() {
           <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-1.5">
             {recipe.description}
           </p>
-          {(!!recipe.matched?.length || (recipe.category && CATEGORY_LABELS[recipe.category])) && (
+          {(!!recipe.matched?.length || (recipe.category && categoryLabels[recipe.category])) && (
             <div className="mb-1.5 flex flex-wrap gap-1">
               {recipe.matched?.map((m) => (
                 <span key={m} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
@@ -215,9 +213,9 @@ export function AIChatInterface() {
                   {t.aiChat.contains} {m}
                 </span>
               ))}
-              {recipe.category && CATEGORY_LABELS[recipe.category] && (
+              {recipe.category && categoryLabels[recipe.category] && (
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                  {CATEGORY_LABELS[recipe.category]}
+                  {categoryLabels[recipe.category]}
                 </span>
               )}
             </div>
@@ -256,8 +254,8 @@ export function AIChatInterface() {
 
   // Conversas da versão antiga ficaram com o título padrão: mostra a data no lugar.
   const conversationTitle = (c: { title?: string; created_at: string }) =>
-    !c.title || c.title === 'Nova conversa com IA'
-      ? `${t.aiChat.conversationFrom} ${new Date(c.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`
+    !c.title || DEFAULT_TITLES.includes(c.title)
+      ? `${t.aiChat.conversationFrom} ${new Date(c.created_at).toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit' })}`
       : c.title;
 
   const lastAiMessage = [...messages].reverse().find((m) => m.sender_type === 'ai');
@@ -311,7 +309,7 @@ export function AIChatInterface() {
             >
               <p className="truncate text-sm text-gray-800 dark:text-gray-200">{conversationTitle(c)}</p>
               <p className="text-xs text-gray-400">
-                {new Date(c.last_message_at || c.created_at).toLocaleDateString('pt-BR')}
+                {new Date(c.last_message_at || c.created_at).toLocaleDateString(appLocale())}
               </p>
             </button>
             <button
@@ -379,13 +377,13 @@ export function AIChatInterface() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}
-                onClick={() => handleQuickPrompt(item.prompt)}
+                onClick={() => handleQuickPrompt(t.feedback.ai.quickPrompts[item.key].prompt)}
                 className="flex items-center gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-left hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all group"
               >
                 <span className="text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
                   {item.icon}
                 </span>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.label}</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.feedback.ai.quickPrompts[item.key].label}</span>
               </motion.button>
             ))}
           </div>
@@ -484,7 +482,7 @@ export function AIChatInterface() {
                   'text-xs mt-2 opacity-60 select-none',
                   message.sender_type === 'user' ? 'text-right' : 'text-left'
                 )}>
-                  {new Date(message.created_at).toLocaleTimeString('pt-BR', {
+                  {new Date(message.created_at).toLocaleTimeString(appLocale(), {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}

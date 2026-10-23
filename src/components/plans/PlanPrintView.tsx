@@ -5,7 +5,7 @@ import { useSettingsStore } from '../../store/settings';
 import { MEAL_SLOTS, type MealPlan, type MealPlanItem } from '../../services/care';
 import { groupEqualDays, itemNutrition, itemsTotals, mealBlocks } from '../../lib/plan-items';
 import type { Recipe } from '../../types/recipe';
-import { fmtNum } from '../../lib/format';
+import { fmtNum, appLocale } from '../../lib/format';
 
 interface PlanPrintViewProps {
   plan: MealPlan;
@@ -74,7 +74,7 @@ export function PlanPrintView({ plan, recipesById, patientName, onDone }: PlanPr
   };
 
   const groups = groupEqualDays(plan.items);
-  const today = new Date().toLocaleDateString();
+  const today = new Date().toLocaleDateString(appLocale());
 
   return createPortal(
     <div className="plan-print-root text-[12px] leading-snug text-slate-900" style={{ background: '#fff' }}>
@@ -94,7 +94,7 @@ export function PlanPrintView({ plan, recipesById, patientName, onDone }: PlanPr
               {' • '}
             </>
           )}
-          {p.updated} {new Date(plan.updated_at).toLocaleDateString()}
+          {p.updated} {new Date(plan.updated_at).toLocaleDateString(appLocale())}
         </p>
       </header>
 

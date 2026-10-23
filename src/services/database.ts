@@ -2,6 +2,7 @@ import type { User as AuthUser } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Recipe } from '../types/recipe';
 import { PUBLIC_PROFILE_COLUMNS } from '../lib/profile-columns';
+import { feedback } from '../lib/i18n/current';
 
 // Tipos para o banco de dados
 interface DatabaseRecipe {
@@ -310,13 +311,13 @@ export async function updatePassword(newPassword: string): Promise<void> {
     console.error('Error updating password:', error);
 
     if (error.message.includes('session_not_found')) {
-      throw new Error('Sessão expirada. Solicite um novo link de recuperação.');
+      throw new Error(feedback().auth.recoverySessionExpired);
     }
     if (error.message.includes('Password should be at least')) {
-      throw new Error('A senha deve ter pelo menos 6 caracteres.');
+      throw new Error(feedback().auth.passwordTooShort);
     }
 
-    throw new Error('Erro ao atualizar senha. Tente novamente.');
+    throw new Error(feedback().auth.updatePasswordError);
   }
 }
 

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { useAuthStore } from './auth';
 import { getShoppingList, saveShoppingList } from '../services/care';
 import { buildShoppingItems, mergeShoppingItems, type ShoppingItem, type ShoppingSource } from '../lib/ingredients';
+import { feedback } from '../lib/i18n/current';
 
 interface ShoppingListState {
   items: ShoppingItem[];
@@ -25,7 +26,7 @@ export const useShoppingListStore = create<ShoppingListState>()((set, get) => {
   const ensureLoaded = async () => {
     if (get().loaded) return;
     const userId = useAuthStore.getState().user?.id;
-    if (!userId) throw new Error('Faça login para salvar a lista de compras.');
+    if (!userId) throw new Error(feedback().loginRequired.shoppingList);
     const items = await getShoppingList(userId);
     set({ items, loaded: true });
   };
@@ -34,7 +35,7 @@ export const useShoppingListStore = create<ShoppingListState>()((set, get) => {
     const previous = get().items;
     set({ items });
     const userId = useAuthStore.getState().user?.id;
-    if (!userId) throw new Error('Faça login para salvar a lista de compras.');
+    if (!userId) throw new Error(feedback().loginRequired.shoppingList);
     try {
       await (writeQueue = writeQueue.catch(() => undefined).then(() => saveShoppingList(userId, items)));
     } catch (error) {

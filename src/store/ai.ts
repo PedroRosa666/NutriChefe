@@ -3,6 +3,7 @@ import * as aiService from '../services/ai';
 import { useToastStore } from './toast';
 import type { AIConfiguration, AIConversation, AIMessage } from '../types/ai';
 import type { AIUserContext } from '../services/gemini';
+import { feedback } from '../lib/i18n/current';
 
 interface AIState {
   // Configurações
@@ -59,7 +60,7 @@ export const useAIStore = create<AIState>((set, get) => ({
       set({ aiConfig: config, loading: false });
     } catch (error) {
       console.error('Error fetching AI configuration:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar configuração da IA';
+      const errorMessage = error instanceof Error ? error.message : feedback().ai.loadConfigError;
       set({ error: errorMessage, loading: false });
     }
   },
@@ -69,12 +70,12 @@ export const useAIStore = create<AIState>((set, get) => ({
     try {
       const newConfig = await aiService.createAIConfiguration(config);
       set({ aiConfig: newConfig, loading: false });
-      useToastStore.getState().showToast('Configuração da IA criada com sucesso!', 'success');
+      useToastStore.getState().showToast(feedback().ai.configCreated, 'success');
     } catch (error) {
       console.error('Error creating AI configuration:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao criar configuração da IA';
+      const errorMessage = error instanceof Error ? error.message : feedback().ai.createConfigError;
       set({ error: errorMessage, loading: false });
-      useToastStore.getState().showToast('Erro ao criar configuração da IA', 'error');
+      useToastStore.getState().showToast(feedback().ai.createConfigError, 'error');
       throw error;
     }
   },
@@ -84,12 +85,12 @@ export const useAIStore = create<AIState>((set, get) => ({
     try {
       const updatedConfig = await aiService.updateAIConfiguration(configId, updates);
       set({ aiConfig: updatedConfig, loading: false });
-      useToastStore.getState().showToast('Configuração da IA atualizada com sucesso!', 'success');
+      useToastStore.getState().showToast(feedback().ai.configUpdated, 'success');
     } catch (error) {
       console.error('Error updating AI configuration:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao atualizar configuração da IA';
+      const errorMessage = error instanceof Error ? error.message : feedback().ai.updateConfigError;
       set({ error: errorMessage, loading: false });
-      useToastStore.getState().showToast('Erro ao atualizar configuração da IA', 'error');
+      useToastStore.getState().showToast(feedback().ai.updateConfigError, 'error');
       throw error;
     }
   },
@@ -102,7 +103,7 @@ export const useAIStore = create<AIState>((set, get) => ({
       set({ conversations, loadingConversations: false });
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar conversas';
+      const errorMessage = error instanceof Error ? error.message : feedback().ai.loadConversationsError;
       set({ error: errorMessage, loadingConversations: false });
     }
   },
@@ -137,9 +138,9 @@ export const useAIStore = create<AIState>((set, get) => ({
       return conversation;
     } catch (error) {
       console.error('Error creating conversation:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao criar conversa';
+      const errorMessage = error instanceof Error ? error.message : feedback().ai.createConversationError;
       set({ error: errorMessage, loading: false });
-      useToastStore.getState().showToast('Erro ao criar conversa', 'error');
+      useToastStore.getState().showToast(feedback().ai.createConversationError, 'error');
       throw error;
     }
   },
@@ -162,7 +163,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     } catch (error) {
       console.error('Error archiving conversation:', error);
       set({ conversations: previous });
-      useToastStore.getState().showToast('Não foi possível excluir a conversa', 'error');
+      useToastStore.getState().showToast(feedback().ai.deleteConversationError, 'error');
     }
   },
 
@@ -174,7 +175,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     } catch (error) {
       console.error('Error archiving conversations:', error);
       set({ conversations: previous });
-      useToastStore.getState().showToast('Não foi possível limpar o histórico', 'error');
+      useToastStore.getState().showToast(feedback().ai.clearHistoryError, 'error');
     }
   },
 
@@ -188,7 +189,7 @@ export const useAIStore = create<AIState>((set, get) => ({
       set({ messages, loading: false });
     } catch (error) {
       console.error('Error fetching messages:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar mensagens';
+      const errorMessage = error instanceof Error ? error.message : feedback().ai.loadMessagesError;
       set({ error: errorMessage, loading: false });
     }
   },
@@ -224,16 +225,16 @@ export const useAIStore = create<AIState>((set, get) => ({
       } catch (processError) {
         console.warn('Erro ao processar mensagem, usando fallback:', processError);
         aiResponse = {
-          content: 'Desculpe, tive um problema ao processar sua pergunta. Tente novamente.',
+          content: feedback().ai.processError,
           recipes: [],
-          suggestions: ['receitas fáceis', 'vegana', 'sem glúten'],
+          suggestions: [...feedback().ai.fallbackSuggestions],
         };
       }
 
       const aiMessage = await aiService.createAIMessage({
         conversation_id: conversationId,
         sender_type: 'ai',
-        content: aiResponse.content || 'Desculpe, não consegui gerar uma resposta.',
+        content: aiResponse.content || feedback().ai.emptyReply,
         metadata: {
           recipes: aiResponse.recipes || [],
           suggestions: aiResponse.suggestions || [],
@@ -262,7 +263,7 @@ export const useAIStore = create<AIState>((set, get) => ({
       set({ sendingMessage: false });
       const errorMsg = error instanceof Error && error.message
         ? error.message
-        : 'Não consegui enviar sua mensagem. Verifique sua conexão.';
+        : feedback().ai.sendError;
       useToastStore.getState().showToast(errorMsg, 'error');
       throw error;
     }

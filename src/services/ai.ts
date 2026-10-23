@@ -11,8 +11,10 @@ import {
   searchRecipes,
   type SearchableRecipe,
 } from '../../supabase/functions/_shared/recipe-search';
+import { feedback } from '../lib/i18n/current';
 
-const DEFAULT_SUGGESTIONS = ['receitas com frango', 'algo doce e saudável', 'jantar leve até 30 min'];
+// Sugestões no idioma atual (cópia, para ninguém alterar o array das traduções).
+const defaultSuggestions = () => [...feedback().ai.defaultSuggestions];
 
 // =============================================================================
 // Modo local (sem IA)
@@ -52,9 +54,9 @@ async function localReply(message: string, context?: AIUserContext): Promise<AIR
 
   if (!isRecipeRequest) {
     const content = GREETING_RE.test(message.trim())
-      ? 'Olá! Me diga um ingrediente, um tipo de prato ou uma meta ("receitas com morango", "jantar leve", "rica em proteína") que eu procuro no catálogo.'
-      : 'No momento só consigo buscar receitas do catálogo. Me diga um ingrediente, um tipo de prato ou um filtro, como "receitas com frango até 30 min".';
-    return { content, recipes: [], suggestions: DEFAULT_SUGGESTIONS };
+      ? feedback().ai.localGreeting
+      : feedback().ai.localOnlySearch;
+    return { content, recipes: [], suggestions: defaultSuggestions() };
   }
 
   const result = searchRecipes(catalog, query, context?.allergies ?? []);
@@ -72,7 +74,7 @@ async function localReply(message: string, context?: AIUserContext): Promise<AIR
       calories: recipe.calories,
       matched,
     })),
-    suggestions: DEFAULT_SUGGESTIONS,
+    suggestions: defaultSuggestions(),
     meta: { intent: 'recipe_search', mode: result.mode, local: true },
   };
 }
@@ -205,7 +207,7 @@ export async function processAIMessage(
 ): Promise<AIResponse> {
   const content = String(userMessage || '').trim();
   if (!content) {
-    return { content: 'Desculpe, não consegui entender. Pode repetir?', recipes: [], suggestions: DEFAULT_SUGGESTIONS };
+    return { content: feedback().ai.notUnderstood, recipes: [], suggestions: defaultSuggestions() };
   }
 
   // O store já inclui a mensagem atual no histórico; ela vai separada.
@@ -217,7 +219,7 @@ export async function processAIMessage(
   if (result.ok) return result.response;
   if (!result.limited) {
     // Limite por hora, acesso negado etc.: a mensagem do servidor explica o motivo.
-    return { content: result.message ?? 'Não consegui responder agora. Tente novamente.', recipes: [], suggestions: [] };
+    return { content: result.message ?? feedback().ai.cannotReplyNow, recipes: [], suggestions: [] };
   }
 
   try {
@@ -225,9 +227,9 @@ export async function processAIMessage(
   } catch (error) {
     console.error('Erro na busca local:', error);
     return {
-      content: 'Desculpe, tive um problema ao buscar receitas. Tente novamente.',
+      content: feedback().ai.searchError,
       recipes: [],
-      suggestions: DEFAULT_SUGGESTIONS,
+      suggestions: defaultSuggestions(),
     };
   }
 }

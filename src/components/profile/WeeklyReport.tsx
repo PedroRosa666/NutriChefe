@@ -6,8 +6,9 @@ import { useHealthProfileStore } from '../../store/health-profile';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
+import { appLocale } from '../../lib/format';
 
-const fmt = (n: number, digits = 0) => n.toLocaleString(undefined, { maximumFractionDigits: digits });
+const fmt = (n: number, digits = 0) => n.toLocaleString(appLocale(), { maximumFractionDigits: digits });
 
 /** Médias dos últimos 7 dias frente às metas, para a pessoa (e o nutricionista) acompanhar. */
 export function WeeklyReport() {

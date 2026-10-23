@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './auth';
 import type { Recipe } from '../types/recipe';
+import { feedback } from '../lib/i18n/current';
 
 export interface NutritionTotals {
   calories: number;
@@ -94,7 +95,7 @@ export const fromRow = (row: NutritionLogRow): NutritionLogEntry => ({
 
 const requireUserId = () => {
   const userId = useAuthStore.getState().user?.id;
-  if (!userId) throw new Error('Faça login para usar o diário alimentar.');
+  if (!userId) throw new Error(feedback().loginRequired.diary);
   return userId;
 };
 

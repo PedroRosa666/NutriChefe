@@ -3,8 +3,11 @@ import { motion } from 'framer-motion';
 import { Mail, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { sendPasswordResetEmail } from '../../services/database';
 import { cn } from '../../lib/utils';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export function ForgotPasswordPage() {
+  const t = useTranslation();
+  const fp = t.feedback.forgotPassword;
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -21,7 +24,7 @@ export function ForgotPasswordPage() {
       setSuccess(true);
     } catch (err) {
       console.error('Forgot password error:', err);
-      setError('Não foi possível enviar o link agora. Tente novamente em alguns minutos.');
+      setError(fp.pageSendError);
     } finally {
       setLoading(false);
     }
@@ -39,8 +42,8 @@ export function ForgotPasswordPage() {
             <Mail className="w-6 h-6 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Esqueci minha senha</h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Digite seu e-mail para receber o link</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{fp.title}</h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{fp.pageSubtitle}</p>
           </div>
         </div>
 
@@ -48,7 +51,7 @@ export function ForgotPasswordPage() {
           <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg flex items-start gap-2">
             <CheckCircle className="w-4 h-4 mt-0.5 text-green-600 dark:text-green-400" />
             <p className="text-sm text-green-700 dark:text-green-300">
-              Se esse e-mail estiver cadastrado, enviaremos as instruções.
+              {fp.pageSent}
             </p>
           </div>
         )}
@@ -63,7 +66,7 @@ export function ForgotPasswordPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              E-mail
+              {fp.emailLabel}
             </label>
             <input
               id="email"
@@ -71,7 +74,7 @@ export function ForgotPasswordPage() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
+              placeholder={t.feedback.auth.emailPlaceholder}
               required
               disabled={loading}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
@@ -87,7 +90,7 @@ export function ForgotPasswordPage() {
             )}
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? 'Enviando...' : 'Enviar link de recuperação'}
+            {loading ? fp.sending : fp.sendLink}
           </button>
         </form>
       </motion.div>

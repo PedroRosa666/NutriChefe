@@ -3,6 +3,7 @@ import type { EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { ResendConfirmation } from './ResendConfirmation';
+import { useTranslation } from '../../hooks/useTranslation';
 
 /**
  * Página de confirmação de email.
@@ -13,7 +14,9 @@ import { ResendConfirmation } from './ResendConfirmation';
  */
 export default function ConfirmEmailPage() {
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
-  const [message, setMessage] = useState('Confirmando seu e-mail...');
+  const t = useTranslation();
+  // Guarda a chave do texto, para a mensagem acompanhar a troca de idioma.
+  const [message, setMessage] = useState<keyof typeof t.feedback.confirmEmail>('confirming');
 
   useEffect(() => {
     (async () => {
@@ -27,7 +30,7 @@ export default function ConfirmEmailPage() {
           if (error) throw error;
           if (data?.user) {
             setStatus('ok');
-            setMessage('E-mail confirmado com sucesso! Você já pode acessar o sistema.');
+            setMessage('confirmed');
             return;
           }
         }
@@ -41,7 +44,7 @@ export default function ConfirmEmailPage() {
             const { error } = await supabase.auth.setSession({ access_token, refresh_token });
             if (error) throw error;
             setStatus('ok');
-            setMessage('E-mail confirmado com sucesso! Você já pode acessar o sistema.');
+            setMessage('confirmed');
             return;
           }
         }
@@ -54,7 +57,7 @@ export default function ConfirmEmailPage() {
           if (error) throw error;
           if (data?.user) {
             setStatus('ok');
-            setMessage('E-mail confirmado com sucesso! Você já pode acessar o sistema.');
+            setMessage('confirmed');
             return;
           }
         }
@@ -66,20 +69,17 @@ export default function ConfirmEmailPage() {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user.email_confirmed_at) {
             setStatus('ok');
-            setMessage('E-mail confirmado com sucesso! Você já pode acessar o sistema.');
+            setMessage('confirmed');
             return;
           }
         }
 
         setStatus('error');
-        setMessage('Link inválido ou expirado. Solicite um novo e-mail de confirmação.');
+        setMessage('invalidLink');
       } catch (err) {
         console.error('Erro ao confirmar e-mail:', err);
         setStatus('error');
-        const friendly = err instanceof Error && err.message.includes('expired')
-          ? 'Seu link expirou. Solicite um novo e-mail de confirmação.'
-          : 'Não foi possível confirmar seu e-mail. Tente novamente.';
-        setMessage(friendly);
+        setMessage(err instanceof Error && err.message.includes('expired') ? 'expired' : 'failed');
       }
     })();
   }, []);
@@ -90,7 +90,7 @@ export default function ConfirmEmailPage() {
         {status === 'loading' && <Loader2 className="mx-auto animate-spin" />}
         {status === 'ok' && <CheckCircle className="mx-auto text-green-600" />}
         {status === 'error' && <AlertCircle className="mx-auto text-red-600" />}
-        <p className="mt-4 text-lg">{message}</p>
+        <p className="mt-4 text-lg">{t.feedback.confirmEmail[message]}</p>
         {status === 'error' && (
           <div className="mt-6">
             <ResendConfirmation />

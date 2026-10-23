@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { SubscriptionPlan, UserSubscription } from '../types/subscription';
+import { feedback } from '../lib/i18n/current';
 
 /** Lista planos ativos, ordenados por preço (asc). */
 export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
@@ -75,7 +76,7 @@ async function getAccessToken(): Promise<string> {
     session = refreshed?.data?.session ?? null;
   }
   if (!session?.access_token) {
-    throw new Error('Você precisa estar logado. Faça login e tente novamente.');
+    throw new Error(feedback().subscription.loginRequired);
   }
   return session.access_token;
 }
@@ -101,7 +102,7 @@ export async function openBillingPortal() {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (error && !data) throw new Error(error.message);
-  if (!data?.url) throw new Error(data?.error || 'Não foi possível abrir o portal de assinatura.');
+  if (!data?.url) throw new Error(data?.error || feedback().subscription.portalError);
   redirectTo(data.url as string);
 }
 
@@ -129,9 +130,9 @@ export async function startCheckout({
   });
 
   if (invokeError && !result) throw new Error(`Checkout failed: ${invokeError.message}`);
-  if (!result) throw new Error('Checkout failed: sem resposta do servidor');
+  if (!result) throw new Error(feedback().subscription.checkoutNoResponse);
   if (result.error) throw new Error(`Checkout failed: ${result.error}`);
-  if (!result.url) throw new Error('Falha ao criar sessão de pagamento (sem URL)');
+  if (!result.url) throw new Error(feedback().subscription.checkoutNoUrl);
 
   redirectTo(result.url as string);
 }

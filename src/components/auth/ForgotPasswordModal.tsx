@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { X, Mail, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { sendPasswordResetEmail } from '../../services/database';
 import { cn } from '../../lib/utils';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -16,6 +17,8 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<Step>('email');
   const [error, setError] = useState('');
+  const t = useTranslation();
+  const fp = t.feedback.forgotPassword;
 
   if (!isOpen) return null;
 
@@ -31,12 +34,12 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
     
     // Validações básicas
     if (!trimmedEmail) {
-      setError('Por favor, digite seu email.');
+      setError(fp.emailRequired);
       return;
     }
 
     if (!validateEmail(trimmedEmail)) {
-      setError('Por favor, digite um email válido.');
+      setError(fp.emailInvalid);
       return;
     }
 
@@ -53,7 +56,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
       setError(
         err instanceof Error && err.message
           ? err.message
-          : 'Erro ao enviar email de recuperação. Tente novamente em alguns minutos.'
+          : fp.sendError
       );
       setStep('error');
     } finally {
@@ -99,10 +102,10 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Esqueci minha senha
+                  {fp.title}
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Digite seu email para receber o link de recuperação
+                  {fp.subtitle}
                 </p>
               </div>
             </div>
@@ -110,7 +113,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email
+                  {fp.emailLabel}
                 </label>
                 <input
                   type="email"
@@ -118,7 +121,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                  placeholder="seu@email.com"
+                  placeholder={t.feedback.auth.emailPlaceholder}
                   required
                   disabled={loading}
                   autoComplete="email"
@@ -142,13 +145,13 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
                 )}
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading ? 'Verificando...' : 'Enviar link de recuperação'}
+                {loading ? fp.checking : fp.sendLink}
               </button>
             </form>
 
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-xs text-blue-800 dark:text-blue-200">
-                <strong>Dica:</strong> Verifique sua pasta de spam caso não receba o email em alguns minutos.
+                <strong>{fp.tipLabel}</strong> {fp.tipText}
               </p>
             </div>
           </div>
@@ -160,16 +163,14 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
               <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              Email enviado!
+              {fp.sentTitle}
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Se existir uma conta com <strong>{email}</strong>, enviamos um link de recuperação.
-              Verifique sua caixa de entrada e pasta de spam.
+              {fp.sentBefore}<strong>{email}</strong>{fp.sentAfter}
             </p>
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Importante:</strong> O link expira em 1 hora. Se não receber o email em alguns minutos, 
-                verifique sua pasta de spam ou tente novamente.
+                <strong>{fp.importantLabel}</strong> {fp.importantText}
               </p>
             </div>
             <div className="space-y-3">
@@ -177,13 +178,13 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
                 onClick={handleClose}
                 className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
               >
-                Fechar
+                {t.common.close}
               </button>
               <button
                 onClick={handleRetry}
                 className="w-full py-2.5 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors font-medium"
               >
-                Enviar novamente
+                {fp.sendAgain}
               </button>
             </div>
           </div>
@@ -195,7 +196,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
               <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              Erro ao enviar
+              {fp.errorTitle}
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               {error}
@@ -205,13 +206,13 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
                 onClick={handleRetry}
                 className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
               >
-                Tentar novamente
+                {t.common.retry}
               </button>
               <button
                 onClick={handleClose}
                 className="w-full py-2.5 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors font-medium"
               >
-                Fechar
+                {t.common.close}
               </button>
             </div>
           </div>

@@ -13,6 +13,7 @@ import { getRecipeAuthorStats, type RecipeStats } from '../../services/care';
 import { UpcomingAppointments } from '../care/Appointments';
 import { CrnVerificationCard } from '../care/CrnVerificationCard';
 import { AttentionPanel } from '../care/AttentionPanel';
+import { appLocale } from '../../lib/format';
 
 export function NutritionistDashboard() {
   const { user } = useAuthStore();
@@ -234,7 +235,7 @@ export function NutritionistDashboard() {
                     <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">“{review.comment}”</p>
                   )}
                   <p className="mt-1 text-xs text-slate-400">
-                    {review.userName || t.recipe.authorFallbackName} • {new Date(`${review.date}T00:00:00`).toLocaleDateString('pt-BR')}
+                    {review.userName || t.recipe.authorFallbackName} • {new Date(`${review.date}T00:00:00`).toLocaleDateString(appLocale())}
                   </p>
                 </li>
               ))}

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './auth';
+import { feedback } from '../lib/i18n/current';
 
 export interface NutritionGoals {
   calories: number;
@@ -42,7 +43,7 @@ let writeQueue: Promise<unknown> = Promise.resolve();
 
 async function upsertGoals(goals: NutritionGoals, activeGoals: GoalKey[], extra: { set_by?: null } = {}) {
   const userId = useAuthStore.getState().user?.id;
-  if (!userId) throw new Error('Faça login para salvar suas metas.');
+  if (!userId) throw new Error(feedback().loginRequired.goals);
   const { error } = await supabase
     .from('nutrition_goals')
     .upsert(

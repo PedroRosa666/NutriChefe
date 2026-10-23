@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { compressImage } from '../lib/image-utils';
+import { feedback } from '../lib/i18n/current';
 
 export class StorageService {
   private static readonly AVATARS_BUCKET = 'avatars';
@@ -8,12 +9,12 @@ export class StorageService {
 
   static async uploadAvatar(userId: string, file: File): Promise<string> {
     if (file.size > this.MAX_FILE_SIZE) {
-      throw new Error('Imagem muito grande. O tamanho máximo é 2MB.');
+      throw new Error(feedback().upload.imageTooLarge);
     }
 
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      throw new Error('Formato não suportado. Use JPG, PNG, GIF ou WebP.');
+      throw new Error(feedback().upload.avatarFormat);
     }
 
     const fileExt = file.name.split('.').pop();
@@ -56,7 +57,7 @@ export class StorageService {
 
   static async uploadRecipeImage(userId: string, file: File): Promise<string> {
     if (!file.type.startsWith('image/')) {
-      throw new Error('Formato não suportado. Use JPG, PNG ou WebP.');
+      throw new Error(feedback().upload.recipeImageFormat);
     }
 
     // Comprime antes de enviar: a foto do card não precisa de mais que 1200px.

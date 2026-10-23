@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { HomePage } from '../pages/HomePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RootLayout } from '../layouts/RootLayout';
+import { RouteError } from '../components/common/RouteError';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 // Páginas fora da home são carregadas sob demanda: o bundle inicial fica menor
@@ -35,7 +36,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <RootLayout />,
-    errorElement: <NotFoundPage />,
+    errorElement: <RouteError />,
     children: [
       {
         // A home fica montada enquanto uma receita está aberta: a receita é um modal por cima dela.

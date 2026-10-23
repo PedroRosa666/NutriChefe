@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { ImageCropModal } from './ImageCropModal';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
+import { feedback } from '../../lib/i18n/current';
 
 interface AvatarUploadProps {
   currentAvatarUrl?: string | null;
@@ -102,7 +103,7 @@ export function AvatarUpload({
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('Error reading file:', error);
-      showToast(error instanceof Error && error.message ? error.message : 'Erro ao ler arquivo', 'error');
+      showToast(error instanceof Error && error.message ? error.message : feedback().upload.readError, 'error');
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -143,7 +144,7 @@ export function AvatarUpload({
       showToast(t.profile.avatarUpdated || 'Foto de perfil atualizada!', 'success');
     } catch (error) {
       console.error('Error uploading avatar:', error);
-      showToast(error instanceof Error && error.message ? error.message : 'Erro ao fazer upload da foto', 'error');
+      showToast(error instanceof Error && error.message ? error.message : feedback().upload.avatarUploadError, 'error');
       setPreviewUrl(currentAvatarUrl || null);
     } finally {
       setIsUploading(false);
@@ -181,7 +182,7 @@ export function AvatarUpload({
       showToast(t.profile.avatarRemoved || 'Foto de perfil removida!', 'success');
     } catch (error) {
       console.error('Error removing avatar:', error);
-      showToast(error instanceof Error && error.message ? error.message : 'Erro ao remover foto', 'error');
+      showToast(error instanceof Error && error.message ? error.message : feedback().upload.avatarRemoveError, 'error');
     } finally {
       setIsUploading(false);
     }

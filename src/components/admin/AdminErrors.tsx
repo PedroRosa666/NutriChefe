@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { adminErrors, type AdminError } from '../../services/admin';
+import { appLocale } from '../../lib/format';
 
 export function AdminErrors() {
   const t = useTranslation();
@@ -40,7 +41,7 @@ export function AdminErrors() {
               <button type="button" onClick={() => setOpen(open === e.message ? null : e.message)} className="w-full text-left">
                 <p className="break-words font-mono text-sm text-slate-900 dark:text-slate-100">{e.message}</p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {a.errorCount.replace('{n}', String(e.total)).replace('{u}', String(e.users))} · {new Date(e.last_at).toLocaleString()}
+                  {a.errorCount.replace('{n}', String(e.total)).replace('{u}', String(e.users))} · {new Date(e.last_at).toLocaleString(appLocale())}
                 </p>
               </button>
               {open === e.message && (

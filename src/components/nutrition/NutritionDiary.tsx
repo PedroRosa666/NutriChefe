@@ -9,7 +9,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { CommonFoodForm, CustomFoodForm, PhotoEstimateButton } from './DiaryFoodForms';
 import type { PhotoEstimate } from '../../services/gemini';
 import { cn } from '../../lib/utils';
-import { fmtNum } from '../../lib/format';
+import { fmtNum, appLocale } from '../../lib/format';
 import { confirmDialog } from '../../store/confirm';
 import { useCanUseAI } from '../../store/premium';
 
@@ -40,7 +40,7 @@ function ProgressRow({
 }) {
   const pct = clampPct(goal > 0 ? value / goal : 0);
   // kcal sem casas decimais; gramas com no máximo uma ("33,5 g", "50 g").
-  const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: unit === 'kcal' ? 0 : 1 });
+  const fmt = (n: number) => n.toLocaleString(appLocale(), { maximumFractionDigits: unit === 'kcal' ? 0 : 1 });
   const display = `${fmt(value)} / ${fmt(goal)} ${unit}`;
   const barPct = Math.round(pct * 100);
 
@@ -142,7 +142,7 @@ export function NutritionDiary() {
         <div className="flex items-center gap-2">
           <CalendarDays className="h-5 w-5 text-emerald-500" />
           <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-            {t.profile.diaryTitle ?? 'Diário alimentar'}
+            {t.profile.diaryTitle}
           </h3>
         </div>
 
@@ -159,7 +159,7 @@ export function NutritionDiary() {
             className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
           >
             <Trash2 className="h-4 w-4" />
-            {t.profile.clearDay ?? 'Limpar'}
+            {t.profile.clearDay}
           </button>
         </div>
       </div>
@@ -205,7 +205,7 @@ export function NutritionDiary() {
           onChange={(e) => setQuickRecipeId(e.target.value)}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
         >
-          <option value="">{t.profile.chooseRecipe ?? 'Escolher receita...'}</option>
+          <option value="">{t.profile.chooseRecipe}</option>
           {availableRecipes.map((r) => (
             <option key={r.id} value={r.id}>
               {r.title}
@@ -220,7 +220,7 @@ export function NutritionDiary() {
           value={servings}
           onChange={(e) => setServings(e.target.value)}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-          placeholder={t.profile.servings ?? 'Porções'}
+          placeholder={t.profile.servings}
         />
 
         <button
@@ -230,7 +230,7 @@ export function NutritionDiary() {
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
         >
           {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          {t.profile.addToDiary ?? 'Adicionar'}
+          {t.profile.addToDiary}
         </button>
       </div>
       )}
@@ -239,7 +239,7 @@ export function NutritionDiary() {
       {/* Progress */}
       <div className="space-y-4">
         <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
-          {t.profile.todayProgress ?? 'Progresso do dia'}
+          {t.profile.todayProgress}
         </h4>
 
         <div className="space-y-3">
@@ -257,10 +257,10 @@ export function NutritionDiary() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
-            {t.profile.loggedMeals ?? 'Registros'}
+            {t.profile.loggedMeals}
           </h4>
           <span className="text-sm text-slate-600 dark:text-slate-300">
-            {entries.length} {t.profile.items ?? 'itens'}
+            {entries.length} {t.profile.items}
           </span>
         </div>
 
@@ -268,7 +268,7 @@ export function NutritionDiary() {
           <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
             <div className="flex items-start gap-2">
               <XCircle className="mt-0.5 h-4 w-4 text-slate-400" />
-              <p>{t.profile.noDiaryEntries ?? 'Nenhum item registrado neste dia.'}</p>
+              <p>{t.profile.noDiaryEntries}</p>
             </div>
           </div>
         ) : (
@@ -283,7 +283,7 @@ export function NutritionDiary() {
                     {e.recipeTitle}
                   </p>
                   <p className="text-xs text-slate-600 dark:text-slate-300">
-                    {t.profile.servings ?? 'Porções'}: <span className="font-medium">{fmtNum(e.servings)}</span> • {e.perServing.calories.toFixed(0)} kcal/{t.profile.perServing ?? 'porção'}
+                    {t.profile.servings}: <span className="font-medium">{fmtNum(e.servings)}</span> • {e.perServing.calories.toFixed(0)} kcal/{t.profile.perServing}
                   </p>
                 </div>
 
@@ -291,7 +291,7 @@ export function NutritionDiary() {
                   type="button"
                   onClick={() => handleRemove(e.id)}
                   className="shrink-0 rounded-lg p-2 text-slate-600 hover:bg-white hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-900"
-                  aria-label={t.profile.remove ?? 'Remover'}
+                  aria-label={t.profile.remove}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

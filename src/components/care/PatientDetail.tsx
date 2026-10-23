@@ -14,8 +14,9 @@ import { SwapRequestsList } from '../swaps/SwapRequestsList';
 import { AdherencePanel } from './AdherencePanel';
 import { ChatThread } from './ChatThread';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { LoadError } from '../common/LoadError';
 import { Avatar } from './Avatar';
-import { fmtNum } from '../../lib/format';
+import { fmtNum, appLocale } from '../../lib/format';
 import { confirmDialog } from '../../store/confirm';
 import { AppointmentsSection } from './Appointments';
 import { PatientReportView } from './PatientReportView';
@@ -33,7 +34,7 @@ interface PatientDetailProps {
 }
 
 const card = 'rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900';
-const fmt = (n: number, digits = 0) => n.toLocaleString(undefined, { maximumFractionDigits: digits });
+const fmt = (n: number, digits = 0) => n.toLocaleString(appLocale(), { maximumFractionDigits: digits });
 
 export function PatientDetail({ link, onBack, onEnded, openChat = false }: PatientDetailProps) {
   const user = useAuthStore((s) => s.user);
@@ -66,12 +67,14 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false }: Patie
   };
 
   const [data, setData] = useState<PatientData | null>(null);
+  const [failed, setFailed] = useState(false);
   const [goalsForm, setGoalsForm] = useState<NutritionGoals>(DEFAULT_GOALS);
   const [saving, setSaving] = useState(false);
   const [plansKey, setPlansKey] = useState(0);
 
   const load = useCallback(async () => {
     try {
+      setFailed(false);
       const d = await getPatientData(patientId, 30);
       setData(d);
       if (d.goals) {
@@ -80,7 +83,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false }: Patie
       }
     } catch (error) {
       console.error('Error loading patient:', error);
-      showToast(t.care.errors.unknown, 'error');
+      setFailed(true);
     }
   }, [patientId, showToast, t.care.errors.unknown]);
 
@@ -106,6 +109,17 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false }: Patie
       fiber: avg(totals.fiber),
     };
   }, [data]);
+
+  if (failed && !data) {
+    return (
+      <div className="space-y-3">
+        <button type="button" onClick={onBack} className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+          ← {t.common.back}
+        </button>
+        <LoadError onRetry={load} />
+      </div>
+    );
+  }
 
   if (!data || !week) {
     return (
@@ -175,7 +189,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false }: Patie
         <div className="min-w-0 flex-1 basis-48">
           <h2 className="truncate text-xl font-bold text-slate-900 dark:text-white">{link.person.full_name}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {t.care.since} {new Date(link.created_at).toLocaleDateString()}
+            {t.care.since} {new Date(link.created_at).toLocaleDateString(appLocale())}
           </p>
         </div>
         <button
@@ -302,7 +316,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false }: Patie
             {data.entries.slice(0, 12).map((e) => (
               <li key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                 <span className="min-w-0 truncate text-slate-800 dark:text-slate-100">
-                  <span className="mr-2 text-xs text-slate-400">{new Date(`${e.date}T12:00:00`).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })}</span>
+                  <span className="mr-2 text-xs text-slate-400">{new Date(`${e.date}T12:00:00`).toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit' })}</span>
                   {e.recipeTitle}
                   {e.servings !== 1 && <span className="text-slate-400"> ×{fmtNum(e.servings)}</span>}
                 </span>

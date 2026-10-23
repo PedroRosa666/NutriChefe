@@ -39,10 +39,12 @@ const when = (iso?: string) =>
     : "";
 
 // Mesmos textos do sino do app (src/lib/i18n/translations.ts, notifications), em português.
-function message(kind: string, d: Data): { title: string; body: string; url: string } {
+function message(kind: string, d: Data, recipient: string): { title: string; body: string; url: string } {
   const name = d.name || "Alguém";
   const item = (d.item ?? "").split(" — ")[0];
   const patientUrl = d.client_id ? `/perfil?tab=patients&paciente=${d.client_id}` : "/perfil?tab=patients";
+  // Consultas: o paciente vê no painel; o nutricionista, no detalhe do paciente.
+  const appointmentUrl = d.client_id && d.client_id !== recipient ? patientUrl : "/perfil";
   switch (kind) {
     case "swap_requested":
       return { title: "Pedido de troca", body: `${name} pediu para trocar "${item}"`, url: patientUrl };
@@ -71,12 +73,12 @@ function message(kind: string, d: Data): { title: string; body: string; url: str
       return {
         title: d.rescheduled ? "Consulta remarcada" : "Consulta marcada",
         body: d.rescheduled ? `${name} remarcou sua consulta para ${when(d.starts_at)}` : `${name} marcou uma consulta: ${when(d.starts_at)}`,
-        url: "/perfil",
+        url: appointmentUrl,
       };
     case "appointment_canceled":
-      return { title: "Consulta cancelada", body: `${name} cancelou a consulta de ${when(d.starts_at)}`, url: "/perfil" };
+      return { title: "Consulta cancelada", body: `${name} cancelou a consulta de ${when(d.starts_at)}`, url: appointmentUrl };
     case "appointment_reminder":
-      return { title: "Lembrete de consulta", body: `Consulta com ${name} em ${when(d.starts_at)}`, url: "/perfil" };
+      return { title: "Lembrete de consulta", body: `Consulta com ${name} em ${when(d.starts_at)}`, url: appointmentUrl };
     case "plan_item_removed":
       return d.client_id
         ? { title: "Item removido de um plano", body: `"${d.item ?? ""}" saiu do plano de ${name}: foi apagado do catálogo`, url: patientUrl }
@@ -139,7 +141,7 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("VAPID_PRIVATE_KEY")!,
   );
 
-  const msg = message(notification.kind, notification.data ?? {});
+  const msg = message(notification.kind, notification.data ?? {}, notification.user_id);
   const payload = JSON.stringify({ ...msg, tag: `${notification.kind}:${notification.ref_id ?? notification.id}` });
 
   let sent = 0;

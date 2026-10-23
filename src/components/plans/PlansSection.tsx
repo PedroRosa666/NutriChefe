@@ -22,7 +22,7 @@ import { MealPlanEditor } from './MealPlanEditor';
 import { PlanPrintView } from './PlanPrintView';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { cn } from '../../lib/utils';
-import { fmtNum } from '../../lib/format';
+import { fmtNum, appLocale } from '../../lib/format';
 import { confirmDialog } from '../../store/confirm';
 
 interface PlansSectionProps {
@@ -366,7 +366,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             {plan.created_by === user?.id ? t.plan.byYou : t.plan.byNutritionist.replace('{name}', plan.authorName ?? '')}
             {' • '}
-            {t.plan.updated} {new Date(plan.updated_at).toLocaleDateString()}
+            {t.plan.updated} {new Date(plan.updated_at).toLocaleDateString(appLocale())}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

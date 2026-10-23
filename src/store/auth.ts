@@ -5,6 +5,8 @@ import { getUserProfile } from '../services/database';
 import { useToastStore } from './toast';
 import type { User, UserType } from '../types/user';
 import { cleanupDeviceOnLogout } from '../lib/push';
+import { feedback } from '../lib/i18n/current';
+import { translations } from '../lib/i18n/translations';
 
 interface AuthState {
   user: User | null;
@@ -26,8 +28,9 @@ interface AuthState {
   isNutritionist: () => boolean;
 }
 
-// O AuthModal compara com esta mensagem para oferecer o reenvio da confirmação.
-export const EMAIL_NOT_CONFIRMED_MESSAGE = 'Email não confirmado. Verifique sua caixa de entrada.';
+// O AuthModal usa isto para oferecer o reenvio da confirmação (vale nos dois idiomas).
+export const isEmailNotConfirmedError = (message: string | null) =>
+  !!message && Object.values(translations).some((tr) => tr.feedback.auth.emailNotConfirmed === message);
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -78,11 +81,12 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { data, error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) {
-            let friendly = 'Erro ao fazer login';
-            if (error.message.includes('Invalid login credentials')) friendly = 'Email ou senha incorretos.';
-            if (error.message.includes('Email not confirmed')) friendly = EMAIL_NOT_CONFIRMED_MESSAGE;
-            if (error.message.includes('Too many requests')) friendly = 'Muitas tentativas. Tente mais tarde.';
-            if (error.message.includes('Error sending confirmation email')) friendly = 'Erro no serviço de email. Tente novamente mais tarde ou entre em contato com o suporte.';
+            const a = feedback().auth;
+            let friendly = a.signInError;
+            if (error.message.includes('Invalid login credentials')) friendly = a.invalidCredentials;
+            if (error.message.includes('Email not confirmed')) friendly = a.emailNotConfirmed;
+            if (error.message.includes('Too many requests')) friendly = a.tooManyAttempts;
+            if (error.message.includes('Error sending confirmation email')) friendly = a.emailServiceError;
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
             return false;
@@ -110,12 +114,12 @@ export const useAuthStore = create<AuthState>()(
             loading: false
           });
 
-          useToastStore.getState().showToast('Login realizado com sucesso!', 'success');
+          useToastStore.getState().showToast(feedback().auth.signedIn, 'success');
           return true;
         } catch (e) {
           console.error('signIn error:', e);
-          useToastStore.getState().showToast('Erro inesperado ao fazer login.', 'error');
-          set({ error: 'Erro inesperado', loading: false });
+          useToastStore.getState().showToast(feedback().auth.unexpectedSignInError, 'error');
+          set({ error: feedback().auth.unexpectedError, loading: false });
           return false;
         }
       },
@@ -134,13 +138,14 @@ export const useAuthStore = create<AuthState>()(
           });
 
           if (error) {
-            let friendly = 'Erro ao criar conta';
-            if (error.message.includes('User already registered')) friendly = 'Este e-mail já está cadastrado.';
-            if (error.message.includes('Password should be at least')) friendly = 'A senha deve ter pelo menos 6 caracteres.';
-            if (error.message.includes('Invalid email')) friendly = 'E-mail inválido.';
-            if (error.message.includes('email rate limit exceeded')) friendly = 'Muitas tentativas de cadastro. Por favor, aguarde alguns minutos e tente novamente.';
-            if (error.message.includes('Error sending confirmation email')) friendly = 'Erro no serviço de email. Tente novamente mais tarde ou entre em contato com o suporte.';
-            if (error.message.includes('unexpected_failure')) friendly = 'Erro no servidor. Tente novamente mais tarde.';
+            const a = feedback().auth;
+            let friendly = a.signUpError;
+            if (error.message.includes('User already registered')) friendly = a.emailAlreadyRegistered;
+            if (error.message.includes('Password should be at least')) friendly = a.passwordTooShort;
+            if (error.message.includes('Invalid email')) friendly = a.invalidEmail;
+            if (error.message.includes('email rate limit exceeded')) friendly = a.signUpRateLimit;
+            if (error.message.includes('Error sending confirmation email')) friendly = a.emailServiceError;
+            if (error.message.includes('unexpected_failure')) friendly = a.serverError;
             useToastStore.getState().showToast(friendly, 'error');
             set({ error: friendly, loading: false });
             return null;
@@ -166,17 +171,17 @@ export const useAuthStore = create<AuthState>()(
               loading: false
             });
 
-            useToastStore.getState().showToast('Conta criada com sucesso!', 'success');
+            useToastStore.getState().showToast(feedback().auth.accountCreated, 'success');
             return 'signed_in';
           }
 
-          useToastStore.getState().showToast('Conta criada! Enviamos um link de confirmação para o seu e-mail.', 'success');
+          useToastStore.getState().showToast(feedback().auth.accountCreatedConfirm, 'success');
           set({ loading: false });
           return 'confirm_email';
         } catch (e) {
           console.error('signUp error:', e);
-          useToastStore.getState().showToast('Erro inesperado ao criar conta.', 'error');
-          set({ error: 'Erro inesperado', loading: false });
+          useToastStore.getState().showToast(feedback().auth.unexpectedSignUpError, 'error');
+          set({ error: feedback().auth.unexpectedError, loading: false });
           return null;
         }
       },
@@ -191,7 +196,7 @@ export const useAuthStore = create<AuthState>()(
         } finally {
           // Limpa o estado local mesmo se a chamada de rede falhar.
           get().clearSession();
-          useToastStore.getState().showToast('Logout realizado!', 'info');
+          useToastStore.getState().showToast(feedback().auth.signedOut, 'info');
         }
       },
 

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import * as subscriptionService from '../services/subscription';
 import { useToastStore } from './toast';
 import type { SubscriptionPlan, UserSubscription } from '../types/subscription';
+import { feedback } from '../lib/i18n/current';
 
 interface SubscriptionState {
   plans: SubscriptionPlan[];
@@ -33,9 +34,9 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           set({ plans, loading: false });
         } catch (error) {
           console.error('Error fetching plans:', error);
-          const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar planos';
+          const errorMessage = error instanceof Error ? error.message : feedback().subscription.loadPlansError;
           set({ error: errorMessage, loading: false });
-          useToastStore.getState().showToast('Erro ao carregar planos de assinatura', 'error');
+          useToastStore.getState().showToast(feedback().subscription.loadPlansToast, 'error');
         }
       },
 
@@ -69,12 +70,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         try {
           const newSubscription = await subscriptionService.createSubscription(subscription);
           set({ userSubscription: newSubscription, loading: false });
-          useToastStore.getState().showToast('Assinatura ativada com sucesso!', 'success');
+          useToastStore.getState().showToast(feedback().subscription.activated, 'success');
         } catch (error) {
           console.error('Error creating subscription:', error);
-          const errorMessage = error instanceof Error ? error.message : 'Erro ao criar assinatura';
+          const errorMessage = error instanceof Error ? error.message : feedback().subscription.createError;
           set({ error: errorMessage, loading: false });
-          useToastStore.getState().showToast('Erro ao ativar assinatura', 'error');
+          useToastStore.getState().showToast(feedback().subscription.activateError, 'error');
           throw error;
         }
       },

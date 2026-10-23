@@ -124,7 +124,7 @@ export function EditProfessionalProfile() {
       }
     } catch (error) {
       console.error('Error loading profile:', error);
-      showToast('Erro ao carregar perfil', 'error');
+      showToast(t.feedback.profile.loadError, 'error');
     } finally {
       setInitialLoading(false);
     }

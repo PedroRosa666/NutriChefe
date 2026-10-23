@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from './auth';
 import { toISODate } from './nutrition-tracking';
 import type { ActivityLevel, BodyGoal, Sex } from '../lib/nutrition-calculator';
+import { feedback } from '../lib/i18n/current';
 
 export interface HealthProfile {
   birth_date: string | null;
@@ -27,6 +28,8 @@ interface HealthProfileState {
   profile: HealthProfile;
   weightLogs: WeightLog[];
   loaded: boolean;
+  /** A leitura falhou: o formulário não pode salvar por cima com campos vazios. */
+  loadError: boolean;
   fetchHealthProfile: (userId: string) => Promise<void>;
   saveHealthProfile: (updates: Partial<HealthProfile>) => Promise<void>;
   logWeight: (weightKg: number, date?: string) => Promise<void>;
@@ -48,7 +51,7 @@ export const EMPTY_HEALTH_PROFILE: HealthProfile = {
 
 const requireUserId = () => {
   const userId = useAuthStore.getState().user?.id;
-  if (!userId) throw new Error('Faça login para salvar seus dados.');
+  if (!userId) throw new Error(feedback().loginRequired.healthProfile);
   return userId;
 };
 
@@ -58,6 +61,7 @@ export const useHealthProfileStore = create<HealthProfileState>()((set, get) => 
   profile: EMPTY_HEALTH_PROFILE,
   weightLogs: [],
   loaded: false,
+  loadError: false,
 
   fetchHealthProfile: async (userId) => {
     const [profileRes, weightRes] = await Promise.all([
@@ -72,6 +76,10 @@ export const useHealthProfileStore = create<HealthProfileState>()((set, get) => 
 
     if (profileRes.error) console.error('Error fetching health profile:', profileRes.error);
     if (weightRes.error) console.error('Error fetching weight logs:', weightRes.error);
+    if (profileRes.error || weightRes.error) {
+      set({ loadError: true });
+      return;
+    }
 
     const row = profileRes.data;
     set({
@@ -91,11 +99,13 @@ export const useHealthProfileStore = create<HealthProfileState>()((set, get) => 
         : EMPTY_HEALTH_PROFILE,
       weightLogs: (weightRes.data ?? []).map((w) => ({ ...w, weight_kg: Number(w.weight_kg) })),
       loaded: true,
+      loadError: false,
     });
   },
 
   saveHealthProfile: async (updates) => {
     const userId = requireUserId();
+    if (!get().loaded) throw new Error('health_profile_not_loaded');
     const next = { ...get().profile, ...updates };
     const { error } = await supabase
       .from('client_health_profiles')
@@ -126,5 +136,5 @@ export const useHealthProfileStore = create<HealthProfileState>()((set, get) => 
     }));
   },
 
-  reset: () => set({ profile: EMPTY_HEALTH_PROFILE, weightLogs: [], loaded: false }),
+  reset: () => set({ profile: EMPTY_HEALTH_PROFILE, weightLogs: [], loaded: false, loadError: false }),
 }));

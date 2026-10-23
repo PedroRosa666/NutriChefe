@@ -1,5 +1,6 @@
 import type { WeightLog } from '../../store/health-profile';
 import { useTranslation } from '../../hooks/useTranslation';
+import { appLocale } from '../../lib/format';
 
 interface WeightChartProps {
   logs: WeightLog[];
@@ -45,7 +46,7 @@ export function WeightChart({ logs, target }: WeightChartProps) {
         <path d={path} fill="none" stroke="currentColor" className="text-sky-500" strokeWidth={2} strokeLinejoin="round" />
         {points.map((p, i) => (
           <circle key={p.id} cx={x(i)} cy={y(p.weight_kg)} r={2.5} className="fill-sky-500">
-            <title>{`${new Date(`${p.logged_on}T00:00:00`).toLocaleDateString('pt-BR')}: ${p.weight_kg} kg`}</title>
+            <title>{`${new Date(`${p.logged_on}T00:00:00`).toLocaleDateString(appLocale())}: ${p.weight_kg} kg`}</title>
           </circle>
         ))}
       </svg>

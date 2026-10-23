@@ -16,6 +16,7 @@ import {
 } from '../../services/swaps';
 import { SwapChoicePicker } from './SwapChoicePicker';
 import { cn } from '../../lib/utils';
+import { appLocale } from '../../lib/format';
 
 interface SwapRequestsListProps {
   clientId: string;
@@ -132,7 +133,7 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
           <li key={r.id} className="space-y-2 rounded-xl border border-slate-100 p-3 text-sm dark:border-slate-800">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {where(r)} • {new Date(r.created_at).toLocaleDateString()}
+                {where(r)} • {new Date(r.created_at).toLocaleDateString(appLocale())}
               </p>
               <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', STATUS_STYLE[r.status])}>{s.status[r.status]}</span>
             </div>

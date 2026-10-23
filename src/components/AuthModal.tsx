@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, Leaf, Eye, EyeOff } from 'lucide-react';
-import { EMAIL_NOT_CONFIRMED_MESSAGE, useAuthStore } from '../store/auth';
+import { isEmailNotConfirmedError, useAuthStore } from '../store/auth';
 import { ResendConfirmation } from './auth/ResendConfirmation';
 import { cn } from '../lib/utils';
 import type { UserType } from '../types/user';
@@ -62,7 +62,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
       // Fecha só quando deu certo; em caso de erro o usuário corrige e tenta de novo.
       if (mode === 'signin') {
         if (await signIn(email, password)) onClose();
-        else if (useAuthStore.getState().error === EMAIL_NOT_CONFIRMED_MESSAGE) setNeedsConfirmation(true);
+        else if (isEmailNotConfirmedError(useAuthStore.getState().error)) setNeedsConfirmation(true);
       } else {
         if (!acceptedPrivacy) return;
         const result = await signUp(email, password, name, userType);

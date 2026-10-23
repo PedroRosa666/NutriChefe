@@ -10,6 +10,9 @@ import {
 } from '../../lib/nutrition-calculator';
 import { cn } from '../../lib/utils';
 import { WeightChart } from './WeightChart';
+import { LoadError } from '../common/LoadError';
+import { LoadingSpinner } from '../common/LoadingSpinner';
+import { useAuthStore } from '../../store/auth';
 
 const DIET_OPTIONS = ['vegetarian', 'vegan', 'glutenFree', 'lactoseFree', 'lowCarb', 'highProtein', 'mediterranean'] as const;
 const ACTIVITY: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active', 'very_active'];
@@ -25,7 +28,8 @@ const toNum = (v: string) => {
 };
 
 export function HealthProfileForm() {
-  const { profile, weightLogs, saveHealthProfile, logWeight } = useHealthProfileStore();
+  const { profile, weightLogs, saveHealthProfile, logWeight, loaded, loadError, fetchHealthProfile } = useHealthProfileStore();
+  const userId = useAuthStore((s) => s.user?.id);
   const { saveGoals } = useNutritionGoalsStore();
   const { showToast } = useToastStore();
   const t = useTranslation();
@@ -117,6 +121,17 @@ export function HealthProfileForm() {
       showToast(h.saveError, 'error');
     }
   };
+
+  if (loadError && !loaded) {
+    return <LoadError onRetry={() => userId && fetchHealthProfile(userId)} />;
+  }
+  if (!loaded) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">

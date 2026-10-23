@@ -6,7 +6,9 @@ import { ThemeProvider } from './components/ThemeProvider';
 import './index.css';
 import { installGlobalErrorReporting } from './lib/error-reporting';
 import { listenForInstallPrompt, registerServiceWorker } from './lib/push';
+import { installStaleBuildRecovery } from './lib/stale-build';
 
+installStaleBuildRecovery();
 installGlobalErrorReporting();
 registerServiceWorker();
 listenForInstallPrompt();

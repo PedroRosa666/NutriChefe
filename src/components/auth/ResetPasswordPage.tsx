@@ -4,8 +4,11 @@ import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Shield, Loader2 } from 'lu
 import { validateRecoveryToken, updatePassword } from '../../services/database';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
+import { useTranslation } from '../../hooks/useTranslation';
+import { feedback } from '../../lib/i18n/current';
 
 export function ResetPasswordPage() {
+  const rp = useTranslation().feedback.resetPassword;
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +28,7 @@ export function ResetPasswordPage() {
         
         if (!result.valid) {
           setStatus('error');
-          setError('Link de recuperação inválido ou expirado. Solicite um novo link.');
+          setError(feedback().resetPassword.invalidLinkError);
           setValidToken(false);
         } else {
           console.log('Valid recovery token found');
@@ -34,7 +37,7 @@ export function ResetPasswordPage() {
       } catch (err) {
         console.error('Token validation error:', err);
         setStatus('error');
-        setError('Erro ao validar link de recuperação. Tente novamente.');
+        setError(feedback().resetPassword.validateError);
         setValidToken(false);
       } finally {
         setInitialLoading(false);
@@ -46,7 +49,7 @@ export function ResetPasswordPage() {
 
   const validatePassword = (pwd: string) => {
     const errors: string[] = [];
-    if (pwd.length < 6) errors.push('A senha deve ter pelo menos 6 caracteres');
+    if (pwd.length < 6) errors.push(rp.tooShort);
     return errors;
   };
 
@@ -64,7 +67,7 @@ export function ResetPasswordPage() {
     }
 
     if (password !== confirmPassword) {
-      setError('As senhas não coincidem');
+      setError(rp.mismatch);
       setLoading(false);
       return;
     }
@@ -87,7 +90,7 @@ export function ResetPasswordPage() {
     } catch (err) {
       console.error('Password reset error:', err);
       // Mantém o formulário: o link continua válido e o usuário pode tentar outra senha.
-      setError(err instanceof Error && err.message ? err.message : 'Erro inesperado. Tente novamente.');
+      setError(err instanceof Error && err.message ? err.message : rp.unexpectedError);
     } finally {
       setLoading(false);
     }
@@ -105,7 +108,7 @@ export function ResetPasswordPage() {
 
   const passwordStrength = getPasswordStrength(password);
   const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500'];
-  const strengthLabels = ['Muito fraca', 'Fraca', 'Regular', 'Boa', 'Forte'];
+  const strengthLabels = rp.strengthLabels;
 
   // Loading inicial
   if (initialLoading) {
@@ -118,10 +121,10 @@ export function ResetPasswordPage() {
         >
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-green-600" />
           <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-            Verificando link de recuperação...
+            {rp.checkingTitle}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Aguarde enquanto validamos seu link de recuperação.
+            {rp.checkingText}
           </p>
         </motion.div>
       </div>
@@ -140,10 +143,10 @@ export function ResetPasswordPage() {
             <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Senha redefinida com sucesso!
+            {rp.successTitle}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Sua senha foi alterada com sucesso. Você será redirecionado para a página de login em alguns segundos.
+            {rp.successText}
           </p>
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
             <motion.div
@@ -157,7 +160,7 @@ export function ResetPasswordPage() {
             onClick={() => window.location.href = '/login'}
             className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
           >
-            Ir para login agora
+            {rp.goToLogin}
           </button>
         </motion.div>
       </div>
@@ -176,16 +179,16 @@ export function ResetPasswordPage() {
             <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Link inválido ou expirado
+            {rp.invalidTitle}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            {error || 'Este link de recuperação é inválido ou expirou. Solicite um novo link de recuperação.'}
+            {error || rp.invalidText}
           </p>
           <button
             onClick={() => window.location.href = '/forgot-password'}
             className="w-full py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
           >
-            Solicitar novo link
+            {rp.requestNewLink}
           </button>
         </motion.div>
       </div>
@@ -205,10 +208,10 @@ export function ResetPasswordPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Nova senha
+              {rp.newPassword}
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Digite sua nova senha segura
+              {rp.subtitle}
             </p>
           </div>
         </div>
@@ -219,13 +222,12 @@ export function ResetPasswordPage() {
             <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <div>
               <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                Dicas para uma senha segura:
+                {rp.tipsTitle}
               </h3>
               <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                <li>• Pelo menos 6 caracteres</li>
-                <li>• Combine letras maiúsculas e minúsculas</li>
-                <li>• Inclua números e símbolos</li>
-                <li>• Evite informações pessoais</li>
+                {rp.tips.map((tip) => (
+                  <li key={tip}>• {tip}</li>
+                ))}
               </ul>
             </div>
           </div>
@@ -234,7 +236,7 @@ export function ResetPasswordPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Nova senha
+              {rp.newPassword}
             </label>
             <div className="relative">
               <input
@@ -243,7 +245,7 @@ export function ResetPasswordPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                placeholder="Digite sua nova senha"
+                placeholder={rp.newPasswordPlaceholder}
                 required
                 disabled={loading}
               />
@@ -279,7 +281,7 @@ export function ResetPasswordPage() {
 
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Confirmar senha
+              {rp.confirmPassword}
             </label>
             <div className="relative">
               <input
@@ -288,7 +290,7 @@ export function ResetPasswordPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
-                placeholder="Confirme sua nova senha"
+                placeholder={rp.confirmPasswordPlaceholder}
                 required
                 disabled={loading}
               />
@@ -304,7 +306,7 @@ export function ResetPasswordPage() {
             
             {confirmPassword && password !== confirmPassword && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                As senhas não coincidem
+                {rp.mismatch}
               </p>
             )}
           </div>
@@ -326,7 +328,7 @@ export function ResetPasswordPage() {
             )}
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? 'Redefinindo...' : 'Redefinir senha'}
+            {loading ? rp.resetting : rp.reset}
           </button>
         </form>
 
@@ -336,7 +338,7 @@ export function ResetPasswordPage() {
             className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium"
             disabled={loading}
           >
-            Voltar ao login
+            {rp.backToLogin}
           </button>
         </div>
       </motion.div>

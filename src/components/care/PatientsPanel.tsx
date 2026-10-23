@@ -24,6 +24,8 @@ import { sumEntries, toISODate } from '../../store/nutrition-tracking';
 import { Avatar } from './Avatar';
 import { PatientDetail } from './PatientDetail';
 import { LoadingSpinner } from '../common/LoadingSpinner';
+import { LoadError } from '../common/LoadError';
+import { appLocale } from '../../lib/format';
 
 interface PatientSummary {
   lastLog: string | null;
@@ -65,6 +67,7 @@ export function PatientsPanel() {
   const [summaries, setSummaries] = useState<Record<string, PatientSummary>>({});
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<CareLink | null>(null);
   const [pendingSwaps, setPendingSwaps] = useState<Map<string, number>>(new Map());
@@ -79,6 +82,7 @@ export function PatientsPanel() {
     if (!user) return;
     try {
       const [list, open] = await Promise.all([listMyPatients(user.id), listOpenInvites(user.id)]);
+      setFailed(false);
       setPatients(list);
       setInvites(open);
       pendingSwapCounts(user.id)
@@ -95,6 +99,7 @@ export function PatientsPanel() {
       );
     } catch (error) {
       console.error('Error loading patients:', error);
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -179,6 +184,17 @@ export function PatientsPanel() {
     );
   }
 
+  if (failed && !patients.length) {
+    return (
+      <LoadError
+        onRetry={() => {
+          setLoading(true);
+          load();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -219,7 +235,7 @@ export function PatientsPanel() {
               <div className="min-w-0 basis-full pr-8 sm:basis-auto sm:flex-1 sm:pr-0">
                 <p className="font-mono text-lg font-bold tracking-[0.2em] text-emerald-800 dark:text-emerald-200">{invite.code}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {t.care.expiresOn} {new Date(invite.expires_at).toLocaleDateString()}
+                  {t.care.expiresOn} {new Date(invite.expires_at).toLocaleDateString(appLocale())}
                 </p>
               </div>
               <button
@@ -276,7 +292,7 @@ export function PatientsPanel() {
                   <p className="truncate font-semibold text-slate-900 dark:text-white">{p.person.full_name}</p>
                   {s ? (
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {t.care.lastLog}: {s.lastLog ? new Date(`${s.lastLog}T12:00:00`).toLocaleDateString() : t.care.never}
+                      {t.care.lastLog}: {s.lastLog ? new Date(`${s.lastLog}T12:00:00`).toLocaleDateString(appLocale()) : t.care.never}
                       {' • '}
                       {s.days7} {t.care.daysLogged7}
                       {s.avgKcal7 > 0 && ` • ${s.avgKcal7} kcal`}

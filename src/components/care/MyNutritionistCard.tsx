@@ -8,6 +8,8 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { CareError, endLink, listMyNutritionists, redeemInvite, type CareLink } from '../../services/care';
 import { Avatar } from './Avatar';
 import { confirmDialog } from '../../store/confirm';
+import { LoadError } from '../common/LoadError';
+import { appLocale } from '../../lib/format';
 
 export function MyNutritionistCard() {
   const user = useAuthStore((s) => s.user);
@@ -18,6 +20,7 @@ export function MyNutritionistCard() {
 
   const [links, setLinks] = useState<CareLink[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [code, setCode] = useState(inviteFromUrl ?? '');
   const [busy, setBusy] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -26,8 +29,10 @@ export function MyNutritionistCard() {
     if (!user) return;
     try {
       setLinks(await listMyNutritionists(user.id));
+      setFailed(false);
     } catch (error) {
       console.error('Error loading nutritionists:', error);
+      setFailed(true);
     } finally {
       setLoaded(true);
     }
@@ -82,6 +87,8 @@ export function MyNutritionistCard() {
   };
 
   if (!user || user.type !== 'Client' || !loaded) return null;
+  // Falhou: não mostra "você ainda não tem nutricionista" (pode não ser verdade).
+  if (failed && !links.length) return <LoadError onRetry={load} className="py-6" />;
 
   return (
     <section
@@ -103,7 +110,7 @@ export function MyNutritionistCard() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{link.person.full_name}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {t.care.connectedSince} {new Date(link.created_at).toLocaleDateString()}
+              {t.care.connectedSince} {new Date(link.created_at).toLocaleDateString(appLocale())}
             </p>
           </div>
           <Link

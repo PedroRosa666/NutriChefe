@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { MotionConfig, motion } from 'framer-motion';
 import { pageFade } from '../lib/motion';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
@@ -45,8 +45,29 @@ export function RootLayout() {
       }
     });
 
-    return () => data.subscription.unsubscribe();
+    // Outra aba entrou ou saiu (a sessão no localStorage mudou): acompanha aqui também.
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key?.startsWith('sb-') || !e.key.endsWith('-auth-token')) return;
+      if (!e.newValue) useAuthStore.getState().clearSession();
+      else useAuthStore.getState().initializeAuth();
+    };
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      data.subscription.unsubscribe();
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
+
+  // Toque numa notificação com o app já aberto: o service worker pede para ir à tela.
+  const navigate = useNavigate();
+  useEffect(() => {
+    const onWorkerMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'navigate' && typeof e.data.url === 'string' && e.data.url.startsWith('/')) navigate(e.data.url);
+    };
+    navigator.serviceWorker?.addEventListener('message', onWorkerMessage);
+    return () => navigator.serviceWorker?.removeEventListener('message', onWorkerMessage);
+  }, [navigate]);
 
   // Dados que dependem do usuário logado.
   useEffect(() => {
@@ -84,7 +105,7 @@ export function RootLayout() {
       <MotionConfig reducedMotion="user">
         {/* No celular, logado, sobra espaço para a barra de navegação inferior. */}
         <motion.div
-          key={section}
+          key={`${section}:${userId ?? 'anon'}`}
           variants={pageFade}
           initial="initial"
           animate="animate"

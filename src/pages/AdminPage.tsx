@@ -19,6 +19,7 @@ import { AdminErrors } from '../components/admin/AdminErrors';
 import { AdminModeration } from '../components/admin/AdminModeration';
 import { AdminAnnouncements } from '../components/admin/AdminAnnouncements';
 import { AdminLab } from '../components/admin/AdminLab';
+import { appLocale } from '../lib/format';
 
 // Consulta pública do Conselho Federal de Nutricionistas (busca por nome ou registro).
 const CFN_LOOKUP_URL = 'https://cfn.org.br/';
@@ -58,7 +59,7 @@ function VerificationRow({ v, onDone }: { v: CrnVerification; onDone: () => void
         <div>
           <p className="font-semibold text-slate-900 dark:text-white">{v.full_name}</p>
           <p className="text-sm text-slate-600 dark:text-slate-300">{crn}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(v.created_at).toLocaleString()}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(v.created_at).toLocaleString(appLocale())}</p>
         </div>
         <a
           href={CFN_LOOKUP_URL}
