@@ -158,7 +158,8 @@ export async function getPatientData(clientId: string, days = 30): Promise<Patie
       .from('weight_logs')
       .select('id, logged_on, weight_kg')
       .eq('user_id', clientId)
-      .order('logged_on', { ascending: true })
+      // Os 180 mais recentes (a tela usa em ordem crescente: invertido abaixo).
+      .order('logged_on', { ascending: false })
       .limit(180),
     supabase
       .from('nutrition_log_entries')
@@ -188,7 +189,7 @@ export async function getPatientData(clientId: string, days = 30): Promise<Patie
           target_weight_kg: num(h.target_weight_kg),
         }
       : null,
-    weights: (weights.data ?? []).map((w) => ({ ...w, weight_kg: Number(w.weight_kg) })),
+    weights: (weights.data ?? []).map((w) => ({ ...w, weight_kg: Number(w.weight_kg) })).reverse(),
     entries: ((entries.data ?? []) as NutritionLogRow[]).map(fromRow),
     goals: goals.data
       ? {

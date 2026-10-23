@@ -4,6 +4,7 @@ import { Check } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useSubscriptionStore } from '../store/subscription';
 import { usePremiumStore } from '../store/premium';
+import { useRecipesStore } from '../store/recipes';
 
 export function SubscriptionSuccessPage() {
   const navigate = useNavigate();
@@ -15,7 +16,11 @@ export function SubscriptionSuccessPage() {
     const { fetchUserSubscription } = useSubscriptionStore.getState();
     fetchUserSubscription(userId);
     usePremiumStore.getState().fetch(userId);
-    const retry = setTimeout(() => fetchUserSubscription(userId), 3000);
+    // As receitas exclusivas passam a aparecer quando o webhook ativa a assinatura.
+    const retry = setTimeout(() => {
+      fetchUserSubscription(userId);
+      useRecipesStore.getState().fetchRecipes({ silent: true });
+    }, 3000);
     return () => clearTimeout(retry);
   }, [userId]);
 

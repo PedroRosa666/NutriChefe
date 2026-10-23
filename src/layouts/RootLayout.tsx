@@ -62,6 +62,8 @@ export function RootLayout() {
     useHealthProfileStore.getState().reset();
     useShoppingListStore.getState().reset();
     import('../store/ai').then((m) => m.useAIStore.getState().reset());
+    // As receitas exclusivas só vêm para quem tem Premium: a lista muda com a conta.
+    if (useRecipesStore.getState().recipes.length > 0) useRecipesStore.getState().fetchRecipes({ silent: true });
     if (userId) {
       useSubscriptionStore.getState().fetchUserSubscription(userId);
       usePremiumStore.getState().fetch(userId);

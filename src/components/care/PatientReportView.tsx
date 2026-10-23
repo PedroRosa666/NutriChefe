@@ -14,6 +14,12 @@ interface PatientReportViewProps {
   crn: string | null;
   contact: string | null;
   onDone: () => void;
+  /** Período em dias (padrão 30). */
+  days?: number;
+  /** Meta de peso do perfil de saúde, se houver. */
+  targetWeight?: number | null;
+  /** Título no lugar de "Relatório de acompanhamento" (relatório do próprio cliente). */
+  title?: string;
 }
 
 /** Gráfico simples de peso (SVG, imprime bem em preto e branco). */
@@ -44,7 +50,7 @@ function WeightChart({ points }: { points: { date: string; kg: number }[] }) {
  * e médias do diário nos últimos 30 dias, com nome e CRN do nutricionista. Usa a mesma regra de
  * impressão do plano (.plan-print-root em index.css).
  */
-export function PatientReportView({ patientName, data, adherence, nutritionistName, crn, contact, onDone }: PatientReportViewProps) {
+export function PatientReportView({ patientName, data, adherence, nutritionistName, crn, contact, onDone, days = 30, targetWeight = null, title }: PatientReportViewProps) {
   const t = useTranslation();
   const r = t.patientReport;
   const locale = useSettingsStore((s) => (s.language === 'pt' ? 'pt-BR' : 'en'));
@@ -71,14 +77,22 @@ export function PatientReportView({ patientName, data, adherence, nutritionistNa
     };
   }, [patientName, onDone, r.fileName]);
 
-  const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
   const weights = data.weights.filter((w) => w.logged_on >= since).map((w) => ({ date: w.logged_on, kg: w.weight_kg }));
   const firstW = weights[0]?.kg;
   const lastW = weights[weights.length - 1]?.kg;
 
   // Médias do diário só nos dias com registro.
   const byDay = new Map<string, typeof data.entries>();
-  for (const e of data.entries) byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]);
+  for (const e of data.entries.filter((x) => x.date >= since)) byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]);
+  const c = t.clientPremium;
+  const latestWeight = data.weights.at(-1)?.weight_kg;
+  const targetLine =
+    targetWeight && latestWeight
+      ? Math.abs(latestWeight - targetWeight) < 0.1
+        ? c.targetReached.replace('{target}', num(targetWeight))
+        : c.targetWeight.replace('{target}', num(targetWeight)).replace('{left}', num(Math.abs(latestWeight - targetWeight)))
+      : null;
   const loggedDays = byDay.size;
   const totals = [...byDay.values()].map(sumEntries);
   const avg = (k: 'calories' | 'protein' | 'carbs' | 'fat') =>
@@ -101,7 +115,7 @@ export function PatientReportView({ patientName, data, adherence, nutritionistNa
           {contact && <p className="text-slate-600">{contact}</p>}
         </div>
         <div className="text-right">
-          <p className="text-base font-semibold">{r.title}</p>
+          <p className="text-base font-semibold">{title ?? r.title}</p>
           <p className="text-slate-600">{patientName}</p>
           <p className="text-slate-500">
             {r.period.replace('{from}', date(since)).replace('{to}', date(new Date().toISOString()))}
@@ -125,6 +139,7 @@ export function PatientReportView({ patientName, data, adherence, nutritionistNa
         ) : (
           <p className="mt-1 text-slate-500">{r.noWeights}</p>
         )}
+        {targetLine && <p className="mt-1 font-medium">{targetLine}</p>}
       </section>
 
       <section className="mt-4">
@@ -143,7 +158,7 @@ export function PatientReportView({ patientName, data, adherence, nutritionistNa
       </section>
 
       <section className="mt-4">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-emerald-700">{r.diary}</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-emerald-700">{r.diary.replace('{n}', String(days))}</h2>
         {loggedDays ? (
           <>
             <p className="mt-1">{r.diarySummary.replace('{n}', String(loggedDays))}</p>

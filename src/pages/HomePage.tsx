@@ -13,6 +13,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { Plus } from 'lucide-react';
 import { LandingHero, RecipeCardSkeleton } from '../components/recipes/LandingHero';
 import { PantrySearch } from '../components/recipes/PantrySearch';
+import { ExclusiveShelf } from '../components/recipes/ExclusiveShelf';
 import type { Recipe } from '../types/recipe';
 
 export function HomePage() {
@@ -147,6 +148,8 @@ export function HomePage() {
               </div>
             </div>
           </div>
+
+          <ExclusiveShelf />
 
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

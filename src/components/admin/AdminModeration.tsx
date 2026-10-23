@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Eye, EyeOff, MessageSquare, Search, Trash2 } from 'lucide-react';
+import { Crown, Eye, EyeOff, MessageSquare, Search, Trash2 } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useToastStore } from '../../store/toast';
 import { confirmDialog } from '../../store/confirm';
 import { LoadingSpinner } from '../common/LoadingSpinner';
-import { adminRecipes, adminReviews, deleteReview, setRecipeHidden, type AdminRecipe, type AdminReview } from '../../services/admin';
+import { adminRecipes, adminReviews, deleteReview, setRecipeHidden, setRecipePremium, type AdminRecipe, type AdminReview } from '../../services/admin';
 import { adminErrorText } from './errors';
 
 function Reviews({ recipeId }: { recipeId: string }) {
@@ -73,6 +73,16 @@ export function AdminModeration() {
     }
   };
 
+  const togglePremium = async (r: AdminRecipe) => {
+    try {
+      await setRecipePremium(r.id, !r.premium_only);
+      showToast(r.premium_only ? t.clientPremium.exclusiveOff : t.clientPremium.exclusiveOn, 'success');
+      load(query);
+    } catch (error) {
+      showToast(adminErrorText(error, a), 'error');
+    }
+  };
+
   return (
     <div className="space-y-3">
       <label className="relative block">
@@ -96,6 +106,7 @@ export function AdminModeration() {
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {r.author_name || '—'} · ★ {Number(r.rating).toFixed(1)} · {a.reviewsCount.replace('{n}', String(r.reviews))}
                     {r.hidden_at && <span className="ml-1 font-semibold text-rose-600">· {a.hidden}</span>}
+                    {r.premium_only && <span className="ml-1 font-semibold text-amber-600">· {t.clientPremium.badge}</span>}
                   </p>
                 </div>
                 {r.reviews > 0 && (
@@ -103,6 +114,15 @@ export function AdminModeration() {
                     <MessageSquare className="h-4 w-4" />
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => togglePremium(r)}
+                  aria-label={r.premium_only ? t.clientPremium.unmarkExclusive : t.clientPremium.markExclusive}
+                  title={r.premium_only ? t.clientPremium.unmarkExclusive : t.clientPremium.markExclusive}
+                  className={`rounded-lg border p-1.5 ${r.premium_only ? 'border-amber-400 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'border-slate-300 text-slate-500 dark:border-slate-600 dark:text-slate-300'}`}
+                >
+                  <Crown className="h-3.5 w-3.5" />
+                </button>
                 <button
                   type="button"
                   onClick={() => toggle(r)}

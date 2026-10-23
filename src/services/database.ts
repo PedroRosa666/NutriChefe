@@ -19,6 +19,7 @@ interface DatabaseRecipe {
   author_id: string;
   created_at: string;
   updated_at: string;
+  premium_only?: boolean;
   profiles?: {
     full_name: string;
     user_type: string;
@@ -97,7 +98,8 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
     authorType: dbRecipe.profiles?.user_type as 'Nutritionist' | 'Client',
     authorAvatarUrl: dbRecipe.profiles?.avatar_url || null,
     createdAt: dbRecipe.created_at,
-    updatedAt: dbRecipe.updated_at
+    updatedAt: dbRecipe.updated_at,
+    premiumOnly: dbRecipe.premium_only === true
   };
 }
 

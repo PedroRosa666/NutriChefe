@@ -45,6 +45,19 @@ export const usePremiumStore = create<PremiumState>()((set) => ({
   reset: () => set(EMPTY),
 }));
 
+/** Assinatura Premium do próprio usuário (cardápio pela IA, relatório e desafios). */
+export function useOwnPremium(): boolean {
+  return useSubscriptionStore((s) => s.hasFeatureAccess('ai_mentoring'));
+}
+
+/** Vê as receitas exclusivas: mesma regra de premium_content() no banco. */
+export function usePremiumContent(): boolean {
+  const own = useOwnPremium();
+  const viaNutritionist = usePremiumStore((s) => s.aiViaNutritionist !== null);
+  const admin = usePremiumStore((s) => s.isAdmin);
+  return own || viaNutritionist || admin;
+}
+
 /** Pode usar a IA: assinatura própria ou incluída pelo nutricionista Premium. */
 export function useCanUseAI(): boolean {
   const own = useSubscriptionStore((s) => s.hasFeatureAccess('ai_mentoring'));

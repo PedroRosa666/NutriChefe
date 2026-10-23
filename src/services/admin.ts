@@ -61,6 +61,7 @@ export interface AdminRecipe {
   rating: number;
   reviews: number;
   hidden_at: string | null;
+  premium_only: boolean;
   created_at: string;
 }
 
@@ -92,6 +93,7 @@ export const setPlan = (planId: string, price: number | null, stripePriceId: str
 export const adminErrors = (days: number) => rpc<AdminError[]>('admin_errors', { p_days: days });
 export const adminRecipes = (query: string) => rpc<AdminRecipe[]>('admin_recipes', { p_query: query });
 export const setRecipeHidden = (recipeId: string, hidden: boolean) => rpc<void>('admin_set_recipe_hidden', { p_recipe: recipeId, p_hidden: hidden });
+export const setRecipePremium = (recipeId: string, premium: boolean) => rpc<void>('admin_set_recipe_premium', { p_recipe: recipeId, p_premium: premium });
 export const adminReviews = (recipeId: string) => rpc<AdminReview[]>('admin_reviews', { p_recipe: recipeId });
 export const deleteReview = (reviewId: string) => rpc<void>('admin_delete_review', { p_review: reviewId });
 export const broadcast = (audience: 'all' | 'clients' | 'nutritionists', title: string, body: string) =>

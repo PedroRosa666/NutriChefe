@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowRight, Bot, Check, ChefHat, ChevronDown, Crown, Flame, HelpCircle, Lock,
-  MessageCircle, Search, ShieldCheck, Sparkles, User, X,
+  ArrowRight, Bot, CalendarRange, Check, ChefHat, ChevronDown, Crown, FileText, Flame, HelpCircle, Lock,
+  MessageCircle, Search, ShieldCheck, Sparkles, Target, User, X,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -104,11 +104,16 @@ export function PremiumUpgrade() {
     </motion.button>
   );
 
+  const cp = t.clientPremium;
   const features = [
     { icon: Search, title: p.features.ingredientTitle, text: p.features.ingredientDescription, tone: 'text-emerald-600 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-500/10' },
     { icon: User, title: p.features.personalTitle, text: p.features.personalDescription, tone: 'text-sky-600 bg-sky-50 dark:text-sky-300 dark:bg-sky-500/10' },
     { icon: Sparkles, title: p.features.beyondTitle, text: p.features.beyondDescription, tone: 'text-amber-600 bg-amber-50 dark:text-amber-300 dark:bg-amber-500/10' },
     { icon: MessageCircle, title: p.features.questionsTitle, text: p.features.questionsDescription, tone: 'text-rose-600 bg-rose-50 dark:text-rose-300 dark:bg-rose-500/10' },
+    { icon: CalendarRange, title: cp.features.planTitle, text: cp.features.planText, tone: 'text-emerald-600 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-500/10' },
+    { icon: Crown, title: cp.features.exclusiveTitle, text: cp.features.exclusiveText, tone: 'text-amber-600 bg-amber-50 dark:text-amber-300 dark:bg-amber-500/10' },
+    { icon: FileText, title: cp.features.reportTitle, text: cp.features.reportText, tone: 'text-sky-600 bg-sky-50 dark:text-sky-300 dark:bg-sky-500/10' },
+    { icon: Target, title: cp.features.challengesTitle, text: cp.features.challengesText, tone: 'text-rose-600 bg-rose-50 dark:text-rose-300 dark:bg-rose-500/10' },
   ];
 
   const compare: { label: string; free: boolean }[] = [
@@ -116,8 +121,14 @@ export function PremiumUpgrade() {
     { label: p.compareRows.diary, free: true },
     { label: p.compareRows.health, free: true },
     { label: p.compareRows.nutritionists, free: true },
+    { label: cp.compare.achievements, free: true },
+    { label: cp.compare.shopping, free: true },
     { label: p.compareRows.ai, free: false },
     { label: p.compareRows.personal, free: false },
+    { label: cp.compare.plan, free: false },
+    { label: cp.compare.exclusive, free: false },
+    { label: cp.compare.report, free: false },
+    { label: cp.compare.challenges, free: false },
   ];
 
   const yes = <Check className="mx-auto h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-label="✓" />;

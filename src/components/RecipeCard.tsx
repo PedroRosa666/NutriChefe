@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, ChefHat, Star, Heart, User } from 'lucide-react';
+import { Clock, ChefHat, Crown, Star, Heart, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useRecipesStore } from '../store/recipes';
 import { useAuthStore } from '../store/auth';
@@ -120,6 +120,13 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
           <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
           <span className="text-gray-900 dark:text-white">{displayRating()}</span>
         </div>
+
+        {recipe.premiumOnly && (
+          <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-lg bg-amber-400 px-2 py-1 text-[11px] font-bold text-amber-950 shadow-md">
+            <Crown className="h-3.5 w-3.5" />
+            {t.clientPremium.badge}
+          </span>
+        )}
 
         {/* Botão de favorito */}
         {isAuthenticated && (

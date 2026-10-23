@@ -9,6 +9,7 @@ import { QUICK } from '../../lib/motion';
 import { cn } from '../../lib/utils';
 import type { ShoppingItem } from '../../lib/ingredients';
 import { confirmDialog } from '../../store/confirm';
+import { SECTION_ORDER, sectionOf } from '../../lib/shopping-sections';
 
 export function ShoppingListPanel() {
   const user = useAuthStore((s) => s.user);
@@ -32,9 +33,17 @@ export function ShoppingListPanel() {
 
   const pending = items.filter((i) => !i.checked);
   const done = items.filter((i) => i.checked);
+  const sections = t.clientPremium.sections;
+  // A comprar, agrupado pela seção do mercado (na ordem de um corredor comum).
+  const grouped = SECTION_ORDER.map((section) => ({ section, list: pending.filter((i) => sectionOf(i.name) === section) })).filter(
+    (g) => g.list.length > 0
+  );
 
   const asText = () =>
-    `${t.shopping.title}\n` + pending.map((i) => `• ${i.name}${i.quantity ? ` — ${i.quantity}` : ''}`).join('\n');
+    `${t.shopping.title}\n` +
+    grouped
+      .map((g) => `\n${sections[g.section]}\n` + g.list.map((i) => `• ${i.name}${i.quantity ? ` — ${i.quantity}` : ''}`).join('\n'))
+      .join('\n');
 
   const copy = async () => {
     try {
@@ -169,9 +178,14 @@ export function ShoppingListPanel() {
           {pending.length > 0 && (
             <div>
               <p className="mb-1 px-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t.shopping.toBuy}</p>
-              <ul>
-                <AnimatePresence initial={false}>{pending.map(row)}</AnimatePresence>
-              </ul>
+              {grouped.map((g) => (
+                <div key={g.section} className="mt-2">
+                  <p className="px-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400">{sections[g.section]}</p>
+                  <ul>
+                    <AnimatePresence initial={false}>{g.list.map(row)}</AnimatePresence>
+                  </ul>
+                </div>
+              ))}
             </div>
           )}
           {done.length > 0 && (

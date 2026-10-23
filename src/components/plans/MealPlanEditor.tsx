@@ -12,7 +12,7 @@ import { EquivalentFoods } from '../foods/EquivalentFoods';
 import { PlanItemRow } from './PlanItemRow';
 import { PlanTemplatesPanel } from './PlanTemplatesPanel';
 import { cn } from '../../lib/utils';
-import { usePremiumStore } from '../../store/premium';
+import { useOwnPremium, usePremiumStore } from '../../store/premium';
 import { useFoodsStore } from '../../store/foods';
 import { generatePlanWithAI } from '../../services/gemini';
 import type { Recipe } from '../../types/recipe';
@@ -79,8 +79,11 @@ export function MealPlanEditor({
   const [showTemplates, setShowTemplates] = useState(false);
   const navigate = useNavigate();
   const nutritionistPro = usePremiumStore((s) => s.nutritionistPro);
-  // IA só para o nutricionista montando o plano de um paciente.
-  const aiAllowed = user?.type === 'Nutritionist' && clientId !== user.id;
+  const ownPremium = useOwnPremium();
+  // IA: o nutricionista no plano de um paciente (Premium Nutricionista) ou o cliente no próprio plano (Premium).
+  const ownPlan = clientId === user?.id;
+  const aiAllowed = user?.type === 'Nutritionist' ? !ownPlan : ownPlan;
+  const aiUnlocked = ownPlan ? ownPremium : nutritionistPro;
   const [aiOpen, setAiOpen] = useState(false);
   const [aiNotes, setAiNotes] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -330,10 +333,10 @@ export function MealPlanEditor({
           {aiAllowed && (
             <button
               type="button"
-              onClick={() => (nutritionistPro ? setAiOpen((v) => !v) : navigate('/mentoria-ia'))}
+              onClick={() => (aiUnlocked ? setAiOpen((v) => !v) : navigate('/mentoria-ia'))}
               className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
             >
-              {nutritionistPro ? <Bot className="h-4 w-4" /> : <Crown className="h-4 w-4" />}
+              {aiUnlocked ? <Bot className="h-4 w-4" /> : <Crown className="h-4 w-4" />}
               {t.plan.aiBuild}
             </button>
           )}
@@ -343,7 +346,7 @@ export function MealPlanEditor({
       {aiOpen && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-800/50 dark:bg-emerald-900/10">
           <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            {t.plan.aiNotesLabel}
+            {ownPlan ? t.clientPremium.aiOwnNotesLabel : t.plan.aiNotesLabel}
             <textarea
               value={aiNotes}
               onChange={(e) => setAiNotes(e.target.value)}
@@ -353,7 +356,7 @@ export function MealPlanEditor({
               className={cn(inputClass, 'mt-1')}
             />
           </label>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t.plan.aiHint}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{ownPlan ? t.clientPremium.aiOwnHint : t.plan.aiHint}</p>
           <button
             type="button"
             onClick={runAI}

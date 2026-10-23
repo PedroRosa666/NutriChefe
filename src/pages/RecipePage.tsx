@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRecipesStore } from '../store/recipes';
 import { RecipeDetails } from '../components/RecipeDetails';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { LockedRecipe } from '../components/recipes/ExclusiveShelf';
+import { getPremiumTeasers, type RecipeTeaser } from '../services/progress';
 
 // Renderizada dentro da home (rota filha): a receita abre como modal por cima
 // da lista, que continua montada. Fechar volta para onde a pessoa estava.
@@ -37,13 +39,29 @@ export function RecipePage() {
 
   const recipe = recipes.find(r => r.id === id);
 
-  if (!recipe && !fetchDone) {
+  // Não está na lista: pode ser uma receita exclusiva (a vitrine diz qual).
+  const [locked, setLocked] = useState<RecipeTeaser | null | undefined>(undefined);
+  const missing = fetchDone && !recipe;
+  useEffect(() => {
+    if (!missing) return;
+    let cancelled = false;
+    getPremiumTeasers()
+      .then((rows) => !cancelled && setLocked(rows.find((r) => r.id === id) ?? null))
+      .catch(() => !cancelled && setLocked(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [missing, id]);
+
+  if ((!recipe && !fetchDone) || (missing && locked === undefined)) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/20 backdrop-blur-[3px]">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
+
+  if (!recipe && locked) return <LockedRecipe teaser={locked} onClose={close} />;
 
   if (!recipe) {
     return (

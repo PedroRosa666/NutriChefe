@@ -14,6 +14,8 @@ import { WeeklyCaloriesChart } from '../nutrition/WeeklyCaloriesChart';
 import { MyNutritionistCard } from '../care/MyNutritionistCard';
 import { WeeklyReport } from './WeeklyReport';
 import { UpcomingAppointments } from '../care/Appointments';
+import { ProgressPanel } from './ProgressPanel';
+import { SelfReportCard } from './SelfReportCard';
 
 export function ClientDashboard() {
   const { user } = useAuthStore();
@@ -181,7 +183,11 @@ export function ClientDashboard() {
         </section>
       )}
 
+      <ProgressPanel />
+
       <WeeklyReport />
+
+      <SelfReportCard />
 
       <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <WeeklyCaloriesChart entries={entries} goal={goals.calories} />

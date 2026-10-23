@@ -30,4 +30,6 @@ export interface Recipe {
   authorAvatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Exclusiva do Premium (20261030120000_client_premium.sql). */
+  premiumOnly?: boolean;
 }

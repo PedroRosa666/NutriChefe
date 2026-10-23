@@ -24,6 +24,7 @@ const MIGRATIONS = [
   '20261027130000_nutritionist_verification.sql',
   '20261028120000_nutritionist_premium.sql',
   '20261029120000_admin_panel.sql',
+  '20261030120000_client_premium.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -69,7 +70,7 @@ const BASE = `
   CREATE TABLE recipes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL, author_id uuid, description text, image text,
     prep_time int, difficulty text, rating numeric DEFAULT 0, category text, ingredients text[], instructions text[],
-    nutrition_facts jsonb, updated_at timestamptz
+    nutrition_facts jsonb, created_at timestamptz DEFAULT now(), updated_at timestamptz
   );
   ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
   CREATE POLICY "Qualquer pessoa pode visualizar receitas" ON recipes FOR SELECT TO anon, authenticated USING (true);
