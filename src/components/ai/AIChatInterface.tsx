@@ -14,6 +14,7 @@ import type { AIResponse } from '../../types/ai';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAIUserContext } from '../../hooks/useAIUserContext';
 import { confirmDialog } from '../../store/confirm';
+import { usePremiumStore } from '../../store/premium';
 
 type RecipeCardData = NonNullable<AIResponse['recipes']>[number];
 
@@ -85,7 +86,7 @@ export function AIChatInterface() {
   const handleStartConversation = async () => {
     if (!user) return;
     try {
-      await createConversation(user.id);
+      await createConversation(user.id, usePremiumStore.getState().aiViaNutritionist ?? undefined);
     } catch (error) {
       console.error('Error starting conversation:', error);
     }
@@ -115,7 +116,7 @@ export function AIChatInterface() {
     if (!currentConversation) {
       if (!user) return;
       try {
-        const conversation = await createConversation(user.id);
+        const conversation = await createConversation(user.id, usePremiumStore.getState().aiViaNutritionist ?? undefined);
         await sendMessage(conversation.id, prompt, buildContext());
       } catch (error) {
         console.error('Error starting conversation:', error);

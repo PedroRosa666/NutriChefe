@@ -5,6 +5,8 @@ import { useSubscriptionStore } from '../../store/subscription';
 import { AIChatInterface } from './AIChatInterface';
 import { PremiumUpgrade } from './PremiumUpgrade';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useCanUseAI, usePremiumStore } from '../../store/premium';
+import { NutritionistPremium } from './NutritionistPremium';
 
 interface AIMentoringPageProps {
   onBack: () => void;
@@ -12,12 +14,14 @@ interface AIMentoringPageProps {
 
 export function AIMentoringPage({ onBack }: AIMentoringPageProps) {
   const { user } = useAuthStore();
-  const { hasFeatureAccess, subscriptionLoaded } = useSubscriptionStore();
+  const { subscriptionLoaded } = useSubscriptionStore();
+  const premiumLoaded = usePremiumStore((s) => s.loaded);
+  const canUseAI = useCanUseAI();
   const t = useTranslation();
 
-  const hasAIAccess = user && hasFeatureAccess('ai_mentoring');
+  const hasAIAccess = user && canUseAI;
   // Enquanto a assinatura carrega, não mostra a tela de venda para quem já é Premium.
-  const checkingAccess = Boolean(user) && !subscriptionLoaded;
+  const checkingAccess = Boolean(user) && (!subscriptionLoaded || !premiumLoaded);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -44,6 +48,8 @@ export function AIMentoringPage({ onBack }: AIMentoringPageProps) {
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl shadow-gray-200/60 dark:shadow-none border border-gray-200 dark:border-gray-700/60 overflow-hidden">
             <AIChatInterface />
           </div>
+        ) : user?.type === 'Nutritionist' ? (
+          <NutritionistPremium />
         ) : (
           <PremiumUpgrade />
         )}

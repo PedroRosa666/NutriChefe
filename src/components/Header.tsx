@@ -4,7 +4,6 @@ import { Search, Menu, LogOut, User as UserIcon, Bot, Users, ChevronDown } from 
 import { cn } from '../lib/utils';
 import type { Translations } from '../hooks/useTranslation';
 import { useAuthStore } from '../store/auth';
-import { useSubscriptionStore } from '../store/subscription';
 import { useFiltersStore } from '../store/filters';
 import { AuthModal } from './AuthModal';
 import { ThemeSwitch } from './common/ThemeSwitch';
@@ -13,6 +12,7 @@ import { NotificationBell } from './common/NotificationBell';
 import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { User } from '../types/user';
+import { useCanUseAI } from '../store/premium';
 
 interface UserDropdownProps {
   user: User | null;
@@ -132,7 +132,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, signOut } = useAuthStore();
-  const { hasFeatureAccess } = useSubscriptionStore();
+  const canUseAI = useCanUseAI();
   const { searchQuery, setSearchQuery } = useFiltersStore();
   const t = useTranslation();
 
@@ -156,7 +156,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
   }, [onLoginRoute, isAuthenticated, location.search, navigate]);
 
   // Verificar se tem acesso à IA (nutricionista ou premium)
-  const hasAIAccess = isAuthenticated && hasFeatureAccess('ai_mentoring');
+  const hasAIAccess = isAuthenticated && canUseAI;
   return (
     <>
       {/* Mesmo tom do topo do degradê, translúcido: sem corte entre cabeçalho e página. */}

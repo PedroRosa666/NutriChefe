@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowLeft, HeartPulse, Loader2, Save, Sparkles, Target, UserMinus, Utensils, CalendarRange, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Crown, FileText, HeartPulse, Loader2, Save, Sparkles, Target, UserMinus, Utensils, CalendarRange, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -18,6 +18,11 @@ import { Avatar } from './Avatar';
 import { fmtNum } from '../../lib/format';
 import { confirmDialog } from '../../store/confirm';
 import { AppointmentsSection } from './Appointments';
+import { PatientReportView } from './PatientReportView';
+import { usePremiumStore } from '../../store/premium';
+import { loadAdherence, type AdherenceResult } from '../../services/adherence';
+import { getMyCrnStatus } from '../../services/verification';
+import { useNavigate } from 'react-router-dom';
 
 interface PatientDetailProps {
   link: CareLink;
@@ -36,6 +41,29 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false }: Patie
   const t = useTranslation();
   const patientId = link.person.id;
   const [chatOpen, setChatOpen] = useState(openChat);
+  const nutritionistPro = usePremiumStore((s) => s.nutritionistPro);
+  const navigate = useNavigate();
+  const [report, setReport] = useState<{ adherence: AdherenceResult | null; crn: string | null } | null>(null);
+  const [preparingReport, setPreparingReport] = useState(false);
+  const closeReport = useCallback(() => setReport(null), []);
+
+  const openReport = async () => {
+    if (!nutritionistPro) {
+      navigate('/mentoria-ia');
+      return;
+    }
+    if (!user || !data) return;
+    setPreparingReport(true);
+    try {
+      const [adherence, crn] = await Promise.all([
+        loadAdherence(patientId, user.id).catch(() => null),
+        getMyCrnStatus(user.id).catch(() => null),
+      ]);
+      setReport({ adherence, crn: crn?.number ? `CRN-${crn.region} ${crn.number}` : null });
+    } finally {
+      setPreparingReport(false);
+    }
+  };
 
   const [data, setData] = useState<PatientData | null>(null);
   const [goalsForm, setGoalsForm] = useState<NutritionGoals>(DEFAULT_GOALS);
@@ -161,6 +189,15 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false }: Patie
         </button>
         <button
           type="button"
+          onClick={openReport}
+          disabled={preparingReport || !data}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+        >
+          {preparingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : nutritionistPro ? <FileText className="h-4 w-4" /> : <Crown className="h-4 w-4" />}
+          {t.patientReport.button}
+        </button>
+        <button
+          type="button"
           onClick={end}
           className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-900/20"
         >
@@ -168,6 +205,18 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false }: Patie
           {t.care.endLink}
         </button>
       </div>
+
+      {report && data && user && (
+        <PatientReportView
+          patientName={link.person.full_name ?? ''}
+          data={data}
+          adherence={report.adherence}
+          nutritionistName={user.name}
+          crn={report.crn}
+          contact={user.email}
+          onDone={closeReport}
+        />
+      )}
 
       {chatOpen && user && <ChatThread nutritionistId={user.id} clientId={patientId} otherName={link.person.full_name ?? ''} />}
 

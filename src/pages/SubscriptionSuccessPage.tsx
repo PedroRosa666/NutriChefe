@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useSubscriptionStore } from '../store/subscription';
+import { usePremiumStore } from '../store/premium';
 
 export function SubscriptionSuccessPage() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export function SubscriptionSuccessPage() {
     if (!userId) return;
     const { fetchUserSubscription } = useSubscriptionStore.getState();
     fetchUserSubscription(userId);
+    usePremiumStore.getState().fetch(userId);
     const retry = setTimeout(() => fetchUserSubscription(userId), 3000);
     return () => clearTimeout(retry);
   }, [userId]);

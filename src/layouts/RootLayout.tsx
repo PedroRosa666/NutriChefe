@@ -18,6 +18,7 @@ import { useSubscriptionStore } from '../store/subscription';
 import { useShoppingListStore } from '../store/shopping-list';
 import { useFoodsStore } from '../store/foods';
 import { useToastStore } from '../store/toast';
+import { usePremiumStore } from '../store/premium';
 
 export function RootLayout() {
   const { message, type, hideToast } = useToastStore();
@@ -52,6 +53,7 @@ export function RootLayout() {
     useFoodsStore.getState().clear();
     if (userId) {
       useSubscriptionStore.getState().fetchUserSubscription(userId);
+      usePremiumStore.getState().fetch(userId);
       useRecipesStore.getState().fetchFavorites(userId);
       // Metas, diário e saúde só existem para clientes.
       if (isClient) {
@@ -62,6 +64,7 @@ export function RootLayout() {
     } else {
       // Logout: nada do usuário anterior pode ficar na memória.
       useSubscriptionStore.getState().reset();
+      usePremiumStore.getState().reset();
       useRecipesStore.getState().clearUserData();
       useNutritionGoalsStore.getState().reset();
       useNutritionTrackingStore.getState().reset();

@@ -65,7 +65,7 @@ const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? nul
 
 const errorCode = (error: { message?: string } | null) => {
   const msg = error?.message ?? '';
-  for (const code of ['invalid_invite', 'only_clients', 'only_nutritionists', 'too_many_invites', 'crn_not_verified', 'not_authenticated']) {
+  for (const code of ['invalid_invite', 'only_clients', 'only_nutritionists', 'too_many_invites', 'crn_not_verified', 'patient_limit', 'not_authenticated']) {
     if (msg.includes(code)) return code;
   }
   return 'unknown';

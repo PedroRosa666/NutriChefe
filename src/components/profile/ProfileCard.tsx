@@ -5,18 +5,20 @@ import { useSubscriptionStore } from '../../store/subscription';
 import { useSettingsStore } from '../../store/settings';
 import { useTranslation } from '../../hooks/useTranslation';
 import { AvatarUpload } from '../common/AvatarUpload';
+import { usePremiumStore } from '../../store/premium';
 
 /** Cabeçalho do perfil: identidade e plano. As métricas ficam na aba "Visão geral". */
 export function ProfileCard() {
   const { user } = useAuthStore();
   const { isPremium } = useSubscriptionStore();
+  const nutritionistPro = usePremiumStore((s) => s.nutritionistPro);
   const { language } = useSettingsStore();
   const t = useTranslation();
 
   if (!user) return null;
 
   const isNutritionist = user.type === 'Nutritionist';
-  const isPremiumUser = isPremium();
+  const isPremiumUser = isNutritionist ? nutritionistPro : isPremium();
   const memberSince = user.created_at
     ? new Date(user.created_at).toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US', {
         month: 'long',

@@ -22,6 +22,7 @@ const MIGRATIONS = [
   '20261026140000_appointments.sql',
   '20261027120000_security_hardening.sql',
   '20261027130000_nutritionist_verification.sql',
+  '20261028120000_nutritionist_premium.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -54,9 +55,14 @@ const BASE = `
     profile_visibility text DEFAULT 'public', last_seen timestamptz DEFAULT now()
   );
   ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+  CREATE TABLE subscription_plans (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, description text, price numeric NOT NULL,
+    currency text NOT NULL, billing_period text NOT NULL, features jsonb, is_active boolean, stripe_price_id text
+  );
   CREATE TABLE user_subscriptions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
-    status text, stripe_subscription_id text, auto_renew boolean
+    plan_id uuid REFERENCES subscription_plans(id), status text, stripe_subscription_id text, auto_renew boolean,
+    expires_at timestamptz
   );
   CREATE TABLE recipes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL, author_id uuid, description text, image text,
@@ -73,7 +79,7 @@ const BASE = `
   CREATE FUNCTION public.update_recipe_rating() RETURNS trigger LANGUAGE plpgsql AS $fn$ BEGIN RETURN NULL; END; $fn$;
   CREATE TRIGGER update_recipe_rating_trigger AFTER INSERT OR UPDATE OR DELETE ON reviews FOR EACH ROW EXECUTE FUNCTION public.update_recipe_rating();
   CREATE TABLE favorites (user_id uuid, recipe_id uuid);
-  CREATE TABLE nutrition_log_entries (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, recipe_id uuid);
+  CREATE TABLE nutrition_log_entries (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid, recipe_id uuid, entry_date date);
   CREATE TABLE client_health_profiles (user_id uuid PRIMARY KEY);
   CREATE TABLE weight_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid);
   CREATE TABLE nutrition_goals (user_id uuid PRIMARY KEY, calories int);

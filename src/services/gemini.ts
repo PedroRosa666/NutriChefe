@@ -121,3 +121,24 @@ export async function estimateFoodPhoto(file: File): Promise<PhotoEstimate> {
   if (!data?.ok || !data.estimate) throw new Error(data?.error ?? data?.code ?? 'photo_failed');
   return data.estimate;
 }
+
+export interface AIPlanItem {
+  day: number;
+  meal: 'breakfast' | 'lunch' | 'snack' | 'dinner';
+  recipe_id: string | null;
+  servings: number;
+  food_id: string | null;
+  grams: number | null;
+  note: string;
+}
+
+/** Plano da semana montado pela IA para um paciente (Premium Nutricionista). O nutricionista revisa antes de salvar. */
+export async function generatePlanWithAI(clientId: string, notes: string, dailyCalories: number): Promise<{ items: AIPlanItem[]; summary: string }> {
+  const { data, error } = await supabase.functions.invoke<{ ok: boolean; items?: AIPlanItem[]; summary?: string; code?: string; error?: string }>(
+    'ai-chat',
+    { body: { action: 'plan', client_id: clientId, notes, dailyCalories } }
+  );
+  if (error && !data) throw error;
+  if (!data?.ok || !data.items) throw new Error(data?.error ?? data?.code ?? 'plan_failed');
+  return { items: data.items, summary: data.summary ?? '' };
+}

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, Carrot, LayoutTemplate, ListChecks, Loader2, Scale, Sparkles, Trash2, Save, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BookOpen, Bot, Carrot, Crown, LayoutTemplate, ListChecks, Loader2, Scale, Sparkles, Trash2, Save, X } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -11,6 +12,9 @@ import { EquivalentFoods } from '../foods/EquivalentFoods';
 import { PlanItemRow } from './PlanItemRow';
 import { PlanTemplatesPanel } from './PlanTemplatesPanel';
 import { cn } from '../../lib/utils';
+import { usePremiumStore } from '../../store/premium';
+import { useFoodsStore } from '../../store/foods';
+import { generatePlanWithAI } from '../../services/gemini';
 import type { Recipe } from '../../types/recipe';
 
 interface MealPlanEditorProps {
@@ -73,6 +77,39 @@ export function MealPlanEditor({
   const [adder, setAdder] = useState<Adder | null>(null);
   const [saving, setSaving] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const navigate = useNavigate();
+  const nutritionistPro = usePremiumStore((s) => s.nutritionistPro);
+  // IA só para o nutricionista montando o plano de um paciente.
+  const aiAllowed = user?.type === 'Nutritionist' && clientId !== user.id;
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiNotes, setAiNotes] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState('');
+
+  const runAI = async () => {
+    setAiLoading(true);
+    try {
+      const result = await generatePlanWithAI(clientId, aiNotes.trim(), dailyCalories);
+      // Os alimentos vêm só com o id: o catálogo precisa estar carregado para mostrar nome e nutrientes.
+      await useFoodsStore.getState().fetch();
+      const foodsById = new Map(useFoodsStore.getState().foods.map((f) => [f.id, f]));
+      setItems(
+        result.items.map((i) => ({
+          ...i,
+          food: i.food_id ? foodsById.get(i.food_id) ?? null : null,
+          measure_label: null,
+          option_group: null,
+        }))
+      );
+      setAiSummary(result.summary);
+      setAiOpen(false);
+      showToast(t.plan.aiDone, 'success');
+    } catch (error) {
+      showToast(error instanceof Error && error.message && !error.message.includes('_') ? error.message : t.plan.aiError, 'error');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const sortedRecipes = useMemo(() => recipes.slice().sort((a, b) => a.title.localeCompare(b.title)), [recipes]);
@@ -290,8 +327,51 @@ export function MealPlanEditor({
             <Sparkles className="h-4 w-4" />
             {items.length ? t.plan.regenerate : t.plan.generate}
           </button>
+          {aiAllowed && (
+            <button
+              type="button"
+              onClick={() => (nutritionistPro ? setAiOpen((v) => !v) : navigate('/mentoria-ia'))}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              {nutritionistPro ? <Bot className="h-4 w-4" /> : <Crown className="h-4 w-4" />}
+              {t.plan.aiBuild}
+            </button>
+          )}
         </div>
       </div>
+
+      {aiOpen && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-800/50 dark:bg-emerald-900/10">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            {t.plan.aiNotesLabel}
+            <textarea
+              value={aiNotes}
+              onChange={(e) => setAiNotes(e.target.value)}
+              maxLength={500}
+              rows={2}
+              placeholder={t.plan.aiNotesPlaceholder}
+              className={cn(inputClass, 'mt-1')}
+            />
+          </label>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t.plan.aiHint}</p>
+          <button
+            type="button"
+            onClick={runAI}
+            disabled={aiLoading}
+            className="mt-2 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+          >
+            {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+            {aiLoading ? t.plan.aiLoading : t.plan.aiRun}
+          </button>
+        </div>
+      )}
+
+      {aiSummary && (
+        <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          <Bot className="mr-1.5 inline h-4 w-4 text-emerald-600" />
+          {aiSummary}
+        </p>
+      )}
 
       {showTemplates && <PlanTemplatesPanel items={items} title={title} notes={notes} onApply={applyTemplate} />}
 

@@ -20,6 +20,7 @@ const NutritionGoalsForm = lazyNamed(() => import('../nutrition/NutritionGoalsFo
 const ActiveGoalsSelector = lazyNamed(() => import('../nutrition/ActiveGoalsSelector'), 'ActiveGoalsSelector');
 const NutritionDiary = lazyNamed(() => import('../nutrition/NutritionDiary'), 'NutritionDiary');
 const EditProfessionalProfile = lazyNamed(() => import('./EditProfessionalProfile'), 'EditProfessionalProfile');
+const AIAssistantSettings = lazyNamed(() => import('./AIAssistantSettings'), 'AIAssistantSettings');
 const ClientDashboard = lazyNamed(() => import('./ClientDashboard'), 'ClientDashboard');
 const NutritionistDashboard = lazyNamed(() => import('./NutritionistDashboard'), 'NutritionistDashboard');
 const HealthProfileForm = lazyNamed(() => import('./HealthProfileForm'), 'HealthProfileForm');
@@ -194,6 +195,11 @@ export function ProfileTabs() {
               <p className="text-gray-600 dark:text-gray-400">{t.nutritionists.editProfile.subtitle}</p>
             </div>
             <EditProfessionalProfile />
+          </div>
+        )}
+        {activeTab === 'professional' && (
+          <div className="mt-6">
+            <AIAssistantSettings />
           </div>
         )}
 

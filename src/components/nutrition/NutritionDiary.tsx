@@ -7,11 +7,11 @@ import { useRecipesStore } from '../../store/recipes';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { CommonFoodForm, CustomFoodForm, PhotoEstimateButton } from './DiaryFoodForms';
-import { useSubscriptionStore } from '../../store/subscription';
 import type { PhotoEstimate } from '../../services/gemini';
 import { cn } from '../../lib/utils';
 import { fmtNum } from '../../lib/format';
 import { confirmDialog } from '../../store/confirm';
+import { useCanUseAI } from '../../store/premium';
 
 type AddMode = 'recipe' | 'food' | 'custom';
 
@@ -79,7 +79,7 @@ export function NutritionDiary() {
   const [adding, setAdding] = React.useState(false);
   const [mode, setMode] = React.useState<AddMode>('recipe');
   // Estimativa por foto (Mentoria IA) preenche o formulário "Outro"; a chave remonta o formulário.
-  const canUsePhoto = useSubscriptionStore((s) => s.hasFeatureAccess('ai_mentoring'));
+  const canUsePhoto = useCanUseAI();
   const [photo, setPhoto] = React.useState<{ key: number; estimate: PhotoEstimate } | null>(null);
 
   const entries = useMemo(() => allEntries.filter((e) => e.date === date), [allEntries, date]);

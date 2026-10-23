@@ -17,6 +17,7 @@ interface NutritionistProfile {
   clinic_address: string;
   accepting_new_clients: boolean;
   crn: string | null;
+  featured: boolean;
   published_recipes_count: number;
   average_rating: number;
   avatar_url?: string | null;
@@ -33,6 +34,10 @@ export function NutritionistsPage() {
     const loadNutritionists = async () => {
       try {
         // Uma consulta só: perfis + receitas + notas (antes eram 3 consultas por nutricionista).
+        // Os nutricionistas Premium aparecem primeiro, com o selo Destaque.
+        const proIds = new Set(
+          ((await supabase.rpc('pro_nutritionist_ids')).data as string[] | null) ?? []
+        );
         const { data: profiles, error } = await supabase
           .from('profiles')
           .select('id, full_name, avatar_url, professional_bio, specializations, years_of_experience, consultation_price, clinic_address, accepting_new_clients, crn_region, crn_number, recipes!recipes_author_id_fkey(id, reviews(rating))')
@@ -57,11 +62,12 @@ export function NutritionistsPage() {
               clinic_address: profile.clinic_address || '',
               accepting_new_clients: profile.accepting_new_clients ?? true,
               crn: profile.crn_number ? `CRN-${profile.crn_region} ${profile.crn_number}` : null,
+              featured: proIds.has(profile.id),
               published_recipes_count: authorRecipes.length,
               average_rating: ratings.length ? ratings.reduce((sum, n) => sum + n, 0) / ratings.length : 0,
               avatar_url: profile.avatar_url || null,
             };
-          })
+          }).sort((a, b) => Number(b.featured) - Number(a.featured))
         );
       } catch (error) {
         console.error('Error loading nutritionists:', error);
@@ -114,7 +120,14 @@ export function NutritionistsPage() {
                 onClick={() => navigate(`/nutricionista/${nutritionist.id}`)}
                 className="group cursor-pointer bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden border border-gray-200 dark:border-gray-700"
               >
-                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-24"></div>
+                <div className="relative bg-gradient-to-r from-emerald-500 to-teal-500 h-24">
+                  {nutritionist.featured && (
+                    <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-amber-400 px-2.5 py-1 text-xs font-bold text-amber-950 shadow">
+                      <Star className="h-3 w-3 fill-current" />
+                      {t.nutritionistPremium.featured}
+                    </span>
+                  )}
+                </div>
 
                 <div className="p-6 -mt-12">
                   <div className="flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 mx-auto mb-4 shadow-lg border-4 border-white dark:border-gray-800 overflow-hidden">

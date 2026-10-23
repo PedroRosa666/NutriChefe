@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Copy, Loader2, MessageCircle, UserPlus, Users, X, ChevronRight, AlertTriangle, ArrowLeftRight, ClipboardCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
+import { usePremiumStore } from '../../store/premium';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useNotificationSignal } from '../../store/notifications';
@@ -56,6 +57,7 @@ async function summarize(clientId: string, nutritionistId: string): Promise<Pati
 
 export function PatientsPanel() {
   const user = useAuthStore((s) => s.user);
+  const { loaded: premiumLoaded, nutritionistPro, freePatientLimit } = usePremiumStore();
   const { showToast } = useToastStore();
   const t = useTranslation();
 
@@ -186,6 +188,14 @@ export function PatientsPanel() {
             {t.care.patientsTitle}
           </h2>
           <p className="mt-1 max-w-xl text-sm text-slate-500 dark:text-slate-400">{t.care.patientsSubtitle}</p>
+          {premiumLoaded && !nutritionistPro && (
+            <p className="mt-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+              {t.care.freeLimit.replace('{n}', String(patients.length)).replace('{max}', String(freePatientLimit))}{' '}
+              <Link to="/mentoria-ia" className="font-semibold text-emerald-700 underline dark:text-emerald-300">
+                {t.care.unlimitedWithPremium}
+              </Link>
+            </p>
+          )}
         </div>
         <button
           type="button"

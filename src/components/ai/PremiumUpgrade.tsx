@@ -44,12 +44,12 @@ export function PremiumUpgrade() {
       });
   }, [showToast, p.loadPlansError]);
 
-  // Plano pago com IA; evita cair no plano gratuito (o primeiro, ordenado por preço).
+  // Plano pago com IA; evita cair no plano gratuito (o primeiro, ordenado por preço) e no do nutricionista.
   const primaryPlan = useMemo(
     () =>
-      plans.find((pl) => pl.stripe_price_id && pl.features?.includes('ai_mentoring')) ??
-      plans.find((pl) => pl.stripe_price_id) ??
-      plans.find((pl) => pl.price > 0) ??
+      plans.filter((pl) => !pl.features?.includes('nutritionist_pro')).find((pl) => pl.stripe_price_id && pl.features?.includes('ai_mentoring')) ??
+      plans.find((pl) => pl.stripe_price_id && !pl.features?.includes('nutritionist_pro')) ??
+      plans.find((pl) => pl.price > 0 && !pl.features?.includes('nutritionist_pro')) ??
       null,
     [plans]
   );
