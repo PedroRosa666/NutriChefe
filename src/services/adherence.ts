@@ -48,6 +48,44 @@ export async function saveCheck(input: {
   return data as unknown as MealCheck;
 }
 
+/** Um item do plano como vai para o diário quando a pessoa marca "Comi". */
+export interface CheckDiaryEntry {
+  recipe_id: string | null;
+  title: string;
+  servings: number;
+  per_serving: Record<string, number>;
+}
+
+/**
+ * Grava a marcação e o diário juntos (save_meal_check, numa transação): "Comi" substitui o
+ * que essa marcação já tinha lançado, outros status tiram, e uma falha não deixa meio feito.
+ */
+export async function saveCheckWithDiary(input: {
+  planId: string;
+  date: string;
+  meal: MealSlot;
+  status: CheckStatus;
+  chosen?: string[];
+  note?: string;
+  entries: CheckDiaryEntry[];
+}): Promise<MealCheck> {
+  const { data, error } = await supabase.rpc('save_meal_check', {
+    p_plan: input.planId,
+    p_date: input.date,
+    p_meal: input.meal,
+    p_status: input.status,
+    p_chosen: (input.chosen ?? []).slice(0, 20).map((c) => c.slice(0, 200)),
+    p_note: (input.note ?? '').trim().slice(0, 300),
+    p_entries: input.status === 'ate' ? input.entries.slice(0, 30) : [],
+  });
+  if (error) throw error;
+  const row = data as Record<string, unknown>;
+  return {
+    id: row.id, plan_id: row.plan_id, check_date: row.check_date, meal: row.meal,
+    status: row.status, chosen: row.chosen, note: row.note,
+  } as unknown as MealCheck;
+}
+
 export async function deleteCheck(id: string): Promise<void> {
   const { error } = await supabase.from('meal_plan_checks').delete().eq('id', id);
   if (error) throw error;

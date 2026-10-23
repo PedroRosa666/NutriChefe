@@ -4,7 +4,7 @@ import { ArrowLeftRight, CalendarRange, FileDown, ListChecks, Pencil, Plus, Shop
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useToastStore } from '../../store/toast';
-import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
+import { toTotals, useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useShoppingListStore } from '../../store/shopping-list';
 import { useNotificationSignal } from '../../store/notifications';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -14,7 +14,7 @@ import { foodLogValues } from '../../lib/food-math';
 import { PlanItemRow } from './PlanItemRow';
 import { MealCheckBar } from './MealCheckBar';
 import { dateForPlanDay, type CheckStatus, type MealCheck } from '../../lib/adherence';
-import { deleteCheck, listChecks, saveCheck } from '../../services/adherence';
+import { deleteCheck, listChecks, saveCheckWithDiary, type CheckDiaryEntry } from '../../services/adherence';
 import { toISODate } from '../../store/nutrition-tracking';
 import { listSwapsForClient, pendingFor, type SwapRequest } from '../../services/swaps';
 import { SwapRequestDialog } from '../swaps/SwapRequestDialog';
@@ -226,17 +226,14 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     }
   };
 
-  /** Lança um item do plano no diário (de hoje ou da data informada). */
-  const logToDiary = async (item: MealPlanItem, date?: string) => {
-    const tracking = useNutritionTrackingStore.getState();
+  /** O item do plano como entra no diário (mesmos valores do botão de lançar no diário). */
+  const diaryEntryOf = (item: MealPlanItem): CheckDiaryEntry | null => {
     if (item.food_id && item.food && item.grams) {
-      // Alimento: entra com os nutrientes completos da quantidade prescrita.
       const { totals, extra } = foodLogValues(item.food, item.grams);
-      await tracking.addFoodToLog(`${item.food.name} — ${item.measure_label ?? `${item.grams} g`}`, totals, 1, date, extra, item.meal);
-    } else {
-      const recipe = item.recipe_id ? byId.get(item.recipe_id) : undefined;
-      if (recipe) await tracking.addRecipeToLog(recipe, item.servings, date, item.meal);
+      return { recipe_id: null, title: `${item.food.name} — ${item.measure_label ?? `${item.grams} g`}`.slice(0, 200), servings: 1, per_serving: { ...extra, ...totals } };
     }
+    const recipe = item.recipe_id ? byId.get(item.recipe_id) : undefined;
+    return recipe ? { recipe_id: recipe.id, title: recipe.title, servings: item.servings, per_serving: { ...toTotals(recipe.nutritionFacts) } } : null;
   };
 
   const createButtons = (
@@ -294,18 +291,15 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     item.food_id ? item.food?.name ?? '' : (item.recipe_id && byId.get(item.recipe_id)?.title) || '';
 
   const saveMealCheck = async (meal: MealPlanItem['meal'], status: CheckStatus, eaten: MealPlanItem[], note: string) => {
-    const previous = checks.find((c) => c.plan_id === plan.id && c.check_date === dayDate && c.meal === meal);
     setCheckingMeal(meal);
     try {
-      const saved = await saveCheck({ clientId, planId: plan.id, date: dayDate, meal, status, chosen: eaten.map(itemName), note });
+      // Marcação e diário numa operação só: "Comi" de novo substitui (não duplica) e uma
+      // falha no meio não deixa a refeição marcada sem ter ido para o diário.
+      const entries = eaten.map(diaryEntryOf).filter((e): e is CheckDiaryEntry => e !== null);
+      const saved = await saveCheckWithDiary({ planId: plan.id, date: dayDate, meal, status, chosen: eaten.map(itemName), note, entries });
       setChecks((prev) => [saved, ...prev.filter((c) => c.id !== saved.id)]);
-      // "Comi" lança a refeição no diário daquele dia (só na primeira vez, para não duplicar).
-      if (status === 'ate' && previous?.status !== 'ate') {
-        for (const item of eaten) await logToDiary(item, dayDate);
-        showToast(t.adherence.savedAte, 'success');
-      } else {
-        showToast(t.adherence.saved, 'success');
-      }
+      if (user) await useNutritionTrackingStore.getState().fetchEntries(user.id);
+      showToast(status === 'ate' ? t.adherence.savedAte : t.adherence.saved, 'success');
     } catch (error) {
       console.error('Error saving meal check:', error);
       showToast(t.adherence.error, 'error');
@@ -319,6 +313,8 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     try {
       await deleteCheck(check.id);
       setChecks((prev) => prev.filter((c) => c.id !== check.id));
+      // O que essa marcação lançou no diário sai junto (no banco); atualiza a tela do diário.
+      if (check.status === 'ate' && user) await useNutritionTrackingStore.getState().fetchEntries(user.id);
       if (check.status === 'ate') showToast(t.adherence.clearedAte, 'info');
     } catch (error) {
       console.error('Error clearing meal check:', error);
