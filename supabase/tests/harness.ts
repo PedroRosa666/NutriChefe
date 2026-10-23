@@ -25,6 +25,7 @@ const MIGRATIONS = [
   '20261028120000_nutritionist_premium.sql',
   '20261029120000_admin_panel.sql',
   '20261030120000_client_premium.sql',
+  '20261031120000_data_consistency.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as

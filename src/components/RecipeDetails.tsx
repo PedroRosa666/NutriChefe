@@ -33,6 +33,7 @@ import { cn } from '../lib/utils';
 import { useTranslation } from '../hooks/useTranslation';
 import { backdrop, modalPanel } from '../lib/motion';
 import { confirmDialog } from '../store/confirm';
+import { getRecipeAuthorStats } from '../services/care';
 
 interface RecipeDetailsProps {
   recipe: Recipe;
@@ -234,7 +235,13 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
   };
 
   const handleDelete = async () => {
-    if (deleting || !(await confirmDialog(t.recipe.deleteConfirm))) return;
+    if (deleting) return;
+    // Receita usada em planos: avisa que ela sai desses planos.
+    const inPlans = await getRecipeAuthorStats()
+      .then((rows) => rows.find((r) => r.recipe_id === recipe.id)?.in_plans ?? 0)
+      .catch(() => 0);
+    const message = inPlans ? t.recipe.deleteInPlansConfirm.replace('{n}', String(inPlans)) : t.recipe.deleteConfirm;
+    if (!(await confirmDialog(message))) return;
     setDeleting(true);
     try {
       await deleteRecipe(recipe.id);

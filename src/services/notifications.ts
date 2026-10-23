@@ -16,7 +16,8 @@ export type NotificationKind =
   | 'appointment_reminder'
   | 'verification_requested'
   | 'verification_reviewed'
-  | 'announcement';
+  | 'announcement'
+  | 'plan_item_removed';
 
 export interface AppNotification {
   id: string;
@@ -93,6 +94,9 @@ export function notificationTarget(n: AppNotification): string {
     case 'swap_answered':
     case 'plan_updated':
       return '/perfil?tab=plan';
+    case 'plan_item_removed':
+      // Para o nutricionista vem o paciente (client_id); para o paciente, o próprio plano.
+      return n.data.client_id ? `/perfil?tab=patients&paciente=${n.data.client_id}` : '/perfil?tab=plan';
     case 'goals_updated':
       return '/perfil?tab=nutrition';
     case 'appointment_scheduled':

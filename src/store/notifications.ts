@@ -127,6 +127,8 @@ export function notificationText(n: AppNotification, t: Translations): string {
         return s.verificationRequested;
       case 'announcement':
         return `${n.data.title ?? ''}: ${n.data.body ?? ''}`;
+      case 'plan_item_removed':
+        return n.data.client_id ? s.planItemRemovedPatient : s.planItemRemoved;
       case 'verification_reviewed':
         return n.data.approved ? s.verificationApproved : s.verificationRejected;
     }

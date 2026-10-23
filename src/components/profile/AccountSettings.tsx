@@ -8,7 +8,8 @@ import { useSettingsStore } from '../../store/settings';
 import { useTranslation } from '../../hooks/useTranslation';
 import { supabase } from '../../lib/supabase';
 import { openBillingPortal } from '../../services/subscription';
-import { DeleteAccountError, deleteMyAccount, downloadMyData } from '../../services/privacy';
+import { countArchivedPlans, deleteArchivedPlans, DeleteAccountError, deleteMyAccount, downloadMyData } from '../../services/privacy';
+import { confirmDialog } from '../../store/confirm';
 import { AppDeviceCard } from './AppDeviceCard';
 import { isAdmin } from '../../services/verification';
 
@@ -36,10 +37,16 @@ export function AccountSettings() {
   const [deleting, setDeleting] = useState(false);
   const [admin, setAdmin] = useState(false);
 
+  const [archivedPlans, setArchivedPlans] = useState(0);
+
   const userId = user?.id;
+  const userIsClient = user?.type === 'Client';
   useEffect(() => {
     if (userId) isAdmin().then(setAdmin);
   }, [userId]);
+  useEffect(() => {
+    if (userId && userIsClient) countArchivedPlans().then(setArchivedPlans).catch(() => setArchivedPlans(0));
+  }, [userId, userIsClient]);
 
   if (!user) return null;
 
@@ -238,6 +245,30 @@ export function AccountSettings() {
             {t.privacy.delete}
           </button>
         </div>
+        {archivedPlans > 0 && (
+          <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">{t.privacy.archivedTitle}</p>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{t.privacy.archivedHint.replace('{n}', String(archivedPlans))}</p>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!(await confirmDialog(t.privacy.archivedConfirm.replace('{n}', String(archivedPlans))))) return;
+                try {
+                  await deleteArchivedPlans();
+                  setArchivedPlans(0);
+                  showToast(t.privacy.archivedDone, 'success');
+                } catch (error) {
+                  console.error('Error deleting archived plans:', error);
+                  showToast(a.saveError, 'error');
+                }
+              }}
+              className="mt-2 inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-1.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:hover:bg-rose-900/20"
+            >
+              <Trash2 className="h-4 w-4" />
+              {t.privacy.archivedDelete}
+            </button>
+          </div>
+        )}
         {deleteOpen && (
           <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-900/50 dark:bg-rose-900/10">
             <p className="text-sm font-semibold text-rose-800 dark:text-rose-200">{t.privacy.deleteWarningTitle}</p>

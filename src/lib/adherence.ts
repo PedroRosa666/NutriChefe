@@ -57,7 +57,9 @@ export interface AdherenceSummary {
  * da semana) e as marcações. Dias antes de o plano existir não contam.
  */
 export function summarizeAdherence(plan: Pick<MealPlan, 'items' | 'created_at'>, checks: MealCheck[], dates: string[]): AdherenceSummary {
-  const planStart = plan.created_at.slice(0, 10);
+  // Data local de criação (em UTC, um plano criado depois das 21h cairia no dia seguinte).
+  const created = new Date(plan.created_at);
+  const planStart = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`;
   const byKey = new Map(checks.map((c) => [`${c.check_date}|${c.meal}`, c]));
   const meals = new Map(MEAL_SLOTS.map((m) => [m, { meal: m, planned: 0, ate: 0, off: 0, notes: [] as string[] }]));
   const summary: AdherenceSummary = { planned: 0, ate: 0, other: 0, skipped: 0, unmarked: 0, percent: null, grid: [], byMeal: [] };

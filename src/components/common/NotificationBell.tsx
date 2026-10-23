@@ -23,6 +23,7 @@ const ICONS = {
   verification_requested: Contact,
   verification_reviewed: BadgeCheck,
   announcement: Megaphone,
+  plan_item_removed: CalendarRange,
 } as const;
 
 function timeAgo(iso: string, locale: string): string {

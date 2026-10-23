@@ -288,27 +288,7 @@ export async function listPlans(clientId: string): Promise<MealPlan[]> {
   return ((data ?? []) as unknown as PlanRow[]).map(toPlan);
 }
 
-async function writeItems(planId: string, items: MealPlanItem[]) {
-  const { error: delError } = await supabase.from('meal_plan_items').delete().eq('plan_id', planId);
-  if (delError) throw delError;
-  if (!items.length) return;
-  const { error } = await supabase.from('meal_plan_items').insert(
-    items.map((i) => ({
-      plan_id: planId,
-      day: i.day,
-      meal: i.meal,
-      recipe_id: i.food_id ? null : i.recipe_id,
-      servings: i.food_id ? 1 : i.servings,
-      food_id: i.food_id,
-      grams: i.food_id ? i.grams : null,
-      measure_label: i.food_id ? (i.measure_label ?? '').slice(0, 120) || null : null,
-      option_group: i.option_group,
-      note: i.note.slice(0, 300),
-    }))
-  );
-  if (error) throw error;
-}
-
+/** Salva o plano e os itens numa transação só (save_meal_plan): se falhar no meio, nada muda. */
 export async function savePlan(input: {
   id?: string;
   clientId: string;
@@ -317,29 +297,27 @@ export async function savePlan(input: {
   notes: string;
   items: MealPlanItem[];
 }): Promise<MealPlan> {
-  const fields = {
-    title: input.title.trim().slice(0, 120) || 'Plano alimentar',
-    notes: input.notes.slice(0, 2000),
-    updated_at: new Date().toISOString(),
-  };
+  const items = input.items.map((i) => ({
+    day: i.day,
+    meal: i.meal,
+    recipe_id: i.food_id ? null : i.recipe_id,
+    servings: i.food_id ? 1 : i.servings,
+    food_id: i.food_id,
+    grams: i.food_id ? i.grams : null,
+    measure_label: i.food_id ? i.measure_label ?? null : null,
+    option_group: i.option_group,
+    note: i.note,
+  }));
+  const { data: planId, error: saveError } = await supabase.rpc('save_meal_plan', {
+    p_plan: input.id ?? null,
+    p_client: input.clientId,
+    p_title: input.title,
+    p_notes: input.notes,
+    p_items: items,
+  });
+  if (saveError) throw saveError;
 
-  let planId = input.id;
-  if (planId) {
-    const { error } = await supabase.from('meal_plans').update(fields).eq('id', planId);
-    if (error) throw error;
-  } else {
-    const { data, error } = await supabase
-      .from('meal_plans')
-      .insert({ ...fields, client_id: input.clientId, created_by: input.authorId })
-      .select('id')
-      .single();
-    if (error) throw error;
-    planId = data.id as string;
-  }
-
-  await writeItems(planId, input.items);
-
-  const { data, error } = await supabase.from('meal_plans').select(PLAN_SELECT).eq('id', planId).single();
+  const { data, error } = await supabase.from('meal_plans').select(PLAN_SELECT).eq('id', planId as string).single();
   if (error) throw error;
   return toPlan(data as unknown as PlanRow);
 }

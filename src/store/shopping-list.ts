@@ -20,6 +20,16 @@ interface ShoppingListState {
 let writeQueue: Promise<unknown> = Promise.resolve();
 
 export const useShoppingListStore = create<ShoppingListState>()((set, get) => {
+  // Antes de mudar a lista, garante que a salva foi carregada: senão a gravação trocaria
+  // a lista inteira só pelo item novo.
+  const ensureLoaded = async () => {
+    if (get().loaded) return;
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) throw new Error('Faça login para salvar a lista de compras.');
+    const items = await getShoppingList(userId);
+    set({ items, loaded: true });
+  };
+
   const persist = async (items: ShoppingItem[]) => {
     const previous = get().items;
     set({ items });
@@ -47,6 +57,7 @@ export const useShoppingListStore = create<ShoppingListState>()((set, get) => {
     },
 
     addSources: async (sources) => {
+      await ensureLoaded();
       const added = buildShoppingItems(sources);
       await persist(mergeShoppingItems(get().items, added));
       return added.length;
@@ -55,6 +66,7 @@ export const useShoppingListStore = create<ShoppingListState>()((set, get) => {
     addCustom: async (name) => {
       const clean = name.trim().slice(0, 120);
       if (!clean) return;
+      await ensureLoaded();
       const item: ShoppingItem = { id: `custom-${Date.now()}`, name: clean, quantity: '', checked: false, recipes: [] };
       await persist([...get().items, item]);
     },

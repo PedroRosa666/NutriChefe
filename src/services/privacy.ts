@@ -23,6 +23,19 @@ const SOURCES: { key: string; table: string; column: string; select?: string }[]
   { key: 'subscriptions', table: 'user_subscriptions', column: 'user_id' },
 ];
 
+/** Planos de nutricionistas que não acompanham mais o usuário (não aparecem no app). */
+export async function countArchivedPlans(): Promise<number> {
+  const { data, error } = await supabase.rpc('my_archived_plans');
+  if (error) throw error;
+  return Number(data) || 0;
+}
+
+export async function deleteArchivedPlans(): Promise<number> {
+  const { data, error } = await supabase.rpc('delete_my_archived_plans');
+  if (error) throw error;
+  return Number(data) || 0;
+}
+
 /** Reúne os dados do usuário num JSON e faz o navegador baixar o arquivo. */
 export async function downloadMyData(userId: string, email: string): Promise<void> {
   const data: Record<string, unknown> = {};

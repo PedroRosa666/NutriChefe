@@ -40,7 +40,7 @@ export async function saveCheck(input: {
         chosen: (input.chosen ?? []).slice(0, 20).map((c) => c.slice(0, 200)),
         note: (input.note ?? '').trim().slice(0, 300),
       },
-      { onConflict: 'client_id,check_date,meal' }
+      { onConflict: 'client_id,plan_id,check_date,meal' }
     )
     .select(COLUMNS)
     .single();

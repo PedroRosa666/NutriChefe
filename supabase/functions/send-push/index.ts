@@ -77,6 +77,10 @@ function message(kind: string, d: Data): { title: string; body: string; url: str
       return { title: "Consulta cancelada", body: `${name} cancelou a consulta de ${when(d.starts_at)}`, url: "/perfil" };
     case "appointment_reminder":
       return { title: "Lembrete de consulta", body: `Consulta com ${name} em ${when(d.starts_at)}`, url: "/perfil" };
+    case "plan_item_removed":
+      return d.client_id
+        ? { title: "Item removido de um plano", body: `"${d.item ?? ""}" saiu do plano de ${name}: foi apagado do catálogo`, url: patientUrl }
+        : { title: "Item removido do seu plano", body: `"${d.item ?? ""}" foi apagado do catálogo e saiu do plano "${d.title ?? ""}"`, url: "/perfil?tab=plan" };
     case "announcement":
       return { title: d.title || "NutriChef", body: d.body ?? "", url: "/" };
     case "verification_requested":

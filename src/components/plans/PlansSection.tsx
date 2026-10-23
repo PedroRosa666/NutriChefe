@@ -252,7 +252,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     item.food_id ? item.food?.name ?? '' : (item.recipe_id && byId.get(item.recipe_id)?.title) || '';
 
   const saveMealCheck = async (meal: MealPlanItem['meal'], status: CheckStatus, eaten: MealPlanItem[], note: string) => {
-    const previous = checks.find((c) => c.check_date === dayDate && c.meal === meal);
+    const previous = checks.find((c) => c.plan_id === plan.id && c.check_date === dayDate && c.meal === meal);
     setCheckingMeal(meal);
     try {
       const saved = await saveCheck({ clientId, planId: plan.id, date: dayDate, meal, status, chosen: eaten.map(itemName), note });
@@ -407,7 +407,8 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
             <Plus className="h-4 w-4" />
             {t.plan.newPlan}
           </button>
-          {(canEdit || mode === 'client') && (
+          {/* Só quem fez o plano apaga (o paciente não apaga o plano do nutricionista). */}
+          {canEdit && (
             <button
               type="button"
               onClick={remove}
@@ -490,12 +491,12 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
                 <MealCheckBar
                   key={`${dayDate}-${meal}`}
                   items={mealItems}
-                  check={checks.find((c) => c.check_date === dayDate && c.meal === meal)}
+                  check={checks.find((c) => c.plan_id === plan.id && c.check_date === dayDate && c.meal === meal)}
                   busy={checkingMeal === meal}
                   itemName={itemName}
                   onSave={(status, eaten, note) => saveMealCheck(meal, status, eaten, note)}
                   onClear={() => {
-                    const current = checks.find((c) => c.check_date === dayDate && c.meal === meal);
+                    const current = checks.find((c) => c.plan_id === plan.id && c.check_date === dayDate && c.meal === meal);
                     if (current) clearMealCheck(current);
                   }}
                 />
