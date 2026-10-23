@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Save, ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { confirmDialog } from '../../store/confirm';
 import { PUBLIC_PROFILE_COLUMNS } from '../../lib/profile-columns';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
@@ -505,15 +507,27 @@ export function EditProfessionalProfile() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-        <button
-          type="button"
-          onClick={() => window.history.back()}
-          className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          {t.common.cancel}
-        </button>
+      {/* Barra fixa embaixo: salvar fica à vista no formulário longo (acima da barra de navegação no celular). */}
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 -mb-4 flex flex-wrap items-center justify-between gap-2 rounded-b-2xl border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:-mb-6 sm:px-6 md:bottom-0 dark:border-gray-700 dark:bg-slate-900/95">
+        <div className="flex items-center gap-1">
+          {/* Desfaz o que não foi salvo (antes "Cancelar" voltava de página e perdia tudo sem aviso). */}
+          <button
+            type="button"
+            disabled={!hasChanges}
+            onClick={async () => {
+              if (userId && (await confirmDialog(t.plan.discardConfirmGeneric))) loadProfile(userId);
+            }}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:opacity-40 dark:text-gray-300 dark:hover:bg-slate-800 dark:hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t.profileUi.discardChanges}
+          </button>
+          {userId && (
+            <Link to={`/nutricionista/${userId}`} className="rounded-lg px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20">
+              {t.profile.viewPublicProfile}
+            </Link>
+          )}
+        </div>
 
         <button
           type="submit"

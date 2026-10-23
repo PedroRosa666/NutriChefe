@@ -28,6 +28,29 @@ interface AuthState {
   isNutritionist: () => boolean;
 }
 
+const AFTER_CONFIRM_KEY = 'nc-after-confirm';
+
+function rememberAfterConfirm(next: string | null) {
+  try {
+    if (next && next.startsWith('/') && !next.startsWith('//')) localStorage.setItem(AFTER_CONFIRM_KEY, next);
+    else localStorage.removeItem(AFTER_CONFIRM_KEY);
+  } catch {
+    // Sem armazenamento: depois de confirmar, a pessoa vai para o Início.
+  }
+}
+
+/** Endereço guardado no cadastro para depois da confirmação do e-mail (lido uma vez só). */
+export function takeAfterConfirm(): string {
+  try {
+    const next = localStorage.getItem(AFTER_CONFIRM_KEY);
+    localStorage.removeItem(AFTER_CONFIRM_KEY);
+    if (next && next.startsWith('/') && !next.startsWith('//')) return next;
+  } catch {
+    // ignora
+  }
+  return '/perfil';
+}
+
 // O AuthModal usa isto para oferecer o reenvio da confirmação (vale nos dois idiomas).
 export const isEmailNotConfirmedError = (message: string | null) =>
   !!message && Object.values(translations).some((tr) => tr.feedback.auth.emailNotConfirmed === message);
@@ -176,6 +199,8 @@ export const useAuthStore = create<AuthState>()(
           }
 
           useToastStore.getState().showToast(feedback().auth.accountCreatedConfirm, 'success');
+          // Para onde ir depois de confirmar o e-mail (ex.: o link de convite que trouxe a pessoa).
+          rememberAfterConfirm(new URLSearchParams(window.location.search).get('next'));
           set({ loading: false });
           return 'confirm_email';
         } catch (e) {

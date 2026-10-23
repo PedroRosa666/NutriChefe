@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Minus } from 'lucide-react';
 import { useRecipesStore } from '../store/recipes';
+import { confirmDialog } from '../store/confirm';
 import { useAuthStore } from '../store/auth';
 import { RecipeImageInput } from './recipe/RecipeImageInput';
 import { useTranslation } from '../hooks/useTranslation';
@@ -77,6 +78,14 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
   const [recipe, setRecipe] = useState<Partial<Recipe>>(INITIAL_RECIPE);
 
   if (!isOpen || !user) return null;
+
+  // Fechar com a receita pela metade: confirma antes de jogar fora.
+  const close = async () => {
+    const dirty = JSON.stringify(recipe) !== JSON.stringify(INITIAL_RECIPE);
+    if (dirty && !(await confirmDialog(t.profileUi.discardRecipe))) return;
+    setRecipe(INITIAL_RECIPE);
+    onClose();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,7 +167,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
       <div className="relative h-[100dvh] w-full max-w-3xl overflow-y-auto sm:h-auto sm:max-h-[90vh] sm:rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-emerald-50/40 shadow-2xl dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
         {/* Botão fechar */}
         <button
-          onClick={onClose}
+          onClick={close}
           className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm transition hover:scale-105 hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-400 dark:hover:bg-slate-900"
         >
           <X className="h-5 w-5" />

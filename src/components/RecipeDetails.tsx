@@ -454,6 +454,9 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                                 ? 'border-red-300 bg-red-50 text-red-500 dark:border-red-700/60 dark:bg-red-900/30'
                                 : 'border-gray-200 bg-white text-gray-400 hover:text-red-500 hover:border-red-200 dark:bg-gray-900 dark:border-gray-700',
                             )}
+                            aria-label={isFavorite ? t.profileUi.unfavorite : t.profileUi.favorite}
+                            aria-pressed={isFavorite}
+                            title={isFavorite ? t.profileUi.unfavorite : t.profileUi.favorite}
                           >
                             <Heart
                               className={cn(
@@ -466,10 +469,11 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                         {user?.type === 'Client' && (
                           <button
                             onClick={() => setIsLogModalOpen(true)}
-                            className="p-2.5 border rounded-xl transition-all duration-200 border-gray-200 bg-white text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700"
+                            className="inline-flex items-center gap-1.5 px-3 py-2.5 border rounded-xl text-sm font-semibold transition-all duration-200 border-gray-200 bg-white text-gray-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700"
                             title={t.profile.addToDiary}
                           >
                             <PlusCircle className="w-5 h-5" />
+                            {t.nav.diary}
                           </button>
                         )}
                         {isAuthor && (

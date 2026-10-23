@@ -95,7 +95,7 @@ function message(kind: string, d: Data, recipient: string): { title: string; bod
       return {
         title: name,
         body: d.preview ?? "Nova mensagem",
-        url: d.from_nutritionist ? "/perfil?tab=messages" : `${patientUrl}&chat=1`,
+        url: d.from_nutritionist || !d.client_id ? "/perfil?tab=messages" : `/perfil?tab=messages&com=${d.client_id}`,
       };
     case "goals_updated":
       return { title: "Metas atualizadas", body: `${name} definiu novas metas diárias para você`, url: "/perfil?tab=nutrition" };

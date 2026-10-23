@@ -4,7 +4,7 @@
   "short_name": "NutriChef",
   "description": "Receitas saudáveis, diário alimentar, plano semanal e seu nutricionista num só lugar.",
   "lang": "pt-BR",
-  "start_url": "/",
+  "start_url": "/?inicio=1",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f1efea",

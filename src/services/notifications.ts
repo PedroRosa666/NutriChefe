@@ -112,7 +112,7 @@ export function notificationTarget(n: AppNotification): string {
       return '/';
     case 'message':
       // Mensagem do nutricionista: o paciente abre a aba Mensagens; do paciente: o nutricionista abre a conversa dele.
-      return n.data.from_nutritionist ? '/perfil?tab=messages' : `/perfil?tab=patients&paciente=${n.data.client_id ?? ''}&chat=1`;
+      return n.data.from_nutritionist ? '/perfil?tab=messages' : `/perfil?tab=messages&com=${n.data.client_id ?? ''}`;
     default:
       return '/perfil';
   }

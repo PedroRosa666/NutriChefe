@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Trash2, CalendarDays, Plus, XCircle, Loader2 } from 'lucide-react';
 import { WeeklyCaloriesChart } from './WeeklyCaloriesChart';
 import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
@@ -77,10 +78,20 @@ export function NutritionDiary() {
   // Texto livre: permite digitar "0,5" sem o campo pular para 1 no meio da digitação.
   const [servings, setServings] = React.useState('1');
   const [adding, setAdding] = React.useState(false);
-  const [mode, setMode] = React.useState<AddMode>('recipe');
+  // Quase tudo que se registra é alimento avulso: começa nele.
+  const [mode, setMode] = React.useState<AddMode>('food');
   // Estimativa por foto (Mentoria IA) preenche o formulário "Outro"; a chave remonta o formulário.
   const canUsePhoto = useCanUseAI();
   const [photo, setPhoto] = React.useState<{ key: number; estimate: PhotoEstimate } | null>(null);
+
+  // Atalho "Registrar refeição" (?adicionar=1): leva direto ao formulário.
+  const [searchParams] = useSearchParams();
+  const addRef = useRef<HTMLDivElement>(null);
+  const wantsAdd = searchParams.has('adicionar');
+  useEffect(() => {
+    if (wantsAdd) addRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [wantsAdd]);
+  const isToday = date === toISODate(new Date());
 
   const entries = useMemo(() => allEntries.filter((e) => e.date === date), [allEntries, date]);
   // `allEntries` força o recálculo quando o diário muda (o getter lê o estado direto).
@@ -146,28 +157,20 @@ export function NutritionDiary() {
           </h3>
         </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-          />
-          <button
-            type="button"
-            onClick={handleClearDay}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
-          >
-            <Trash2 className="h-4 w-4" />
-            {t.profile.clearDay}
-          </button>
-        </div>
+        <input
+          type="date"
+          value={date}
+          max={toISODate(new Date())}
+          onChange={(e) => e.target.value && setDate(e.target.value)}
+          aria-label={t.profileUi.diaryDate}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        />
       </div>
 
       {/* Adicionar: receita do catálogo, alimento comum ou valores digitados */}
-      <div className="space-y-3">
+      <div ref={addRef} className="scroll-mt-20 space-y-3">
       <div role="tablist" className="inline-flex rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-        {(['recipe', 'food', 'custom'] as AddMode[]).map((m) => (
+        {(['food', 'recipe', 'custom'] as AddMode[]).map((m) => (
           <button
             key={m}
             type="button"
@@ -181,7 +184,7 @@ export function NutritionDiary() {
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
             )}
           >
-            {m === 'recipe' ? t.foods.tabRecipe : m === 'food' ? t.foods.tabFood : t.foods.tabCustom}
+            {m === 'recipe' ? t.foods.tabRecipe : m === 'food' ? t.foods.tabFood : canUsePhoto ? t.profileUi.typeOrPhoto : t.profileUi.typeIn}
           </button>
         ))}
       </div>
@@ -239,7 +242,9 @@ export function NutritionDiary() {
       {/* Progress */}
       <div className="space-y-4">
         <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
-          {t.profile.todayProgress}
+          {isToday
+            ? t.profile.todayProgress
+            : t.profileUi.progressOn.replace('{date}', new Date(`${date}T12:00:00`).toLocaleDateString(appLocale(), { day: '2-digit', month: 'short' }))}
         </h4>
 
         <div className="space-y-3">
@@ -297,6 +302,17 @@ export function NutritionDiary() {
                 </button>
               </div>
             ))}
+            {/* Apagar o dia inteiro é raro: fica no fim da lista, longe da data. */}
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={handleClearDay}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-900/20"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {t.profile.clearDay}
+              </button>
+            </div>
           </div>
         )}
       </div>

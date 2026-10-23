@@ -36,7 +36,7 @@ export function MessagesPanel() {
       <div className="rounded-2xl border border-dashed border-slate-200 px-6 py-10 text-center dark:border-slate-700">
         <MessageCircle className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t.messages.noNutritionist}</p>
-        <Link to="/perfil" className="mt-3 inline-block text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
+        <Link to="/perfil?conectar=1" className="mt-3 inline-block text-sm font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
           {t.messages.connectHint}
         </Link>
       </div>
@@ -46,7 +46,7 @@ export function MessagesPanel() {
   return (
     <div className="space-y-6">
       {links.map((l) => (
-        <ChatThread key={l.id} nutritionistId={l.person.id} clientId={user.id} otherName={l.person.full_name ?? ''} />
+        <ChatThread key={l.id} nutritionistId={l.person.id} clientId={user.id} otherName={l.person.full_name ?? ''} tall={links.length === 1} />
       ))}
     </div>
   );

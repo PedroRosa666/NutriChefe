@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarClock, CalendarPlus, Loader2, MapPin, Pencil, Video, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CalendarClock, CalendarPlus, Loader2, MapPin, MessageCircle, Pencil, Video, X } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useSettingsStore } from '../../store/settings';
@@ -38,9 +39,12 @@ interface RowProps {
   otherName?: string;
   onEdit?: () => void;
   onChanged: () => void;
+  /** Lista do painel: o nome leva à ficha do paciente (nutricionista) e há "Pedir remarcação" (paciente). */
+  linked?: boolean;
 }
 
-function AppointmentRow({ a, otherName, onEdit, onChanged }: RowProps) {
+function AppointmentRow({ a, otherName, onEdit, onChanged, linked = false }: RowProps) {
+  const isNutritionist = useAuthStore((st) => st.user?.type === 'Nutritionist');
   const t = useTranslation();
   const s = t.appointments;
   const locale = useLocale();
@@ -74,7 +78,18 @@ function AppointmentRow({ a, otherName, onEdit, onChanged }: RowProps) {
           </p>
           <p className="text-slate-600 dark:text-slate-300">
             {start.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })} • {s.minutes.replace('{n}', String(a.duration_min))}
-            {otherName && ` • ${otherName}`}
+            {otherName && ' • '}
+            {otherName &&
+              (linked && isNutritionist ? (
+                <Link
+                  to={`/perfil?tab=patients&paciente=${a.client_id}&ver=appointments`}
+                  className="font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+                >
+                  {otherName}
+                </Link>
+              ) : (
+                otherName
+              ))}
           </p>
         </div>
         {canceled ? (
@@ -120,6 +135,16 @@ function AppointmentRow({ a, otherName, onEdit, onChanged }: RowProps) {
               <Pencil className="h-3.5 w-3.5" />
               {s.reschedule}
             </button>
+          )}
+          {/* O paciente não remarca sozinho: pede ao nutricionista pela conversa. */}
+          {linked && !isNutritionist && (
+            <Link
+              to="/perfil?tab=messages"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              {s.askReschedule}
+            </Link>
           )}
           <button
             type="button"
@@ -219,14 +244,20 @@ function AppointmentForm({ clientId, editing, onDone, onCancel }: FormProps) {
           </button>
         ))}
       </div>
-      <input
-        value={location}
-        onChange={(e) => setLocation(e.target.value)}
-        maxLength={300}
-        placeholder={mode === 'online' ? s.linkPlaceholder : s.addressPlaceholder}
-        className={inputClass}
-      />
-      <textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} rows={2} placeholder={s.notesPlaceholder} className={inputClass} />
+      <label className="block space-y-1">
+        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{mode === 'online' ? s.linkLabel : s.addressLabel}</span>
+        <input
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          maxLength={300}
+          placeholder={mode === 'online' ? s.linkPlaceholder : s.addressPlaceholder}
+          className={inputClass}
+        />
+      </label>
+      <label className="block space-y-1">
+        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{s.notesLabel}</span>
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} rows={2} placeholder={s.notesPlaceholder} className={inputClass} />
+      </label>
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancel} className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800">
           {t.common.cancel}
@@ -337,9 +368,17 @@ export function UpcomingAppointments() {
     load();
   }, [load, signal]);
 
-  // Sem consultas marcadas, o card não aparece (o painel já tem bastante coisa).
-  if (!user || !list?.length) return null;
+  if (!user || list === null) return null;
   const isNutritionist = user.type === 'Nutritionist';
+  // Sem consultas: uma linha só, dizendo onde elas aparecem (o painel já tem bastante coisa).
+  if (!list.length) {
+    return (
+      <p className="flex items-center gap-2 rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+        <CalendarClock className="h-4 w-4 flex-shrink-0 text-slate-400" />
+        {isNutritionist ? s.emptyNutritionist : s.emptyClient}
+      </p>
+    );
+  }
 
   return (
     <section className={cardClass}>
@@ -349,7 +388,7 @@ export function UpcomingAppointments() {
       </h3>
       <ul className="space-y-2">
         {list.map((a) => (
-          <AppointmentRow key={a.id} a={a} otherName={isNutritionist ? a.clientName : a.nutritionistName} onChanged={load} />
+          <AppointmentRow key={a.id} a={a} otherName={isNutritionist ? a.clientName : a.nutritionistName} onChanged={load} linked />
         ))}
       </ul>
     </section>

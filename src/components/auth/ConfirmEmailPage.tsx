@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { ResendConfirmation } from './ResendConfirmation';
 import { useTranslation } from '../../hooks/useTranslation';
+import { takeAfterConfirm } from '../../store/auth';
 
 /**
  * Página de confirmação de email.
@@ -15,6 +17,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 export default function ConfirmEmailPage() {
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
   const t = useTranslation();
+  const navigate = useNavigate();
   // Guarda a chave do texto, para a mensagem acompanhar a troca de idioma.
   const [message, setMessage] = useState<keyof typeof t.feedback.confirmEmail>('confirming');
 
@@ -95,6 +98,16 @@ export default function ConfirmEmailPage() {
           <div className="mt-6">
             <ResendConfirmation />
           </div>
+        )}
+        {/* Confirmado: segue para onde a pessoa ia (o convite do nutricionista, por exemplo). */}
+        {status === 'ok' && (
+          <button
+            type="button"
+            onClick={() => navigate(takeAfterConfirm(), { replace: true })}
+            className="mt-6 rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            {t.common.continue}
+          </button>
         )}
       </div>
     </div>

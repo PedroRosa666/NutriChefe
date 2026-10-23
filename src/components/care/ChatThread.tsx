@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Loader2, MessageCircle, Send } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
+import { useUnreadMessagesStore } from '../../store/unread-messages';
+import { appLocale } from '../../lib/format';
 import { useTranslation } from '../../hooks/useTranslation';
 import { listMessages, markMessagesRead, sendMessage, subscribeMessages, type CareMessage } from '../../services/messages';
 import { cn } from '../../lib/utils';
@@ -11,12 +13,19 @@ interface ChatThreadProps {
   clientId: string;
   /** Nome de quem está do outro lado (título da conversa). */
   otherName: string;
+  /** Conversa ocupando quase a tela toda no celular (aba Mensagens). */
+  tall?: boolean;
+  /** Algo no canto do título (ex.: link para a ficha do paciente). */
+  action?: ReactNode;
 }
+
+// Enter envia só com teclado físico; no celular o Enter quebra a linha e o envio é pelo botão.
+const enterSends = () => typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches;
 
 const sameDay = (a: string, b: string) => a.slice(0, 10) === b.slice(0, 10);
 
 /** Conversa entre nutricionista e paciente, com mensagens chegando na hora. */
-export function ChatThread({ nutritionistId, clientId, otherName }: ChatThreadProps) {
+export function ChatThread({ nutritionistId, clientId, otherName, tall = false, action }: ChatThreadProps) {
   const user = useAuthStore((s) => s.user);
   const { showToast } = useToastStore();
   const t = useTranslation();
@@ -27,7 +36,12 @@ export function ChatThread({ nutritionistId, clientId, otherName }: ChatThreadPr
   const listRef = useRef<HTMLDivElement>(null);
 
   const markRead = useCallback(() => {
-    markMessagesRead(nutritionistId, clientId).catch((error) => console.error('Error marking messages read:', error));
+    markMessagesRead(nutritionistId, clientId)
+      .then(() => {
+        const me = useAuthStore.getState().user?.id;
+        if (me) useUnreadMessagesStore.getState().refresh(me);
+      })
+      .catch((error) => console.error('Error marking messages read:', error));
   }, [nutritionistId, clientId]);
 
   useEffect(() => {
@@ -74,17 +88,26 @@ export function ChatThread({ nutritionistId, clientId, otherName }: ChatThreadPr
     }
   };
 
-  const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const date = (iso: string) => new Date(iso).toLocaleDateString([], { day: '2-digit', month: 'short' });
+  const time = (iso: string) => new Date(iso).toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' });
+  const date = (iso: string) => new Date(iso).toLocaleDateString(appLocale(), { day: '2-digit', month: 'short' });
 
   return (
     <section className="flex flex-col rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <header className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
         <MessageCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
         <h3 className="min-w-0 truncate text-base font-semibold text-slate-900 dark:text-white">{m.with.replace('{name}', otherName)}</h3>
+        {action}
       </header>
 
-      <div ref={listRef} className="h-80 space-y-2 overflow-y-auto px-3 py-3 sm:h-96" aria-live="polite">
+      <div
+        ref={listRef}
+        className={cn(
+          'space-y-2 overflow-y-auto px-3 py-3',
+          // Altura da tela menos cabeçalho, título e barra de baixo: o campo de texto fica sempre à vista.
+          tall ? 'h-[calc(100dvh-19rem)] min-h-[16rem] md:h-[28rem]' : 'h-80 sm:h-96'
+        )}
+        aria-live="polite"
+      >
         {messages === null ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
@@ -131,8 +154,8 @@ export function ChatThread({ nutritionistId, clientId, otherName }: ChatThreadPr
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            // Enter envia; Shift+Enter quebra a linha.
-            if (e.key === 'Enter' && !e.shiftKey) {
+            // Enter envia (com teclado físico); Shift+Enter quebra a linha.
+            if (e.key === 'Enter' && !e.shiftKey && enterSends()) {
               e.preventDefault();
               send();
             }

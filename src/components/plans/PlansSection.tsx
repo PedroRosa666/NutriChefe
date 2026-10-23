@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, CalendarRange, FileDown, ListChecks, Pencil, Plus, ShoppingCart, Sparkles, Trash2, PlusCircle, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeftRight, CalendarRange, FileDown, ListChecks, Pencil, Plus, ShoppingCart, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useToastStore } from '../../store/toast';
@@ -47,9 +48,47 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   const [plans, setPlans] = useState<MealPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ plan: MealPlan | null; generated: boolean } | null>(null);
+  const [editing, setEditingState] = useState<{ plan: MealPlan | null; generated: boolean } | null>(null);
+  // O editor aberto fica na URL (?editar=1): o voltar do celular fecha o editor em vez de sair da tela,
+  // e pergunta antes se há alterações não salvas.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editorInUrl = searchParams.has('editar');
+  const editorDirty = useRef(false);
+  const setDirty = useCallback((dirty: boolean) => {
+    editorDirty.current = dirty;
+  }, []);
+  const setEditing = (next: { plan: MealPlan | null; generated: boolean } | null) => {
+    setEditingState(next);
+    editorDirty.current = false;
+    const params = new URLSearchParams(searchParams);
+    if (next) params.set('editar', '1');
+    else params.delete('editar');
+    setSearchParams(params, { replace: !next });
+  };
+  useEffect(() => {
+    if (editing && !editorInUrl) {
+      // Voltou pelo navegador com o editor aberto.
+      if (!editorDirty.current) {
+        setEditingState(null);
+        return;
+      }
+      confirmDialog(t.plan.discardConfirm).then((discard) => {
+        if (discard) setEditingState(null);
+        else {
+          const params = new URLSearchParams(window.location.search);
+          params.set('editar', '1');
+          setSearchParams(params);
+        }
+      });
+    } else if (!editing && editorInUrl) {
+      // Link com ?editar=1 sem editor aberto (ex.: recarregou a página): tira da URL.
+      const params = new URLSearchParams(searchParams);
+      params.delete('editar');
+      setSearchParams(params, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorInUrl]);
   const [day, setDay] = useState(() => planDayOf(new Date()));
-  const [loggingKey, setLoggingKey] = useState<string | null>(null);
   const [swaps, setSwaps] = useState<SwapRequest[]>([]);
   const [swapsKey, setSwapsKey] = useState(0);
   const [swapping, setSwapping] = useState<{ item: MealPlanItem; label: string } | null>(null);
@@ -99,6 +138,8 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   const plan = plans.find((p) => p.id === selectedId) ?? null;
   const canEdit = !!plan && plan.created_by === user?.id;
   const todayIndex = planDayOf(new Date());
+  // O paciente que segue o plano do nutricionista não precisa de "Novo plano" no topo (ficava competindo).
+  const followsNutritionist = mode === 'client' && plans.some((p) => p.created_by !== user?.id);
 
   if (loading) {
     return (
@@ -118,6 +159,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
         allergies={allergies}
         preferences={preferences}
         startGenerated={editing.generated}
+        onDirtyChange={setDirty}
         onCancel={() => setEditing(null)}
         onSaved={(saved) => {
           setPlans((prev) => [saved, ...prev.filter((p) => p.id !== saved.id)]);
@@ -197,19 +239,6 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     }
   };
 
-  const logItem = async (item: MealPlanItem, key: string) => {
-    setLoggingKey(key);
-    try {
-      await logToDiary(item);
-      showToast(t.plan.logged, 'success');
-    } catch (error) {
-      console.error('Error logging plan item:', error);
-      showToast(t.profile.diaryError, 'error');
-    } finally {
-      setLoggingKey(null);
-    }
-  };
-
   const createButtons = (
     <div className="flex flex-wrap gap-2">
       <button
@@ -236,8 +265,21 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-slate-200 px-6 py-12 text-center dark:border-slate-700">
         <CalendarRange className="h-10 w-10 text-emerald-500" />
         <div>
-          <p className="font-semibold text-slate-900 dark:text-white">{t.plan.empty}</p>
-          <p className="mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">{t.plan.emptyHint}</p>
+          <p className="font-semibold text-slate-900 dark:text-white">
+            {mode === 'nutritionist' ? t.plan.emptyPatient.replace('{name}', patientName || t.recipe.authorFallbackName) : t.plan.empty}
+          </p>
+          <p className="mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">
+            {mode === 'nutritionist' ? t.plan.emptyPatientHint : t.plan.emptyHint}
+          </p>
+          {/* O paciente pode estar esperando o plano do nutricionista: diz que ele chega aqui. */}
+          {mode === 'client' && (
+            <p className="mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
+              {t.plan.nutritionistSendsHere}{' '}
+              <Link to="/perfil?conectar=1" className="font-semibold text-emerald-700 hover:underline dark:text-emerald-400">
+                {t.messages.connectHint}
+              </Link>
+            </p>
+          )}
         </div>
         {createButtons}
       </div>
@@ -320,28 +362,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     );
   };
 
-  const itemActions = (item: MealPlanItem, key: string) => (
-    <>
-      {logButton(item, key)}
-      {swapControl(item)}
-    </>
-  );
-
-  const logButton = (item: MealPlanItem, key: string) =>
-    mode === 'client' && day === todayIndex ? (
-      <button
-        type="button"
-        onClick={() => logItem(item, key)}
-        disabled={loggingKey === key}
-        aria-label={t.plan.logToDiary}
-        title={t.plan.logToDiary}
-        className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-300 dark:hover:bg-emerald-900/20"
-      >
-        {loggingKey === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlusCircle className="h-4 w-4 sm:h-3.5 sm:w-3.5" />}
-        {/* No celular só o ícone, para o nome do item não ficar espremido. */}
-        <span className="hidden sm:inline">{t.plan.logToDiary}</span>
-      </button>
-    ) : null;
+  const itemActions = (item: MealPlanItem) => swapControl(item);
 
   return (
     <div className="space-y-5">
@@ -399,14 +420,16 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
               {t.plan.edit}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setEditing({ plan: null, generated: false })}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            <Plus className="h-4 w-4" />
-            {t.plan.newPlan}
-          </button>
+          {!followsNutritionist && (
+            <button
+              type="button"
+              onClick={() => setEditing({ plan: null, generated: false })}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <Plus className="h-4 w-4" />
+              {t.plan.newPlan}
+            </button>
+          )}
           {/* Só quem fez o plano apaga (o paciente não apaga o plano do nutricionista). */}
           {canEdit && (
             <button
@@ -447,7 +470,16 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
       </div>
 
       <div className="flex items-baseline justify-between">
-        <p className="text-sm font-semibold text-slate-900 dark:text-white">{t.plan.daysLong[day]}</p>
+        {/* Com a data: dias depois de hoje na faixa são os da semana passada (o diário só aceita passado). */}
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+          {t.plan.daysLong[day]}
+          {mode === 'client' && (
+            <span className="ml-1.5 font-normal text-slate-500 dark:text-slate-400">
+              {new Date(`${dayDate}T12:00:00`).toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit' })}
+              {day > todayIndex && ` · ${t.plan.lastWeek}`}
+            </span>
+          )}
+        </p>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {t.plan.dayTotal}: <span className="font-semibold text-slate-900 dark:text-white">{Math.round(dayKcal)} kcal</span>
         </p>
@@ -465,7 +497,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
                 {mealBlocks(mealItems).map((block, blockIndex) => {
                   if (block.kind === 'single') {
                     const key = `${meal}-${blockIndex}`;
-                    return <PlanItemRow key={key} item={block.item} recipesById={byId} actions={itemActions(block.item, key)} />;
+                    return <PlanItemRow key={key} item={block.item} recipesById={byId} actions={itemActions(block.item)} />;
                   }
                   // Lista de substituição: o paciente escolhe uma das opções e registra a que comeu.
                   return (
@@ -479,7 +511,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
                         return (
                           <div key={key}>
                             {index > 0 && <p className="pb-1 text-center text-xs font-semibold uppercase text-amber-600 dark:text-amber-400">{t.plan.or}</p>}
-                            <PlanItemRow item={item} recipesById={byId} actions={itemActions(item, key)} />
+                            <PlanItemRow item={item} recipesById={byId} actions={itemActions(item)} />
                           </div>
                         );
                       })}

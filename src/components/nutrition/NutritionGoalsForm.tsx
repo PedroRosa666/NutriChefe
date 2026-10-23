@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Beef, Droplets, Flame, Leaf, Loader2, Sparkles, Target, Wheat } from 'lucide-react';
+import { Beef, Droplets, Flame, Leaf, Loader2, Sparkles, Stethoscope, Target, Wheat } from 'lucide-react';
 import { useNutritionGoalsStore, GOAL_KEYS, type GoalKey, type NutritionGoals } from '../../store/nutrition-goals';
 import { useHealthProfileStore } from '../../store/health-profile';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { ageFromBirthDate, suggestGoals } from '../../lib/nutrition-calculator';
+import { confirmDialog } from '../../store/confirm';
 
 const GOAL_META: Record<GoalKey, { icon: React.ComponentType<{ className?: string }>; unit: string; accent: string }> = {
   calories: { icon: Flame, unit: 'kcal', accent: 'text-amber-500' },
@@ -15,7 +16,7 @@ const GOAL_META: Record<GoalKey, { icon: React.ComponentType<{ className?: strin
 };
 
 export function NutritionGoalsForm() {
-  const { goals, saving, saveGoals } = useNutritionGoalsStore();
+  const { goals, saving, saveGoals, setBy } = useNutritionGoalsStore();
   const { profile: health } = useHealthProfileStore();
   const { showToast } = useToastStore();
   const t = useTranslation();
@@ -49,6 +50,8 @@ export function NutritionGoalsForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Metas do nutricionista: mudar é possível, mas a pessoa precisa saber o que está fazendo.
+    if (setBy && !(await confirmDialog(t.profileUi.replaceNutritionistGoals))) return;
     try {
       await saveGoals(formData);
       showToast(t.profile.goalsSaved, 'success');
@@ -72,7 +75,15 @@ export function NutritionGoalsForm() {
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-900/30">
             <Target className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
           </span>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{t.profile.dailyGoals}</h3>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{t.profile.dailyGoals}</h3>
+            {setBy && (
+              <p className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                <Stethoscope className="h-3.5 w-3.5" />
+                {t.care.setBy}
+              </p>
+            )}
+          </div>
         </div>
         <button
           type="button"

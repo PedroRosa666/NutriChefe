@@ -1,54 +1,13 @@
-import type { ComponentType } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bot, CalendarRange, Home, ShieldCheck, ShoppingCart, User, Users } from 'lucide-react';
-import { useAuthStore } from '../../store/auth';
-import { usePremiumStore } from '../../store/premium';
-import { useTranslation } from '../../hooks/useTranslation';
+import { useAppNav } from '../../hooks/useAppNav';
 import { SMOOTH } from '../../lib/motion';
 import { cn } from '../../lib/utils';
 
-interface NavItem {
-  key: string;
-  to: string;
-  label: string;
-  icon: ComponentType<{ className?: string }>;
-  active: boolean;
-}
-
 /** Barra fixa embaixo no celular (só logado): atalhos para o que se usa todo dia. */
 export function MobileNav() {
-  const user = useAuthStore((s) => s.user);
-  const { pathname, search } = useLocation();
-  const t = useTranslation();
-  const isAdmin = usePremiumStore((s) => s.isAdmin);
-  if (!user) return null;
-
-  const tab = new URLSearchParams(search).get('tab');
-  const onProfile = pathname === '/perfil';
-  const isHome = pathname === '/' || pathname.startsWith('/receita/');
-
-  const items: NavItem[] =
-    user.type === 'Nutritionist'
-      ? [
-          { key: 'home', to: '/', label: t.nav.home, icon: Home, active: isHome },
-          { key: 'patients', to: '/perfil?tab=patients', label: t.nav.patients, icon: Users, active: onProfile && tab === 'patients' },
-          { key: 'ai', to: '/mentoria-ia', label: t.nav.ai, icon: Bot, active: pathname === '/mentoria-ia' },
-          { key: 'profile', to: '/perfil', label: t.nav.profile, icon: User, active: onProfile && tab !== 'patients' },
-        ]
-      : [
-          { key: 'home', to: '/', label: t.nav.home, icon: Home, active: isHome },
-          { key: 'plan', to: '/perfil?tab=plan', label: t.nav.plan, icon: CalendarRange, active: onProfile && tab === 'plan' },
-          { key: 'shopping', to: '/perfil?tab=shopping', label: t.nav.shopping, icon: ShoppingCart, active: onProfile && tab === 'shopping' },
-          { key: 'ai', to: '/mentoria-ia', label: t.nav.ai, icon: Bot, active: pathname === '/mentoria-ia' },
-          { key: 'profile', to: '/perfil', label: t.nav.profile, icon: User, active: onProfile && !['plan', 'shopping'].includes(tab ?? '') },
-        ];
-
-  // Administrador: a aba Admin entra no lugar da IA.
-  if (isAdmin) {
-    const ai = items.findIndex((i) => i.key === 'ai');
-    items[ai] = { key: 'admin', to: '/admin', label: 'Admin', icon: ShieldCheck, active: pathname === '/admin' };
-  }
+  const items = useAppNav();
+  if (!items.length) return null;
 
   return (
     <nav
@@ -56,7 +15,7 @@ export function MobileNav() {
       aria-label="Menu"
     >
       <ul className="flex">
-        {items.map(({ key, to, label, icon: Icon, active }) => (
+        {items.map(({ key, to, label, icon: Icon, active, badge }) => (
           <li key={key} className="flex-1">
             <Link
               to={to}
@@ -67,7 +26,14 @@ export function MobileNav() {
               )}
             >
               {active && <motion.span layoutId="mobile-nav-dot" className="absolute top-0 h-0.5 w-8 rounded-full bg-emerald-500" transition={SMOOTH} />}
-              <Icon className="h-5 w-5" />
+              <span className="relative">
+                <Icon className="h-5 w-5" />
+                {!!badge && (
+                  <span className="absolute -right-2.5 -top-1.5 min-w-[16px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-4 text-white">
+                    {badge > 9 ? '9+' : badge}
+                  </span>
+                )}
+              </span>
               {label}
             </Link>
           </li>

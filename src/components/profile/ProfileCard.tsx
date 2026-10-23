@@ -44,7 +44,7 @@ function useAccountBadge() {
   return { badge, premium, isNutritionist };
 }
 
-/** Cabeçalho do perfil (Visão geral e Conta): identidade, plano e atalhos do perfil. */
+/** Cabeçalho da aba Conta: identidade, plano e atalhos do perfil. O convite ao Premium fica só no Início. */
 export function ProfileCard() {
   const { user } = useAuthStore();
   const { language } = useSettingsStore();
@@ -103,15 +103,6 @@ export function ProfileCard() {
               {t.profile.viewPublicProfile}
             </Link>
           )}
-          {!premium && (
-            <Link
-              to="/mentoria-ia"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-400"
-            >
-              <Crown className="h-4 w-4" />
-              {t.profile.upgradePremium}
-            </Link>
-          )}
           {premium && !isNutritionist && (
             <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
               <BadgeCheck className="h-4 w-4" />
@@ -124,7 +115,7 @@ export function ProfileCard() {
   );
 }
 
-/** Faixa compacta nas outras abas: quem está logado, sem empurrar o conteúdo para baixo. */
+/** Faixa compacta nas outras abas do Perfil: quem está logado, sem empurrar o conteúdo para baixo. */
 export function ProfileStrip() {
   const user = useAuthStore((s) => s.user);
   const t = useTranslation();

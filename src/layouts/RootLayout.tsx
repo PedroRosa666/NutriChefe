@@ -6,7 +6,7 @@ import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { Toast } from '../components/common/Toast';
 import { MobileNav } from '../components/common/MobileNav';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
-import { NotificationBell } from '../components/common/NotificationBell';
+import { AppHeader } from '../components/common/AppHeader';
 import { useLiveNotifications } from '../store/notifications';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/auth';
@@ -19,6 +19,7 @@ import { useShoppingListStore } from '../store/shopping-list';
 import { useFoodsStore } from '../store/foods';
 import { useToastStore } from '../store/toast';
 import { usePremiumStore } from '../store/premium';
+import { useUnreadMessagesStore } from '../store/unread-messages';
 import { DemoBanner } from '../components/admin/DemoBanner';
 
 export function RootLayout() {
@@ -69,6 +70,17 @@ export function RootLayout() {
     return () => navigator.serviceWorker?.removeEventListener('message', onWorkerMessage);
   }, [navigate]);
 
+  // Mensagens não lidas (contador da navegação): reconta ao trocar de tela e a cada minuto.
+  const { search } = useLocation();
+  useEffect(() => {
+    if (userId) useUnreadMessagesStore.getState().refresh(userId);
+  }, [userId, pathname, search]);
+  useEffect(() => {
+    if (!userId) return;
+    const id = window.setInterval(() => useUnreadMessagesStore.getState().refresh(userId), 60_000);
+    return () => window.clearInterval(id);
+  }, [userId]);
+
   // Dados que dependem do usuário logado.
   useEffect(() => {
     // Os alimentos próprios visíveis dependem da conta: recarrega quando ela muda.
@@ -82,6 +94,7 @@ export function RootLayout() {
     useNutritionTrackingStore.getState().reset();
     useHealthProfileStore.getState().reset();
     useShoppingListStore.getState().reset();
+    useUnreadMessagesStore.getState().reset();
     import('../store/ai').then((m) => m.useAIStore.getState().reset());
     // As receitas exclusivas só vêm para quem tem Premium: a lista muda com a conta.
     if (useRecipesStore.getState().recipes.length > 0) useRecipesStore.getState().fetchRecipes({ silent: true });
@@ -103,6 +116,8 @@ export function RootLayout() {
       <DemoBanner />
       {/* reducedMotion="user": quem pediu menos movimento no sistema não vê as animações. */}
       <MotionConfig reducedMotion="user">
+        {/* A home tem o próprio cabeçalho (com a busca); as outras páginas logadas usam este. */}
+        {userId && section !== '/' && section !== '/login' && <AppHeader />}
         {/* No celular, logado, sobra espaço para a barra de navegação inferior. */}
         <motion.div
           key={`${section}:${userId ?? 'anon'}`}
@@ -115,12 +130,6 @@ export function RootLayout() {
         </motion.div>
         <MobileNav />
         <ConfirmDialog />
-        {/* Só a home tem cabeçalho (com o sino); nas outras páginas o sino flutua no canto. */}
-        {userId && section !== '/' && (
-          <div className="fixed right-3 top-3 z-40 md:right-6 md:top-4">
-            <NotificationBell floating />
-          </div>
-        )}
       </MotionConfig>
       {message && (
         <Toast

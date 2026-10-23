@@ -66,10 +66,15 @@ export function AttentionPanel() {
       ) : !nutritionistPro ? (
         <div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
           <p>{a.lockedText.replace('{n}', String(flagged.length))}</p>
-          <Link to="/mentoria-ia" className="mt-2 inline-flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-300">
-            <Crown className="h-4 w-4" />
-            {a.unlock}
-          </Link>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+            <Link to="/perfil?tab=patients" className="font-semibold text-emerald-700 dark:text-emerald-300">
+              {a.seeList}
+            </Link>
+            <Link to="/mentoria-ia" className="inline-flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-300">
+              <Crown className="h-4 w-4" />
+              {a.unlock}
+            </Link>
+          </div>
         </div>
       ) : (
         <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800">

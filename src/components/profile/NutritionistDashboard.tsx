@@ -14,7 +14,9 @@ import { getRecipeAuthorStats, type RecipeStats } from '../../services/care';
 import { UpcomingAppointments } from '../care/Appointments';
 import { CrnVerificationCard } from '../care/CrnVerificationCard';
 import { AttentionPanel } from '../care/AttentionPanel';
+import { GettingStarted } from './GettingStarted';
 import { appLocale } from '../../lib/format';
+import { getMyCrnStatus, type CrnStatus } from '../../services/verification';
 
 export function NutritionistDashboard() {
   const { user } = useAuthStore();
@@ -25,6 +27,14 @@ export function NutritionistDashboard() {
   const { profile, loading: profileLoading } = useProfessionalProfile(userId);
   const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState<RecipeStats[] | null>(null);
+  // O perfil só aparece na lista de nutricionistas depois do CRN aprovado.
+  const [crnStatus, setCrnStatus] = useState<CrnStatus | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    getMyCrnStatus(userId)
+      .then((r) => setCrnStatus(r.status))
+      .catch((e) => console.error('Error loading CRN status:', e));
+  }, [userId]);
 
   useEffect(() => {
     getRecipeAuthorStats()
@@ -134,12 +144,23 @@ export function NutritionistDashboard() {
           },
         ]}
         actions={[
-          { to: '/perfil?tab=patients', label: t.profileUi.invitePatient, icon: UserPlus },
-          { to: '/perfil?tab=recipes', label: t.profile.myRecipes, icon: BookOpen },
+          { to: '/perfil?tab=patients&convidar=1', label: t.profileUi.invitePatient, icon: UserPlus },
+          { to: '/perfil?tab=recipes&nova=1', label: t.profileUi.newRecipe, icon: BookOpen },
           { to: '/perfil?tab=foods', label: t.profileUi.myFoods, icon: Carrot },
           { to: `/nutricionista/${user.id}`, label: t.profileUi.publicProfile, icon: ExternalLink },
         ]}
       />
+      {crnStatus !== null && (
+        <GettingStarted
+          userId={user.id}
+          steps={[
+            { key: 'crn', label: t.profileUi.stepCrn, hint: t.profileUi.stepCrnHint, done: crnStatus === 'approved' || crnStatus === 'pending', to: '/perfil' },
+            { key: 'profile', label: t.profileUi.stepProfile, hint: t.profileUi.stepProfileHint, done: completeness >= 75, to: '/perfil?tab=professional' },
+            { key: 'patient', label: t.profileUi.stepPatient, hint: t.profileUi.stepPatientHint, done: activePatients > 0, to: '/perfil?tab=patients&convidar=1' },
+            { key: 'recipe', label: t.profileUi.stepRecipe, hint: t.profileUi.stepRecipeHint, done: userRecipes.length > 0, to: '/perfil?tab=recipes&nova=1' },
+          ]}
+        />
+      )}
       <CrnVerificationCard />
       <AttentionPanel />
       <UpcomingAppointments />
@@ -162,9 +183,17 @@ export function NutritionistDashboard() {
                 ) : (
                   <Circle className="h-4 w-4 text-slate-300 dark:text-slate-600" />
                 )}
-                <span className={item.done ? 'text-slate-500 line-through dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'}>
-                  {t.profile.checklist[item.key]}
-                </span>
+                {item.done ? (
+                  <span className="text-slate-500 line-through dark:text-slate-500">{t.profile.checklist[item.key]}</span>
+                ) : (
+                  // Item pendente leva direto para onde se resolve (a foto fica na aba Conta).
+                  <Link
+                    to={item.key === 'photo' ? '/perfil?tab=account' : '/perfil?tab=professional'}
+                    className="text-slate-700 underline-offset-2 hover:text-emerald-700 hover:underline dark:text-slate-200 dark:hover:text-emerald-400"
+                  >
+                    {t.profile.checklist[item.key]}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
@@ -172,7 +201,11 @@ export function NutritionistDashboard() {
           <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4 text-xs dark:border-slate-800">
             <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${isPublic ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
               {isPublic ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-              {isPublic ? t.nutritionists.editProfile.public : t.nutritionists.editProfile.private}
+              {!isPublic
+                ? t.nutritionists.editProfile.private
+                : crnStatus && crnStatus !== 'approved'
+                  ? t.profileUi.publicAfterCrn
+                  : t.nutritionists.editProfile.public}
             </span>
             <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${profile?.accepting_new_clients !== false ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>
               {profile?.accepting_new_clients !== false ? <UserCheck className="h-3.5 w-3.5" /> : <UserX className="h-3.5 w-3.5" />}

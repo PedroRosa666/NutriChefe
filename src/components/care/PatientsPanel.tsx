@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Copy, Loader2, MessageCircle, UserPlus, Users, X, ChevronRight, AlertTriangle, ArrowLeftRight, ClipboardCheck } from 'lucide-react';
+import { Copy, Loader2, MessageCircle, UserPlus, Users, X, ChevronRight, AlertTriangle, ArrowLeftRight, ClipboardCheck, Search, ShieldAlert, Share2, Crown } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { usePremiumStore } from '../../store/premium';
 import { useToastStore } from '../../store/toast';
@@ -26,6 +26,7 @@ import { PatientDetail } from './PatientDetail';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { LoadError } from '../common/LoadError';
 import { appLocale } from '../../lib/format';
+import { getMyCrnStatus, type CrnStatus } from '../../services/verification';
 
 interface PatientSummary {
   lastLog: string | null;
@@ -69,12 +70,15 @@ export function PatientsPanel() {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [selected, setSelected] = useState<CareLink | null>(null);
   const [pendingSwaps, setPendingSwaps] = useState<Map<string, number>>(new Map());
-  // ?paciente=<id> abre direto o detalhe (links dos avisos).
+  // O paciente aberto fica na URL (?paciente=<id>): links dos avisos abrem direto, e o voltar
+  // do celular volta para a lista em vez de sair da tela.
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedPatient = searchParams.get('paciente');
-  const [openChat, setOpenChat] = useState(false);
+  const selected = requestedPatient ? patients.find((p) => p.person.id === requestedPatient) ?? null : null;
+  const openChat = searchParams.get('chat') === '1';
+  const [query, setQuery] = useState('');
+  const [crnStatus, setCrnStatus] = useState<CrnStatus | null>(null);
   const [unread, setUnread] = useState<Map<string, number>>(new Map());
   const careSignal = useNotificationSignal((n) => n.kind === 'swap_requested' || n.kind === 'patient_joined' || n.kind === 'link_ended' || n.kind === 'message');
 
@@ -109,18 +113,43 @@ export function PatientsPanel() {
     load();
   }, [load, careSignal]);
 
+  // Paciente que não está (mais) na lista: volta para a lista.
   useEffect(() => {
-    if (!requestedPatient || loading) return;
-    const match = patients.find((p) => p.person.id === requestedPatient);
-    if (match) {
-      setOpenChat(searchParams.get('chat') === '1');
-      setSelected(match);
-    }
+    if (!requestedPatient || loading || selected) return;
     const next = new URLSearchParams(searchParams);
     next.delete('paciente');
     next.delete('chat');
     setSearchParams(next, { replace: true });
-  }, [requestedPatient, loading, patients, searchParams, setSearchParams]);
+  }, [requestedPatient, loading, selected, searchParams, setSearchParams]);
+
+  const openPatient = (link: CareLink | null) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('chat');
+    if (link) next.set('paciente', link.person.id);
+    else next.delete('paciente');
+    setSearchParams(next);
+  };
+
+  // Antes de tocar em "Convidar": o que impede o convite aparece já, com o caminho para resolver.
+  useEffect(() => {
+    if (!user) return;
+    getMyCrnStatus(user.id)
+      .then((r) => setCrnStatus(r.status))
+      .catch((e) => console.error('Error loading CRN status:', e));
+  }, [user]);
+  const crnBlocked = crnStatus !== null && crnStatus !== 'approved';
+  const limitReached = premiumLoaded && !nutritionistPro && patients.length >= freePatientLimit;
+  const canInvite = !crnBlocked && !limitReached;
+
+  const shareInvite = async (code: string) => {
+    const text = t.care.inviteMessage.replace('{link}', inviteLink(code)).replace('{code}', code);
+    try {
+      await navigator.share({ text });
+    } catch {
+      // Cancelou o compartilhamento: nada a fazer.
+    }
+  };
+  const canShare = typeof navigator !== 'undefined' && 'share' in navigator;
 
   const newInvite = async () => {
     setCreating(true);
@@ -128,6 +157,8 @@ export function PatientsPanel() {
       const invite = await createInvite();
       setInvites((prev) => [invite, ...prev]);
       showToast(t.care.inviteCreated, 'success');
+      // No celular, abre na hora o compartilhar do sistema (WhatsApp, SMS, e-mail...).
+      if (canShare && window.matchMedia('(pointer: coarse)').matches) shareInvite(invite.code);
     } catch (error) {
       const key = error instanceof CareError ? error.code : 'unknown';
       showToast(t.care.errors[key as keyof typeof t.care.errors] ?? t.care.errors.unknown, 'error');
@@ -135,6 +166,20 @@ export function PatientsPanel() {
       setCreating(false);
     }
   };
+
+  // Atalho "Convidar paciente" do painel (?convidar=1): já cria o convite, se nada impedir.
+  const autoInvited = useRef(false);
+  useEffect(() => {
+    if (!searchParams.has('convidar') || loading || crnStatus === null || !premiumLoaded) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('convidar');
+    setSearchParams(next, { replace: true });
+    if (canInvite && !autoInvited.current) {
+      autoInvited.current = true;
+      newInvite();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, loading, crnStatus, premiumLoaded]);
 
   const copyInvite = async (code: string) => {
     try {
@@ -163,13 +208,14 @@ export function PatientsPanel() {
       <PatientDetail
         link={selected}
         openChat={openChat}
+        pendingSwaps={pendingSwaps.get(selected.person.id) ?? 0}
+        unread={unread.get(selected.person.id) ?? 0}
         onBack={() => {
-          setSelected(null);
-          setOpenChat(false);
+          openPatient(null);
           load();
         }}
         onEnded={() => {
-          setSelected(null);
+          openPatient(null);
           load();
         }}
       />
@@ -216,13 +262,34 @@ export function PatientsPanel() {
         <button
           type="button"
           onClick={newInvite}
-          disabled={creating}
-          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+          disabled={creating || !canInvite}
+          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
           {t.care.invitePatient}
         </button>
       </div>
+
+      {crnBlocked && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
+          <ShieldAlert className="h-5 w-5 flex-shrink-0 text-amber-500" />
+          <p className="min-w-0 flex-1">{crnStatus === 'pending' ? t.care.crnPendingInvite : t.care.crnNeededInvite}</p>
+          {crnStatus !== 'pending' && (
+            <Link to="/perfil" className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-amber-950 hover:bg-amber-400">
+              {t.care.verifyCrn}
+            </Link>
+          )}
+        </div>
+      )}
+      {!crnBlocked && limitReached && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
+          <Crown className="h-5 w-5 flex-shrink-0 text-amber-500" />
+          <p className="min-w-0 flex-1">{t.care.errors.patient_limit}</p>
+          <Link to="/mentoria-ia" className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-amber-950 hover:bg-amber-400">
+            {t.clientPremium.seePremium}
+          </Link>
+        </div>
+      )}
 
       {invites.length > 0 && (
         <section className="space-y-2">
@@ -246,6 +313,16 @@ export function PatientsPanel() {
                 <Copy className="h-3.5 w-3.5" />
                 {t.care.copyLink}
               </button>
+              {canShare && (
+                <button
+                  type="button"
+                  onClick={() => shareInvite(invite.code)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <Share2 className="h-3.5 w-3.5" />
+                  {t.care.share}
+                </button>
+              )}
               <a
                 href={whatsappUrl(invite.code)}
                 target="_blank"
@@ -274,8 +351,23 @@ export function PatientsPanel() {
           {t.care.noPatients}
         </p>
       ) : (
+        <div className="space-y-3">
+        {/* Busca só quando a lista já é grande o bastante para precisar. */}
+        {patients.length > 6 && (
+          <div className="relative max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t.care.searchPatients}
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            />
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {patients.map((p) => {
+          {patients
+            .filter((p) => !query.trim() || (p.person.full_name ?? '').toLowerCase().includes(query.trim().toLowerCase()))
+            .map((p) => {
             const s = summaries[p.person.id];
             const daysSince = s?.lastLog ? Math.floor((Date.now() - new Date(`${s.lastLog}T12:00:00`).getTime()) / 86400000) : null;
             const inactive = s && (daysSince === null || daysSince >= 3);
@@ -284,7 +376,7 @@ export function PatientsPanel() {
               <button
                 key={p.id}
                 type="button"
-                onClick={() => setSelected(p)}
+                onClick={() => openPatient(p)}
                 className="glass-card flex items-center gap-3 rounded-2xl border p-4 text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-lg"
               >
                 <Avatar name={p.person.full_name} url={p.person.avatar_url} className="h-12 w-12" />
@@ -330,6 +422,7 @@ export function PatientsPanel() {
               </button>
             );
           })}
+        </div>
         </div>
       )}
     </div>

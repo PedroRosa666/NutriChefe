@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Scale, Crown, ArrowRight, HeartPulse, Bot, BellRing, Stethoscope, UtensilsCrossed, CalendarRange, ShoppingCart } from 'lucide-react';
+import { Scale, Crown, ArrowRight, HeartPulse, Bot, BellRing, Stethoscope, UtensilsCrossed, BookOpen, ShoppingCart } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
@@ -10,12 +10,13 @@ import { useSubscriptionStore } from '../../store/subscription';
 import { useTranslation } from '../../hooks/useTranslation';
 import { bmi } from '../../lib/nutrition-calculator';
 import { DashboardHero, firstNameOf, ProgressRing, useGreeting } from './DashboardHero';
-import { WeeklyCaloriesChart } from '../nutrition/WeeklyCaloriesChart';
 import { MyNutritionistCard } from '../care/MyNutritionistCard';
 import { WeeklyReport } from './WeeklyReport';
 import { UpcomingAppointments } from '../care/Appointments';
 import { ProgressPanel } from './ProgressPanel';
 import { SelfReportCard } from './SelfReportCard';
+import { GettingStarted, isGettingStartedHidden } from './GettingStarted';
+import { listMyNutritionists } from '../../services/care';
 
 export function ClientDashboard() {
   const { user } = useAuthStore();
@@ -26,6 +27,15 @@ export function ClientDashboard() {
   const { isPremium } = useSubscriptionStore();
   const t = useTranslation();
   const greeting = useGreeting();
+  // Para os primeiros passos: já tem nutricionista? (null enquanto carrega)
+  const [hasNutritionist, setHasNutritionist] = useState<boolean | null>(null);
+  const [guideHidden, setGuideHidden] = useState(() => !!user && isGettingStartedHidden(user.id));
+  useEffect(() => {
+    if (!user) return;
+    listMyNutritionists(user.id)
+      .then((links) => setHasNutritionist(links.length > 0))
+      .catch(() => setHasNutritionist(null));
+  }, [user]);
 
   const today = toISODate(new Date());
   const todayTotals = useMemo(() => sumEntries(entries.filter((e) => e.date === today)), [entries, today]);
@@ -78,18 +88,34 @@ export function ClientDashboard() {
             hint: currentBmi ? `${t.health.bmi}: ${currentBmi}` : t.health.notInformed,
           },
           {
-            label: t.profile.favorites,
-            value: String(favoriteRecipesList.length),
-            hint: `${daysLogged30} ${daysLogged30 === 1 ? t.profile.dayLoggedLast30 : t.profile.daysLoggedLast30}`,
+            label: t.profileUi.daysLogged,
+            value: `${daysLogged30}/30`,
+            hint: t.profileUi.last30Days,
           },
         ]}
         actions={[
-          { to: '/perfil?tab=nutrition', label: t.profileUi.logMeal, icon: UtensilsCrossed },
-          { to: '/perfil?tab=plan', label: t.profileUi.todayPlan, icon: CalendarRange },
+          // Plano e Diário já estão na barra de navegação: aqui ficam as ações e o resto.
+          { to: '/perfil?tab=nutrition&adicionar=1', label: t.profileUi.logMeal, icon: UtensilsCrossed },
+          { to: '/perfil?tab=health&peso=1', label: t.profileUi.logWeight, icon: Scale },
           { to: '/perfil?tab=shopping', label: t.profileUi.shopping, icon: ShoppingCart },
-          { to: '/perfil?tab=health', label: t.profileUi.logWeight, icon: Scale },
+          { to: '/', label: t.nav.recipes, icon: BookOpen },
         ]}
       />
+
+      {hasNutritionist !== null && (
+        <GettingStarted
+          userId={user.id}
+          onHide={() => setGuideHidden(true)}
+          steps={[
+            { key: 'health', label: t.profileUi.stepHealth, hint: t.profileUi.stepHealthHint, done: !healthIncomplete, to: '/perfil?tab=health' },
+            { key: 'meal', label: t.profileUi.stepMeal, hint: t.profileUi.stepMealHint, done: entries.length > 0, to: '/perfil?tab=nutrition&adicionar=1' },
+            { key: 'nutritionist', label: t.profileUi.stepNutritionist, hint: t.profileUi.stepNutritionistHint, done: hasNutritionist, to: '/perfil?conectar=1' },
+          ]}
+        />
+      )}
+
+      {/* Logo no topo: quem ainda não tem nutricionista vê onde pôr o código do convite. */}
+      <MyNutritionistCard />
 
       <UpcomingAppointments />
 
@@ -109,7 +135,8 @@ export function ClientDashboard() {
         </Link>
       )}
 
-      {healthIncomplete && (
+      {/* Com os primeiros passos à vista, o perfil de saúde já está na lista deles. */}
+      {healthIncomplete && guideHidden && (
         <Link
           to="/perfil?tab=health"
           className="flex items-center gap-4 rounded-2xl border border-sky-200 bg-sky-50 p-4 transition hover:bg-sky-100 dark:border-sky-900/50 dark:bg-sky-900/20 dark:hover:bg-sky-900/30"
@@ -184,12 +211,6 @@ export function ClientDashboard() {
       <WeeklyReport />
 
       <SelfReportCard />
-
-      <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <WeeklyCaloriesChart entries={entries} goal={goals.calories} />
-      </section>
-
-      <MyNutritionistCard />
 
       {!isPremiumUser && (
         <Link

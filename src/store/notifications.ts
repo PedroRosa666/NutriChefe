@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { useAuthStore } from './auth';
 import { useSettingsStore } from './settings';
 import { useToastStore } from './toast';
+import { useUnreadMessagesStore } from './unread-messages';
 import { translations } from '../lib/i18n/translations';
 import type { Translations } from '../hooks/useTranslation';
 import {
@@ -156,6 +157,8 @@ export function useLiveNotifications() {
     }
     // O texto do toast usa o idioma do momento em que o aviso chega.
     start(userId, (n) => {
+      // Mensagem nova: o contador da navegação sobe na hora.
+      if (n.kind === 'message') useUnreadMessagesStore.getState().refresh(userId);
       const language = useSettingsStore.getState().language;
       showToast(notificationText(n, translations[language]), 'info');
     });

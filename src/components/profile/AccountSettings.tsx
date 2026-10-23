@@ -11,6 +11,7 @@ import { openBillingPortal } from '../../services/subscription';
 import { countArchivedPlans, deleteArchivedPlans, DeleteAccountError, deleteMyAccount, downloadMyData } from '../../services/privacy';
 import { confirmDialog } from '../../store/confirm';
 import { AppDeviceCard } from './AppDeviceCard';
+import { AppearanceSettings } from '../common/ThemeSwitch';
 import { isAdmin } from '../../services/verification';
 
 const inputClass =
@@ -114,6 +115,10 @@ export function AccountSettings() {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* No celular, fora da home, tema e idioma ficam aqui (o cabeçalho é compacto). */}
+      <div className="md:hidden">
+        <AppearanceSettings />
+      </div>
       {admin && (
         <Link to="/admin" className={`${cardClass} flex items-center gap-3 border-emerald-300 hover:border-emerald-500 lg:col-span-2`}>
           <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />

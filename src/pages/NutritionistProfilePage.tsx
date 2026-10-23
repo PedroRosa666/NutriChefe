@@ -30,6 +30,7 @@ import { PUBLIC_PROFILE_COLUMNS } from '../lib/profile-columns';
 import { instagramUrl, phoneUrl, safeWebsiteUrl, whatsappUrl } from '../lib/contact-links';
 import { getSpecializationTranslation } from '../lib/i18n/translations';
 import { useSettingsStore } from '../store/settings';
+import { useAuthStore } from '../store/auth';
 import { SMOOTH } from '../lib/motion';
 import { RECIPE_PLACEHOLDER } from '../components/RecipeCard';
 
@@ -125,6 +126,9 @@ export function NutritionistProfilePage() {
   const [averageRating, setAverageRating] = useState(0);
   const [featured, setFeatured] = useState(false);
   const [loading, setLoading] = useState(true);
+  // O próprio nutricionista vê a página mesmo privada ou antes do CRN aprovado (como pré-visualização).
+  const isOwner = useAuthStore((s) => s.user?.id) === id;
+  const [preview, setPreview] = useState<'private' | 'pending' | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -133,14 +137,9 @@ export function NutritionistProfilePage() {
     const loadProfile = async () => {
       setLoading(true);
       try {
+        const query = supabase.from('profiles').select(PUBLIC_PROFILE_COLUMNS).eq('id', id).eq('user_type', 'Nutritionist');
         const [{ data: profileData }, pro] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select(PUBLIC_PROFILE_COLUMNS)
-            .eq('id', id)
-            .eq('user_type', 'Nutritionist')
-            .eq('profile_visibility', 'public')
-            .maybeSingle(),
+          (isOwner ? query : query.eq('profile_visibility', 'public')).maybeSingle(),
           supabase.rpc('pro_nutritionist_ids'),
         ]);
 
@@ -151,6 +150,9 @@ export function NutritionistProfilePage() {
         }
 
         setFeatured(((pro.data as string[] | null) ?? []).includes(id));
+        setPreview(
+          !isOwner ? null : profileData.profile_visibility === 'private' ? 'private' : profileData.crn_status !== 'approved' ? 'pending' : null
+        );
         setProfile({
           id: profileData.id,
           full_name: profileData.full_name || 'Nutricionista',
@@ -206,16 +208,16 @@ export function NutritionistProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [id, navigate]);
+  }, [id, navigate, isOwner]);
 
   const backBar = (
     <div className="flex h-11 items-center pr-14">
       <button
-        onClick={() => navigate('/nutricionistas')}
+        onClick={() => navigate(isOwner ? '/perfil' : '/nutricionistas')}
         className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
       >
         <ArrowLeft className="h-4 w-4" />
-        {pg.backToList}
+        {isOwner ? t.common.back : pg.backToList}
       </button>
     </div>
   );
@@ -361,6 +363,15 @@ export function NutritionistProfilePage() {
       <div className="mx-auto max-w-5xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
         {backBar}
 
+        {isOwner && (
+          <div className="mt-2 flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-100">
+            <p className="min-w-0 flex-1">{preview === 'private' ? t.profileUi.previewPrivate : preview === 'pending' ? t.profileUi.previewPending : t.profileUi.previewLive}</p>
+            <Link to="/perfil?tab=professional" className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700">
+              {t.profileUi.editProfessional}
+            </Link>
+          </div>
+        )}
+
         {/* Cartão principal */}
         <motion.section
           initial={{ opacity: 0, y: 10 }}
@@ -483,6 +494,10 @@ export function NutritionistProfilePage() {
                   </a>
                 )}
               </div>
+            )}
+            {/* O vínculo no app é por código: quem já marcou consulta sabe o que pedir. */}
+            {!isOwner && (
+              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t.profileUi.alreadyPatient}</p>
             )}
           </div>
         </motion.section>

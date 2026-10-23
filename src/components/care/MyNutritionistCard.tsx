@@ -17,6 +17,8 @@ export function MyNutritionistCard() {
   const t = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const inviteFromUrl = searchParams.get('convite');
+  // Veio de um link (convite ou "Conectar a um nutricionista"): o cartão vem para a tela e fica em destaque.
+  const highlight = !!inviteFromUrl || searchParams.has('conectar');
 
   const [links, setLinks] = useState<CareLink[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -42,12 +44,14 @@ export function MyNutritionistCard() {
     load();
   }, [load]);
 
-  // Link de convite (/perfil?convite=CODIGO): preenche e leva o cartão para a tela.
+  // Link de convite (/perfil?convite=CODIGO): preenche o código.
   useEffect(() => {
-    if (!inviteFromUrl) return;
-    setCode(inviteFromUrl);
-    cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (inviteFromUrl) setCode(inviteFromUrl);
   }, [inviteFromUrl]);
+  // Leva o cartão para a tela depois que ele aparece (antes de carregar ele ainda não existe).
+  useEffect(() => {
+    if (highlight && loaded) cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlight, loaded]);
 
   const [consent, setConsent] = useState(false);
 
@@ -94,7 +98,7 @@ export function MyNutritionistCard() {
     <section
       ref={cardRef}
       className={`rounded-2xl border bg-white p-5 shadow-sm dark:bg-slate-900 ${
-        inviteFromUrl ? 'border-emerald-300 ring-2 ring-emerald-500/30 dark:border-emerald-600' : 'border-slate-100 dark:border-slate-800'
+        highlight ? 'border-emerald-300 ring-2 ring-emerald-500/30 dark:border-emerald-600' : 'border-slate-100 dark:border-slate-800'
       }`}
     >
       <div className="mb-4 flex items-center gap-2">
@@ -138,6 +142,22 @@ export function MyNutritionistCard() {
           ) : (
             <p className="text-sm text-slate-600 dark:text-slate-300">{t.care.connectDescription}</p>
           )}
+          {/* Consentimento específico para compartilhar dados de saúde (LGPD, art. 11). */}
+          <label className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span>
+              <ShieldCheck className="mr-1 inline h-3.5 w-3.5 align-text-bottom text-emerald-600" />
+              {t.care.consentCheckbox}{' '}
+              <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-700 underline dark:text-emerald-400">
+                {t.privacy.policyLink}
+              </a>
+            </span>
+          </label>
           <form
             className="flex gap-2"
             onSubmit={(e) => {
@@ -161,22 +181,6 @@ export function MyNutritionistCard() {
               {t.care.connect}
             </button>
           </form>
-          {/* Consentimento específico para compartilhar dados de saúde (LGPD, art. 11). */}
-          <label className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
-            <input
-              type="checkbox"
-              checked={consent}
-              onChange={(e) => setConsent(e.target.checked)}
-              className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-            />
-            <span>
-              <ShieldCheck className="mr-1 inline h-3.5 w-3.5 align-text-bottom text-emerald-600" />
-              {t.care.consentCheckbox}{' '}
-              <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-700 underline dark:text-emerald-400">
-                {t.privacy.policyLink}
-              </a>
-            </span>
-          </label>
         </div>
       )}
     </section>

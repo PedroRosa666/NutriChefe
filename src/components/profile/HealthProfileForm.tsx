@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { HeartPulse, Loader2, Plus, Scale, Sparkles, X } from 'lucide-react';
 import { useHealthProfileStore, type HealthProfile } from '../../store/health-profile';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
@@ -13,6 +14,7 @@ import { WeightChart } from './WeightChart';
 import { LoadError } from '../common/LoadError';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { useAuthStore } from '../../store/auth';
+import { confirmDialog } from '../../store/confirm';
 
 const DIET_OPTIONS = ['vegetarian', 'vegan', 'glutenFree', 'lactoseFree', 'lowCarb', 'highProtein', 'mediterranean'] as const;
 const ACTIVITY: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active', 'very_active'];
@@ -30,7 +32,7 @@ const toNum = (v: string) => {
 export function HealthProfileForm() {
   const { profile, weightLogs, saveHealthProfile, logWeight, loaded, loadError, fetchHealthProfile } = useHealthProfileStore();
   const userId = useAuthStore((s) => s.user?.id);
-  const { saveGoals } = useNutritionGoalsStore();
+  const { saveGoals, setBy } = useNutritionGoalsStore();
   const { showToast } = useToastStore();
   const t = useTranslation();
   const h = t.health;
@@ -41,6 +43,16 @@ export function HealthProfileForm() {
   const [newWeight, setNewWeight] = useState('');
 
   useEffect(() => setForm(profile), [profile]);
+
+  // Atalho "Registrar peso" (?peso=1): vai direto ao campo do peso.
+  const [searchParams] = useSearchParams();
+  const wantsWeight = searchParams.has('peso');
+  const weightRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!wantsWeight || !loaded) return;
+    weightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    weightRef.current?.focus({ preventScroll: true });
+  }, [wantsWeight, loaded]);
 
   const set = <K extends keyof HealthProfile>(key: K, value: HealthProfile[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -84,9 +96,13 @@ export function HealthProfileForm() {
       showToast(h.invalidBirthDate, 'warning');
       return;
     }
+    // Alergia digitada sem tocar em "Adicionar" também vale: ela protege as sugestões de receita.
+    const pending = allergyInput.trim().toLowerCase();
+    const toSave = pending && !form.allergies.includes(pending) ? { ...form, allergies: [...form.allergies, pending] } : form;
+    setAllergyInput('');
     setSaving(true);
     try {
-      await saveHealthProfile(form);
+      await saveHealthProfile(toSave);
       showToast(h.saved, 'success');
     } catch (error) {
       console.error('Error saving health profile:', error);
@@ -98,6 +114,7 @@ export function HealthProfileForm() {
 
   const applySuggested = async () => {
     if (!suggested) return;
+    if (setBy && !(await confirmDialog(t.profileUi.replaceNutritionistGoals))) return;
     try {
       await saveGoals(suggested);
       showToast(h.goalsApplied, 'success');
@@ -229,11 +246,12 @@ export function HealthProfileForm() {
           <div className="flex gap-2">
             <input id="hp-allergy" className={inputClass} value={allergyInput} placeholder={h.allergyPlaceholder}
               onChange={(e) => setAllergyInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAllergy(); } }} />
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAllergy(); } }}
+              onBlur={addAllergy} />
             <button type="button" onClick={addAllergy}
-              className="rounded-lg border border-slate-200 px-3 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-              aria-label={t.common.add}>
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
               <Plus className="h-4 w-4" />
+              {t.common.add}
             </button>
           </div>
           {form.allergies.length > 0 && (
@@ -264,7 +282,8 @@ export function HealthProfileForm() {
         </button>
       </form>
 
-      <div className="space-y-6 lg:col-span-2">
+      {/* No celular, peso e indicadores vêm antes do formulário: é o que mais se consulta. */}
+      <div className="order-first flex flex-col gap-6 lg:order-none lg:col-span-2">
         {/* Indicadores calculados */}
         <section className="space-y-3 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{h.indicators}</h3>
@@ -303,13 +322,13 @@ export function HealthProfileForm() {
         </section>
 
         {/* Peso */}
-        <section className="space-y-3 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <section className="order-first space-y-3 lg:order-none rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
             <Scale className="h-4 w-4 text-sky-500" /> {h.weightHistory}
           </h3>
           <WeightChart logs={weightLogs} target={form.target_weight_kg} />
           <div className="flex gap-2">
-            <input type="number" inputMode="decimal" step="0.1" className={inputClass} placeholder={`${h.weight} (kg)`}
+            <input ref={weightRef} type="number" inputMode="decimal" step="0.1" className={inputClass} placeholder={`${h.weight} (kg)`}
               value={newWeight} onChange={(e) => setNewWeight(e.target.value)} />
             <button type="button" onClick={handleLogWeight}
               className="whitespace-nowrap rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-700">

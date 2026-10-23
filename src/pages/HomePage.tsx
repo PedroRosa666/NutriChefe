@@ -38,6 +38,13 @@ export function HomePage() {
   }, [queryFromUrl, setSearchQuery]);
   const { recipes, loading, fetchRecipes } = useRecipesStore();
   const { isAuthenticated, isNutritionist } = useAuthStore();
+
+  // Abrindo o app instalado (start_url /?inicio=1): quem está logado começa no Início (o seu dia
+  // ou o painel); quem não está fica nas receitas.
+  const launched = searchParams.has('inicio');
+  useEffect(() => {
+    if (launched) navigate(isAuthenticated ? '/perfil' : '/', { replace: true });
+  }, [launched, isAuthenticated, navigate]);
   const t = useTranslation();
 
   const CATEGORIES = ['all', 'vegan', 'vegetarian', 'lowCarb', 'highProtein', 'glutenFree'];
@@ -158,6 +165,15 @@ export function HomePage() {
           ) : filteredRecipes.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 dark:text-gray-400 mb-4">{t.home.noRecipes}</p>
+              {/* Nada com a busca/filtros atuais (que ficam guardados entre as páginas): um toque desfaz. */}
+              {recipes.length > 0 && (
+                <button
+                  onClick={() => useFiltersStore.getState().resetFilters()}
+                  className="px-4 py-2 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-900/20 transition-colors"
+                >
+                  {t.profileUi.clearFilters}
+                </button>
+              )}
               {recipes.length === 0 && !loading && (
                 <button
                   onClick={() => fetchRecipes()}

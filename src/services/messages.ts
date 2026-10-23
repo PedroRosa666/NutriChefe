@@ -61,6 +61,41 @@ export async function unreadByPatient(nutritionistId: string): Promise<Map<strin
   return counts;
 }
 
+/** Total de mensagens recebidas não lidas, em todas as conversas da pessoa (o RLS limita às dela). */
+export async function countUnreadMessages(userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('care_messages')
+    .select('id', { count: 'exact', head: true })
+    .neq('sender_id', userId)
+    .is('read_at', null);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export interface ThreadSummary {
+  clientId: string;
+  last: CareMessage;
+  unread: number;
+}
+
+/** Conversas do nutricionista: a última mensagem e as não lidas de cada paciente, mais recente primeiro. */
+export async function listThreads(nutritionistId: string): Promise<ThreadSummary[]> {
+  const { data, error } = await supabase
+    .from('care_messages')
+    .select(COLUMNS)
+    .eq('nutritionist_id', nutritionistId)
+    .order('created_at', { ascending: false })
+    .limit(1000);
+  if (error) throw error;
+  const threads = new Map<string, ThreadSummary>();
+  for (const m of (data ?? []) as CareMessage[]) {
+    const thread = threads.get(m.client_id) ?? { clientId: m.client_id, last: m, unread: 0 };
+    if (m.sender_id !== nutritionistId && !m.read_at) thread.unread += 1;
+    threads.set(m.client_id, thread);
+  }
+  return [...threads.values()];
+}
+
 /** Escuta mensagens novas da conversa. Devolve a função que para de escutar. */
 export function subscribeMessages(nutritionistId: string, clientId: string, onInsert: (m: CareMessage) => void): () => void {
   const channel = supabase

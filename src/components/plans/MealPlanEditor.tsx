@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BookOpen, Bot, Carrot, Crown, LayoutTemplate, ListChecks, Loader2, Scale, Sparkles, Trash2, Save, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { BookOpen, Bot, Carrot, Crown, LayoutTemplate, ListChecks, Loader2, Scale, Search, Sparkles, Trash2, Save, X } from 'lucide-react';
+import { confirmDialog } from '../../store/confirm';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -28,6 +29,8 @@ interface MealPlanEditorProps {
   startGenerated?: boolean;
   onSaved: (plan: MealPlan) => void;
   onCancel: () => void;
+  /** Avisa quando há alterações não salvas (para o voltar do celular pedir confirmação). */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /** Painel de inclusão aberto numa refeição: receita ou alimento, solto ou dentro de um grupo de opções. */
@@ -62,6 +65,7 @@ export function MealPlanEditor({
   startGenerated,
   onSaved,
   onCancel,
+  onDirtyChange,
 }: MealPlanEditorProps) {
   const user = useAuthStore((s) => s.user);
   const { showToast } = useToastStore();
@@ -77,7 +81,24 @@ export function MealPlanEditor({
   const [adder, setAdder] = useState<Adder | null>(null);
   const [saving, setSaving] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
-  const navigate = useNavigate();
+  const [recipeQuery, setRecipeQuery] = useState('');
+
+  // Alterações não salvas: comparadas com o que abriu (um plano gerado na abertura já conta como mudança).
+  const initial = useRef(JSON.stringify({ title: plan?.title ?? '', notes: plan?.notes ?? '', items: plan?.items ?? [] }));
+  const dirty = JSON.stringify({ title, notes, items }) !== initial.current;
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  // Fechar ou recarregar a aba com alterações: o navegador pergunta antes.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  const cancel = async () => {
+    if (dirty && !(await confirmDialog(t.plan.discardConfirm))) return;
+    onCancel();
+  };
   const nutritionistPro = usePremiumStore((s) => s.nutritionistPro);
   const ownPremium = useOwnPremium();
   // IA: o nutricionista no plano de um paciente (Premium Nutricionista) ou o cliente no próprio plano (Premium).
@@ -117,6 +138,14 @@ export function MealPlanEditor({
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const sortedRecipes = useMemo(() => recipes.slice().sort((a, b) => a.title.localeCompare(b.title)), [recipes]);
   const hasOptions = items.some((i) => i.option_group !== null);
+  // Sem busca: as receitas do próprio nutricionista primeiro; com busca, por nome.
+  const matchingRecipes = useMemo(() => {
+    const q = recipeQuery.trim().toLowerCase();
+    const list = q
+      ? sortedRecipes.filter((r) => r.title.toLowerCase().includes(q))
+      : sortedRecipes.slice().sort((a, b) => Number(b.authorId === user?.id) - Number(a.authorId === user?.id));
+    return list.slice(0, 30);
+  }, [recipeQuery, sortedRecipes, user?.id]);
 
   const dayCalories = (d: number) => itemsCalories(items.filter((i) => i.day === d), byId);
 
@@ -126,7 +155,9 @@ export function MealPlanEditor({
     return days.length ? Math.round(days.reduce((sum, k) => sum + k, 0) / days.length) : 0;
   };
 
-  const regenerate = () => {
+  const regenerate = async () => {
+    // Gerar de novo troca todas as receitas: com o plano já montado, confirma antes.
+    if (items.some((i) => i.recipe_id && i.option_group === null) && !(await confirmDialog(t.plan.regenerateConfirm))) return;
     const next = generate();
     if (!next.length) {
       showToast(t.plan.generateEmpty, 'warning');
@@ -154,7 +185,8 @@ export function MealPlanEditor({
     showToast(t.plan.scaled.replace('{before}', String(before)).replace('{after}', String(after)).replace('{kcal}', goal), 'success');
   };
 
-  const applyTemplate = (input: { items: MealPlanItem[]; title: string; notes: string }) => {
+  const applyTemplate = async (input: { items: MealPlanItem[]; title: string; notes: string }) => {
+    if (items.length && !(await confirmDialog(t.plan.templateReplaceConfirm))) return;
     setItems(input.items);
     setTitle((current) => current || input.title);
     setNotes((current) => current || input.notes);
@@ -205,6 +237,8 @@ export function MealPlanEditor({
         items: items.filter((i) => isItemAvailable(i, byId)),
       });
       showToast(t.plan.saved, 'success');
+      initial.current = JSON.stringify({ title, notes, items });
+      onDirtyChange?.(false);
       onSaved(saved);
     } catch (error) {
       console.error('Error saving plan:', error);
@@ -265,14 +299,36 @@ export function MealPlanEditor({
         </button>
       </div>
       {target.kind === 'recipe' ? (
-        <select value="" onChange={(e) => addRecipe(target, e.target.value)} className={cn(inputClass, 'dark:[color-scheme:dark]')}>
-          <option value="">{t.plan.addRecipe}</option>
-          {sortedRecipes.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.title} ({Math.round(r.nutritionFacts.calories)} kcal)
-            </option>
-          ))}
-        </select>
+        <div className="space-y-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              autoFocus
+              value={recipeQuery}
+              onChange={(e) => setRecipeQuery(e.target.value)}
+              placeholder={t.plan.searchRecipe}
+              className={cn(inputClass, 'pl-9')}
+            />
+          </div>
+          <ul className="max-h-56 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+            {matchingRecipes.map((r) => (
+              <li key={r.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    addRecipe(target, r.id);
+                    setRecipeQuery('');
+                  }}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                >
+                  <span className="min-w-0 truncate text-slate-800 dark:text-slate-100">{r.title}</span>
+                  <span className="flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">{Math.round(r.nutritionFacts.calories)} kcal</span>
+                </button>
+              </li>
+            ))}
+            {!matchingRecipes.length && <li className="px-3 py-3 text-sm text-slate-500 dark:text-slate-400">{t.plan.noRecipeFound}</li>}
+          </ul>
+        </div>
       ) : (
         <FoodQuantityPicker confirmLabel={target.group === null ? t.plan.addToMeal : t.plan.addAsOption} onConfirm={(picked) => addFood(target, picked)} />
       )}
@@ -333,7 +389,7 @@ export function MealPlanEditor({
           {aiAllowed && (
             <button
               type="button"
-              onClick={() => (aiUnlocked ? setAiOpen((v) => !v) : navigate('/mentoria-ia'))}
+              onClick={() => setAiOpen((v) => !v)}
               className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
             >
               {aiUnlocked ? <Bot className="h-4 w-4" /> : <Crown className="h-4 w-4" />}
@@ -343,7 +399,18 @@ export function MealPlanEditor({
         </div>
       </div>
 
-      {aiOpen && (
+      {aiOpen && !aiUnlocked && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
+          <Crown className="h-5 w-5 flex-shrink-0 text-amber-500" />
+          <p className="min-w-0 flex-1">{ownPlan ? t.plan.aiLockedClient : t.plan.aiLockedNutritionist}</p>
+          {/* Nova aba: o plano em edição continua aqui. */}
+          <Link to="/mentoria-ia" target="_blank" className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-amber-950 hover:bg-amber-400">
+            {t.clientPremium.seePremium}
+          </Link>
+        </div>
+      )}
+
+      {aiOpen && aiUnlocked && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-800/50 dark:bg-emerald-900/10">
           <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
             {ownPlan ? t.clientPremium.aiOwnNotesLabel : t.plan.aiNotesLabel}
@@ -502,10 +569,11 @@ export function MealPlanEditor({
         })}
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 -mb-4 flex items-center justify-end gap-2 rounded-b-2xl border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-5 sm:-mb-5 sm:px-5 md:bottom-0 dark:border-slate-800 dark:bg-slate-900/95">
+        {dirty && <span className="mr-auto text-xs font-medium text-amber-600 dark:text-amber-400">{t.plan.unsaved}</span>}
         <button
           type="button"
-          onClick={onCancel}
+          onClick={cancel}
           className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
         >
           {t.plan.cancel}

@@ -13,6 +13,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { User } from '../types/user';
 import { useCanUseAI, usePremiumStore } from '../store/premium';
+import { useAppNav } from '../hooks/useAppNav';
 
 interface UserDropdownProps {
   user: User | null;
@@ -21,7 +22,7 @@ interface UserDropdownProps {
   t: Translations;
 }
 
-function UserDropdown({ user, onProfileClick, onSignOut, t }: UserDropdownProps) {
+export function UserDropdown({ user, onProfileClick, onSignOut, t }: UserDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -149,7 +150,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
     if (!onLoginRoute) return;
     if (isAuthenticated) {
       const next = new URLSearchParams(location.search).get('next');
-      navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : '/', { replace: true });
+      navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : '/perfil', { replace: true });
       return;
     }
     setAuthModalMode(new URLSearchParams(location.search).get('modo') === 'cadastro' ? 'signup' : 'signin');
@@ -158,6 +159,9 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
 
   // Verificar se tem acesso à IA (nutricionista ou premium)
   const hasAIAccess = isAuthenticated && canUseAI;
+  const isNutritionistUser = user?.type === 'Nutritionist';
+  // Atalho para o Início (paciente) ou o Painel (nutricionista), que ficam fora da home.
+  const homeItem = useAppNav()[0];
   return (
     <>
       {/* Mesmo tom do topo do degradê, translúcido: sem corte entre cabeçalho e página. */}
@@ -206,32 +210,36 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                 >
-                  <button
-                    onClick={() => navigate('/nutricionistas')}
-                    className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
-                    title={t.buttons.findNutritionists}
-                  >
-                    <Users className="w-4 h-4" />
-                    <span className="hidden xl:inline">{t.buttons.findNutritionists}</span>
-                  </button>
-                  <button
-                    onClick={onAIMentoringClick}
-                    className={cn(
-                      "relative flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                      hasAIAccess
-                        ? "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                        : "text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    )}
-                    title={hasAIAccess ? t.labels.aiMentoring : `${t.labels.aiMentoring} (${t.labels.premium})`}
-                  >
-                    <Bot className="w-4 h-4" />
-                    <span className="hidden xl:inline">{t.labels.aiMentoring}</span>
-                    {!hasAIAccess && (
-                      <span className="absolute -top-2 -right-2 text-[9px] bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2 py-0.5 rounded-full font-bold shadow-md uppercase tracking-wider">
-                        {t.labels.premium}
-                      </span>
-                    )}
-                  </button>
+                  {homeItem && (
+                    <Link
+                      to={homeItem.to}
+                      className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
+                    >
+                      <homeItem.icon className="w-4 h-4" />
+                      <span>{homeItem.label}</span>
+                    </Link>
+                  )}
+                  {!isNutritionistUser && (
+                    <button
+                      onClick={() => navigate('/nutricionistas')}
+                      className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                      title={t.buttons.findNutritionists}
+                    >
+                      <Users className="w-4 h-4" />
+                      <span className="hidden xl:inline">{t.buttons.findNutritionists}</span>
+                    </button>
+                  )}
+                  {/* A IA aparece para quem já tem; o convite ao Premium fica no Início. */}
+                  {hasAIAccess && (
+                    <button
+                      onClick={onAIMentoringClick}
+                      className="relative flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                      title={t.labels.aiMentoring}
+                    >
+                      <Bot className="w-4 h-4" />
+                      <span className="hidden xl:inline">{t.labels.aiMentoring}</span>
+                    </button>
+                  )}
 
                   <NotificationBell />
 
@@ -333,37 +341,31 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        navigate('/nutricionistas');
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
-                    >
-                      <Users className="w-4 h-4" />
-                      <span className="text-sm font-medium">{t.buttons.findNutritionists}</span>
-                    </button>
+                    {!isNutritionistUser && (
+                      <button
+                        onClick={() => {
+                          navigate('/nutricionistas');
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                      >
+                        <Users className="w-4 h-4" />
+                        <span className="text-sm font-medium">{t.buttons.findNutritionists}</span>
+                      </button>
+                    )}
 
-                    <button
-                      onClick={() => {
-                        onAIMentoringClick();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={cn(
-                        "w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-colors relative",
-                        hasAIAccess
-                          ? "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                          : "text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
-                      )}
-                    >
-                      <Bot className="w-4 h-4" />
-                      <span className="text-sm font-medium">{t.labels.aiMentoring}</span>
-                      {!hasAIAccess && (
-                        <span className="ml-auto text-xs bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2.5 py-1 rounded-full font-bold shadow-md uppercase tracking-wider">
-                          {t.labels.premium}
-                        </span>
-                      )}
-                    </button>
+                    {hasAIAccess && (
+                      <button
+                        onClick={() => {
+                          onAIMentoringClick();
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-colors relative text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                      >
+                        <Bot className="w-4 h-4" />
+                        <span className="text-sm font-medium">{t.labels.aiMentoring}</span>
+                      </button>
+                    )}
 
                     <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
 
@@ -421,7 +423,10 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
         isOpen={isAuthModalOpen}
         onClose={() => {
           setIsAuthModalOpen(false);
-          if (onLoginRoute && !useAuthStore.getState().isAuthenticated) navigate('/', { replace: true });
+          const signedIn = useAuthStore.getState().isAuthenticated;
+          if (onLoginRoute && !signedIn) navigate('/', { replace: true });
+          // Entrou pelo botão do topo: começa no Início (o seu dia ou o painel).
+          else if (!onLoginRoute && signedIn) navigate('/perfil');
         }}
         initialMode={authModalMode}
       />

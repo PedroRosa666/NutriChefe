@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, Copy, Plus, Share2, ShoppingCart, Trash2, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from '../../store/auth';
 import { useShoppingListStore } from '../../store/shopping-list';
@@ -74,33 +75,38 @@ export function ShoppingListPanel() {
       transition={QUICK}
       className="group flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/50"
     >
+      {/* A linha inteira marca o item: alvo grande para o dedo no mercado. */}
       <button
         type="button"
         onClick={() => run(() => toggle(item.id))}
-        className={cn(
-          'flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border transition-colors',
-          item.checked ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 hover:border-emerald-400 dark:border-slate-600'
-        )}
-        aria-label={item.name}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
         aria-pressed={item.checked}
       >
+      <span
+        className={cn(
+          'flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border transition-colors',
+          item.checked ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 group-hover:border-emerald-400 dark:border-slate-600'
+        )}
+      >
         {item.checked && <Check className="h-4 w-4" />}
-      </button>
-      <div className="min-w-0 flex-1">
-        <p className={cn('text-sm', item.checked ? 'text-slate-400 line-through' : 'font-medium text-slate-900 dark:text-white')}>
+      </span>
+      <span className="block min-w-0 flex-1">
+        <span className={cn('block text-sm', item.checked ? 'text-slate-400 line-through' : 'font-medium text-slate-900 dark:text-white')}>
           {item.name}
           {item.quantity && <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">{item.quantity}</span>}
-        </p>
+        </span>
         {item.recipes.length > 0 && !item.checked && (
-          <p className="truncate text-xs text-slate-400 dark:text-slate-500">
+          <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
             {t.shopping.from}: {item.recipes.join(', ')}
-          </p>
+          </span>
         )}
-      </div>
+      </span>
+      </button>
+      {/* Com mouse o X aparece ao passar por cima; no toque fica sempre visível. */}
       <button
         type="button"
         onClick={() => run(() => remove(item.id))}
-        className="rounded-md p-1.5 text-slate-300 opacity-0 transition-opacity hover:text-rose-500 group-hover:opacity-100 focus:opacity-100 dark:text-slate-600"
+        className="rounded-md p-1.5 text-slate-400 transition-opacity hover:text-rose-500 focus:opacity-100 dark:text-slate-500 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
         aria-label={t.profile.remove}
       >
         <X className="h-4 w-4" />
@@ -172,6 +178,14 @@ export function ShoppingListPanel() {
         <div className="py-8 text-center">
           <p className="font-medium text-slate-700 dark:text-slate-200">{t.shopping.empty}</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">{t.shopping.emptyHint}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Link to="/perfil?tab=plan" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+              {t.shopping.fromPlan}
+            </Link>
+            <Link to="/" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+              {t.nav.recipes}
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
