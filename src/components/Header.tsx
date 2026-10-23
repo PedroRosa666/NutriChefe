@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ComponentType } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Search, Menu, LogOut, User as UserIcon, Bot, Users, ChevronDown } from 'lucide-react';
+import { Search, Menu, LogOut, User as UserIcon, Bot, Users, ChevronDown, ChevronRight, ShieldCheck, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { Translations } from '../hooks/useTranslation';
 import { useAuthStore } from '../store/auth';
@@ -162,8 +162,67 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
   const isNutritionistUser = user?.type === 'Nutritionist';
   // Atalho para o Meu dia (paciente) ou o Painel (nutricionista), que ficam fora da home.
   const homeItem = useAppNav().find((i) => i.key === 'home');
+
+  // Menu do celular: fecha ao trocar de página, com Esc e antes de cada ação.
+  useEffect(() => setIsMobileMenuOpen(false), [location.pathname]);
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsMobileMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isMobileMenuOpen]);
+  const closeMenuAnd = (action: () => void) => {
+    setIsMobileMenuOpen(false);
+    action();
+  };
+  const menuRow = (Icon: ComponentType<{ className?: string }>, label: string, onClick: () => void) => (
+    <button
+      key={label}
+      onClick={onClick}
+      className="flex w-full items-center gap-3 border-b border-slate-100 px-3 py-3 text-left text-sm font-medium text-slate-700 transition-colors last:border-b-0 hover:bg-slate-50 dark:border-white/10 dark:text-slate-100 dark:hover:bg-white/5"
+    >
+      <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-400/10 dark:text-emerald-300">
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="flex-1">{label}</span>
+      <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-500" />
+    </button>
+  );
+  const searchBox = (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onKeyDown={(e) => {
+          // Enter leva às receitas com a busca aplicada.
+          if (e.key === 'Enter') closeMenuAnd(() => location.pathname !== '/' && navigate('/'));
+        }}
+        placeholder={t.common.search}
+        className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none focus:border-transparent focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-black/20 dark:text-white dark:placeholder:text-slate-400"
+      />
+    </div>
+  );
   return (
     <>
+      {/* Menu do celular aberto: a página escurece por trás e um toque fora fecha. */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[2px] md:hidden"
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Mesmo tom do topo do degradê, translúcido: sem corte entre cabeçalho e página. */}
       <header className="sticky top-0 z-50 bg-[rgb(var(--nc-top)/0.72)] backdrop-blur-md backdrop-saturate-150">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -288,7 +347,11 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                 aria-label="Menu"
                 aria-expanded={isMobileMenuOpen}
               >
-                <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+                {isMobileMenuOpen ? (
+                  <X className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+                ) : (
+                  <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+                )}
               </button>
             </div>
           </div>
@@ -296,129 +359,81 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
 
         <AnimatePresence>
           {isMobileMenuOpen && (
+            // Cartão flutuante sobre a página (antes era uma faixa da mesma cor do fundo, sem limite visível).
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              initial={{ opacity: 0, y: -8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              style={{ transformOrigin: 'top right' }}
+              className="md:hidden absolute inset-x-3 top-full mt-1 max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain rounded-3xl border border-slate-200/80 bg-white p-3 shadow-2xl shadow-slate-900/15 dark:border-white/10 dark:bg-[rgb(var(--nc-top))] dark:shadow-black/50"
             >
-              <div className="px-4 py-3 space-y-3">
-                <AppearanceSettings />
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={t.common.search}
-                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </div>
-
-                {isAuthenticated ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="h-10 w-10 rounded-lg overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-sm flex-shrink-0">
-                        {user?.avatar_url ? (
-                          <img
-                            src={user.avatar_url}
-                            alt={user.name || 'User'}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-white font-bold text-sm">
-                            {user?.name
-                              ?.split(' ')
-                              .map(n => n[0])
-                              .slice(0, 2)
-                              .join('')
-                              .toUpperCase() || '?'}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                          {user?.name}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {user?.email}
-                        </p>
-                      </div>
+              {isAuthenticated ? (
+                <div className="space-y-3">
+                  {/* Quem está logado, com atalho para o perfil */}
+                  <button
+                    onClick={() => closeMenuAnd(onProfileClick)}
+                    className="flex w-full items-center gap-3 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 p-3 text-left text-white shadow-sm"
+                  >
+                    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/20 text-sm font-bold">
+                      {user?.avatar_url ? (
+                        <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        user?.name
+                          ?.split(' ')
+                          .map((n) => n[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase() || '?'
+                      )}
                     </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{user?.name}</p>
+                      <p className="truncate text-xs text-emerald-50/90">{user?.email}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-white/80" />
+                  </button>
 
-                    {!isNutritionistUser && (
-                      <button
-                        onClick={() => {
-                          navigate('/nutricionistas');
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
-                      >
-                        <Users className="w-4 h-4" />
-                        <span className="text-sm font-medium">{t.buttons.findNutritionists}</span>
-                      </button>
-                    )}
+                  {searchBox}
 
-                    {hasAIAccess && (
-                      <button
-                        onClick={() => {
-                          onAIMentoringClick();
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-colors relative text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                      >
-                        <Bot className="w-4 h-4" />
-                        <span className="text-sm font-medium">{t.labels.aiMentoring}</span>
-                      </button>
-                    )}
+                  <nav className="overflow-hidden rounded-2xl border border-slate-100 dark:border-white/10">
+                    {homeItem && menuRow(homeItem.icon, homeItem.label, () => closeMenuAnd(() => navigate(homeItem.to)))}
+                    {!isNutritionistUser && menuRow(Users, t.buttons.findNutritionists, () => closeMenuAnd(() => navigate('/nutricionistas')))}
+                    {hasAIAccess && menuRow(Bot, t.labels.aiMentoring, () => closeMenuAnd(onAIMentoringClick))}
+                    {isAdmin && menuRow(ShieldCheck, 'Admin', () => closeMenuAnd(() => navigate('/admin')))}
+                    {menuRow(UserIcon, t.common.profile, () => closeMenuAnd(onProfileClick))}
+                  </nav>
 
-                    <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+                  <AppearanceSettings />
 
+                  <button
+                    onClick={() => closeMenuAnd(signOut)}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 px-4 py-2.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:border-rose-400/30 dark:text-rose-300 dark:hover:bg-rose-500/10"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    {t.common.signOut}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {searchBox}
+                  <AppearanceSettings />
+                  <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={() => {
-                        onProfileClick();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <UserIcon className="w-4 h-4" />
-                      <span className="text-sm font-medium">{t.common.profile}</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        signOut();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span className="text-sm font-medium">{t.common.signOut}</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => {
-                        handleOpenAuth('signin');
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="w-full px-4 py-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+                      onClick={() => closeMenuAnd(() => handleOpenAuth('signin'))}
+                      className="rounded-2xl border border-emerald-200 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 dark:border-emerald-400/30 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                     >
                       {t.common.signIn}
                     </button>
                     <button
-                      onClick={() => {
-                        handleOpenAuth('signup');
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="w-full px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                      onClick={() => closeMenuAnd(() => handleOpenAuth('signup'))}
+                      className="rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
                     >
                       {t.common.signUp}
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
