@@ -4,7 +4,7 @@ import { useSettingsStore } from '../store/settings';
 
 // Política de privacidade (LGPD). Texto direto, sem juridiquês; revisar com um advogado
 // antes de grandes mudanças no produto (novos dados coletados, novos parceiros).
-const UPDATED = '24/10/2026';
+const UPDATED = '23/10/2026';
 const CONTACT = 'pehenriqueoliveirarosa@gmail.com';
 
 interface Section {

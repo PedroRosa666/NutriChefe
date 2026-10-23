@@ -213,7 +213,7 @@ export function NutritionistsPage() {
 
         {!loading && !failed && nutritionists.length > 0 && (
           <div className="mt-4 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
-            <span>{n.count.replace('{n}', String(visible.length))}</span>
+            <span>{visible.length === 1 ? n.countOne : n.count.replace('{n}', String(visible.length))}</span>
             {filtering && (
               <button type="button" onClick={clearFilters} className="font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
                 {n.clearFilters}
