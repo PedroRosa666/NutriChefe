@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Trash2, CalendarDays, Plus, XCircle, Loader2, Pencil, Check, X } from 'lucide-react';
 import { WeeklyCaloriesChart } from './WeeklyCaloriesChart';
 import { DIARY_MEALS, mealForTime, useNutritionTrackingStore, type DiaryMeal, type NutritionLogEntry } from '../../store/nutrition-tracking';
-import { useNutritionGoalsStore } from '../../store/nutrition-goals';
+import { GOAL_KEYS, useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useRecipeIndex } from '../../hooks/useRecipeIndex';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -13,15 +13,9 @@ import { cn } from '../../lib/utils';
 import { fmtNum, appLocale } from '../../lib/format';
 import { confirmDialog } from '../../store/confirm';
 import { useCanUseAI } from '../../store/premium';
+import { useToday } from '../../hooks/useToday';
 
 type AddMode = 'recipe' | 'food' | 'custom';
-
-const toISODate = (d: Date) => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 const clampPct = (value: number) => {
   if (!Number.isFinite(value)) return 0;
@@ -69,11 +63,18 @@ export function NutritionDiary() {
   const t = useTranslation();
   const { recipes } = useRecipeIndex();
   const { showToast } = useToastStore();
-  const { goals } = useNutritionGoalsStore();
+  const { goals, activeGoals } = useNutritionGoalsStore();
   const { entries: allEntries, addRecipeToLog, updateEntry, removeEntry, clearDate, getTotalsForDate } =
     useNutritionTrackingStore();
 
-  const [date, setDate] = React.useState(() => toISODate(new Date()));
+  const today = useToday();
+  const [date, setDate] = React.useState(today);
+  // Virou o dia com o diário aberto em "hoje": vai para o novo dia (um dia passado escolhido fica).
+  const [shownToday, setShownToday] = React.useState(today);
+  if (shownToday !== today) {
+    setShownToday(today);
+    if (date === shownToday) setDate(today);
+  }
   const [quickRecipeId, setQuickRecipeId] = React.useState('');
   // Texto livre: permite digitar "0,5" sem o campo pular para 1 no meio da digitação.
   const [servings, setServings] = React.useState('1');
@@ -95,7 +96,7 @@ export function NutritionDiary() {
   useEffect(() => {
     if (wantsAdd) addRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [wantsAdd]);
-  const isToday = date === toISODate(new Date());
+  const isToday = date === today;
 
   const entries = useMemo(() => allEntries.filter((e) => e.date === date), [allEntries, date]);
   // `allEntries` força o recálculo quando o diário muda (o getter lê o estado direto).
@@ -273,7 +274,7 @@ export function NutritionDiary() {
         <input
           type="date"
           value={date}
-          max={toISODate(new Date())}
+          max={today}
           onChange={(e) => e.target.value && setDate(e.target.value)}
           aria-label={t.profileUi.diaryDate}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
@@ -375,18 +376,20 @@ export function NutritionDiary() {
 
       {/* Progress */}
       <div className="space-y-4">
-        <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
-          {isToday
-            ? t.profile.todayProgress
-            : t.profileUi.progressOn.replace('{date}', new Date(`${date}T12:00:00`).toLocaleDateString(appLocale(), { day: '2-digit', month: 'short' }))}
-        </h4>
+        <div>
+          <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+            {isToday
+              ? t.profile.todayProgress
+              : t.profileUi.progressOn.replace('{date}', new Date(`${date}T12:00:00`).toLocaleDateString(appLocale(), { day: '2-digit', month: 'short' }))}
+          </h4>
+          {isToday && <p className="text-xs text-slate-500 dark:text-slate-400">{t.profile.todayResets}</p>}
+        </div>
 
+        {/* As mesmas metas do painel: só as escolhidas em "Metas para acompanhar" (nenhuma escolhida: todas). */}
         <div className="space-y-3">
-          <ProgressRow label={t.profile.nutritionGoalsnames.calories} value={totals.calories} goal={goals.calories} unit="kcal" />
-          <ProgressRow label={t.profile.nutritionGoalsnames.protein} value={totals.protein} goal={goals.protein} unit="g" />
-          <ProgressRow label={t.profile.nutritionGoalsnames.carbs} value={totals.carbs} goal={goals.carbs} unit="g" />
-          <ProgressRow label={t.profile.nutritionGoalsnames.fat} value={totals.fat} goal={goals.fat} unit="g" />
-          <ProgressRow label={t.profile.nutritionGoalsnames.fiber} value={totals.fiber} goal={goals.fiber} unit="g" />
+          {(activeGoals.length ? GOAL_KEYS.filter((key) => activeGoals.includes(key)) : GOAL_KEYS).map((key) => (
+            <ProgressRow key={key} label={t.profile.nutritionGoalsnames[key]} value={totals[key]} goal={goals[key]} unit={key === 'calories' ? 'kcal' : 'g'} />
+          ))}
         </div>
       </div>
 

@@ -25,6 +25,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { cn } from '../../lib/utils';
 import { fmtNum, appLocale } from '../../lib/format';
 import { confirmDialog } from '../../store/confirm';
+import { useToday } from '../../hooks/useToday';
 
 interface PlansSectionProps {
   clientId: string;
@@ -88,7 +89,15 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editorInUrl]);
-  const [day, setDay] = useState(() => planDayOf(new Date()));
+  const today = useToday();
+  const todayIndex = planDayOf(new Date(`${today}T12:00:00`));
+  const [day, setDay] = useState(todayIndex);
+  // Virou o dia com o plano aberto em "hoje": acompanha o novo dia.
+  const [shownToday, setShownToday] = useState(todayIndex);
+  if (shownToday !== todayIndex) {
+    setShownToday(todayIndex);
+    if (day === shownToday) setDay(todayIndex);
+  }
   const [swaps, setSwaps] = useState<SwapRequest[]>([]);
   const [swapsKey, setSwapsKey] = useState(0);
   const [swapping, setSwapping] = useState<{ item: MealPlanItem; label: string } | null>(null);
@@ -132,12 +141,11 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     listChecks(clientId, toISODate(since))
       .then(setChecks)
       .catch((error) => console.error('Error loading meal checks:', error));
-  }, [clientId, mode, planSignal]);
+  }, [clientId, mode, planSignal, today]);
 
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const plan = plans.find((p) => p.id === selectedId) ?? null;
   const canEdit = !!plan && plan.created_by === user?.id;
-  const todayIndex = planDayOf(new Date());
   // O paciente que segue o plano do nutricionista não precisa de "Novo plano" no topo (ficava competindo).
   const followsNutritionist = mode === 'client' && plans.some((p) => p.created_by !== user?.id);
 
@@ -285,7 +293,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
 
   const dayItems = plan.items.filter((i) => i.day === day);
   // A data real do dia escolhido: hoje ou um dia passado desta semana (nunca futuro).
-  const dayDate = dateForPlanDay(day);
+  const dayDate = dateForPlanDay(day, new Date(`${today}T12:00:00`));
 
   const itemName = (item: MealPlanItem) =>
     item.food_id ? item.food?.name ?? '' : (item.recipe_id && byId.get(item.recipe_id)?.title) || '';

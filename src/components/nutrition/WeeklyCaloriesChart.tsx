@@ -4,6 +4,7 @@ import { sumEntries, toISODate, type NutritionLogEntry } from '../../store/nutri
 import { useTranslation } from '../../hooks/useTranslation';
 import { useSettingsStore } from '../../store/settings';
 import { cn } from '../../lib/utils';
+import { useToday } from '../../hooks/useToday';
 
 interface WeeklyCaloriesChartProps {
   entries: NutritionLogEntry[];
@@ -16,11 +17,12 @@ interface WeeklyCaloriesChartProps {
 export function WeeklyCaloriesChart({ entries, goal, selectedDate, onSelectDate }: WeeklyCaloriesChartProps) {
   const t = useTranslation();
   const { language } = useSettingsStore();
+  const today = useToday();
 
   const days = useMemo(() => {
     const result: { date: string; label: string; calories: number }[] = [];
     for (let i = 6; i >= 0; i--) {
-      const d = new Date();
+      const d = new Date(`${today}T12:00:00`);
       d.setDate(d.getDate() - i);
       const date = toISODate(d);
       result.push({
@@ -30,7 +32,7 @@ export function WeeklyCaloriesChart({ entries, goal, selectedDate, onSelectDate 
       });
     }
     return result;
-  }, [entries, language]);
+  }, [entries, language, today]);
 
   const max = Math.max(goal, ...days.map((d) => d.calories), 1);
   const logged = days.filter((d) => d.calories > 0);

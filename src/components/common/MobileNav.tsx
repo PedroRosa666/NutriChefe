@@ -21,7 +21,8 @@ export function MobileNav() {
               to={to}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'relative flex flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors',
+                // Altura fixa (--mobile-nav-h): o espaço do fim da página e as barras de salvar encostam nela sem fresta.
+                'relative flex h-[var(--mobile-nav-h)] flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors',
                 active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'
               )}
             >

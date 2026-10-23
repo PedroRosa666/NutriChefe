@@ -10,6 +10,8 @@ import { getMyProgress } from '../../services/progress';
 import { listPlans } from '../../services/care';
 import { useAuthStore } from '../../store/auth';
 import { cn } from '../../lib/utils';
+import { appLocale } from '../../lib/format';
+import { useToday } from '../../hooks/useToday';
 
 /** Sequência, conquistas (todos) e desafios da semana (Premium) no painel do cliente. */
 export function ProgressPanel() {
@@ -19,6 +21,8 @@ export function ProgressPanel() {
   const goal = useHealthProfileStore((s) => s.profile.goal);
   // Recalcula quando o diário muda (novo registro no mesmo dia).
   const entriesCount = useNutritionTrackingStore((s) => s.entries.length);
+  // Na virada do dia (e da semana, na segunda) a sequência e os desafios mudam.
+  const today = useToday();
   const premium = useOwnPremium();
   const [progress, setProgress] = useState<Progress | null>(null);
   const [hasPlan, setHasPlan] = useState(false);
@@ -28,7 +32,7 @@ export function ProgressPanel() {
     getMyProgress()
       .then(setProgress)
       .catch((error) => console.error('Error loading progress:', error));
-  }, [entriesCount]);
+  }, [entriesCount, today]);
 
   useEffect(() => {
     if (!userId) return;
@@ -46,6 +50,12 @@ export function ProgressPanel() {
   const visible = showAll ? ordered : ordered.slice(0, 6);
   const challenges = weeklyChallenges(progress, hasPlan);
   const allDone = challenges.every((ch) => ch.done);
+  // Período dos desafios (segunda a domingo), para não parecerem metas do dia.
+  const weekStart = progress.week.start ? new Date(`${progress.week.start}T12:00:00`) : null;
+  const weekEnd = weekStart ? new Date(weekStart.getTime() + 6 * 86400000) : null;
+  const short = (d: Date) => d.toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit' });
+  // Dias que ainda contam, com hoje (domingo = 1: último dia).
+  const daysLeft = weekEnd ? Math.round((weekEnd.getTime() - new Date(`${today}T12:00:00`).getTime()) / 86400000) + 1 : null;
 
   return (
     <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -109,7 +119,16 @@ export function ProgressPanel() {
           <Target className="h-4 w-4 text-amber-500" />
           {c.challengesTitle}
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400">{c.challengesHint}</p>
+        {weekStart && weekEnd && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {c.challengesHint.replace('{from}', short(weekStart)).replace('{to}', short(weekEnd))}
+            {daysLeft !== null && daysLeft >= 1 && (
+              <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">
+                · {daysLeft === 1 ? c.challengesLastDay : c.challengesDaysLeft.replace('{n}', String(daysLeft))}
+              </span>
+            )}
+          </p>
+        )}
 
         <div className="relative mt-3">
           <ul className={cn('space-y-2.5', !premium && 'pointer-events-none select-none blur-[3px]')} aria-hidden={!premium}>

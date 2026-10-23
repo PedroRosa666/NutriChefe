@@ -633,7 +633,7 @@ export function MealPlanEditor({
         })}
       </div>
 
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 -mb-4 flex items-center justify-end gap-2 rounded-b-2xl border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-5 sm:-mb-5 sm:px-5 md:bottom-0 dark:border-slate-800 dark:bg-slate-900/95">
+      <div className="sticky bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))] z-10 -mx-4 -mb-4 flex items-center justify-end gap-2 rounded-b-2xl border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-5 sm:-mb-5 sm:px-5 md:bottom-0 dark:border-slate-800 dark:bg-slate-900/95">
         {dirty && <span className="mr-auto text-xs font-medium text-amber-600 dark:text-amber-400">{t.plan.unsaved}</span>}
         <button
           type="button"

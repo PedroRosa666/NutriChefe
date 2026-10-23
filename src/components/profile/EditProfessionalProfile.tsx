@@ -218,9 +218,16 @@ export function EditProfessionalProfile() {
     <form onSubmit={handleSubmit} className="space-y-8 relative">
 
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          {t.nutritionists.editProfile.professionalInfo}
-        </h3>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            {t.nutritionists.editProfile.professionalInfo}
+          </h3>
+          {userId && (
+            <Link to={`/nutricionista/${userId}`} className="rounded-lg px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20">
+              {t.profile.viewPublicProfile}
+            </Link>
+          )}
+        </div>
 
         <div className="space-y-4">
           <div>
@@ -508,33 +515,33 @@ export function EditProfessionalProfile() {
         </div>
       </div>
 
-      {/* Barra fixa embaixo: salvar fica à vista no formulário longo (acima da barra de navegação no celular). */}
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 -mb-4 flex flex-wrap items-center justify-between gap-2 rounded-b-2xl border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:-mb-6 sm:px-6 md:bottom-0 dark:border-gray-700 dark:bg-slate-900/95">
-        <div className="flex items-center gap-1">
-          {/* Desfaz o que não foi salvo (antes "Cancelar" voltava de página e perdia tudo sem aviso). */}
-          <button
-            type="button"
-            disabled={!hasChanges}
-            onClick={async () => {
-              if (userId && (await confirmDialog(t.plan.discardConfirmGeneric))) loadProfile(userId);
-            }}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:opacity-40 dark:text-gray-300 dark:hover:bg-slate-800 dark:hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {t.profileUi.discardChanges}
-          </button>
-          {userId && (
-            <Link to={`/nutricionista/${userId}`} className="rounded-lg px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20">
-              {t.profile.viewPublicProfile}
-            </Link>
-          )}
-        </div>
+      {/* Salvar no fim do formulário. Com alterações por salvar, a barra fica presa embaixo (acima da
+          barra de navegação no celular); sem alterações não cobre o formulário. Uma linha só no celular. */}
+      <div
+        className={cn(
+          '-mx-4 -mb-4 flex items-center justify-between gap-2 rounded-b-2xl border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:-mb-6 sm:px-6 dark:border-gray-700 dark:bg-slate-900/95',
+          hasChanges && 'sticky bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))] z-10 md:bottom-0'
+        )}
+      >
+        {/* Desfaz o que não foi salvo (antes "Cancelar" voltava de página e perdia tudo sem aviso). */}
+        <button
+          type="button"
+          disabled={!hasChanges}
+          aria-label={t.profileUi.discardChanges}
+          onClick={async () => {
+            if (userId && (await confirmDialog(t.plan.discardConfirmGeneric))) loadProfile(userId);
+          }}
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:opacity-40 dark:text-gray-300 dark:hover:bg-slate-800 dark:hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="hidden sm:inline">{t.profileUi.discardChanges}</span>
+        </button>
 
         <button
           type="submit"
           disabled={loading || !hasChanges}
           className={cn(
-            "flex items-center gap-2 px-6 py-3 font-medium rounded-lg transition-colors",
+            "flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 font-medium rounded-lg transition-colors",
             loading || !hasChanges
               ? "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
               : "bg-emerald-600 hover:bg-emerald-700 text-white"

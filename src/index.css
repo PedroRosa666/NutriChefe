@@ -5,6 +5,8 @@
 @layer base {
   /* Paleta de fundos (usada pelo tailwind.config.js). Valores em "R G B". */
   :root {
+    /* Altura da barra de navegação do celular (MobileNav); o fim das páginas e as barras de salvar usam a mesma. */
+    --mobile-nav-h: 4rem;
     --nc-page: 241 239 234;        /* fundo da página: linho claro */
     --nc-surface: 250 249 246;     /* cartões e painéis: off-white */
     --nc-muted: 233 230 223;       /* áreas secundárias, chips, hover */

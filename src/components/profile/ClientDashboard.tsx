@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/auth';
 import { useFavoriteRecipes } from '../../hooks/useFavoriteRecipes';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { toISODate, sumEntries, useNutritionTrackingStore } from '../../store/nutrition-tracking';
+import { useToday } from '../../hooks/useToday';
 import { useHealthProfileStore } from '../../store/health-profile';
 import { useSubscriptionStore } from '../../store/subscription';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -40,14 +41,14 @@ export function ClientDashboard() {
       .catch(() => setHasNutritionist(null));
   }, [user]);
 
-  const today = toISODate(new Date());
+  const today = useToday();
   const todayTotals = useMemo(() => sumEntries(entries.filter((e) => e.date === today)), [entries, today]);
   const daysLogged30 = useMemo(() => {
-    const since = new Date();
+    const since = new Date(`${today}T12:00:00`);
     since.setDate(since.getDate() - 29);
     const min = toISODate(since);
     return new Set(entries.filter((e) => e.date >= min).map((e) => e.date)).size;
-  }, [entries]);
+  }, [entries, today]);
 
   if (!user || user.type !== 'Client') return null;
 
@@ -161,6 +162,7 @@ export function ClientDashboard() {
               <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {t.profile.todayProgress}
               </h3>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{t.profile.todayResets}</p>
               {setBy && (
                 <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
                   <Stethoscope className="h-3.5 w-3.5" />

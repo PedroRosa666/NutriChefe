@@ -127,7 +127,7 @@ export function RootLayout() {
           variants={pageFade}
           initial="initial"
           animate="animate"
-          className={userId ? 'pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0' : undefined}
+          className={userId ? 'pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))] md:pb-0' : undefined}
         >
           <Outlet />
         </motion.div>
