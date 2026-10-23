@@ -190,22 +190,28 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
       <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-500" />
     </button>
   );
-  const searchBox = (
-    <div className="relative">
-      <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-      <input
-        type="text"
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        onKeyDown={(e) => {
-          // Enter leva às receitas com a busca aplicada.
-          if (e.key === 'Enter') closeMenuAnd(() => location.pathname !== '/' && navigate('/'));
-        }}
-        placeholder={t.common.search}
-        className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none focus:border-transparent focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-black/20 dark:text-white dark:placeholder:text-slate-400"
-      />
-    </div>
-  );
+
+  // Busca do celular (lupa no topo). Começa aberta quando já há busca, ou quando outra página
+  // mandou para cá com ?buscar=1 (a lupa do cabeçalho das outras páginas).
+  const [isSearchOpen, setIsSearchOpen] = useState(() => !!useFiltersStore.getState().searchQuery);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const wantsSearch = new URLSearchParams(location.search).has('buscar');
+  useEffect(() => {
+    if (!wantsSearch) return;
+    setIsSearchOpen(true);
+    navigate('/', { replace: true });
+  }, [wantsSearch, navigate]);
+  useEffect(() => {
+    if (isSearchOpen) searchInputRef.current?.focus({ preventScroll: true });
+  }, [isSearchOpen]);
+  const changeSearch = (value: string) => {
+    // Na primeira letra, desce até a lista: as receitas compatíveis aparecem enquanto digita.
+    if (!searchQuery && value) {
+      if (location.pathname !== '/') navigate('/');
+      requestAnimationFrame(() => document.getElementById('lista-receitas')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+    setSearchQuery(value);
+  };
   return (
     <>
       {/* Menu do celular aberto: a página escurece por trás e um toque fora fecha. */}
@@ -256,7 +262,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => changeSearch(e.target.value)}
                   placeholder={t.common.search}
                   className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
@@ -338,11 +344,30 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
               )}
             </div>
 
-            {/* No celular, tema e idioma ficam dentro do menu: no topo, só o sino e o menu. */}
+            {/* No celular: busca, sino e menu (tema e idioma ficam dentro do menu). */}
             <div className="md:hidden flex items-center gap-1">
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsSearchOpen((open) => !open);
+                }}
+                className={cn(
+                  'p-2 rounded-lg transition-colors',
+                  isSearchOpen || searchQuery
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                )}
+                aria-label={t.common.search}
+                aria-expanded={isSearchOpen}
+              >
+                <Search className="h-5 w-5" />
+              </button>
               <NotificationBell />
-              <button 
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              <button
+                onClick={() => {
+                  setIsSearchOpen(false);
+                  setIsMobileMenuOpen(!isMobileMenuOpen);
+                }}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                 aria-label="Menu"
                 aria-expanded={isMobileMenuOpen}
@@ -356,6 +381,51 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
             </div>
           </div>
         </div>
+
+        {/* Busca do celular: abre pela lupa, fica presa no topo e filtra as receitas enquanto digita. */}
+        <AnimatePresence initial={false}>
+          {isSearchOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="overflow-hidden md:hidden"
+            >
+              <div className="px-4 pb-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    enterKeyHint="search"
+                    value={searchQuery}
+                    onChange={(e) => changeSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.currentTarget.blur();
+                      if (e.key === 'Escape') setIsSearchOpen(false);
+                    }}
+                    placeholder={t.common.search}
+                    className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-10 text-sm text-slate-900 shadow-sm outline-none focus:border-transparent focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-[rgb(var(--nc-top))] dark:text-white dark:placeholder:text-slate-400 [&::-webkit-search-cancel-button]:hidden"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        searchInputRef.current?.focus();
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-white/10"
+                      aria-label={t.profileUi.clearSearch}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {isMobileMenuOpen && (
@@ -394,8 +464,6 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                     <ChevronRight className="h-4 w-4 flex-shrink-0 text-white/80" />
                   </button>
 
-                  {searchBox}
-
                   <nav className="overflow-hidden rounded-2xl border border-slate-100 dark:border-white/10">
                     {homeItem && menuRow(homeItem.icon, homeItem.label, () => closeMenuAnd(() => navigate(homeItem.to)))}
                     {!isNutritionistUser && menuRow(Users, t.buttons.findNutritionists, () => closeMenuAnd(() => navigate('/nutricionistas')))}
@@ -416,7 +484,6 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {searchBox}
                   <AppearanceSettings />
                   <div className="grid grid-cols-2 gap-2">
                     <button

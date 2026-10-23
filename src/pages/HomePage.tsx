@@ -157,6 +157,8 @@ export function HomePage() {
 
           <ExclusiveShelf />
 
+          {/* Âncora da busca: ao começar a digitar, a página desce até aqui (abaixo do cabeçalho fixo). */}
+          <div id="lista-receitas" className="scroll-mt-32" />
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }, (_, i) => <RecipeCardSkeleton key={i} />)}

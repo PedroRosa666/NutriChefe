@@ -1395,6 +1395,7 @@ export const translations = {
       stepRecipe: 'Publish a recipe',
       stepRecipeHint: 'Your recipes appear on your public profile and can go into plans.',
       adminBadge: 'Administrator',
+      clearSearch: 'Clear search',
     },
     adminPanel: {
       tabs: { overview: 'Overview', crn: 'CRN', users: 'Users', plans: 'Plans', errors: 'Errors', moderation: 'Moderation', announcements: 'Announcements', lab: 'Lab' },
@@ -3149,6 +3150,7 @@ export const translations = {
       stepRecipe: 'Publicar uma receita',
       stepRecipeHint: 'Suas receitas aparecem no seu perfil público e podem entrar nos planos.',
       adminBadge: 'Administrador',
+      clearSearch: 'Limpar busca',
     },
     adminPanel: {
       tabs: { overview: 'Visão geral', crn: 'CRN', users: 'Usuários', plans: 'Planos', errors: 'Erros', moderation: 'Moderação', announcements: 'Comunicados', lab: 'Laboratório' },

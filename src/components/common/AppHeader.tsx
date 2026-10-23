@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Bot, ShieldCheck } from 'lucide-react';
+import { Bot, Search, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useCanUseAI, usePremiumStore } from '../../store/premium';
 import { useAppNav, useAppRole } from '../../hooks/useAppNav';
@@ -69,6 +69,10 @@ export function AppHeader() {
               <ShieldCheck className="h-5 w-5" />
             </Link>
           )}
+          {/* Lupa: abre a busca de receitas na home (que filtra enquanto digita). */}
+          <Link to="/?buscar=1" className={iconButton} title={t.common.search} aria-label={t.common.search}>
+            <Search className="h-5 w-5" />
+          </Link>
           <div className="hidden md:block">
             <ThemeSwitch />
           </div>
