@@ -1,7 +1,7 @@
 // Cardápio semanal automático a partir do catálogo: respeita alergias e
 // preferências do perfil de saúde e ajusta as porções para chegar perto da
 // meta diária de calorias. Roda no navegador, sem custo de IA.
-import { normalizeText, withoutAllergens, type SearchableRecipe } from '../../supabase/functions/_shared/recipe-search';
+import { blockedTerms, normalizeText, withoutAllergens, type SearchableRecipe } from '../../supabase/functions/_shared/recipe-search';
 import type { Recipe } from '../types/recipe';
 import type { MealPlanItem, MealSlot } from '../services/care';
 import { MEAL_SLOTS } from '../services/care';
@@ -18,12 +18,12 @@ const SLOT_WORDS: Record<MealSlot, string[]> = {
 // Pratos principais: o que não é café da manhã nem lanche.
 const MAIN_EXCLUDE = [...SLOT_WORDS.breakfast, ...SLOT_WORDS.snack].filter((w) => !['omelete', 'pao'].includes(w));
 
-const PREF_CATEGORIES: Record<string, string[]> = {
-  vegan: ['vegan'],
-  vegetarian: ['vegan', 'vegetarian'],
-  glutenFree: ['glutenFree'],
-  lowCarb: ['lowCarb'],
-  highProtein: ['highProtein'],
+// Dietas (vegana, vegetariana, sem glúten, sem lactose) são restrições: nunca são soltas e
+// valem pelos ingredientes (DIET_RESTRICTIONS). Estas são só preferências: entram quando
+// há variedade e, se não houver, o resultado diz que foram deixadas de lado.
+const FLEXIBLE_PREFERENCES: Record<string, (r: Recipe) => boolean> = {
+  lowCarb: (r) => r.category === 'lowCarb',
+  highProtein: (r) => r.category === 'highProtein',
 };
 
 const toSearchable = (r: Recipe): SearchableRecipe & { source: Recipe } => ({
@@ -73,24 +73,36 @@ export interface GeneratorOptions {
   seed?: number;
 }
 
-export function generateWeeklyPlan({
+export interface GeneratedPlan {
+  items: MealPlanItem[];
+  /** Preferências flexíveis que ficaram de fora por falta de receitas (ex.: 'lowCarb'). */
+  relaxed: string[];
+}
+
+export function generateWeeklyPlan(options: GeneratorOptions): MealPlanItem[] {
+  return generateWeeklyPlanDetailed(options).items;
+}
+
+export function generateWeeklyPlanDetailed({
   recipes,
   dailyCalories,
   allergies,
   preferences,
   slots = MEAL_SLOTS,
   seed = Date.now(),
-}: GeneratorOptions): MealPlanItem[] {
-  let pool = withoutAllergens(recipes.map(toSearchable), allergies).map((r) => r.source);
+}: GeneratorOptions): GeneratedPlan {
+  // Alergias e dietas: obrigatórias. Se faltar variedade, as receitas que servem se repetem.
+  let pool = withoutAllergens(recipes.map(toSearchable), blockedTerms(allergies, preferences)).map((r) => r.source);
 
-  // Preferência só filtra se sobrar variedade suficiente.
+  const relaxed: string[] = [];
   for (const pref of preferences) {
-    const cats = PREF_CATEGORIES[pref];
-    if (!cats) continue;
-    const filtered = pool.filter((r) => cats.includes(r.category));
+    const fits = FLEXIBLE_PREFERENCES[pref];
+    if (!fits) continue;
+    const filtered = pool.filter(fits);
     if (filtered.length >= 4) pool = filtered;
+    else relaxed.push(pref);
   }
-  if (!pool.length) return [];
+  if (!pool.length) return { items: [], relaxed };
 
   // Embaralha de forma reproduzível pela semente.
   let s = seed % 2147483647 || 1;
@@ -125,5 +137,5 @@ export function generateWeeklyPlan({
     }
   }
 
-  return items.sort((a, b) => a.day - b.day || MEAL_SLOTS.indexOf(a.meal) - MEAL_SLOTS.indexOf(b.meal));
+  return { items: items.sort((a, b) => a.day - b.day || MEAL_SLOTS.indexOf(a.meal) - MEAL_SLOTS.indexOf(b.meal)), relaxed };
 }

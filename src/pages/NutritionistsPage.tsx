@@ -6,9 +6,9 @@ import { supabase } from '../lib/supabase';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
 import { getSpecializationTranslation } from '../lib/i18n/translations';
-import { normalizeText } from '../../supabase/functions/_shared/recipe-search';
 import { useSettingsStore } from '../store/settings';
 import { SMOOTH } from '../lib/motion';
+import { matchesSearch } from '../lib/search';
 
 interface NutritionistProfile {
   id: string;
@@ -124,15 +124,16 @@ export function NutritionistsPage() {
   }, [nutritionists]);
 
   const visible = useMemo(() => {
-    const q = normalizeText(query.trim());
     return nutritionists.filter((p) => {
       if (onlyAccepting && !p.accepting_new_clients) return false;
       if (specialty && !p.specializations.includes(specialty)) return false;
-      if (!q) return true;
-      const haystack = normalizeText(
-        [p.full_name, p.professional_bio, p.clinic_address, ...p.specializations.map((s) => getSpecializationTranslation(s, language))].join(' ')
+      return matchesSearch(
+        query,
+        p.full_name,
+        p.professional_bio,
+        p.clinic_address,
+        p.specializations.map((s) => getSpecializationTranslation(s, language))
       );
-      return haystack.includes(q);
     });
   }, [nutritionists, query, onlyAccepting, specialty, language]);
 

@@ -70,8 +70,8 @@ export const translations = {
       subtitle:
         'Find and share nutritious recipes that match your dietary preferences.',
       createRecipe: 'Create Recipe',
-      noRecipes:
-        'No recipes found. Try adjusting your filters, or log in to see more.',
+      noRecipes: 'No recipes found. Try other words or clear the filters.',
+      noRecipesGuest: 'No recipes found. Try other words, clear the filters or log in to see more.',
     },
 
     profile: {
@@ -366,6 +366,10 @@ export const translations = {
       reviewLabel: 'Rating:',
       editReview: 'Edit review',
       deleteReview: 'Delete review',
+      chooseCategory: 'Choose a category',
+      categoryRequired: 'Choose the recipe category.',
+      dietConflict: 'The ingredients do not match the "{category}" category (for example: {found}). Save anyway?',
+      starsLabel: '{n} out of 5 stars',
     },
 
     aiChat: {
@@ -780,6 +784,7 @@ export const translations = {
       fillAiHint: 'Describe what you want and the AI builds the week',
       fillAiLockedHint: 'Part of Premium',
       closeTemplates: 'Close templates',
+      generatedRelaxed: 'Plan generated. There were not enough recipes for: {prefs}, so the plan does not follow it on every meal.',
     },
 
     shopping: {
@@ -1006,6 +1011,7 @@ export const translations = {
       deleteConfirm: 'Delete my account',
       deleted: 'Your account was deleted.',
       deleteActiveSubscription: 'You have an active Premium subscription. Cancel it in "Manage subscription" first, then delete the account.',
+      exportedPartial: 'File downloaded, but some parts could not be read now. Try again in a few minutes.',
     },
     device: {
       title: 'App on your phone',
@@ -1835,8 +1841,8 @@ export const translations = {
       subtitle:
         'Encontre e compartilhe receitas nutritivas que combinam com suas preferências alimentares.',
       createRecipe: 'Criar receita',
-      noRecipes:
-        'Nenhuma receita encontrada. Tente ajustar seus filtros ou faça login para ver mais.',
+      noRecipes: 'Nenhuma receita encontrada. Tente outras palavras ou limpe os filtros.',
+      noRecipesGuest: 'Nenhuma receita encontrada. Tente outras palavras, limpe os filtros ou entre para ver mais.',
     },
 
     profile: {
@@ -2132,6 +2138,10 @@ export const translations = {
       reviewLabel: 'Avaliação:',
       editReview: 'Editar avaliação',
       deleteReview: 'Excluir avaliação',
+      chooseCategory: 'Escolha uma categoria',
+      categoryRequired: 'Escolha a categoria da receita.',
+      dietConflict: 'Os ingredientes não combinam com a categoria "{category}" (por exemplo: {found}). Salvar mesmo assim?',
+      starsLabel: '{n} de 5 estrelas',
     },
 
     aiChat: {
@@ -2546,6 +2556,7 @@ export const translations = {
       fillAiHint: 'Diga o que quer e a IA monta a semana',
       fillAiLockedHint: 'Faz parte do Premium',
       closeTemplates: 'Fechar modelos',
+      generatedRelaxed: 'Plano gerado. Não há receitas suficientes de: {prefs}, então o plano não segue isso em todas as refeições.',
     },
 
     shopping: {
@@ -2772,6 +2783,7 @@ export const translations = {
       deleteConfirm: 'Excluir minha conta',
       deleted: 'Sua conta foi excluída.',
       deleteActiveSubscription: 'Você tem uma assinatura Premium ativa. Cancele em "Gerenciar assinatura" primeiro e depois exclua a conta.',
+      exportedPartial: 'Arquivo baixado, mas algumas partes não puderam ser lidas agora. Tente de novo em alguns minutos.',
     },
     device: {
       title: 'App no celular',

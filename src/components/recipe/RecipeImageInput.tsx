@@ -8,11 +8,13 @@ interface RecipeImageInputProps {
   value: string;
   onChange: (url: string) => void;
   inputClassName: string;
+  /** id do campo de endereço, para o rótulo do formulário apontar para ele. */
+  id?: string;
 }
 
 // Campo da foto da receita: aceita um link ou o envio de um arquivo,
 // que é comprimido e salvo no Storage do Supabase.
-export function RecipeImageInput({ value, onChange, inputClassName }: RecipeImageInputProps) {
+export function RecipeImageInput({ value, onChange, inputClassName, id }: RecipeImageInputProps) {
   const user = useAuthStore((state) => state.user);
   const t = useTranslation();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -37,6 +39,7 @@ export function RecipeImageInput({ value, onChange, inputClassName }: RecipeImag
     <div className="space-y-1.5">
       <div className="flex gap-2">
         <input
+          id={id}
           type="url"
           value={value}
           onChange={(e) => onChange(e.target.value)}

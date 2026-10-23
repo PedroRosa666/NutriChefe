@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { X, Plus, Minus } from 'lucide-react';
 import { useRecipesStore } from '../store/recipes';
 import { confirmDialog } from '../store/confirm';
@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/auth';
 import { RecipeImageInput } from './recipe/RecipeImageInput';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
+import { confirmDietCategory } from '../lib/recipe-diet';
 import type { Recipe } from '../types/recipe';
 
 type CategoryKey = keyof ReturnType<typeof useTranslation>['categories'];
@@ -21,7 +22,8 @@ const INITIAL_RECIPE: Partial<Recipe> = {
   image: '',
   prepTime: 30,
   difficulty: 'medium',
-  category: 'vegan',
+  // Sem categoria marcada: o autor escolhe (antes vinha "Vegana" e muita receita ficou com o rótulo errado).
+  category: '',
   ingredients: [''],
   instructions: [''],
   nutritionFacts: {
@@ -70,6 +72,7 @@ function FormSection({ title, description, children, className }: FormSectionPro
 }
 
 export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
+  const fid = useId();
   const { user } = useAuthStore();
   const { createRecipe } = useRecipesStore();
   const t = useTranslation();
@@ -90,6 +93,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (!(await confirmDietCategory(recipe, t))) return;
 
     setLoading(true);
     try {
@@ -198,8 +202,8 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
           <FormSection>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <div className="space-y-1.5">
-                <label className={labelClass}>{t.recipe.recipeTitle}</label>
-                <input
+                <label htmlFor={`${fid}-1`} className={labelClass}>{t.recipe.recipeTitle}</label>
+                <input id={`${fid}-1`}
                   type="text"
                   value={recipe.title}
                   onChange={(e) =>
@@ -211,8 +215,8 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
               </div>
 
               <div className="space-y-1.5">
-                <label className={labelClass}>{t.recipe.recipeImageURL}</label>
-                <RecipeImageInput
+                <label htmlFor={`${fid}-2`} className={labelClass}>{t.recipe.recipeImageURL}</label>
+                <RecipeImageInput id={`${fid}-2`}
                   value={recipe.image ?? ''}
                   onChange={(image) => setRecipe((prev) => ({ ...prev, image }))}
                   inputClassName={inputClass}
@@ -224,8 +228,8 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
           {/* Descrição */}
           <FormSection description={t.recipe.details}>
             <div className="space-y-1.5">
-              <label className={labelClass}>{t.recipe.recipeDescription}</label>
-              <textarea
+              <label htmlFor={`${fid}-3`} className={labelClass}>{t.recipe.recipeDescription}</label>
+              <textarea id={`${fid}-3`}
                 value={recipe.description}
                 onChange={(e) =>
                   setRecipe((prev) => ({ ...prev, description: e.target.value }))
@@ -241,10 +245,10 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
           <FormSection>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
               <div className="space-y-1.5">
-                <label className={labelClass}>
+                <label htmlFor={`${fid}-4`} className={labelClass}>
                   {t.recipe.prepTime} (min)
                 </label>
-                <input
+                <input id={`${fid}-4`}
                   type="number"
                   value={recipe.prepTime}
                   onChange={(e) =>
@@ -260,8 +264,8 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
               </div>
 
               <div className="space-y-1.5">
-                <label className={labelClass}>{t.recipe.difficulty}</label>
-                <select
+                <label htmlFor={`${fid}-5`} className={labelClass}>{t.recipe.difficulty}</label>
+                <select id={`${fid}-5`}
                   value={recipe.difficulty}
                   onChange={(e) =>
                     setRecipe((prev) => ({
@@ -285,8 +289,8 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
               </div>
 
               <div className="space-y-1.5">
-                <label className={labelClass}>{t.recipe.recipeCategory}</label>
-                <select
+                <label htmlFor={`${fid}-6`} className={labelClass}>{t.recipe.recipeCategory}</label>
+                <select id={`${fid}-6`}
                   value={recipe.category}
                   onChange={(e) =>
                     setRecipe((prev) => ({
@@ -297,6 +301,9 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
                   className={inputClass}
                   required
                 >
+                  <option value="" disabled>
+                    {t.recipe.chooseCategory}
+                  </option>
                   {translatedCategories.map((cat) => (
                     <option key={cat.value} value={cat.value}>
                       {cat.label}
@@ -337,12 +344,14 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
                     }
                     className={inputClass}
                     placeholder={t.recipe.example}
+                    aria-label={`${t.recipe.ingredients} ${index + 1}`}
                     required
                   />
                   {recipe.ingredients!.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeArrayItem('ingredients', index)}
+                      aria-label={t.common.remove}
                       className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white/80 px-2 text-slate-400 shadow-sm transition hover:bg-red-50 hover:text-red-500 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                     >
                       <Minus className="h-4 w-4" />
@@ -383,12 +392,14 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
                     }
                     className={inputClass}
                     placeholder={`${t.recipe.Step} ${index + 1}`}
+                    aria-label={`${t.recipe.Step} ${index + 1}`}
                     required
                   />
                   {recipe.instructions!.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeArrayItem('instructions', index)}
+                      aria-label={t.common.remove}
                       className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white/80 px-2 text-slate-400 shadow-sm transition hover:bg-red-50 hover:text-red-500 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                     >
                       <Minus className="h-4 w-4" />
@@ -407,10 +418,10 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
                   key as keyof typeof t.profile.nutritionGoalsnames;
                 return (
                   <div key={key} className="space-y-1.5">
-                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-200 sm:text-sm">
+                    <label htmlFor={`${fid}-7-${key}`} className="block text-xs font-medium text-slate-600 dark:text-slate-200 sm:text-sm">
                       {t.profile.nutritionGoalsnames[nutritionKey]}
                     </label>
-                    <input
+                    <input id={`${fid}-7-${key}`}
                       type="number"
                       step="0.01"
                       min="0"

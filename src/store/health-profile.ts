@@ -70,7 +70,8 @@ export const useHealthProfileStore = create<HealthProfileState>()((set, get) => 
         .from('weight_logs')
         .select('id, logged_on, weight_kg')
         .eq('user_id', userId)
-        .order('logged_on', { ascending: true })
+        // Os 180 mais recentes (crescente com o limite pegava os 180 mais antigos).
+        .order('logged_on', { ascending: false })
         .limit(180),
     ]);
 
@@ -97,7 +98,7 @@ export const useHealthProfileStore = create<HealthProfileState>()((set, get) => 
             notes: row.notes ?? '',
           }
         : EMPTY_HEALTH_PROFILE,
-      weightLogs: (weightRes.data ?? []).map((w) => ({ ...w, weight_kg: Number(w.weight_kg) })),
+      weightLogs: (weightRes.data ?? []).map((w) => ({ ...w, weight_kg: Number(w.weight_kg) })).reverse(),
       loaded: true,
       loadError: false,
     });

@@ -172,9 +172,57 @@ const ALLERGEN_GROUPS: AllergenGroup[] = [
     keys: ['peixe'],
     foods: ['peixe', 'salmao', 'atum', 'tilapia', 'sardinha', 'bacalhau', 'merluza', 'pescada', 'truta', 'anchova'],
   },
-  { keys: ['ovo'], foods: ['ovo', 'gema', 'clara de ovo', 'maionese'], except: ['sem ovo'] },
+  { keys: ['ovo'], foods: ['ovo', 'gema', 'clara de ovo', 'maionese'], except: ['sem ovo', 'maionese vegana', 'maionese de'] },
+  {
+    keys: ['carne', 'meat'],
+    foods: ['carne', 'frango', 'galinha', 'peru', 'porco', 'suino', 'bacon', 'linguica', 'calabresa', 'salsicha', 'presunto',
+      'salame', 'mortadela', 'peito de peru', 'lombo', 'costela', 'file mignon', 'picanha', 'alcatra', 'patinho', 'acem',
+      'maminha', 'cordeiro', 'carneiro', 'pato', 'figado', 'charque', 'carne seca', 'pancetta', 'copa', 'caldo de carne',
+      'caldo de galinha', 'gelatina'],
+    except: ['carne de soja', 'carne vegetal', 'carne de jaca', 'proteina de soja', 'proteina texturizada', 'vegana', 'vegano',
+      'caldo de legumes', 'gelatina vegetal', 'agar'],
+  },
   { keys: ['soja'], foods: ['soja', 'shoyu', 'molho de soja', 'tofu', 'edamame', 'misso'] },
 ];
+
+/**
+ * O que cada dieta não pode ter, nos mesmos termos das alergias. É a regra única para
+ * conferir se uma receita serve para uma dieta: pelos ingredientes, não só pelo rótulo
+ * (uma receita marcada "Vegana" com ovo e requeijão não serve para vegano).
+ */
+export const DIET_RESTRICTIONS: Record<string, string[]> = {
+  vegan: ['carne', 'peixe', 'frutos do mar', 'ovo', 'lactose', 'mel'],
+  vegetarian: ['carne', 'peixe', 'frutos do mar'],
+  glutenFree: ['gluten'],
+  lactoseFree: ['lactose'],
+};
+
+/** Alergias somadas às restrições das dietas escolhidas, para o mesmo filtro por ingrediente. */
+export function blockedTerms(allergies: string[] = [], diets: string[] = []): string[] {
+  return [...allergies, ...diets.flatMap((d) => DIET_RESTRICTIONS[d] ?? [])];
+}
+
+/** Um texto (nome de alimento, linha de ingrediente) tem algo bloqueado por estes termos? */
+export function textHasBlocked(text: string, terms: string[]): boolean {
+  const blocked = expandAllergens(terms);
+  const norm = normalizeText(text);
+  if (blocked.except.some((e) => norm.includes(e))) return false;
+  const own = new Set(stems(text));
+  return blocked.terms.map(stems).filter((t) => t.length > 0).some((t) => containsAll(own, t));
+}
+
+/** A receita tem algum ingrediente que a dieta não permite? Dieta sem regra: nunca conflita. */
+export function conflictsWithDiet(recipe: SearchableRecipe, diet: string): boolean {
+  const terms = DIET_RESTRICTIONS[diet];
+  return !!terms && withoutAllergens([recipe], terms).length === 0;
+}
+
+/** Linhas (título ou ingredientes) que contrariam a dieta da categoria; vazio quando está tudo certo. */
+export function dietConflictLines(recipe: { title: string; ingredients: string[] }, diet: string): string[] {
+  const terms = DIET_RESTRICTIONS[diet];
+  if (!terms) return [];
+  return [recipe.title, ...recipe.ingredients].filter((line) => line.trim() && textHasBlocked(line, terms));
+}
 
 /** Expande alergias/restrições em termos de busca ("lactose" -> leite, queijo, manteiga...). */
 export function expandAllergens(terms: string[]): { terms: string[]; except: string[] } {

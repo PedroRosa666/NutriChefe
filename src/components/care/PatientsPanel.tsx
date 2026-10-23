@@ -28,6 +28,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { LoadError } from '../common/LoadError';
 import { appLocale } from '../../lib/format';
 import { getMyCrnStatus, type CrnStatus } from '../../services/verification';
+import { matchesSearch } from '../../lib/search';
 
 interface PatientSummary {
   lastLog: string | null;
@@ -371,7 +372,7 @@ export function PatientsPanel() {
         )}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {patients
-            .filter((p) => !query.trim() || (p.person.full_name ?? '').toLowerCase().includes(query.trim().toLowerCase()))
+            .filter((p) => matchesSearch(query, p.person.full_name))
             .map((p) => {
             const s = summaries[p.person.id];
             const inactive = s && isInactive(s.lastActive);

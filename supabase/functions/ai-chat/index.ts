@@ -24,11 +24,13 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.3";
 import {
+  blockedTerms,
   CATEGORY_LABELS,
   composeLocalReply,
   describeQuery,
   parseQueryLocally,
   searchRecipes,
+  textHasBlocked,
   withoutAllergens,
   type RecipeSearchQuery,
   type RecipeSearchResult,
@@ -582,7 +584,8 @@ async function assist(apiKey: string, supabase: any, body: any) {
     plan = localPlan(message, catalog);
   }
 
-  const allergies = strings(body.context?.allergies);
+  // Alergias e dietas do perfil valem como restrição na busca (vegano não recebe receita com ovo).
+  const allergies = blockedTerms(strings(body.context?.allergies), strings(body.context?.dietaryPreferences));
   let recipes: ReturnType<typeof toCard>[] = [];
   let brief: string | null = null;
   let result: RecipeSearchResult | null = null;
@@ -824,9 +827,10 @@ async function makeMealPlan(apiKey: string, supabase: any, nutritionistId: strin
   ]);
 
   const allergies = strings(health?.allergies);
-  const recipes = withoutAllergens(catalog, allergies);
-  const allergyWords = allergies.map((a) => a.toLowerCase());
-  const foodList = (foods ?? []).filter((f: any) => !allergyWords.some((a) => String(f.name).toLowerCase().includes(a)));
+  const blocked = blockedTerms(allergies, strings(health?.dietary_preferences));
+  const recipes = withoutAllergens(catalog, blocked);
+  // A mesma regra dos ingredientes das receitas (antes era só "o nome contém a palavra").
+  const foodList = (foods ?? []).filter((f: any) => !textHasBlocked(String(f.name), blocked));
   const calories = Number(body.dailyCalories) || Number(goals?.calories) || 2000;
 
   const lines = [

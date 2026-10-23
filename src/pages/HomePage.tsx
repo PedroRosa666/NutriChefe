@@ -15,6 +15,8 @@ import { LandingHero, RecipeCardSkeleton } from '../components/recipes/LandingHe
 import { PantrySearch } from '../components/recipes/PantrySearch';
 import { ExclusiveShelf } from '../components/recipes/ExclusiveShelf';
 import type { Recipe } from '../types/recipe';
+import { matchesSearch } from '../lib/search';
+import { fitsOwnDiet } from '../lib/recipe-diet';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -93,14 +95,16 @@ export function HomePage() {
     const normalizedRecipeCategory = normalizeKey(recipe.category);
     const normalizedSelectedCategory = normalizeKey(category);
 
-    const matchesCategory = normalizedSelectedCategory === 'all' || normalizedRecipeCategory === normalizedSelectedCategory;
-    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.description.toLowerCase().includes(searchQuery.toLowerCase());
+    // Categoria de dieta: além do rótulo, os ingredientes precisam servir (rótulo errado não engana o filtro).
+    const matchesCategory = normalizedSelectedCategory === 'all'
+      || (normalizedRecipeCategory === normalizedSelectedCategory && fitsOwnDiet(recipe));
+    const categoryLabel = t.categories[recipe.category as keyof typeof t.categories] ?? recipe.category;
+    const matchesQuery = matchesSearch(searchQuery, recipe.title, recipe.description, categoryLabel);
     const matchesDifficulty = !difficulty || recipe.difficulty === difficulty;
     const matchesRating = !minRating || recipe.rating >= minRating;
     const matchesTime = matchesPrepTime(recipe);
 
-    return matchesCategory && matchesSearch && matchesDifficulty && matchesRating && matchesTime;
+    return matchesCategory && matchesQuery && matchesDifficulty && matchesRating && matchesTime;
   });
 
   return (
@@ -165,7 +169,7 @@ export function HomePage() {
             </div>
           ) : filteredRecipes.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400 mb-4">{t.home.noRecipes}</p>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">{isAuthenticated ? t.home.noRecipes : t.home.noRecipesGuest}</p>
               {/* Nada com a busca/filtros atuais (que ficam guardados entre as páginas): um toque desfaz. */}
               {recipes.length > 0 && (
                 <button

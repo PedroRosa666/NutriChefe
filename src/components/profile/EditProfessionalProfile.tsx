@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { Link } from 'react-router-dom';
 import { Save, ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -60,6 +60,7 @@ const normalizeSpecialization = (spec: string): string => {
 };
 
 export function EditProfessionalProfile() {
+  const fid = useId();
   const { user } = useAuthStore();
   const { showToast } = useToastStore();
   const t = useTranslation();
@@ -223,10 +224,10 @@ export function EditProfessionalProfile() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor={`${fid}-1`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.bio}
             </label>
-            <textarea
+            <textarea id={`${fid}-1`}
               value={formData.professional_bio}
               onChange={(e) => handleFieldChange('professional_bio', e.target.value)}
               rows={4}
@@ -264,10 +265,10 @@ export function EditProfessionalProfile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor={`${fid}-2`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.education}
             </label>
-            <input
+            <input id={`${fid}-2`}
               type="text"
               value={formData.education}
               onChange={(e) => handleFieldChange('education', e.target.value)}
@@ -277,10 +278,10 @@ export function EditProfessionalProfile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor={`${fid}-3`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.certifications}
             </label>
-            <textarea
+            <textarea id={`${fid}-3`}
               value={formData.certifications}
               onChange={(e) => handleFieldChange('certifications', e.target.value)}
               rows={3}
@@ -290,10 +291,10 @@ export function EditProfessionalProfile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor={`${fid}-4`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.yearsOfExperience}
             </label>
-            <input
+            <input id={`${fid}-4`}
               type="number"
               min="0"
               value={formData.years_of_experience}
@@ -303,10 +304,10 @@ export function EditProfessionalProfile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor={`${fid}-5`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.approach}
             </label>
-            <textarea
+            <textarea id={`${fid}-5`}
               value={formData.approach}
               onChange={(e) => handleFieldChange('approach', e.target.value)}
               rows={4}
@@ -325,10 +326,10 @@ export function EditProfessionalProfile() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor={`${fid}-6`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {t.nutritionists.editProfile.fields.consultationPrice}
               </label>
-              <input
+              <input id={`${fid}-6`}
                 type="number"
                 min="0"
                 step="0.01"
@@ -339,10 +340,10 @@ export function EditProfessionalProfile() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor={`${fid}-7`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {t.nutritionists.editProfile.fields.consultationDuration}
               </label>
-              <input
+              <input id={`${fid}-7`}
                 type="number"
                 min="15"
                 step="15"
@@ -368,10 +369,10 @@ export function EditProfessionalProfile() {
 
           {formData.accepts_health_insurance && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor={`${fid}-8`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {t.nutritionists.editProfile.fields.insurances}
               </label>
-              <textarea
+              <textarea id={`${fid}-8`}
                 value={formData.health_insurances}
                 onChange={(e) => handleFieldChange('health_insurances', e.target.value)}
                 rows={3}
@@ -390,10 +391,10 @@ export function EditProfessionalProfile() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor={`${fid}-9`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.phone}
             </label>
-            <input
+            <input id={`${fid}-9`}
               type="tel"
               value={formData.phone}
               onChange={(e) => handleFieldChange('phone', e.target.value)}
@@ -402,10 +403,10 @@ export function EditProfessionalProfile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor={`${fid}-10`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.whatsapp}
             </label>
-            <input
+            <input id={`${fid}-10`}
               type="tel"
               value={formData.whatsapp}
               onChange={(e) => handleFieldChange('whatsapp', e.target.value)}
@@ -414,10 +415,10 @@ export function EditProfessionalProfile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor={`${fid}-11`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.instagram}
             </label>
-            <input
+            <input id={`${fid}-11`}
               type="text"
               value={formData.instagram}
               onChange={(e) => handleFieldChange('instagram', e.target.value)}
@@ -427,10 +428,10 @@ export function EditProfessionalProfile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor={`${fid}-12`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.website}
             </label>
-            <input
+            <input id={`${fid}-12`}
               type="url"
               value={formData.website}
               onChange={(e) => handleFieldChange('website', e.target.value)}
@@ -439,10 +440,10 @@ export function EditProfessionalProfile() {
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor={`${fid}-13`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.address}
             </label>
-            <input
+            <input id={`${fid}-13`}
               type="text"
               value={formData.clinic_address}
               onChange={(e) => handleFieldChange('clinic_address', e.target.value)}

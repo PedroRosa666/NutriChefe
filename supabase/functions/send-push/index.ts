@@ -104,6 +104,10 @@ function message(kind: string, d: Data, recipient: string): { title: string; bod
   }
 }
 
+// Serviços de notificação dos navegadores (igual à função save_push_subscription do banco).
+const PUSH_ENDPOINT =
+  /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]+\.notify\.windows\.com|web\.push\.apple\.com|[a-z0-9.-]+\.push\.apple\.com)\//;
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
@@ -130,8 +134,11 @@ Deno.serve(async (req: Request) => {
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth")
     .eq("user_id", notification.user_id);
+  // Falha antes de tentar enviar: devolve o aviso para a fila (senão ficaria "enviado" sem ter ido).
+  const release = () => supabase.from("notifications").update({ pushed_at: null }).eq("id", notification.id);
   if (subsError) {
     console.error("load subscriptions failed", subsError.message);
+    await release();
     return new Response("Error", { status: 500 });
   }
 
@@ -145,20 +152,39 @@ Deno.serve(async (req: Request) => {
   const payload = JSON.stringify({ ...msg, tag: `${notification.kind}:${notification.ref_id ?? notification.id}` });
 
   let sent = 0;
+  let transientFailures = 0;
   await Promise.all(
     (subs ?? []).map(async (s: any) => {
-      try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 60 * 60 * 24 });
-        sent++;
-      } catch (error: any) {
-        if (error?.statusCode === 404 || error?.statusCode === 410) {
-          await supabase.from("push_subscriptions").delete().eq("id", s.id);
-        } else {
-          console.error("push failed", error?.statusCode, error?.body ?? error?.message);
+      // Mesma lista de serviços aceita no banco: endereço fora dela nunca recebe requisição.
+      if (!PUSH_ENDPOINT.test(String(s.endpoint))) {
+        await supabase.from("push_subscriptions").delete().eq("id", s.id);
+        return;
+      }
+      // Falha passageira (rede, 429, 5xx): tenta de novo algumas vezes, com espera crescente.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 60 * 60 * 24 });
+          sent++;
+          return;
+        } catch (error: any) {
+          const status = Number(error?.statusCode) || 0;
+          if (status === 404 || status === 410) {
+            await supabase.from("push_subscriptions").delete().eq("id", s.id);
+            return;
+          }
+          const transient = status === 0 || status === 429 || status >= 500;
+          if (!transient || attempt === 2) {
+            console.error("push failed", status, error?.body ?? error?.message);
+            if (transient) transientFailures++;
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
         }
       }
     }),
   );
+  // Nenhum aparelho recebeu por falha passageira: volta para a fila, para o próximo envio.
+  if (sent === 0 && transientFailures > 0) await release();
 
   return new Response(JSON.stringify({ sent }), { headers: { "Content-Type": "application/json" } });
 });

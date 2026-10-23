@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { blockedTerms } from '../../../supabase/functions/_shared/recipe-search';
 import { ArrowLeftRight, Loader2, X } from 'lucide-react';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -25,7 +26,9 @@ export function SwapRequestDialog({ planId, item, itemLabel, onClose, onSent }: 
   const { showToast } = useToastStore();
   const [requested, setRequested] = useState<SwapChoice | null>(null);
   const recipes = useRecipesStore((st) => st.recipes);
-  const allergies = useHealthProfileStore((st) => st.profile.allergies);
+  // Alergias e dietas (vegana, sem glúten...): a troca sugerida respeita as duas.
+  const health = useHealthProfileStore((st) => st.profile);
+  const allergies = useMemo(() => blockedTerms(health.allergies, health.dietary_preferences), [health.allergies, health.dietary_preferences]);
   // Calorias do item atual: base para sugerir receitas e alimentos equivalentes.
   const currentKcal = useMemo(
     () => itemNutrition(item, new Map(recipes.map((r) => [r.id, r])))?.calories ?? null,

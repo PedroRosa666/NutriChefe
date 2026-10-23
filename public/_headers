@@ -5,3 +5,15 @@
 # O service worker precisa ser conferido a cada visita, senão atualizações do app demoram a chegar.
 /sw.js
   Cache-Control: no-cache
+
+# Proteções em todas as respostas (auditoria F15).
+# - frame-ancestors/X-Frame-Options: o site não abre dentro de iframe de outro domínio.
+# - A política completa de conteúdo começa em Report-Only (só avisa no console) para não
+#   quebrar login, Supabase ou Stripe; depois de conferida, vira Content-Security-Policy.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
+  X-Frame-Options: DENY
+  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'

@@ -58,7 +58,11 @@ serve(async (req: Request) => {
 
     // O preço sempre vem de um plano cadastrado (nunca um preço qualquer mandado pelo navegador).
     // `priceId` só é aceito se for o preço de um plano ativo.
-    let planQuery = supabase.from("subscription_plans").select("id, stripe_price_id").not("stripe_price_id", "is", null);
+    let planQuery = supabase
+      .from("subscription_plans")
+      .select("id, stripe_price_id")
+      .eq("is_active", true)
+      .not("stripe_price_id", "is", null);
     if (planId) planQuery = planQuery.eq("id", planId);
     else if (priceId) planQuery = planQuery.eq("stripe_price_id", priceId);
     else return fail("Missing priceId or planId");
@@ -67,32 +71,46 @@ serve(async (req: Request) => {
     if (!plan?.stripe_price_id) return fail("Plano não encontrado.", { planId, priceId });
     const selectedPriceId = plan.stripe_price_id as string;
 
-    // Evita cobrança em dobro: quem já tem assinatura paga ativa vai para o portal.
-    const { data: activeSub } = await supabase
+    // Evita cobrança em dobro: quem já tem assinatura paga (ativa ou com pagamento pendente)
+    // resolve pelo portal.
+    const { data: activeSub, error: subErr } = await supabase
       .from("user_subscriptions")
       .select("id")
       .eq("user_id", user.id)
-      .eq("status", "active")
+      .in("status", ["active", "pending"])
       .not("stripe_subscription_id", "is", null)
       .limit(1)
       .maybeSingle();
+    if (subErr) return fail("Subscription lookup failed", { subErr: subErr.message });
     if (activeSub) {
       return fail("Você já tem uma assinatura ativa. Gerencie-a pelo seu perfil.");
     }
 
     // ===== PROFILE / CUSTOMER =====
-    const { data: profile } = await supabase
+    const { data: profile, error: profileErr } = await supabase
       .from("profiles")
       .select("id, email, stripe_customer_id")
       .eq("id", user.id)
       .single();
+    if (profileErr) return fail("Profile lookup failed", { profileErr: profileErr.message });
 
     let customerId = profile?.stripe_customer_id as string | undefined;
     if (!customerId) {
-      const customer = await stripe.customers.create({ email: user.email ?? undefined });
+      // A mesma chave em pedidos simultâneos devolve o mesmo cliente (sem clientes duplicados).
+      const customer = await stripe.customers.create(
+        { email: user.email ?? undefined, metadata: { user_id: user.id } },
+        { idempotencyKey: `customer-${user.id}` },
+      );
       customerId = customer.id;
-      await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
+      const { error: saveErr } = await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
+      if (saveErr) return fail("Could not save Stripe customer", { saveErr: saveErr.message });
     }
+
+    // Já existe um checkout aberto para este plano? Reaproveita em vez de abrir outro
+    // (dois toques rápidos ou duas abas não geram duas cobranças).
+    const open = await stripe.checkout.sessions.list({ customer: customerId, status: "open", limit: 10, expand: ["data.line_items"] });
+    const reusable = open.data.find((s: any) => s.line_items?.data?.some((li: any) => li.price?.id === selectedPriceId));
+    if (reusable?.url) return ok({ url: reusable.url });
 
     // Só aceita URLs de retorno do próprio site (evita redirecionamento para domínio externo).
     const sameOrigin = (url: unknown): string | undefined => {
@@ -118,6 +136,9 @@ serve(async (req: Request) => {
         metadata: { user_id: user.id, price_id: selectedPriceId },
         // Copia o user_id para a assinatura: os eventos customer.subscription.* passam a trazê-lo.
         subscription_data: { metadata: { user_id: user.id } },
+      }, {
+        // Pedidos repetidos no mesmo minuto devolvem a mesma sessão.
+        idempotencyKey: `checkout-${user.id}-${selectedPriceId}-${Math.floor(Date.now() / 60000)}`,
       });
     } catch (e: any) {
       // Captura erro do Stripe (modo test/live trocado, price inválido, etc.)

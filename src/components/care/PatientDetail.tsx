@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { blockedTerms } from '../../../supabase/functions/_shared/recipe-search';
 import { ArrowLeft, Crown, FileText, HeartPulse, Loader2, Save, Sparkles, Target, UserMinus, Utensils, CalendarRange, CalendarClock, MessageCircle, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
@@ -102,7 +103,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
       console.error('Error loading patient:', error);
       setFailed(true);
     }
-  }, [patientId, showToast, t.care.errors.unknown]);
+  }, [patientId]);
 
   useEffect(() => {
     load();
@@ -374,7 +375,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
           <SwapRequestsList
             clientId={patientId}
             role="nutritionist"
-            allergies={h?.allergies ?? []}
+            allergies={blockedTerms(h?.allergies ?? [], h?.dietary_preferences ?? [])}
             onPlanChanged={() => setPlansKey((k) => k + 1)}
           />
           <section className="space-y-4">

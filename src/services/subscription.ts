@@ -14,7 +14,11 @@ export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
   return data || [];
 }
 
-/** Retorna a assinatura mais recente do usuário (com plano populado). */
+/**
+ * Retorna a assinatura que vale agora (com plano populado): a ativa e não vencida, se houver;
+ * senão a mais recente. Uma pessoa pode ter mais de uma linha (ex.: assinatura antiga
+ * cancelada e uma nova), e a mais recente nem sempre é a que está valendo.
+ */
 export async function getUserSubscription(userId: string): Promise<UserSubscription | null> {
   const { data, error } = await supabase
     .from('user_subscriptions')
@@ -24,12 +28,15 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
     `)
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(20);
 
-  // PGRST116 = no rows; tratamos como null
-  if (error && error.code !== 'PGRST116') throw error;
-  return data ?? null;
+  if (error) throw error;
+  const rows = (data ?? []) as UserSubscription[];
+  const now = Date.now();
+  const current = rows.find(
+    (s) => s.status === 'active' && (!s.expires_at || new Date(s.expires_at).getTime() > now)
+  );
+  return current ?? rows[0] ?? null;
 }
 
 /** Cria uma assinatura (uso interno/admin; para cobrança use o Stripe Checkout). */

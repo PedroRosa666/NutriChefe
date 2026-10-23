@@ -67,3 +67,30 @@ describe('generateWeeklyPlan', () => {
     expect(generateWeeklyPlan({ recipes: [], dailyCalories: 2000, allergies: [], preferences: [] })).toEqual([]);
   });
 });
+
+describe('dietas e preferências', () => {
+  const ids = (items: { recipe_id: string | null }[]) => new Set(items.map((i) => i.recipe_id));
+
+  it('dieta é restrição: com poucas receitas veganas, repete as que servem em vez de soltar a dieta', async () => {
+    const { generateWeeklyPlanDetailed } = await import('../meal-plan-generator');
+    const { items } = generateWeeklyPlanDetailed({ recipes: catalog, dailyCalories: 2000, allergies: [], preferences: ['vegan'], seed: 42 });
+    expect(items.length).toBeGreaterThan(0);
+    // Só as receitas sem ingrediente animal (3, 5 e 7), mesmo sendo poucas.
+    expect([...ids(items)].every((id) => ['3', '5', '7'].includes(id ?? ''))).toBe(true);
+  });
+
+  it('vale o ingrediente, não o rótulo: receita "vegana" com ovo fica de fora', async () => {
+    const { generateWeeklyPlanDetailed } = await import('../meal-plan-generator');
+    const mislabeled = [...catalog, recipe('8', 'Sanduíche natural', ['pão integral', '1 ovo cozido', 'requeijão'], 350, 'vegan')];
+    const { items } = generateWeeklyPlanDetailed({ recipes: mislabeled, dailyCalories: 2000, allergies: [], preferences: ['vegan'], seed: 3 });
+    expect(ids(items).has('8')).toBe(false);
+  });
+
+  it('sem lactose tira leite e queijo; preferência sem receitas suficientes é avisada', async () => {
+    const { generateWeeklyPlanDetailed } = await import('../meal-plan-generator');
+    const { items, relaxed } = generateWeeklyPlanDetailed({ recipes: catalog, dailyCalories: 2000, allergies: [], preferences: ['lactoseFree', 'lowCarb'], seed: 5 });
+    expect(ids(items).has('4')).toBe(false);
+    expect(ids(items).has('6')).toBe(false);
+    expect(relaxed).toEqual(['lowCarb']);
+  });
+});

@@ -236,7 +236,16 @@ export const useAuthStore = create<AuthState>()(
         set({ user: { ...currentUser, name: trimmed } });
       },
 
-      clearSession: () => set({ user: null, token: null, isAuthenticated: false, error: null }),
+      clearSession: () => {
+        // Saiu por qualquer caminho (outra aba, sessão expirada, troca de conta demo): o service
+        // worker apaga os dados guardados para uso offline.
+        try {
+          navigator.serviceWorker?.controller?.postMessage({ type: 'logout' });
+        } catch {
+          /* sem service worker */
+        }
+        set({ user: null, token: null, isAuthenticated: false, error: null });
+      },
 
       updateProfile: async (updates) => {
         const currentUser = get().user;

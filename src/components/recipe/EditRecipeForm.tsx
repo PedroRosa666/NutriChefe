@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { X, Plus, Minus, Clock, Image, FileText, UtensilsCrossed, ListOrdered, Activity } from 'lucide-react';
 import { useRecipesStore } from '../../store/recipes';
 import { RecipeImageInput } from './RecipeImageInput';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
+import { confirmDietCategory } from '../../lib/recipe-diet';
 import type { Recipe } from '../../types/recipe';
 
 type CategoryKey = keyof ReturnType<typeof useTranslation>['categories'];
@@ -55,6 +56,7 @@ interface EditRecipeFormProps {
 }
 
 export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps) {
+  const fid = useId();
   const { updateRecipe } = useRecipesStore();
   const t = useTranslation();
   const [loading, setLoading] = useState(false);
@@ -64,6 +66,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!(await confirmDietCategory(editedRecipe, t))) return;
     setLoading(true);
     try {
       await updateRecipe(editedRecipe);
@@ -164,8 +167,8 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
           >
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               <div className="space-y-1.5">
-                <label className={labelClass}>{t.recipe.recipeTitle}</label>
-                <input
+                <label htmlFor={`${fid}-1`} className={labelClass}>{t.recipe.recipeTitle}</label>
+                <input id={`${fid}-1`}
                   type="text"
                   value={editedRecipe.title}
                   onChange={(e) =>
@@ -177,8 +180,8 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
               </div>
 
               <div className="space-y-1.5">
-                <label className={labelClass}>{t.recipe.recipeImageURL}</label>
-                <RecipeImageInput
+                <label htmlFor={`${fid}-2`} className={labelClass}>{t.recipe.recipeImageURL}</label>
+                <RecipeImageInput id={`${fid}-2`}
                   value={editedRecipe.image}
                   onChange={(image) => setEditedRecipe((prev) => ({ ...prev, image }))}
                   inputClassName={inputClass}
@@ -208,8 +211,8 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
 
           <FormSection>
             <div className="space-y-1.5">
-              <label className={labelClass}>{t.recipe.recipeDescription}</label>
-              <textarea
+              <label htmlFor={`${fid}-3`} className={labelClass}>{t.recipe.recipeDescription}</label>
+              <textarea id={`${fid}-3`}
                 value={editedRecipe.description}
                 onChange={(e) =>
                   setEditedRecipe((prev) => ({ ...prev, description: e.target.value }))
@@ -227,10 +230,10 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
           >
             <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
               <div className="space-y-1.5">
-                <label className={labelClass}>
+                <label htmlFor={`${fid}-4`} className={labelClass}>
                   {t.recipe.prepTime} (min)
                 </label>
-                <input
+                <input id={`${fid}-4`}
                   type="number"
                   value={editedRecipe.prepTime}
                   onChange={(e) =>
@@ -246,8 +249,8 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
               </div>
 
               <div className="space-y-1.5">
-                <label className={labelClass}>{t.recipe.difficulty}</label>
-                <select
+                <label htmlFor={`${fid}-5`} className={labelClass}>{t.recipe.difficulty}</label>
+                <select id={`${fid}-5`}
                   value={editedRecipe.difficulty}
                   onChange={(e) =>
                     setEditedRecipe((prev) => ({
@@ -265,8 +268,8 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
               </div>
 
               <div className="space-y-1.5">
-                <label className={labelClass}>{t.recipe.recipeCategory}</label>
-                <select
+                <label htmlFor={`${fid}-6`} className={labelClass}>{t.recipe.recipeCategory}</label>
+                <select id={`${fid}-6`}
                   value={editedRecipe.category}
                   onChange={(e) =>
                     setEditedRecipe((prev) => ({ ...prev, category: e.target.value }))
@@ -312,12 +315,14 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                     }
                     className={cn(inputClass, 'flex-1')}
                     placeholder={t.recipe.example}
+                    aria-label={`${t.recipe.ingredients} ${index + 1}`}
                     required
                   />
                   {editedRecipe.ingredients.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeArrayItem('ingredients', index)}
+                      aria-label={t.common.remove}
                       className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/80 text-slate-400 shadow-sm transition hover:bg-red-50 hover:text-red-500 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                     >
                       <Minus className="h-4 w-4" />
@@ -356,12 +361,14 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                     }
                     className={cn(inputClass, 'flex-1')}
                     placeholder={`${t.recipe.Step} ${index + 1}`}
+                    aria-label={`${t.recipe.Step} ${index + 1}`}
                     required
                   />
                   {editedRecipe.instructions.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeArrayItem('instructions', index)}
+                      aria-label={t.common.remove}
                       className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/80 text-slate-400 shadow-sm transition hover:bg-red-50 hover:text-red-500 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                     >
                       <Minus className="h-4 w-4" />
@@ -382,11 +389,11 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                   key as keyof typeof t.profile.nutritionGoalsnames;
                 return (
                   <div key={key} className="space-y-1.5">
-                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-200 sm:text-sm">
+                    <label htmlFor={`${fid}-7-${key}`} className="block text-xs font-medium text-slate-600 dark:text-slate-200 sm:text-sm">
                       {t.profile.nutritionGoalsnames[nutritionKey]}
                     </label>
                     <div className="relative">
-                      <input
+                      <input id={`${fid}-7-${key}`}
                         type="number"
                         step="0.01"
                         min="0"

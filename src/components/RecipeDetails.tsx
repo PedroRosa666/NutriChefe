@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useId } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Star,
@@ -42,6 +42,7 @@ interface RecipeDetailsProps {
 }
 
 export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsProps) {
+  const fid = useId();
   // Durante a animação de saída o modal ainda está montado: um segundo Esc ou
   // clique não pode "voltar" de novo no histórico.
   const closedRef = useRef(false);
@@ -725,6 +726,8 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                                 rating: star,
                               }))
                             }
+                            aria-label={t.recipe.starsLabel.replace('{n}', String(star))}
+                            aria-pressed={star <= newReview.rating}
                             className={cn(
                               'text-3xl transition-colors',
                               star <= newReview.rating
@@ -798,6 +801,8 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                                 prev ? { ...prev, rating: star } : null,
                               )
                             }
+                            aria-label={t.recipe.starsLabel.replace('{n}', String(star))}
+                            aria-pressed={star <= editingReview.rating}
                             className={cn(
                               'text-3xl transition-colors',
                               star <= editingReview.rating
@@ -960,10 +965,10 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
 
             <div className="mt-4 space-y-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                <label htmlFor={`${fid}-1`} className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                   {t.profile.date}
                 </label>
-                <input
+                <input id={`${fid}-1`}
                   type="date"
                   value={logDate}
                   onChange={(e) => setLogDate(e.target.value)}
@@ -972,10 +977,10 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                <label htmlFor={`${fid}-2`} className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                   {t.profile.servings}
                 </label>
-                <input
+                <input id={`${fid}-2`}
                   type="number"
                   min={0.1}
                   step={0.1}

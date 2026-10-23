@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronRight, Circle, Rocket, X } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
+import { gettingStartedKey, isGettingStartedHidden } from '../../lib/getting-started';
 
 export interface GettingStartedStep {
   key: string;
@@ -12,15 +13,6 @@ export interface GettingStartedStep {
   to: string;
 }
 
-const storageKey = (userId: string) => `nc-getting-started-hidden:${userId}`;
-
-export function isGettingStartedHidden(userId: string) {
-  try {
-    return localStorage.getItem(storageKey(userId)) === '1';
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Primeiros passos de quem acabou de chegar: uma lista curta com o que falta e o atalho de cada item.
@@ -37,7 +29,7 @@ export function GettingStarted({ userId, steps, onHide }: { userId: string; step
     setHidden(true);
     onHide?.();
     try {
-      localStorage.setItem(storageKey(userId), '1');
+      localStorage.setItem(gettingStartedKey(userId), '1');
     } catch {
       // Sem armazenamento: volta a aparecer na próxima visita, sem prejuízo.
     }

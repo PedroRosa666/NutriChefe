@@ -12,20 +12,6 @@ export interface QuickAction {
   badge?: number;
 }
 
-/** Primeiro nome para a saudação, sem títulos como "Dra." ou "Dr.". */
-export function firstNameOf(name: string | undefined | null, fallback: string): string {
-  const words = (name ?? '').split(/\s+/).filter(Boolean);
-  const first = words.find((w) => !/^(dr|dra|prof|profa|sr|sra)\.?$/i.test(w));
-  return first ?? fallback;
-}
-
-/** Saudação do período do dia, pelo relógio do aparelho. */
-export function useGreeting(): string {
-  const u = useTranslation().profileUi;
-  const hour = new Date().getHours();
-  return hour < 12 ? u.morning : hour < 18 ? u.afternoon : u.evening;
-}
-
 /** Anel de progresso (ex.: calorias do dia frente à meta). */
 export function ProgressRing({ value, max, children }: { value: number; max: number; children: ReactNode }) {
   const size = 104;

@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
 import { assistAI, type AIUserContext } from './gemini';
 import {
+  blockedTerms,
   composeLocalReply,
   parseQueryLocally,
   searchRecipes,
@@ -59,7 +60,7 @@ async function localReply(message: string, context?: AIUserContext): Promise<AIR
     return { content, recipes: [], suggestions: defaultSuggestions() };
   }
 
-  const result = searchRecipes(catalog, query, context?.allergies ?? []);
+  const result = searchRecipes(catalog, query, blockedTerms(context?.allergies ?? [], context?.dietaryPreferences ?? []));
   return {
     content: composeLocalReply(query, result),
     recipes: result.hits.map(({ recipe, matched }) => ({
@@ -182,10 +183,13 @@ export async function updateAIConversation(
 }
 
 export async function getAIMessages(conversationId: string): Promise<AIMessage[]> {
+  // As 500 mais recentes, da mais antiga para a mais nova (sem limite o servidor corta nas
+  // primeiras e as mensagens novas de uma conversa longa sumiriam).
   const { data, error } = await supabase
-    .from('ai_messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
+    .from('ai_messages').select('*').eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false }).limit(500);
   if (error) throw error;
-  return (data || []) as AIMessage[];
+  return ((data || []) as AIMessage[]).reverse();
 }
 
 export async function createAIMessage(

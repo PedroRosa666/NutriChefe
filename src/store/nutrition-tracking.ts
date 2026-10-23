@@ -100,7 +100,7 @@ const sanitizeServings = (value: number | undefined) => {
   return Math.min(50, Math.round(n * 10) / 10);
 };
 
-const toTotals = (v: Partial<NutritionTotals> | null | undefined): NutritionTotals => ({
+export const toTotals = (v: Partial<NutritionTotals> | null | undefined): NutritionTotals => ({
   calories: Number(v?.calories) || 0,
   protein: Number(v?.protein) || 0,
   carbs: Number(v?.carbs) || 0,

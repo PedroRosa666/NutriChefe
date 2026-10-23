@@ -4,12 +4,17 @@
 // - /assets/* (arquivos com hash no nome): do cache primeiro; nunca mudam.
 // - Páginas: da rede primeiro; sem internet, a última versão do app (index.html).
 // - Leituras do Supabase do plano, receitas, alimentos e trocas: da rede primeiro; sem internet,
-//   a última resposta guardada (o plano abre offline). Esse cache é apagado ao sair da conta.
+//   a última resposta guardada (o plano abre offline), por até DATA_MAX_AGE.
+//   Cada conta tem o próprio cache (nutrichef-data-<id do usuário>). Quando outra conta (ou
+//   ninguém) passa a usar o aparelho, os dados da anterior são apagados: uma pessoa nunca
+//   recebe, offline, o que foi guardado para outra. Sair da conta também apaga tudo.
 //
 // Ao publicar mudanças neste arquivo, aumente VERSION: os caches antigos são descartados.
-const VERSION = 'v2';
+const VERSION = 'v3';
 const APP_CACHE = `nutrichef-app-${VERSION}`;
-const DATA_CACHE = 'nutrichef-data';
+const DATA_PREFIX = 'nutrichef-data';
+const DATA_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+const SAVED_AT = 'x-nutrichef-saved-at';
 const OFFLINE_TABLES = ['meal_plans', 'recipes', 'foods', 'food_swap_requests', 'shopping_lists', 'nutrition_goals'];
 
 self.addEventListener('install', (event) => {
@@ -25,13 +30,70 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('nutrichef-app-') && k !== APP_CACHE).map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(
+          keys
+            // Versões antigas do app e o cache de dados antigo, que era um só para todas as contas.
+            .filter((k) => (k.startsWith('nutrichef-app-') && k !== APP_CACHE) || k === DATA_PREFIX)
+            .map((k) => caches.delete(k))
+        )
+      )
       .then(() => self.clients.claim())
   );
 });
 
 const isOfflineData = (url) =>
   url.pathname.startsWith('/rest/v1/') && OFFLINE_TABLES.includes(url.pathname.split('/')[3]);
+
+// Quem faz a leitura: o "sub" do token (só para separar o cache; quem valida é o servidor).
+function identityOf(request) {
+  const auth = request.headers.get('Authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof payload.sub === 'string' && payload.sub ? payload.sub : 'anon';
+  } catch {
+    return 'anon';
+  }
+}
+
+const deleteDataCaches = (...keep) =>
+  caches.keys().then((keys) =>
+    Promise.all(keys.filter((k) => k.startsWith(`${DATA_PREFIX}-`) && !keep.includes(k)).map((k) => caches.delete(k)))
+  );
+
+// Dados de outra conta guardados aqui: apaga antes de responder. Leituras sem login (só o
+// catálogo público) ficam num cache à parte e não contam como troca de conta.
+let currentData = null;
+async function dataCacheFor(request) {
+  const id = identityOf(request);
+  const name = `${DATA_PREFIX}-${id}`;
+  if (id !== 'anon' && currentData !== name) {
+    await deleteDataCaches(name, `${DATA_PREFIX}-anon`);
+    currentData = name;
+  }
+  return name;
+}
+
+async function networkFirstData(request) {
+  const cache = await caches.open(await dataCacheFor(request));
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      // Guarda com a hora, para não servir dado velho demais sem internet.
+      const headers = new Headers(response.headers);
+      headers.set(SAVED_AT, String(Date.now()));
+      const body = await response.clone().blob();
+      cache.put(request, new Response(body, { status: response.status, statusText: response.statusText, headers }));
+    }
+    return response;
+  } catch (error) {
+    const cached = await cache.match(request);
+    if (cached && Date.now() - Number(cached.headers.get(SAVED_AT) || 0) < DATA_MAX_AGE) return cached;
+    if (cached) cache.delete(request);
+    throw error;
+  }
+}
 
 async function networkFirst(request, cacheName, fallbackUrl) {
   const cache = await caches.open(cacheName);
@@ -73,13 +135,16 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.hostname.endsWith('.supabase.co') && isOfflineData(url)) {
-    event.respondWith(networkFirst(request, DATA_CACHE));
+    event.respondWith(networkFirstData(request));
   }
 });
 
 // O app avisa quando a pessoa sai da conta: nada dela pode ficar guardado no aparelho.
 self.addEventListener('message', (event) => {
-  if (event.data?.type === 'logout') event.waitUntil(caches.delete(DATA_CACHE));
+  if (event.data?.type === 'logout') {
+    currentData = null;
+    event.waitUntil(deleteDataCaches());
+  }
 });
 
 // Notificação enviada pelo servidor (função send-push do Supabase).

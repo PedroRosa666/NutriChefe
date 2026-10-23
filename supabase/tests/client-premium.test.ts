@@ -15,6 +15,15 @@ const OPEN = '00000000-0000-4000-8000-0000000005a2';
 
 let db: PGlite;
 
+// Resultado de my_progress() usado nos testes.
+interface Progress {
+  diary_days: number;
+  streak: number;
+  weight_change: number | string | null;
+  week: { diary_days: number; protein_days: number; calorie_days: number };
+  [key: string]: unknown;
+}
+
 const asAnon = <T,>(fn: (tx: Transaction) => Promise<T>) =>
   db.transaction(async (tx) => {
     await tx.exec('SET LOCAL ROLE anon');
@@ -79,7 +88,7 @@ describe('progresso: conquistas e desafios', () => {
       INSERT INTO weight_logs (user_id, logged_on, weight_kg) VALUES
         ('${PREMIUM}', (now() AT TIME ZONE 'America/Sao_Paulo')::date - 20, 80), ('${PREMIUM}', (now() AT TIME ZONE 'America/Sao_Paulo')::date, 77.5);
     `);
-    const p = await asUser(db, PREMIUM, async (tx) => (await tx.query<{ p: Record<string, any> }>('SELECT my_progress() AS p')).rows[0].p);
+    const p = await asUser(db, PREMIUM, async (tx) => (await tx.query<{ p: Progress }>('SELECT my_progress() AS p')).rows[0].p);
     expect(p).toMatchObject({ diary_days: 4, streak: 3, best_streak: 3, weight_logs: 2, ate_meals: 0 });
     expect(Number(p.weight_change)).toBe(-2.5);
     // Os três dias têm 2000 kcal e 120 g de proteína: batem as duas metas (quantos caem na semana depende do dia de hoje).
@@ -89,7 +98,7 @@ describe('progresso: conquistas e desafios', () => {
   });
 
   it('sem metas, os desafios de meta ficam vazios; sem login, recusa', async () => {
-    const p = await asUser(db, FREE, async (tx) => (await tx.query<{ p: Record<string, any> }>('SELECT my_progress() AS p')).rows[0].p);
+    const p = await asUser(db, FREE, async (tx) => (await tx.query<{ p: Progress }>('SELECT my_progress() AS p')).rows[0].p);
     expect(p).toMatchObject({ diary_days: 0, streak: 0 });
     expect(p.week.protein_days).toBeNull();
     await expect(asAnon((tx) => tx.query('SELECT my_progress()'))).rejects.toThrow();

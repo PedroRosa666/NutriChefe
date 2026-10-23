@@ -9,13 +9,16 @@ import { useHealthProfileStore } from '../../store/health-profile';
 import { useSubscriptionStore } from '../../store/subscription';
 import { useTranslation } from '../../hooks/useTranslation';
 import { bmi } from '../../lib/nutrition-calculator';
-import { DashboardHero, firstNameOf, ProgressRing, useGreeting } from './DashboardHero';
+import { DashboardHero, ProgressRing } from './DashboardHero';
+import { useGreeting } from '../../hooks/useGreeting';
+import { firstNameOf } from '../../lib/format';
 import { MyNutritionistCard } from '../care/MyNutritionistCard';
 import { WeeklyReport } from './WeeklyReport';
 import { UpcomingAppointments } from '../care/Appointments';
 import { ProgressPanel } from './ProgressPanel';
 import { SelfReportCard } from './SelfReportCard';
-import { GettingStarted, isGettingStartedHidden } from './GettingStarted';
+import { GettingStarted } from './GettingStarted';
+import { isGettingStartedHidden } from '../../lib/getting-started';
 import { listMyNutritionists } from '../../services/care';
 
 export function ClientDashboard() {

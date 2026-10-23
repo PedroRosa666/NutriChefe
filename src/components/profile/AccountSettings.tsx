@@ -229,8 +229,10 @@ export function AccountSettings() {
             onClick={async () => {
               setExporting(true);
               try {
-                await downloadMyData(user.id, user.email);
-                showToast(t.privacy.exported, 'success');
+                const missing = await downloadMyData(user.id, user.email);
+                // Parte que não pôde ser lida: avisa em vez de dizer que a cópia está completa.
+                if (missing.length) showToast(t.privacy.exportedPartial, 'warning');
+                else showToast(t.privacy.exported, 'success');
               } catch (error) {
                 console.error('Error exporting data:', error);
                 showToast(a.saveError, 'error');

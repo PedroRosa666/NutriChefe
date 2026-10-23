@@ -6,7 +6,7 @@ import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { MEAL_SLOTS, planDayOf, savePlan, type MealPlan, type MealPlanItem, type MealSlot } from '../../services/care';
-import { generateWeeklyPlan } from '../../lib/meal-plan-generator';
+import { generateWeeklyPlanDetailed } from '../../lib/meal-plan-generator';
 import { isItemAvailable, itemsCalories, mealBlocks, nextOptionGroup, scaleItemsToTarget } from '../../lib/plan-items';
 import { FoodQuantityPicker, type PickedFood } from '../foods/FoodQuantityPicker';
 import { EquivalentFoods } from '../foods/EquivalentFoods';
@@ -17,6 +17,7 @@ import { useOwnPremium, usePremiumStore } from '../../store/premium';
 import { useFoodsStore } from '../../store/foods';
 import { generatePlanWithAI } from '../../services/gemini';
 import type { Recipe } from '../../types/recipe';
+import { matchesSearch } from '../../lib/search';
 
 interface MealPlanEditorProps {
   clientId: string;
@@ -71,12 +72,11 @@ export function MealPlanEditor({
   const { showToast } = useToastStore();
   const t = useTranslation();
 
-  const generate = () =>
-    generateWeeklyPlan({ recipes, dailyCalories, allergies, preferences });
+  const generate = () => generateWeeklyPlanDetailed({ recipes, dailyCalories, allergies, preferences });
 
   const [title, setTitle] = useState(plan?.title ?? '');
   const [notes, setNotes] = useState(plan?.notes ?? '');
-  const [items, setItems] = useState<MealPlanItem[]>(() => plan?.items ?? (startGenerated ? generate() : []));
+  const [items, setItems] = useState<MealPlanItem[]>(() => plan?.items ?? (startGenerated ? generate().items : []));
   const [day, setDay] = useState(() => planDayOf(new Date()));
   const [adder, setAdder] = useState<Adder | null>(null);
   const [saving, setSaving] = useState(false);
@@ -151,9 +151,9 @@ export function MealPlanEditor({
   const hasOptions = items.some((i) => i.option_group !== null);
   // Sem busca: as receitas do próprio nutricionista primeiro; com busca, por nome.
   const matchingRecipes = useMemo(() => {
-    const q = recipeQuery.trim().toLowerCase();
+    const q = recipeQuery.trim();
     const list = q
-      ? sortedRecipes.filter((r) => r.title.toLowerCase().includes(q))
+      ? sortedRecipes.filter((r) => matchesSearch(q, r.title, r.category))
       : sortedRecipes.slice().sort((a, b) => Number(b.authorId === user?.id) - Number(a.authorId === user?.id));
     return list.slice(0, 30);
   }, [recipeQuery, sortedRecipes, user?.id]);
@@ -169,14 +169,20 @@ export function MealPlanEditor({
   const regenerate = async () => {
     // Gerar de novo troca todas as receitas: com o plano já montado, confirma antes.
     if (items.some((i) => i.recipe_id && i.option_group === null) && !(await confirmDialog(t.plan.regenerateConfirm))) return;
-    const next = generate();
+    const { items: next, relaxed } = generate();
     if (!next.length) {
       showToast(t.plan.generateEmpty, 'warning');
       return;
     }
     // O gerador só monta receitas; alimentos e grupos de opções do dia ficam como estavam.
     setItems((prev) => [...prev.filter((i) => i.food_id || i.option_group !== null), ...next]);
-    showToast(t.plan.generated, 'success');
+    // Preferência deixada de lado por falta de receitas: avisa em vez de ignorar calado.
+    if (relaxed.length) {
+      const names = relaxed.map((p) => t.health.diets[p as keyof typeof t.health.diets] ?? p).join(', ');
+      showToast(t.plan.generatedRelaxed.replace('{prefs}', names), 'warning');
+    } else {
+      showToast(t.plan.generated, 'success');
+    }
   };
 
   // Muda as quantidades de cada dia na mesma proporção para chegar perto da meta do paciente.
