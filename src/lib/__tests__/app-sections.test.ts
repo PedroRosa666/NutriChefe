@@ -6,7 +6,7 @@ describe('app sections', () => {
     expect(sectionOfTab(false, null).key).toBe('home');
     expect(sectionOfTab(false, 'plan').key).toBe('plan');
     expect(sectionOfTab(false, 'shopping').key).toBe('plan');
-    expect(sectionOfTab(false, 'nutrition').key).toBe('diary');
+    expect(sectionOfTab(false, 'nutrition').key).toBe('home');
     expect(sectionOfTab(false, 'messages').key).toBe('messages');
     expect(sectionOfTab(false, 'health').key).toBe('profile');
     expect(sectionOfTab(false, 'account').key).toBe('profile');
@@ -28,7 +28,7 @@ describe('app sections', () => {
 
   it('links each section to its first tab', () => {
     expect(sectionHref(false, 'home')).toBe('/perfil');
-    expect(sectionHref(false, 'diary')).toBe('/perfil?tab=nutrition');
+    expect(sectionHref(false, 'plan')).toBe('/perfil?tab=plan');
     expect(sectionHref(false, 'profile')).toBe('/perfil?tab=health');
     expect(sectionHref(true, 'profile')).toBe('/perfil?tab=professional');
   });

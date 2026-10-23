@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Scale, Crown, ArrowRight, HeartPulse, Bot, BellRing, Stethoscope, UtensilsCrossed, BookOpen, ShoppingCart } from 'lucide-react';
+import { Scale, Crown, ArrowRight, HeartPulse, Bot, BellRing, Stethoscope, UtensilsCrossed, Heart, ShoppingCart } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
@@ -94,11 +94,11 @@ export function ClientDashboard() {
           },
         ]}
         actions={[
-          // Plano e Diário já estão na barra de navegação: aqui ficam as ações e o resto.
+          // Plano e receitas já estão na barra de navegação: aqui ficam as ações e o resto.
           { to: '/perfil?tab=nutrition&adicionar=1', label: t.profileUi.logMeal, icon: UtensilsCrossed },
           { to: '/perfil?tab=health&peso=1', label: t.profileUi.logWeight, icon: Scale },
           { to: '/perfil?tab=shopping', label: t.profileUi.shopping, icon: ShoppingCart },
-          { to: '/', label: t.nav.recipes, icon: BookOpen },
+          { to: '/perfil?tab=favorites', label: t.profile.favorites, icon: Heart },
         ]}
       />
 

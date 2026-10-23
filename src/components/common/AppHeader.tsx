@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Bot, ShieldCheck } from 'lucide-react';
+import { Bot, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useCanUseAI, usePremiumStore } from '../../store/premium';
 import { useAppNav } from '../../hooks/useAppNav';
@@ -24,12 +24,11 @@ export function AppHeader() {
   const t = useTranslation();
   const navigate = useNavigate();
   if (!user) return null;
-  const isNutritionist = user.type === 'Nutritionist';
 
   return (
     <header className="sticky top-0 z-40 bg-[rgb(var(--nc-top)/0.72)] backdrop-blur-md backdrop-saturate-150">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 md:h-16 lg:px-8">
-        <Link to="/perfil" className="text-xl font-bold text-emerald-600 md:text-2xl dark:text-emerald-400">
+        <Link to="/" className="text-xl font-bold text-emerald-600 md:text-2xl dark:text-emerald-400">
           NutriChef
         </Link>
 
@@ -58,13 +57,6 @@ export function AppHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
-          {/* O paciente chega às receitas por aqui (na barra de baixo ficam as tarefas do dia). */}
-          {!isNutritionist && (
-            <Link to="/" className={cn(iconButton, 'md:w-auto md:gap-1.5 md:px-3 md:text-sm md:font-medium')} title={t.nav.recipes} aria-label={t.nav.recipes}>
-              <BookOpen className="h-5 w-5 md:h-4 md:w-4" />
-              <span className="hidden md:inline">{t.nav.recipes}</span>
-            </Link>
-          )}
           {canUseAI && (
             <Link to="/mentoria-ia" className={iconButton} title={t.labels.aiMentoring} aria-label={t.labels.aiMentoring}>
               <Bot className="h-5 w-5" />

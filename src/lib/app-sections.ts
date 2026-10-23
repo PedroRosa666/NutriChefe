@@ -15,7 +15,7 @@ export type TabKey =
   | 'favorites'
   | 'account';
 
-export type SectionKey = 'home' | 'plan' | 'diary' | 'messages' | 'patients' | 'profile';
+export type SectionKey = 'home' | 'plan' | 'messages' | 'patients' | 'profile';
 
 /** Um item da faixa de abas. Com mais de uma aba, elas viram um seletor dentro do item. */
 export interface SectionItem {
@@ -30,10 +30,10 @@ export interface Section {
 
 const one = (tab: TabKey): SectionItem => ({ key: tab, tabs: [tab] });
 
+// 'home' é o painel do dia ("Meu dia" do paciente, "Painel" do nutricionista); o Início do app são as receitas.
 const CLIENT_SECTIONS: Section[] = [
-  { key: 'home', items: [one('overview')] },
+  { key: 'home', items: [one('overview'), one('nutrition')] },
   { key: 'plan', items: [one('plan'), one('shopping')] },
-  { key: 'diary', items: [one('nutrition')] },
   { key: 'messages', items: [one('messages')] },
   { key: 'profile', items: [one('health'), one('favorites'), one('account')] },
 ];

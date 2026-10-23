@@ -150,7 +150,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
     if (!onLoginRoute) return;
     if (isAuthenticated) {
       const next = new URLSearchParams(location.search).get('next');
-      navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : '/perfil', { replace: true });
+      navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : '/', { replace: true });
       return;
     }
     setAuthModalMode(new URLSearchParams(location.search).get('modo') === 'cadastro' ? 'signup' : 'signin');
@@ -160,8 +160,8 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
   // Verificar se tem acesso à IA (nutricionista ou premium)
   const hasAIAccess = isAuthenticated && canUseAI;
   const isNutritionistUser = user?.type === 'Nutritionist';
-  // Atalho para o Início (paciente) ou o Painel (nutricionista), que ficam fora da home.
-  const homeItem = useAppNav()[0];
+  // Atalho para o Meu dia (paciente) ou o Painel (nutricionista), que ficam fora da home.
+  const homeItem = useAppNav().find((i) => i.key === 'home');
   return (
     <>
       {/* Mesmo tom do topo do degradê, translúcido: sem corte entre cabeçalho e página. */}
@@ -169,7 +169,12 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <motion.h1 
+              <motion.h1
+                onClick={() => {
+                  // A marca leva ao topo da home (receitas), de onde estiver.
+                  if (location.pathname !== '/') navigate('/');
+                  else window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 cursor-pointer"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -425,8 +430,6 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
           setIsAuthModalOpen(false);
           const signedIn = useAuthStore.getState().isAuthenticated;
           if (onLoginRoute && !signedIn) navigate('/', { replace: true });
-          // Entrou pelo botão do topo: começa no Início (o seu dia ou o painel).
-          else if (!onLoginRoute && signedIn) navigate('/perfil');
         }}
         initialMode={authModalMode}
       />

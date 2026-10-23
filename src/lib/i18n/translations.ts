@@ -1726,6 +1726,7 @@ export const translations = {
       messages: 'Messages',
       recipes: 'Recipes',
       diary: 'Diary',
+      today: 'My day',
     },
 
     stats: {
@@ -3478,6 +3479,7 @@ export const translations = {
       messages: 'Mensagens',
       recipes: 'Receitas',
       diary: 'Diário',
+      today: 'Meu dia',
     },
 
     stats: {

@@ -39,12 +39,11 @@ export function HomePage() {
   const { recipes, loading, fetchRecipes } = useRecipesStore();
   const { isAuthenticated, isNutritionist } = useAuthStore();
 
-  // Abrindo o app instalado (start_url /?inicio=1): quem está logado começa no Início (o seu dia
-  // ou o painel); quem não está fica nas receitas.
+  // Links antigos do app instalado (/?inicio=1): só limpa o parâmetro, o Início são as receitas.
   const launched = searchParams.has('inicio');
   useEffect(() => {
-    if (launched) navigate(isAuthenticated ? '/perfil' : '/', { replace: true });
-  }, [launched, isAuthenticated, navigate]);
+    if (launched) navigate('/', { replace: true });
+  }, [launched, navigate]);
   const t = useTranslation();
 
   const CATEGORIES = ['all', 'vegan', 'vegetarian', 'lowCarb', 'highProtein', 'glutenFree'];
