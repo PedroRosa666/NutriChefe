@@ -1,11 +1,16 @@
-import React, { useState, useId } from 'react';
+import React, { useRef, useState, useId } from 'react';
 import { X, Plus, Minus, Clock, Image, FileText, UtensilsCrossed, ListOrdered, Activity } from 'lucide-react';
+import { useToastStore } from '../../store/toast';
+import { ingredientRowsFor } from '../../services/database';
+import { emptyIngredient, nutritionDraftFrom, nutritionDraftMessage, readNutritionDraft, type NutritionDraft } from '../../lib/recipe-nutrition';
+import { RecipeIngredientsField } from './RecipeIngredientsField';
+import { RecipeNutritionField } from './RecipeNutritionField';
 import { useRecipesStore } from '../../store/recipes';
 import { RecipeImageInput } from './RecipeImageInput';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import { confirmDietCategory } from '../../lib/recipe-diet';
-import type { Recipe } from '../../types/recipe';
+import type { Recipe, RecipeIngredient } from '../../types/recipe';
 
 type CategoryKey = keyof ReturnType<typeof useTranslation>['categories'];
 
@@ -61,15 +66,31 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
   const t = useTranslation();
   const [loading, setLoading] = useState(false);
   const [editedRecipe, setEditedRecipe] = useState<Recipe>(recipe);
+  const [rows, setRows] = useState<RecipeIngredient[]>(() => {
+    const list = ingredientRowsFor(recipe);
+    return list.length ? list : [emptyIngredient()];
+  });
+  const [nutrition, setNutrition] = useState<NutritionDraft>(() => nutritionDraftFrom(recipe));
+  const operationId = useRef<string | null>(null);
+  const showToast = useToastStore((s) => s.showToast);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!(await confirmDietCategory(editedRecipe, t))) return;
+    const read = readNutritionDraft(nutrition);
+    if (!read.ok) {
+      showToast(nutritionDraftMessage(read, t.recipeForm, t.profile.nutritionGoalsnames), 'warning');
+      return;
+    }
+    const ingredientRows = rows.filter((r) => r.text.trim());
+    const updated: Recipe = { ...editedRecipe, ...read.value, ingredientRows, ingredients: ingredientRows.map((r) => r.text.trim()) };
+    if (!(await confirmDietCategory(updated, t))) return;
     setLoading(true);
     try {
-      await updateRecipe(editedRecipe);
+      operationId.current ??= crypto.randomUUID();
+      await updateRecipe(updated, operationId.current);
+      operationId.current = null;
       onClose();
     } catch (error) {
       console.error('Error updating recipe:', error);
@@ -79,7 +100,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
   };
 
   const handleArrayInput = (
-    field: 'ingredients' | 'instructions',
+    field: 'instructions',
     index: number,
     value: string
   ) => {
@@ -89,7 +110,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
     }));
   };
 
-  const addArrayItem = (field: 'ingredients' | 'instructions') => {
+  const addArrayItem = (field: 'instructions') => {
     setEditedRecipe((prev) => ({
       ...prev,
       [field]: [...prev[field], ''],
@@ -97,23 +118,12 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
   };
 
   const removeArrayItem = (
-    field: 'ingredients' | 'instructions',
+    field: 'instructions',
     index: number
   ) => {
     setEditedRecipe((prev) => ({
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleNutritionChange = (key: string, value: string) => {
-    const numericValue = parseFloat(value) || 0;
-    setEditedRecipe((prev) => ({
-      ...prev,
-      nutritionFacts: {
-        ...prev.nutritionFacts,
-        [key]: numericValue,
-      },
     }));
   };
 
@@ -123,14 +133,6 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
       value: key,
       label: t.categories[key],
     }));
-
-  const nutritionUnits: Record<string, string> = {
-    calories: 'kcal',
-    protein: 'g',
-    carbs: 'g',
-    fat: 'g',
-    fiber: 'g',
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm sm:p-4">
@@ -290,47 +292,8 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
           <FormSection
             title={t.recipe.ingredients}
             icon={<UtensilsCrossed className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
-            action={
-              <button
-                type="button"
-                onClick={() => addArrayItem('ingredients')}
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {t.recipe.addIngredient}
-              </button>
-            }
           >
-            <div className="space-y-2">
-              {editedRecipe.ingredients.map((ingredient, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-xs font-semibold text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
-                    {index + 1}
-                  </span>
-                  <input
-                    type="text"
-                    value={ingredient}
-                    onChange={(e) =>
-                      handleArrayInput('ingredients', index, e.target.value)
-                    }
-                    className={cn(inputClass, 'flex-1')}
-                    placeholder={t.recipe.example}
-                    aria-label={`${t.recipe.ingredients} ${index + 1}`}
-                    required
-                  />
-                  {editedRecipe.ingredients.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeArrayItem('ingredients', index)}
-                      aria-label={t.common.remove}
-                      className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/80 text-slate-400 shadow-sm transition hover:bg-red-50 hover:text-red-500 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:bg-red-950/40 dark:hover:text-red-300"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+            <RecipeIngredientsField rows={rows} onChange={setRows} inputClass={inputClass} />
           </FormSection>
 
           <FormSection
@@ -380,39 +343,16 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
           </FormSection>
 
           <FormSection
-            title={t.recipe.nutritionFacts}
+            title={`${t.recipeForm.yieldTitle} · ${t.recipe.nutritionFacts}`}
             icon={<Activity className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
           >
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-              {Object.entries(editedRecipe.nutritionFacts).map(([key, value]) => {
-                const nutritionKey =
-                  key as keyof typeof t.profile.nutritionGoalsnames;
-                return (
-                  <div key={key} className="space-y-1.5">
-                    <label htmlFor={`${fid}-7-${key}`} className="block text-xs font-medium text-slate-600 dark:text-slate-200 sm:text-sm">
-                      {t.profile.nutritionGoalsnames[nutritionKey]}
-                    </label>
-                    <div className="relative">
-                      <input id={`${fid}-7-${key}`}
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={value}
-                        onChange={(e) =>
-                          handleNutritionChange(key, e.target.value)
-                        }
-                        className={cn(inputClass, 'pr-10')}
-                        placeholder="0.00"
-                        required
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 dark:text-slate-500">
-                        {nutritionUnits[key] || ''}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <RecipeNutritionField
+              draft={nutrition}
+              onChange={setNutrition}
+              legacy={recipe.nutritionBasis === 'legacy_unit'}
+              inputClass={inputClass}
+              labelClass={labelClass}
+            />
           </FormSection>
 
           <div className="flex gap-3 pt-2">

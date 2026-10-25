@@ -1,4 +1,4 @@
-import React, { useState, useId } from 'react';
+import React, { useRef, useState, useId } from 'react';
 import { X, Plus, Minus } from 'lucide-react';
 import { useRecipesStore } from '../store/recipes';
 import { confirmDialog } from '../store/confirm';
@@ -7,7 +7,11 @@ import { RecipeImageInput } from './recipe/RecipeImageInput';
 import { useTranslation } from '../hooks/useTranslation';
 import { cn } from '../lib/utils';
 import { confirmDietCategory } from '../lib/recipe-diet';
-import type { Recipe } from '../types/recipe';
+import type { Recipe, RecipeIngredient } from '../types/recipe';
+import { RecipeIngredientsField } from './recipe/RecipeIngredientsField';
+import { RecipeNutritionField } from './recipe/RecipeNutritionField';
+import { emptyIngredient, nutritionDraftFrom, nutritionDraftMessage, readNutritionDraft, type NutritionDraft } from '../lib/recipe-nutrition';
+import { useToastStore } from '../store/toast';
 
 type CategoryKey = keyof ReturnType<typeof useTranslation>['categories'];
 
@@ -24,7 +28,7 @@ const INITIAL_RECIPE: Partial<Recipe> = {
   difficulty: 'medium',
   // Sem categoria marcada: o autor escolhe (antes vinha "Vegana" e muita receita ficou com o rótulo errado).
   category: '',
-  ingredients: [''],
+  ingredients: [],
   instructions: [''],
   nutritionFacts: {
     calories: 0,
@@ -34,6 +38,9 @@ const INITIAL_RECIPE: Partial<Recipe> = {
     fiber: 0,
   },
 };
+
+// Receita nova: valores por porção, todos em branco ("não informado" até o autor preencher).
+const initialNutrition = (): NutritionDraft => nutritionDraftFrom({ nutritionDeclared: {} });
 
 // Estilos base para evitar repetição
 const inputClass =
@@ -79,34 +86,58 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
   const [loading, setLoading] = useState(false);
 
   const [recipe, setRecipe] = useState<Partial<Recipe>>(INITIAL_RECIPE);
+  const [rows, setRows] = useState<RecipeIngredient[]>(() => [emptyIngredient()]);
+  const [nutrition, setNutrition] = useState<NutritionDraft>(initialNutrition);
+  // Mesmo envio repetido (rede caiu na resposta): o banco não cria duas receitas.
+  const operationId = useRef<string | null>(null);
+  const showToast = useToastStore((s) => s.showToast);
+
+  const reset = () => {
+    setRecipe(INITIAL_RECIPE);
+    setRows([emptyIngredient()]);
+    setNutrition(initialNutrition());
+    operationId.current = null;
+  };
 
   if (!isOpen || !user) return null;
 
   // Fechar com a receita pela metade: confirma antes de jogar fora.
   const close = async () => {
-    const dirty = JSON.stringify(recipe) !== JSON.stringify(INITIAL_RECIPE);
+    const dirty =
+      JSON.stringify(recipe) !== JSON.stringify(INITIAL_RECIPE) ||
+      rows.some((r) => r.text.trim() || r.note.trim() || r.foodId) ||
+      JSON.stringify(nutrition) !== JSON.stringify(initialNutrition());
     if (dirty && !(await confirmDialog(t.profileUi.discardRecipe))) return;
-    setRecipe(INITIAL_RECIPE);
+    reset();
     onClose();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!(await confirmDietCategory(recipe, t))) return;
+    const read = readNutritionDraft(nutrition);
+    if (!read.ok) {
+      showToast(nutritionDraftMessage(read, t.recipeForm, t.profile.nutritionGoalsnames), 'warning');
+      return;
+    }
+    const ingredientRows = rows.filter((r) => r.text.trim());
+    const recipeData = {
+      ...recipe,
+      ...read.value,
+      ingredientRows,
+      ingredients: ingredientRows.map((r) => r.text.trim()),
+      authorId: user.id,
+      rating: 0,
+      reviews: [],
+    } as Recipe;
+    if (!(await confirmDietCategory(recipeData, t))) return;
 
     setLoading(true);
     try {
-      const recipeData = {
-        ...recipe,
-        authorId: user.id,
-        rating: 0,
-        reviews: [],
-      } as Recipe;
+      operationId.current ??= crypto.randomUUID();
+      await createRecipe(recipeData, operationId.current);
 
-      await createRecipe(recipeData);
-
-      setRecipe(INITIAL_RECIPE);
+      reset();
       onClose();
     } catch (error) {
       console.error('Error creating recipe:', error);
@@ -116,7 +147,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
   };
 
   const handleArrayInput = (
-    field: 'ingredients' | 'instructions',
+    field: 'instructions',
     index: number,
     value: string
   ) => {
@@ -126,7 +157,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
     }));
   };
 
-  const addArrayItem = (field: 'ingredients' | 'instructions') => {
+  const addArrayItem = (field: 'instructions') => {
     setRecipe((prev) => ({
       ...prev,
       [field]: [...(prev[field] || []), ''],
@@ -134,28 +165,12 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
   };
 
   const removeArrayItem = (
-    field: 'ingredients' | 'instructions',
+    field: 'instructions',
     index: number
   ) => {
     setRecipe((prev) => ({
       ...prev,
       [field]: prev[field]?.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleNutritionChange = (key: string, value: string) => {
-    const numericValue = parseFloat(value) || 0;
-    setRecipe((prev) => ({
-      ...prev,
-      nutritionFacts: {
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        fiber: 0,
-        ...prev.nutritionFacts,
-        [key]: numericValue,
-      },
     }));
   };
 
@@ -315,51 +330,8 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
           </FormSection>
 
           {/* Ingredientes */}
-          <FormSection
-            title={t.recipe.ingredients}
-            description={t.recipe.addIngredient}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                {t.common.add}
-              </span>
-              <button
-                type="button"
-                onClick={() => addArrayItem('ingredients')}
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
-              >
-                <Plus className="h-4 w-4" />
-                {t.recipe.addIngredient}
-              </button>
-            </div>
-
-            <div className="mt-2 space-y-2">
-              {recipe.ingredients?.map((ingredient, index) => (
-                <div key={index} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={ingredient}
-                    onChange={(e) =>
-                      handleArrayInput('ingredients', index, e.target.value)
-                    }
-                    className={inputClass}
-                    placeholder={t.recipe.example}
-                    aria-label={`${t.recipe.ingredients} ${index + 1}`}
-                    required
-                  />
-                  {recipe.ingredients!.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeArrayItem('ingredients', index)}
-                      aria-label={t.common.remove}
-                      className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white/80 px-2 text-slate-400 shadow-sm transition hover:bg-red-50 hover:text-red-500 dark:border-slate-700 dark:bg-slate-900/70 dark:hover:bg-red-950/40 dark:hover:text-red-300"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+          <FormSection title={t.recipe.ingredients}>
+            <RecipeIngredientsField rows={rows} onChange={setRows} inputClass={inputClass} />
           </FormSection>
 
           {/* Modo de preparo */}
@@ -410,31 +382,9 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
             </div>
           </FormSection>
 
-          {/* Valores nutricionais */}
-          <FormSection title={t.recipe.nutritionFacts}>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-              {Object.entries(recipe.nutritionFacts || {}).map(([key, value]) => {
-                const nutritionKey =
-                  key as keyof typeof t.profile.nutritionGoalsnames;
-                return (
-                  <div key={key} className="space-y-1.5">
-                    <label htmlFor={`${fid}-7-${key}`} className="block text-xs font-medium text-slate-600 dark:text-slate-200 sm:text-sm">
-                      {t.profile.nutritionGoalsnames[nutritionKey]}
-                    </label>
-                    <input id={`${fid}-7-${key}`}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={value}
-                      onChange={(e) => handleNutritionChange(key, e.target.value)}
-                      className={inputClass}
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                );
-              })}
-            </div>
+          {/* Rendimento, porção e valores nutricionais */}
+          <FormSection title={`${t.recipeForm.yieldTitle} · ${t.recipe.nutritionFacts}`}>
+            <RecipeNutritionField draft={nutrition} onChange={setNutrition} inputClass={inputClass} labelClass={labelClass} />
           </FormSection>
 
           {/* Botão salvar */}

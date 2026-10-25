@@ -42,6 +42,7 @@ import { cn } from '../../lib/utils';
 import { fmtNum, appLocale } from '../../lib/format';
 import { confirmDialog } from '../../store/confirm';
 import { useToday } from '../../hooks/useToday';
+import { ingredientFactor } from '../../lib/recipe-nutrition';
 
 interface PlansSectionProps {
   clientId: string;
@@ -266,7 +267,8 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
       ...[...servingsByRecipe.entries()]
         .map(([id, servings]) => {
           const recipe = byId.get(id);
-          return recipe ? { title: recipe.title, ingredients: recipe.ingredients, factor: servings } : null;
+          // O mesmo fator da tela da receita (porções ÷ rendimento; receita antiga: a regra de antes).
+          return recipe ? { title: recipe.title, ingredients: recipe.ingredients, factor: ingredientFactor(recipe, servings) } : null;
         })
         .filter((s): s is NonNullable<typeof s> => !!s),
       ...[...gramsByFood.values()].map(({ name, grams }) => ({

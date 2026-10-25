@@ -10,3 +10,8 @@ function currentTranslations() {
 export function feedback() {
   return currentTranslations().feedback;
 }
+
+// Frases dos erros com código estável (src/lib/app-errors.ts).
+export function appErrorTexts() {
+  return currentTranslations().appErrors;
+}

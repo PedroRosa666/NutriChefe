@@ -1648,6 +1648,57 @@ export type Database = {
           },
         ]
       }
+      recipe_ingredients: {
+        Row: {
+          created_at: string
+          food_id: string | null
+          id: string
+          note: string
+          position: number
+          quantity: number | null
+          recipe_id: string
+          text: string
+          unit: string | null
+        }
+        Insert: {
+          created_at?: string
+          food_id?: string | null
+          id?: string
+          note?: string
+          position: number
+          quantity?: number | null
+          recipe_id: string
+          text: string
+          unit?: string | null
+        }
+        Update: {
+          created_at?: string
+          food_id?: string | null
+          id?: string
+          note?: string
+          position?: number
+          quantity?: number | null
+          recipe_id?: string
+          text?: string
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "foods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
           author_id: string
@@ -1655,18 +1706,29 @@ export type Database = {
           created_at: string | null
           description: string
           difficulty: string
+          final_weight_g: number | null
           hidden_at: string | null
           id: string
           image: string
           ingredients: Json
           instructions: Json
+          nutrition_basis: string
+          nutrition_declared: Json
           nutrition_facts: Json
+          nutrition_reviewed_at: string | null
+          nutrition_reviewed_by: string | null
+          nutrition_source: string
+          nutrition_status: string
           premium_only: boolean
           prep_time: number
           rating: number | null
+          recipe_version: number
           review_count: number
+          serving_label: string
+          serving_weight_g: number | null
           title: string
           updated_at: string | null
+          yield_servings: number | null
         }
         Insert: {
           author_id: string
@@ -1674,18 +1736,29 @@ export type Database = {
           created_at?: string | null
           description: string
           difficulty: string
+          final_weight_g?: number | null
           hidden_at?: string | null
           id?: string
           image: string
           ingredients: Json
           instructions: Json
+          nutrition_basis?: string
+          nutrition_declared?: Json
           nutrition_facts: Json
+          nutrition_reviewed_at?: string | null
+          nutrition_reviewed_by?: string | null
+          nutrition_source?: string
+          nutrition_status?: string
           premium_only?: boolean
           prep_time: number
           rating?: number | null
+          recipe_version?: number
           review_count?: number
+          serving_label?: string
+          serving_weight_g?: number | null
           title: string
           updated_at?: string | null
+          yield_servings?: number | null
         }
         Update: {
           author_id?: string
@@ -1693,18 +1766,29 @@ export type Database = {
           created_at?: string | null
           description?: string
           difficulty?: string
+          final_weight_g?: number | null
           hidden_at?: string | null
           id?: string
           image?: string
           ingredients?: Json
           instructions?: Json
+          nutrition_basis?: string
+          nutrition_declared?: Json
           nutrition_facts?: Json
+          nutrition_reviewed_at?: string | null
+          nutrition_reviewed_by?: string | null
+          nutrition_source?: string
+          nutrition_status?: string
           premium_only?: boolean
           prep_time?: number
           rating?: number | null
+          recipe_version?: number
           review_count?: number
+          serving_label?: string
+          serving_weight_g?: number | null
           title?: string
           updated_at?: string | null
+          yield_servings?: number | null
         }
         Relationships: [
           {
@@ -2177,6 +2261,18 @@ export type Database = {
           recipe_id: string
         }[]
       }
+      recipe_clean_nutrients: {
+        Args: { p_raw: Json; p_strict?: boolean }
+        Returns: Json
+      }
+      recipe_ingredients_from_lines: {
+        Args: { p_lines: Json; p_recipe: string }
+        Returns: undefined
+      }
+      recipe_per_serving: {
+        Args: { p_basis: string; p_declared: Json; p_yield: number }
+        Returns: Json
+      }
       record_care_event: {
         Args: {
           p_client: string
@@ -2319,6 +2415,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      save_recipe: {
+        Args: {
+          p_data: Json
+          p_ingredients: Json
+          p_operation?: string
+          p_recipe: string
+        }
+        Returns: Json
+      }
       search_key: { Args: { p_text: string }; Returns: string }
       search_match: {
         Args: { p_haystack: string; p_query: string }
@@ -2338,18 +2443,29 @@ export type Database = {
           created_at: string | null
           description: string
           difficulty: string
+          final_weight_g: number | null
           hidden_at: string | null
           id: string
           image: string
           ingredients: Json
           instructions: Json
+          nutrition_basis: string
+          nutrition_declared: Json
           nutrition_facts: Json
+          nutrition_reviewed_at: string | null
+          nutrition_reviewed_by: string | null
+          nutrition_source: string
+          nutrition_status: string
           premium_only: boolean
           prep_time: number
           rating: number | null
+          recipe_version: number
           review_count: number
+          serving_label: string
+          serving_weight_g: number | null
           title: string
           updated_at: string | null
+          yield_servings: number | null
         }[]
         SetofOptions: {
           from: "*"

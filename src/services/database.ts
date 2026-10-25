@@ -1,6 +1,8 @@
 import type { User as AuthUser } from '@supabase/supabase-js';
 import { sqlArg, supabase } from '../lib/supabase';
-import type { Recipe } from '../types/recipe';
+import type { Recipe, RecipeIngredient } from '../types/recipe';
+import { NUTRIENT_KEYS, type DeclaredNutrition, type NutritionBasis, type NutritionStatus } from '../lib/recipe-nutrition';
+import { parseIngredient } from '../lib/ingredients';
 import { PUBLIC_PROFILE_COLUMNS } from '../lib/profile-columns';
 import { feedback } from '../lib/i18n/current';
 
@@ -22,6 +24,24 @@ interface DatabaseRecipe {
   created_at: string;
   updated_at: string;
   premium_only?: boolean;
+  yield_servings?: number | string | null;
+  final_weight_g?: number | string | null;
+  serving_weight_g?: number | string | null;
+  serving_label?: string | null;
+  nutrition_declared?: Record<string, unknown> | null;
+  nutrition_basis?: NutritionBasis;
+  nutrition_status?: NutritionStatus;
+  recipe_version?: number;
+  recipe_ingredients?: Array<{
+    id: string;
+    position: number;
+    text: string;
+    food_id: string | null;
+    quantity: number | string | null;
+    unit: string | null;
+    note: string | null;
+    foods: { name: string } | null;
+  }>;
   profiles?: {
     full_name: string;
     user_type: string;
@@ -39,10 +59,12 @@ interface DatabaseRecipe {
   }>;
 }
 
-// Receita completa (página da receita, receitas do próprio autor): com preparo e avaliações.
+// Receita completa (página da receita, receitas do próprio autor): com preparo, ingredientes
+// estruturados e avaliações.
 const RECIPE_SELECT = `
   *,
   profiles!recipes_author_id_fkey(full_name, user_type, avatar_url),
+  recipe_ingredients(id, position, text, food_id, quantity, unit, note, foods(name)),
   reviews(
     id,
     rating,
@@ -58,6 +80,7 @@ const RECIPE_SELECT = `
 const CARD_SELECT = `
   id, title, description, image, prep_time, difficulty, rating, review_count, category, ingredients,
   nutrition_facts, author_id, created_at, updated_at, premium_only,
+  yield_servings, serving_label, nutrition_basis, nutrition_status,
   profiles!recipes_author_id_fkey(full_name, user_type, avatar_url)
 `;
 
@@ -72,6 +95,17 @@ export interface RecipeFilters {
 }
 
 export type RecipeInput = Omit<Recipe, 'id' | 'rating' | 'reviewCount' | 'full' | 'reviews' | 'createdAt' | 'updatedAt'>;
+
+const numberOrNull = (v: unknown) => (v === null || v === undefined || v === '' ? null : Number(v));
+
+function toDeclared(raw: Record<string, unknown> | null | undefined): DeclaredNutrition {
+  const out: DeclaredNutrition = {};
+  for (const key of NUTRIENT_KEYS) {
+    const n = numberOrNull(raw?.[key]);
+    if (n !== null && Number.isFinite(n)) out[key] = n;
+  }
+  return out;
+}
 
 function toNutritionFacts(facts: Partial<Recipe['nutritionFacts']> | null | undefined): Recipe['nutritionFacts'] {
   return {
@@ -106,6 +140,27 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
     ingredients: dbRecipe.ingredients ?? [],
     instructions: dbRecipe.instructions ?? [],
     nutritionFacts: toNutritionFacts(dbRecipe.nutrition_facts),
+    unknownNutrients: NUTRIENT_KEYS.filter((k) => numberOrNull(dbRecipe.nutrition_facts?.[k]) === null),
+    nutritionDeclared: dbRecipe.nutrition_declared ? toDeclared(dbRecipe.nutrition_declared) : undefined,
+    nutritionBasis: dbRecipe.nutrition_basis ?? 'legacy_unit',
+    nutritionStatus: dbRecipe.nutrition_status ?? 'manual_declared',
+    yieldServings: numberOrNull(dbRecipe.yield_servings),
+    servingLabel: dbRecipe.serving_label ?? '',
+    servingWeightG: numberOrNull(dbRecipe.serving_weight_g),
+    finalWeightG: numberOrNull(dbRecipe.final_weight_g),
+    recipeVersion: dbRecipe.recipe_version,
+    ingredientRows: dbRecipe.recipe_ingredients
+      ?.slice()
+      .sort((a, b) => a.position - b.position)
+      .map((row) => ({
+        id: row.id,
+        text: row.text,
+        foodId: row.food_id,
+        foodName: row.foods?.name ?? null,
+        quantity: numberOrNull(row.quantity),
+        unit: row.unit,
+        note: row.note ?? '',
+      })),
     reviews: reviews
       .slice()
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
@@ -140,49 +195,63 @@ export async function getUserProfile(id: string) {
 }
 
 // Funções de receitas
-export async function createRecipe(recipe: RecipeInput) {
-  const { data, error } = await supabase
-    .from('recipes')
-    .insert([{
+
+/** Ingredientes como o app grava: a linha do autor e a quantidade lida dela (a mesma leitura da lista de compras). */
+export function ingredientRowsFor(recipe: Pick<Recipe, 'ingredients' | 'ingredientRows'>): RecipeIngredient[] {
+  const rows = recipe.ingredientRows ?? recipe.ingredients.map((text) => ({ text, foodId: null, quantity: null, unit: null, note: '' }));
+  return rows
+    .map((row) => ({ ...row, text: row.text.trim(), note: row.note.trim() }))
+    .filter((row) => row.text)
+    .map((row) => {
+      const parsed = parseIngredient(row.text);
+      return { ...row, quantity: parsed.quantity && parsed.quantity > 0 ? parsed.quantity : null, unit: parsed.quantity ? parsed.unit : null };
+    });
+}
+
+/**
+ * Cria (recipeId null) ou atualiza a receita com rendimento, base dos nutrientes e ingredientes,
+ * tudo de uma vez (save_recipe). `operationId` repetido não grava duas vezes.
+ */
+export async function saveRecipe(recipeId: string | null, recipe: RecipeInput, operationId?: string): Promise<Recipe> {
+  const declared = recipe.nutritionDeclared ?? recipe.nutritionFacts;
+  // Uma cópia de receita antiga começa revisada: os valores antigos já eram os de uma porção.
+  const basis = recipe.nutritionBasis === 'legacy_unit' && !recipeId ? 'per_serving' : recipe.nutritionBasis ?? 'per_serving';
+  const { data, error } = await supabase.rpc('save_recipe', {
+    p_recipe: sqlArg(recipeId),
+    p_data: {
       title: recipe.title,
       description: recipe.description,
       image: recipe.image,
       prep_time: recipe.prepTime,
       difficulty: recipe.difficulty,
       category: recipe.category,
-      ingredients: recipe.ingredients,
-      instructions: recipe.instructions,
-      nutrition_facts: toNutritionFacts(recipe.nutritionFacts),
-      author_id: recipe.authorId
-    }])
-    .select(RECIPE_SELECT)
-    .single();
-
+      instructions: recipe.instructions.map((s) => s.trim()).filter(Boolean),
+      yield_servings: recipe.yieldServings ?? null,
+      final_weight_g: recipe.finalWeightG ?? null,
+      serving_weight_g: recipe.servingWeightG ?? null,
+      serving_label: recipe.servingLabel ?? '',
+      nutrition_basis: basis,
+      nutrition: Object.fromEntries(NUTRIENT_KEYS.map((k) => [k, declared?.[k] ?? null])),
+    },
+    p_ingredients: ingredientRowsFor(recipe).map((row) => ({
+      id: row.id ?? null,
+      text: row.text,
+      food_id: row.foodId,
+      quantity: row.quantity,
+      unit: row.unit,
+      note: row.note,
+    })),
+    p_operation: sqlArg(operationId ?? null),
+  });
   if (error) throw error;
-  return convertDatabaseRecipeToAppRecipe(data as unknown as DatabaseRecipe);
+  const saved = await getRecipeById((data as unknown as { recipe_id: string }).recipe_id);
+  if (!saved) throw new Error('not_found');
+  return saved;
 }
 
-export async function updateRecipe(recipeId: string, updates: Partial<Recipe>) {
-  const { data, error } = await supabase
-    .from('recipes')
-    .update({
-      title: updates.title,
-      description: updates.description,
-      image: updates.image,
-      prep_time: updates.prepTime,
-      difficulty: updates.difficulty,
-      category: updates.category,
-      ingredients: updates.ingredients,
-      instructions: updates.instructions,
-      nutrition_facts: updates.nutritionFacts ? toNutritionFacts(updates.nutritionFacts) : undefined
-    })
-    .eq('id', recipeId)
-    .select(RECIPE_SELECT)
-    .single();
+export const createRecipe = (recipe: RecipeInput, operationId?: string) => saveRecipe(null, recipe, operationId);
 
-  if (error) throw error;
-  return convertDatabaseRecipeToAppRecipe(data as unknown as DatabaseRecipe);
-}
+export const updateRecipe = (recipe: Recipe, operationId?: string) => saveRecipe(recipe.id, recipe, operationId);
 
 export async function deleteRecipe(recipeId: string) {
   const { error } = await supabase

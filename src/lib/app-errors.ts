@@ -14,6 +14,7 @@ const APP_ERROR_CODES = [
   'premium_required',
   'app_outdated',
   'limit_exceeded',
+  'invalid_yield',
 ] as const;
 
 export type AppErrorCode = (typeof APP_ERROR_CODES)[number] | 'unknown';

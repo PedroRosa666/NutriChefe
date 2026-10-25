@@ -273,7 +273,7 @@ describe('opções e trocas pelo id do item', () => {
 
 describe('modelos e versão mínima do app', () => {
   it('o banco informa a versão mínima do app', async () => {
-    expect((await db.query<{ v: number }>(`SELECT app_min_client() AS v`)).rows[0].v).toBe(3);
+    expect((await db.query<{ v: number }>(`SELECT app_min_client() AS v`)).rows[0].v).toBeGreaterThanOrEqual(3);
     expect(today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

@@ -6,6 +6,7 @@ import type { Recipe } from '../types/recipe';
 import type { MealPlanItem, MealSlot, PlanMeal } from '../services/care';
 import { MEAL_SLOTS } from '../services/care';
 import { ALL_DAYS, dayShares, mealsOnDay } from './plan-meals';
+import { hasUsableNutrition } from './recipe-nutrition';
 
 const SLOT_WORDS: Record<MealSlot, string[]> = {
   breakfast: ['cafe', 'manha', 'panqueca', 'aveia', 'tapioca', 'smoothie', 'vitamina', 'iogurte', 'omelete', 'mingau', 'pao', 'granola', 'crepioca', 'overnight', 'torrada', 'breakfast', 'pancake', 'oat'],
@@ -110,7 +111,9 @@ export function generateWeeklyPlanDetailed({
   seed = Date.now(),
 }: GeneratorOptions): GeneratedPlan {
   // Alergias e dietas: obrigatórias. Se faltar variedade, as receitas que servem se repetem.
-  let pool = withoutAllergens(recipes.map(toSearchable), blockedTerms(allergies, preferences)).map((r) => r.source);
+  // Só receitas com nutrientes completos entram no ajuste automático (sem valor não vira zero).
+  const usable = recipes.filter(hasUsableNutrition);
+  let pool = withoutAllergens(usable.map(toSearchable), blockedTerms(allergies, preferences)).map((r) => r.source);
 
   const relaxed: string[] = [];
   for (const pref of preferences) {

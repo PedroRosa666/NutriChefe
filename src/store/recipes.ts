@@ -4,7 +4,8 @@ import type { RecipeFilters, RecipeInput } from '../services/database';
 import { useAuthStore } from './auth';
 import { useToastStore } from './toast';
 import type { Recipe } from '../types/recipe';
-import { feedback } from '../lib/i18n/current';
+import { appErrorTexts, feedback } from '../lib/i18n/current';
+import { errorCode, errorText } from '../lib/app-errors';
 
 // Receitas em camadas, para o catálogo crescer sem o app baixar tudo:
 // - cards: a grade da tela inicial, de página em página, com busca e filtros no servidor;
@@ -41,8 +42,9 @@ interface RecipesState {
   addReview: (recipeId: string, review: { userId: string; userName: string; rating: number; comment: string; date: string }) => Promise<void>;
   updateReview: (recipeId: string, reviewId: string, updates: { rating: number; comment: string }) => Promise<void>;
   deleteReview: (recipeId: string, reviewId: string) => Promise<void>;
-  createRecipe: (recipe: RecipeInput) => Promise<Recipe>;
-  updateRecipe: (recipe: Recipe) => Promise<void>;
+  /** `operationId`: o mesmo em cada nova tentativa do mesmo envio (não grava duas vezes). */
+  createRecipe: (recipe: RecipeInput, operationId?: string) => Promise<Recipe>;
+  updateRecipe: (recipe: Recipe, operationId?: string) => Promise<void>;
   deleteRecipe: (recipeId: string) => Promise<void>;
 
   /** Algo mudou (receita salva, login, assinatura): recarrega o que já estava carregado. */
@@ -236,27 +238,27 @@ export const useRecipesStore = create<RecipesState>((set, get) => ({
     }
   },
 
-  createRecipe: async (recipe) => {
+  createRecipe: async (recipe, operationId) => {
     try {
-      const created = await db.createRecipe(recipe);
+      const created = await db.createRecipe(recipe, operationId);
       await get().refresh(created.id);
       toast()(feedback().recipes.recipeCreated, 'success');
       return created;
     } catch (error) {
       console.error('Failed to create recipe:', error);
-      toast()(feedback().recipes.createRecipeError, 'error');
+      toast()(errorCode(error) === 'unknown' ? feedback().recipes.createRecipeError : errorText(error, appErrorTexts()), 'error');
       throw error;
     }
   },
 
-  updateRecipe: async (recipe) => {
+  updateRecipe: async (recipe, operationId) => {
     try {
-      await db.updateRecipe(recipe.id, recipe);
+      await db.updateRecipe(recipe, operationId);
       await get().refresh(recipe.id);
       toast()(feedback().recipes.recipeUpdated, 'success');
     } catch (error) {
       console.error('Failed to update recipe:', error);
-      toast()(feedback().recipes.updateRecipeError, 'error');
+      toast()(errorCode(error) === 'unknown' ? feedback().recipes.updateRecipeError : errorText(error, appErrorTexts()), 'error');
       throw error;
     }
   },

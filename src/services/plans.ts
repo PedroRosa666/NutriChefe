@@ -10,6 +10,7 @@ import type { Recipe } from '../types/recipe';
 import type { MealPlan, MealPlanItem, MealSlot, PlanMeal } from './care';
 import { toFood, type FoodRow } from './foods';
 import { mealToJson, sortItemsByMeals, toPlanMeal, type MealRow } from '../lib/plan-meals';
+import { NUTRIENT_KEYS } from '../lib/recipe-nutrition';
 
 const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
 
@@ -186,6 +187,12 @@ interface RecipeSnapshot {
   difficulty: string | null;
   nutrition_facts: Partial<Recipe['nutritionFacts']> | null;
   ingredients: string[] | null;
+  // Versões publicadas a partir da etapa 4 (20261107120000_recipe_yield.sql); antes, ausentes.
+  yield_servings?: number | null;
+  nutrition_basis?: Recipe['nutritionBasis'];
+  nutrition_status?: Recipe['nutritionStatus'];
+  serving_label?: string | null;
+  recipe_version?: number;
 }
 
 /** Receita como estava na publicação: o suficiente para mostrar, somar e montar a lista de compras. */
@@ -210,6 +217,13 @@ function snapshotRecipe(id: string, s: RecipeSnapshot): Recipe {
       fat: Number(n.fat) || 0,
       fiber: Number(n.fiber) || 0,
     },
+    unknownNutrients: NUTRIENT_KEYS.filter((k) => n[k] === undefined || n[k] === null),
+    // Sem os campos (versão publicada antes do rendimento): regra antiga, como na publicação.
+    yieldServings: s.yield_servings ?? null,
+    nutritionBasis: s.nutrition_basis ?? 'legacy_unit',
+    nutritionStatus: s.nutrition_status ?? 'manual_declared',
+    servingLabel: s.serving_label ?? '',
+    recipeVersion: s.recipe_version,
     reviews: [],
     authorId: '',
     createdAt: '',
@@ -359,7 +373,24 @@ export function withSnapshotRecipes(catalog: Map<string, Recipe>, version: PlanV
   for (const [id, recipe] of version.recipes) {
     const live = catalog.get(id);
     // Do catálogo, só o que não é prescrição (imagem atual, nota); nome e nutrientes ficam os do retrato.
-    merged.set(id, live ? { ...live, title: recipe.title, nutritionFacts: recipe.nutritionFacts, ingredients: recipe.ingredients } : recipe);
+    merged.set(
+      id,
+      live
+        ? {
+            ...live,
+            title: recipe.title,
+            nutritionFacts: recipe.nutritionFacts,
+            unknownNutrients: recipe.unknownNutrients,
+            ingredients: recipe.ingredients,
+            // Escala da lista de compras: a da receita como foi prescrita.
+            yieldServings: recipe.yieldServings,
+            nutritionBasis: recipe.nutritionBasis,
+            nutritionStatus: recipe.nutritionStatus,
+            servingLabel: recipe.servingLabel,
+            ingredientRows: undefined,
+          }
+        : recipe
+    );
   }
   return merged;
 }

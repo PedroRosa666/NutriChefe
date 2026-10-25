@@ -13,6 +13,8 @@ interface IngredientChecklistProps {
   onFactorChange?: (factor: number) => void;
   /** Mostra o botão "Lista de compras" quando informado. */
   onAddToShopping?: () => Promise<void>;
+  /** Quantas porções o preparo rende (mostra quantas porções a quantidade escolhida dá). */
+  yieldServings?: number | null;
 }
 
 interface IngredientItemProps {
@@ -62,7 +64,7 @@ const IngredientItem = memo(function IngredientItem({
   );
 });
 
-export function IngredientChecklist({ ingredients, factor = 1, onFactorChange, onAddToShopping }: IngredientChecklistProps) {
+export function IngredientChecklist({ ingredients, factor = 1, onFactorChange, onAddToShopping, yieldServings }: IngredientChecklistProps) {
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [adding, setAdding] = useState(false);
   const t = useTranslation();
@@ -123,6 +125,11 @@ export function IngredientChecklist({ ingredients, factor = 1, onFactorChange, o
                   </button>
                 ))}
               </div>
+              {yieldServings ? (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {t.recipeInfo.forServings.replace('{n}', (yieldServings * factor).toLocaleString('pt-BR', { maximumFractionDigits: 1 }))}
+                </span>
+              ) : null}
             </div>
           )}
           {onAddToShopping && (

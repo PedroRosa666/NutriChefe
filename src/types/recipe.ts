@@ -1,3 +1,17 @@
+import type { DeclaredNutrition, NutrientKey, NutritionBasis, NutritionStatus } from '../lib/recipe-nutrition';
+
+/** Linha de ingrediente (recipe_ingredients): texto do autor e, se houver, o alimento do catálogo. */
+export interface RecipeIngredient {
+  id?: string;
+  text: string;
+  foodId: string | null;
+  /** Nome do alimento ligado (só quando quem lê pode ver o alimento). */
+  foodName?: string | null;
+  quantity: number | null;
+  unit: string | null;
+  note: string;
+}
+
 export interface Recipe {
   id: string; // UUID da receita no Supabase
   title: string;
@@ -16,6 +30,7 @@ export interface Recipe {
   category: string;
   ingredients: string[];
   instructions: string[];
+  /** Valores de UMA porção (já convertidos pelo banco). Desconhecido aparece como 0 aqui e em `unknownNutrients`. */
   nutritionFacts: {
     calories: number;
     protein: number;
@@ -23,6 +38,21 @@ export interface Recipe {
     fat: number;
     fiber: number;
   };
+  /** Nutrientes que o autor não informou (não são zero). */
+  unknownNutrients?: NutrientKey[];
+  /** Como o autor escreveu os nutrientes, na base `nutritionBasis`. */
+  nutritionDeclared?: DeclaredNutrition;
+  nutritionBasis?: NutritionBasis;
+  nutritionStatus?: NutritionStatus;
+  /** Quantas porções o preparo rende; null = não informado. */
+  yieldServings?: number | null;
+  /** O que é uma porção ("1 fatia"). */
+  servingLabel?: string;
+  servingWeightG?: number | null;
+  finalWeightG?: number | null;
+  recipeVersion?: number;
+  /** Ingredientes estruturados (só na receita completa). */
+  ingredientRows?: RecipeIngredient[];
   reviews: {
     id: string; // Mudado para string para manter UUID original
     userId: string;

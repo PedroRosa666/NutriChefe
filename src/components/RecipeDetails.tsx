@@ -26,6 +26,7 @@ import { IngredientChecklist } from './recipe/IngredientChecklist';
 import { CookingMode } from './recipe/CookingMode';
 import { useShoppingListStore } from '../store/shopping-list';
 import { scaleIngredient } from '../lib/ingredients';
+import type { NutrientKey } from '../lib/recipe-nutrition';
 import { createRecipe as createRecipeInDb } from '../services/database';
 import { useNavigate } from 'react-router-dom';
 import type { Recipe } from '../types/recipe';
@@ -155,7 +156,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
       return;
     }
     try {
-      await useShoppingListStore.getState().addSources([{ title: recipe.title, ingredients: recipe.ingredients, factor }]);
+      await useShoppingListStore.getState().addSources([{ title: recipe.title, ingredients: ingredientLines, factor }]);
       showToast(t.shopping.added, 'success');
     } catch (error) {
       console.error('Error adding to shopping list:', error);
@@ -175,8 +176,16 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
         difficulty: recipe.difficulty,
         category: recipe.category,
         ingredients: recipe.ingredients,
+        // A cópia leva as linhas e o alimento ligado, sem os ids (o banco cria novos).
+        ingredientRows: recipe.ingredientRows?.map((row) => ({ ...row, id: undefined })),
         instructions: recipe.instructions,
         nutritionFacts: recipe.nutritionFacts,
+        nutritionDeclared: recipe.nutritionDeclared,
+        nutritionBasis: recipe.nutritionBasis,
+        yieldServings: recipe.yieldServings,
+        servingLabel: recipe.servingLabel,
+        servingWeightG: recipe.servingWeightG,
+        finalWeightG: recipe.finalWeightG,
         authorId: user.id,
       });
       await useRecipesStore.getState().refresh(copy.id);
@@ -276,8 +285,29 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
   };
 
   // Até uma casa decimal, sem ".0" sobrando ("104 kcal", "3,5 g").
-  const formatNutritionValue = (value: number) =>
-    Number(value || 0).toLocaleString(appLocale(), { maximumFractionDigits: 1 });
+  // Nutriente não informado pelo autor aparece como "—", nunca como zero.
+  const unknown = new Set(recipe.unknownNutrients ?? []);
+  const formatNutritionValue = (value: number, key: NutrientKey) =>
+    unknown.has(key) ? '—' : Number(value || 0).toLocaleString(appLocale(), { maximumFractionDigits: 1 });
+  // Linhas como o autor escreveu, com a observação de cada uma.
+  const ingredientLines = recipe.ingredientRows?.length
+    ? recipe.ingredientRows.map((row) => (row.note ? `${row.text} (${row.note})` : row.text))
+    : recipe.ingredients;
+  const nutritionNote =
+    recipe.nutritionStatus === 'unknown'
+      ? t.recipeInfo.noValues
+      : recipe.nutritionStatus === 'partial'
+        ? t.recipeInfo.partial
+        : recipe.nutritionBasis === 'legacy_unit'
+          ? t.recipeInfo.legacyBasis
+          : recipe.servingLabel
+            ? t.recipeInfo.perServingOf.replace('{label}', recipe.servingLabel)
+            : t.recipeInfo.perServing;
+  const yieldText = recipe.yieldServings
+    ? recipe.yieldServings === 1
+      ? t.recipeInfo.yieldsOne
+      : t.recipeInfo.yields.replace('{n}', recipe.yieldServings.toLocaleString(appLocale(), { maximumFractionDigits: 1 }))
+    : null;
 
   // Função para formatar data
   const formatDate = (dateString: string) => {
@@ -419,7 +449,8 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                     </div>
 
                     <IngredientChecklist
-                      ingredients={recipe.ingredients}
+                      ingredients={ingredientLines}
+                      yieldServings={recipe.yieldServings}
                       factor={factor}
                       onFactorChange={setFactor}
                       onAddToShopping={isAuthenticated ? handleAddToShopping : undefined}
@@ -597,13 +628,16 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                         </div>
                         {t.recipe.nutritionFacts}
                       </h3>
+                      <p className="-mt-2 mb-3 text-xs text-gray-600 dark:text-gray-400">
+                        {[yieldText, nutritionNote].filter(Boolean).join(' · ')}
+                      </p>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-white dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
                           <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                             {t.profile.nutritionGoalsnames.calories}
                           </div>
                           <div className="text-xl font-bold text-gray-900 dark:text-white">
-                            {formatNutritionValue(recipe.nutritionFacts.calories)}
+                            {formatNutritionValue(recipe.nutritionFacts.calories, 'calories')}
                             <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">kcal</span>
                           </div>
                         </div>
@@ -612,7 +646,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                             {t.profile.nutritionGoalsnames.protein}
                           </div>
                           <div className="text-xl font-bold text-gray-900 dark:text-white">
-                            {formatNutritionValue(recipe.nutritionFacts.protein)}
+                            {formatNutritionValue(recipe.nutritionFacts.protein, 'protein')}
                             <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
                           </div>
                         </div>
@@ -621,7 +655,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                             {t.profile.nutritionGoalsnames.carbs}
                           </div>
                           <div className="text-xl font-bold text-gray-900 dark:text-white">
-                            {formatNutritionValue(recipe.nutritionFacts.carbs)}
+                            {formatNutritionValue(recipe.nutritionFacts.carbs, 'carbs')}
                             <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
                           </div>
                         </div>
@@ -630,7 +664,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                             {t.profile.nutritionGoalsnames.fat}
                           </div>
                           <div className="text-xl font-bold text-gray-900 dark:text-white">
-                            {formatNutritionValue(recipe.nutritionFacts.fat)}
+                            {formatNutritionValue(recipe.nutritionFacts.fat, 'fat')}
                             <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
                           </div>
                         </div>
@@ -639,7 +673,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                             {t.profile.nutritionGoalsnames.fiber}
                           </div>
                           <div className="text-xl font-bold text-gray-900 dark:text-white">
-                            {formatNutritionValue(recipe.nutritionFacts.fiber)}
+                            {formatNutritionValue(recipe.nutritionFacts.fiber, 'fiber')}
                             <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">g</span>
                           </div>
                         </div>
@@ -1021,7 +1055,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
           <CookingMode
             title={recipe.title}
             steps={recipe.instructions}
-            ingredients={recipe.ingredients.map((i) => scaleIngredient(i, factor))}
+            ingredients={ingredientLines.map((i) => scaleIngredient(i, factor))}
             onClose={() => setCooking(false)}
           />
         )}

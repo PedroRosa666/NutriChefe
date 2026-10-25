@@ -24,6 +24,7 @@ import { useFoodsStore } from '../../store/foods';
 import { generatePlanWithAI } from '../../services/gemini';
 import type { Recipe } from '../../types/recipe';
 import { matchesSearch } from '../../lib/search';
+import { hasUsableNutrition } from '../../lib/recipe-nutrition';
 
 interface MealPlanEditorProps {
   clientId: string;
@@ -137,7 +138,13 @@ export function MealPlanEditor({
       // Os alimentos vêm só com o id: o catálogo precisa estar carregado para mostrar nome e nutrientes.
       await useFoodsStore.getState().fetch();
       const foodsById = new Map(useFoodsStore.getState().foods.map((f) => [f.id, f]));
-      const next = result.items.map((i) => ({
+      // Receita sem nutrientes completos não entra num plano montado pela IA: conta como deixada de fora.
+      const kept = result.items.filter((i) => {
+        const recipe = i.recipe_id ? byId.get(i.recipe_id) : undefined;
+        return !recipe || hasUsableNutrition(recipe);
+      });
+      result.dropped += result.items.length - kept.length;
+      const next = kept.map((i) => ({
         ...i,
         food: i.food_id ? foodsById.get(i.food_id) ?? null : null,
         measure_label: null,
@@ -471,8 +478,13 @@ export function MealPlanEditor({
                   }}
                   className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                 >
-                  <span className="min-w-0 truncate text-slate-800 dark:text-slate-100">{r.title}</span>
-                  <span className="flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">{Math.round(r.nutritionFacts.calories)} kcal</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-slate-800 dark:text-slate-100">{r.title}</span>
+                    {!hasUsableNutrition(r) && <span className="block text-xs text-amber-700 dark:text-amber-300">{t.recipeInfo.notAutomatic}</span>}
+                  </span>
+                  <span className="flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                    {r.unknownNutrients?.includes('calories') ? '—' : Math.round(r.nutritionFacts.calories)} kcal
+                  </span>
                 </button>
               </li>
             ))}

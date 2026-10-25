@@ -33,6 +33,7 @@ const MIGRATIONS = [
   '20261104120000_base_hardening.sql',
   '20261105120000_plan_versions.sql',
   '20261106120000_custom_meals.sql',
+  '20261107120000_recipe_yield.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -77,7 +78,8 @@ const BASE = `
   );
   CREATE TABLE recipes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text NOT NULL, author_id uuid, description text, image text,
-    prep_time int, difficulty text, rating numeric DEFAULT 0, category text, ingredients text[], instructions text[],
+    -- Mesmos tipos de produção (jsonb).
+    prep_time int, difficulty text, rating numeric DEFAULT 0, category text, ingredients jsonb, instructions jsonb,
     nutrition_facts jsonb, created_at timestamptz DEFAULT now(), updated_at timestamptz
   );
   ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;

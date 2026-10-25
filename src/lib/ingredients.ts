@@ -38,7 +38,7 @@ export interface ParsedIngredient {
 
 const NUMBER_RE = /^(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:[.,]\d+)?\s*[½⅓⅔¼¾⅕⅛]?|[½⅓⅔¼¾⅕⅛])/;
 
-function parseNumber(token: string): number | null {
+export function parseNumber(token: string): number | null {
   const t = token.trim();
   const mixed = t.match(/^(\d+)\s+(\d+)\/(\d+)$/);
   if (mixed) return Number(mixed[1]) + Number(mixed[2]) / Number(mixed[3]);

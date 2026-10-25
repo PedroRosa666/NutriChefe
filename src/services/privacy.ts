@@ -29,7 +29,7 @@ export const EXPORT_SOURCES: { key: string; table: TableName; columns: string[];
   { key: 'invites', table: 'nutritionist_invites', columns: ['nutritionist_id'] },
   { key: 'care_messages', table: 'care_messages', columns: ['client_id', 'nutritionist_id'] },
   { key: 'appointments', table: 'appointments', columns: ['client_id', 'nutritionist_id'] },
-  { key: 'my_recipes', table: 'recipes', columns: ['author_id'] },
+  { key: 'my_recipes', table: 'recipes', columns: ['author_id'], select: '*, recipe_ingredients(*)' },
   { key: 'my_foods', table: 'foods', columns: ['owner_id'] },
   { key: 'plan_templates', table: 'meal_plan_templates', columns: ['owner_id'] },
   { key: 'ai_conversations', table: 'ai_conversations', columns: ['client_id'], select: '*, ai_messages(*)' },
