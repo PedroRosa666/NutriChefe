@@ -21,6 +21,7 @@ import { useToastStore } from '../store/toast';
 import { usePremiumStore } from '../store/premium';
 import { useUnreadMessagesStore } from '../store/unread-messages';
 import { DemoBanner } from '../components/admin/DemoBanner';
+import { UpdateBanner } from '../components/common/UpdateBanner';
 
 export function RootLayout() {
   const { message, type, hideToast } = useToastStore();
@@ -116,6 +117,7 @@ export function RootLayout() {
 
   return (
     <ErrorBoundary>
+      <UpdateBanner />
       <DemoBanner />
       {/* reducedMotion="user": quem pediu menos movimento no sistema não vê as animações. */}
       <MotionConfig reducedMotion="user">

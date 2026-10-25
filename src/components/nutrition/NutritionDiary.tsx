@@ -2,7 +2,18 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Trash2, CalendarDays, Plus, XCircle, Loader2, Pencil, Check, X } from 'lucide-react';
 import { WeeklyCaloriesChart } from './WeeklyCaloriesChart';
-import { DIARY_MEALS, mealForTime, useNutritionTrackingStore, type DiaryMeal, type NutritionLogEntry } from '../../store/nutrition-tracking';
+import {
+  DIARY_MEALS,
+  mealForTime,
+  useNutritionTrackingStore,
+  type DiaryMeal,
+  type DiaryMealTarget,
+  type NutritionLogEntry,
+} from '../../store/nutrition-tracking';
+import type { PlanMeal } from '../../services/care';
+import { usePlanMealsOn } from '../../hooks/usePlanMealsOn';
+import { useAuthStore } from '../../store/auth';
+import { mealTimeOn } from '../../lib/plan-meals';
 import { GOAL_KEYS, useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useRecipeIndex } from '../../hooks/useRecipeIndex';
 import { useToastStore } from '../../store/toast';
@@ -16,6 +27,28 @@ import { useCanUseAI } from '../../store/premium';
 import { useToday } from '../../hooks/useToday';
 
 type AddMode = 'recipe' | 'food' | 'custom';
+
+/**
+ * Escolha de refeição no diário, como texto (para chips e selects): 'plan:<id>' (bloco do plano),
+ * 'slot:<categoria>' (refeições de sempre) ou 'off' (fora do plano / outros).
+ */
+type MealKey = string;
+const OFF: MealKey = 'off';
+
+/** Refeição sugerida pelo horário: o último bloco do plano cujo horário já passou; sem horários, pela categoria. */
+function suggestedKey(planMeals: PlanMeal[] | null, day: number, now = new Date()): MealKey {
+  if (!planMeals) return `slot:${mealForTime(now)}`;
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const timed = planMeals
+    .map((m) => ({ m, time: mealTimeOn(m, day) }))
+    .filter((x): x is { m: PlanMeal; time: string } => Boolean(x.time))
+    .map(({ m, time }) => ({ m, at: Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5)) }))
+    .filter((x) => x.at <= minutes + 30)
+    .sort((a, b) => b.at - a.at);
+  if (timed.length) return `plan:${timed[0].m.id}`;
+  const byCategory = planMeals.find((m) => m.category === mealForTime(now));
+  return byCategory ? `plan:${byCategory.id}` : `plan:${planMeals[0].id}`;
+}
 
 const clampPct = (value: number) => {
   if (!Number.isFinite(value)) return 0;
@@ -82,9 +115,28 @@ export function NutritionDiary() {
   // Quase tudo que se registra é alimento avulso: começa nele.
   const [mode, setMode] = React.useState<AddMode>('food');
   // Refeição do que vai ser registrado: começa na do horário.
-  const [meal, setMeal] = React.useState<DiaryMeal>(() => mealForTime());
+  // Com plano em uso na data: os blocos da prescrição daquele dia + "Fora do plano"; sem plano, as refeições de sempre.
+  const userId = useAuthStore((s) => s.user?.id);
+  const planMeals = usePlanMealsOn(userId, date);
+  const planDay = (new Date(`${date}T12:00:00`).getDay() + 6) % 7;
+  const [mealChoice, setMealChoice] = React.useState<MealKey | null>(null);
+  // A escolha vale enquanto existir entre as opções da data; senão, a sugerida pelo horário.
+  const choiceValid =
+    mealChoice === OFF ||
+    (mealChoice?.startsWith('slot:') && !planMeals) ||
+    Boolean(planMeals?.some((m) => `plan:${m.id}` === mealChoice));
+  const mealKey: MealKey = mealChoice && choiceValid ? mealChoice : planMeals || date === today ? suggestedKey(planMeals, planDay) : OFF;
+  /** O destino gravado para uma escolha. */
+  const targetOf = (key: MealKey): DiaryMealTarget => {
+    if (key.startsWith('plan:')) {
+      const m = planMeals?.find((x) => `plan:${x.id}` === key);
+      return m ? { id: m.id, name: m.name, category: m.category } : null;
+    }
+    return key.startsWith('slot:') ? (key.slice(5) as DiaryMeal) : null;
+  };
+  const meal = targetOf(mealKey);
   // Registro em edição (porções e refeição).
-  const [editing, setEditing] = React.useState<{ id: string; servings: string; meal: DiaryMeal | null } | null>(null);
+  const [editing, setEditing] = React.useState<{ id: string; servings: string; meal: MealKey; fromPlan: boolean } | null>(null);
   // Estimativa por foto (Mentoria IA) preenche o formulário "Outro"; a chave remonta o formulário.
   const canUsePhoto = useCanUseAI();
   const [photo, setPhoto] = React.useState<{ key: number; estimate: PhotoEstimate } | null>(null);
@@ -150,7 +202,7 @@ export function NutritionDiary() {
       return;
     }
     try {
-      await updateEntry(editing.id, { servings: amount, meal: editing.meal });
+      await updateEntry(editing.id, { servings: amount, meal: editTarget(editing.meal) });
       setEditing(null);
       showToast(t.profileUi.entryUpdated, 'success');
     } catch (error) {
@@ -159,15 +211,38 @@ export function NutritionDiary() {
     }
   };
 
-  // Registros do dia agrupados por refeição, na ordem do dia; sem refeição (antigos) por último.
-  const groups = useMemo(() => {
-    const order: (DiaryMeal | null)[] = [...DIARY_MEALS, null];
-    return order
-      .map((m) => ({ meal: m, list: entries.filter((e) => e.meal === m) }))
-      .filter((g) => g.list.length > 0);
-  }, [entries]);
+  // Chave de refeição de um registro: o bloco do plano, a refeição de sempre ou nenhuma.
+  const entryKey = (e: NutritionLogEntry): MealKey => (e.mealId ? `plan:${e.mealId}` : e.meal ? `slot:${e.meal}` : OFF);
 
-  const mealLabel = (m: DiaryMeal | null) => (m ? t.plan.meals[m] : t.profileUi.otherMeal);
+  // Registros do dia agrupados por refeição: blocos do plano na ordem prescrita, depois as refeições
+  // de sempre e, por último, fora do plano / sem refeição. Nomes do plano aparecem como escritos.
+  const groups = useMemo(() => {
+    const order: { key: MealKey; label: string }[] = [
+      ...(planMeals ?? []).map((m) => ({ key: `plan:${m.id}`, label: m.name })),
+      ...DIARY_MEALS.map((m) => ({ key: `slot:${m}`, label: t.plan.meals[m] })),
+    ];
+    // Blocos de um plano anterior (ou de outro dia) que não estão na lista: pelo nome gravado.
+    for (const e of entries) {
+      if (e.mealId && !order.some((o) => o.key === `plan:${e.mealId}`)) order.push({ key: `plan:${e.mealId}`, label: e.mealName ?? t.profileUi.otherMeal });
+    }
+    order.push({ key: OFF, label: planMeals ? t.profileUi.offPlan : t.profileUi.otherMeal });
+    return order.map((o) => ({ ...o, list: entries.filter((e) => entryKey(e) === o.key) })).filter((g) => g.list.length > 0);
+  }, [entries, planMeals, t]);
+
+  // Opções de refeição (chips ao registrar e select ao corrigir).
+  const mealOptions: { key: MealKey; label: string }[] = planMeals
+    ? [...planMeals.map((m) => ({ key: `plan:${m.id}`, label: m.name })), { key: OFF, label: t.profileUi.offPlan }]
+    : [...DIARY_MEALS.map((m) => ({ key: `slot:${m}`, label: t.plan.meals[m] })), { key: OFF, label: t.profileUi.otherMeal }];
+  const editTarget = (key: MealKey): DiaryMealTarget => {
+    if (key.startsWith('plan:')) {
+      const id = key.slice(5);
+      const m = planMeals?.find((x) => x.id === id);
+      if (m) return { id: m.id, name: m.name, category: m.category };
+      const kept = entries.find((e) => e.mealId === id);
+      return kept ? { id, name: kept.mealName ?? '', category: kept.meal } : null;
+    }
+    return key.startsWith('slot:') ? (key.slice(5) as DiaryMeal) : null;
+  };
 
   const entryRow = (e: NutritionLogEntry) =>
     editing?.id === e.id ? (
@@ -187,17 +262,16 @@ export function NutritionDiary() {
             />
           </label>
           <select
-            value={editing.meal ?? ''}
-            onChange={(ev) => setEditing({ ...editing, meal: (ev.target.value || null) as DiaryMeal | null })}
-            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark]"
+            value={editing.meal}
+            onChange={(ev) => setEditing({ ...editing, meal: ev.target.value })}
+            className="max-w-[12rem] rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark]"
             aria-label={t.profileUi.mealLabel}
           >
-            {DIARY_MEALS.map((m) => (
-              <option key={m} value={m}>
-                {t.plan.meals[m]}
+            {[...mealOptions, ...(mealOptions.some((o) => o.key === editing.meal) ? [] : [{ key: editing.meal, label: groups.find((g) => g.key === editing.meal)?.label ?? '' }])].map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
               </option>
             ))}
-            <option value="">{t.profileUi.otherMeal}</option>
           </select>
           <div className="ml-auto flex gap-1">
             <button
@@ -218,6 +292,8 @@ export function NutritionDiary() {
             </button>
           </div>
         </div>
+        {/* Registro do "Comi": corrigir aqui desliga da marcação (marcar de novo não o sobrescreve). */}
+        {editing.fromPlan && <p className="text-xs text-amber-700 dark:text-amber-300">{t.profileUi.planEntryHint}</p>}
       </div>
     ) : (
       <div
@@ -233,7 +309,7 @@ export function NutritionDiary() {
         <div className="flex shrink-0">
           <button
             type="button"
-            onClick={() => setEditing({ id: e.id, servings: String(e.servings), meal: e.meal })}
+            onClick={() => setEditing({ id: e.id, servings: String(e.servings), meal: entryKey(e), fromPlan: Boolean(e.planCheckId) })}
             className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-900"
             aria-label={t.profileUi.editEntry}
           >
@@ -285,21 +361,21 @@ export function NutritionDiary() {
       <div ref={addRef} className="scroll-mt-20 space-y-3">
       {/* Em qual refeição entra o que for registrado agora. */}
       <div role="radiogroup" aria-label={t.profileUi.mealLabel} className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
-        {DIARY_MEALS.map((m) => (
+        {mealOptions.map((o) => (
           <button
-            key={m}
+            key={o.key}
             type="button"
             role="radio"
-            aria-checked={meal === m}
-            onClick={() => setMeal(m)}
+            aria-checked={mealKey === o.key}
+            onClick={() => setMealChoice(o.key)}
             className={cn(
               'whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
-              meal === m
+              mealKey === o.key
                 ? 'border-emerald-500 bg-emerald-600 text-white'
                 : 'border-slate-200 text-slate-600 hover:border-emerald-300 dark:border-slate-700 dark:text-slate-300'
             )}
           >
-            {t.plan.meals[m]}
+            {o.label}
           </button>
         ))}
       </div>
@@ -416,9 +492,9 @@ export function NutritionDiary() {
         ) : (
           <div className="space-y-4">
             {groups.map((g) => (
-              <div key={g.meal ?? 'other'} className="space-y-2">
+              <div key={g.key} className="space-y-2">
                 <div className="flex items-baseline justify-between px-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{mealLabel(g.meal)}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{g.label}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {Math.round(g.list.reduce((sum, e) => sum + e.perServing.calories * e.servings, 0))} kcal
                   </p>

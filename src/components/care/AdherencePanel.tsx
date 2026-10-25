@@ -92,11 +92,11 @@ export function AdherencePanel({ clientId, reloadKey = 0 }: { clientId: string; 
             </tr>
           </thead>
           <tbody>
-            {current.byMeal.map(({ meal }) => (
-              <tr key={meal}>
-                <td className="whitespace-nowrap pr-2 text-slate-600 dark:text-slate-300">{t.plan.meals[meal]}</td>
+            {current.byMeal.map(({ mealId, name }) => (
+              <tr key={mealId}>
+                <td className="max-w-[9rem] truncate whitespace-nowrap pr-2 text-slate-600 dark:text-slate-300">{name}</td>
                 {current.grid.map((g) => {
-                  const slot = g.slots.find((sl) => sl.meal === meal);
+                  const slot = g.slots.find((sl) => sl.mealId === mealId);
                   return (
                     <td key={g.date} className="px-1.5 py-1 text-center">
                       {slot ? (
@@ -126,8 +126,8 @@ export function AdherencePanel({ clientId, reloadKey = 0 }: { clientId: string; 
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{a.offPlan}</p>
           <ul className="space-y-1 text-sm">
             {offPlan.map((m) => (
-              <li key={m.meal} className="text-slate-700 dark:text-slate-200">
-                <span className="font-medium">{t.plan.meals[m.meal]}</span>
+              <li key={m.mealId} className="text-slate-700 dark:text-slate-200">
+                <span className="font-medium">{m.name}</span>
                 <span className="text-slate-500 dark:text-slate-400"> — {a.offPlanCount.replace('{off}', String(m.off)).replace('{planned}', String(m.planned))}</span>
                 {m.notes.length > 0 && <span className="block text-xs italic text-slate-500 dark:text-slate-400">“{m.notes.slice(0, 3).join('”, “')}”</span>}
               </li>

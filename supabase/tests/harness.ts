@@ -32,6 +32,7 @@ const MIGRATIONS = [
   '20261103120000_recipe_catalog.sql',
   '20261104120000_base_hardening.sql',
   '20261105120000_plan_versions.sql',
+  '20261106120000_custom_meals.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -135,18 +136,28 @@ const BASE = `
   GRANT SELECT (id, full_name, user_type, profile_visibility, last_seen) ON profiles TO anon, authenticated;
 `;
 
-export async function createTestDb(): Promise<PGlite> {
+/** Aplica uma migration (pelo nome do arquivo) num banco de teste. */
+export async function applyMigration(db: PGlite, file: string) {
+  const sql = readFileSync(fileURLToPath(new URL(`../migrations/${file}`, import.meta.url)), 'utf8')
+    // pg_net não existe no PGlite: usa o de mentira criado em BASE.
+    .replace(/CREATE EXTENSION IF NOT EXISTS pg_net[^;]*;/, '');
+  try {
+    await db.exec(sql);
+  } catch (error) {
+    throw new Error(`Falha na migration ${file}: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * Banco com as migrations. `until`: para antes dessa migration (para gravar dados no formato
+ * antigo e testar a conversão aplicando-a depois com applyMigration).
+ */
+export async function createTestDb(options: { until?: string } = {}): Promise<PGlite> {
   const db = new PGlite();
   await db.exec(BASE);
   for (const file of MIGRATIONS) {
-    const sql = readFileSync(fileURLToPath(new URL(`../migrations/${file}`, import.meta.url)), 'utf8')
-      // pg_net não existe no PGlite: usa o de mentira criado em BASE.
-      .replace(/CREATE EXTENSION IF NOT EXISTS pg_net[^;]*;/, '');
-    try {
-      await db.exec(sql);
-    } catch (error) {
-      throw new Error(`Falha na migration ${file}: ${(error as Error).message}`);
-    }
+    if (file === options.until) break;
+    await applyMigration(db, file);
   }
   return db;
 }

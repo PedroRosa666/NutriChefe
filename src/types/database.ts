@@ -642,7 +642,10 @@ export type Database = {
           day: number
           effective_from: string | null
           id: string
-          meal: string
+          item_id: string | null
+          meal: string | null
+          meal_id: string | null
+          meal_name: string | null
           nutritionist_id: string
           option_group: number | null
           original_food_id: string | null
@@ -672,7 +675,10 @@ export type Database = {
           day: number
           effective_from?: string | null
           id?: string
-          meal: string
+          item_id?: string | null
+          meal?: string | null
+          meal_id?: string | null
+          meal_name?: string | null
           nutritionist_id: string
           option_group?: number | null
           original_food_id?: string | null
@@ -702,7 +708,10 @@ export type Database = {
           day?: number
           effective_from?: string | null
           id?: string
-          meal?: string
+          item_id?: string | null
+          meal?: string | null
+          meal_id?: string | null
+          meal_name?: string | null
           nutritionist_id?: string
           option_group?: number | null
           original_food_id?: string | null
@@ -848,7 +857,9 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
-          meal: string
+          meal: string | null
+          meal_id: string
+          meal_name: string | null
           note: string
           plan_id: string
           status: string
@@ -861,7 +872,9 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
-          meal: string
+          meal?: string | null
+          meal_id: string
+          meal_name?: string | null
           note?: string
           plan_id: string
           status: string
@@ -874,7 +887,9 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
-          meal?: string
+          meal?: string | null
+          meal_id?: string
+          meal_name?: string | null
           note?: string
           plan_id?: string
           status?: string
@@ -912,7 +927,8 @@ export type Database = {
           food_id: string | null
           grams: number | null
           id: string
-          meal: string
+          meal: string | null
+          meal_id: string
           measure_label: string | null
           note: string
           option_group: number | null
@@ -927,7 +943,8 @@ export type Database = {
           food_id?: string | null
           grams?: number | null
           id?: string
-          meal: string
+          meal?: string | null
+          meal_id: string
           measure_label?: string | null
           note?: string
           option_group?: number | null
@@ -942,7 +959,8 @@ export type Database = {
           food_id?: string | null
           grams?: number | null
           id?: string
-          meal?: string
+          meal?: string | null
+          meal_id?: string
           measure_label?: string | null
           note?: string
           option_group?: number | null
@@ -960,6 +978,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "meal_plan_items_meal_fkey"
+            columns: ["plan_id", "meal_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plan_meals"
+            referencedColumns: ["plan_id", "id"]
+          },
+          {
             foreignKeyName: "meal_plan_items_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
@@ -975,11 +1000,62 @@ export type Database = {
           },
         ]
       }
+      meal_plan_meals: {
+        Row: {
+          category: string | null
+          created_at: string
+          day_overrides: Json
+          days: number[]
+          guidance: string
+          id: string
+          kcal_share: number | null
+          name: string
+          plan_id: string
+          position: number
+          time_of_day: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          day_overrides?: Json
+          days?: number[]
+          guidance?: string
+          id?: string
+          kcal_share?: number | null
+          name: string
+          plan_id: string
+          position?: number
+          time_of_day?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          day_overrides?: Json
+          days?: number[]
+          guidance?: string
+          id?: string
+          kcal_share?: number | null
+          name?: string
+          plan_id?: string
+          position?: number
+          time_of_day?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plan_meals_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_plan_templates: {
         Row: {
           created_at: string
           id: string
           items: Json
+          meals: Json
           notes: string
           owner_id: string
           title: string
@@ -989,6 +1065,7 @@ export type Database = {
           created_at?: string
           id?: string
           items?: Json
+          meals?: Json
           notes?: string
           owner_id: string
           title: string
@@ -998,6 +1075,7 @@ export type Database = {
           created_at?: string
           id?: string
           items?: Json
+          meals?: Json
           notes?: string
           owner_id?: string
           title?: string
@@ -1222,6 +1300,8 @@ export type Database = {
           entry_date: string
           id: string
           meal: string | null
+          meal_id: string | null
+          meal_name: string | null
           per_serving: Json
           plan_check_id: string | null
           recipe_id: string | null
@@ -1234,6 +1314,8 @@ export type Database = {
           entry_date: string
           id?: string
           meal?: string | null
+          meal_id?: string | null
+          meal_name?: string | null
           per_serving?: Json
           plan_check_id?: string | null
           recipe_id?: string | null
@@ -1246,6 +1328,8 @@ export type Database = {
           entry_date?: string
           id?: string
           meal?: string | null
+          meal_id?: string | null
+          meal_name?: string | null
           per_serving?: Json
           plan_check_id?: string | null
           recipe_id?: string | null
@@ -1937,6 +2021,7 @@ export type Database = {
         Args: { p_client: string; p_nutritionist: string }
         Returns: boolean
       }
+      app_min_client: { Args: never; Returns: number }
       app_today: { Args: never; Returns: string }
       apply_swap_to_plan: {
         Args: {
@@ -1981,6 +2066,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      clean_day_overrides: { Args: { p: Json }; Returns: Json }
       consume_ai_quota: {
         Args: {
           p_kind: string
@@ -2007,6 +2093,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      default_meal_name: { Args: { p_category: string }; Returns: string }
       delete_my_account: { Args: never; Returns: undefined }
       delete_my_archived_plans: { Args: never; Returns: number }
       has_feature: {
@@ -2016,6 +2103,10 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_my_nutritionist: { Args: { p_nutritionist: string }; Returns: boolean }
       is_my_patient: { Args: { p_client: string }; Returns: boolean }
+      legacy_meal_id: {
+        Args: { p_category: string; p_plan: string }
+        Returns: string
+      }
       mark_messages_read: {
         Args: { p_client: string; p_nutritionist: string }
         Returns: undefined
@@ -2047,6 +2138,7 @@ export type Database = {
           unread_messages: number
         }[]
       }
+      plan_day_of: { Args: { p_date: string }; Returns: number }
       plan_snapshot: { Args: { p_plan: string }; Returns: Json }
       plan_version_on: {
         Args: { p_date: string; p_plan: string }
@@ -2097,6 +2189,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      record_meal_check: {
+        Args: {
+          p_date: string
+          p_items: Json
+          p_meal: string
+          p_note: string
+          p_operation: string
+          p_plan: string
+          p_status: string
+        }
+        Returns: Json
+      }
       redeem_nutritionist_invite: { Args: { p_code: string }; Returns: string }
       remove_plan_items_of: {
         Args: { p_food: string; p_label: string; p_recipe: string }
@@ -2105,6 +2209,7 @@ export type Database = {
       request_food_swap: {
         Args: {
           p_day: number
+          p_item?: string
           p_meal: string
           p_option_group: number
           p_original_food: string
@@ -2165,7 +2270,9 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
-          meal: string
+          meal: string | null
+          meal_id: string
+          meal_name: string | null
           note: string
           plan_id: string
           status: string
@@ -2194,6 +2301,7 @@ export type Database = {
           p_client: string
           p_expected_revision: number
           p_items: Json
+          p_meals?: Json
           p_notes: string
           p_operation: string
           p_plan: string

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Camera, Loader2, Plus } from 'lucide-react';
 import { estimateFoodPhoto, type PhotoEstimate } from '../../services/gemini';
-import { useNutritionTrackingStore, type DiaryMeal, type NutritionTotals } from '../../store/nutrition-tracking';
+import { useNutritionTrackingStore, type DiaryMealTarget, type NutritionTotals } from '../../store/nutrition-tracking';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { foodLogValues } from '../../lib/food-math';
@@ -16,7 +16,7 @@ const parseAmount = (v: string) => {
 };
 
 /** Catálogo (Tabela TACO + alimentos do nutricionista): busca, escolhe a quantidade e registra. */
-export function CommonFoodForm({ date, meal }: { date: string; meal?: DiaryMeal | null }) {
+export function CommonFoodForm({ date, meal }: { date: string; meal?: DiaryMealTarget }) {
   const t = useTranslation();
   const { showToast } = useToastStore();
   const addFoodToLog = useNutritionTrackingStore((s) => s.addFoodToLog);
@@ -52,7 +52,7 @@ export function CustomFoodForm({
 }: {
   date: string;
   initial?: { name: string; values: Partial<NutritionTotals> } | null;
-  meal?: DiaryMeal | null;
+  meal?: DiaryMealTarget;
 }) {
   const t = useTranslation();
   const { showToast } = useToastStore();

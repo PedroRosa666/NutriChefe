@@ -2,10 +2,9 @@
 import { supabase, toJson } from '../lib/supabase';
 import { dateRange, summarizeAdherence, type AdherenceSummary, type CheckStatus, type MealCheck } from '../lib/adherence';
 import { toISODate } from '../store/nutrition-tracking';
-import type { MealSlot } from './care';
 import { listPlanVersions, listPlanViews, versionOn } from './plans';
 
-const COLUMNS = 'id, plan_id, check_date, meal, status, chosen, note';
+const COLUMNS = 'id, plan_id, check_date, meal_id, meal_name, meal, status, chosen, note';
 
 /** Marcações do paciente a partir de `since` (AAAA-MM-DD). */
 export async function listChecks(clientId: string, since: string): Promise<MealCheck[]> {
@@ -19,41 +18,43 @@ export async function listChecks(clientId: string, since: string): Promise<MealC
   return (data ?? []) as unknown as MealCheck[];
 }
 
-/** Um item do plano como vai para o diário quando a pessoa marca "Comi". */
+/** Um item do plano como vai para o diário quando a pessoa marca "Comi" (sempre pelo id do item). */
 export interface CheckDiaryEntry {
-  recipe_id: string | null;
+  item_id: string;
   title: string;
   servings: number;
   per_serving: Record<string, number>;
 }
 
 /**
- * Grava a marcação e o diário juntos (save_meal_check, numa transação): "Comi" substitui o
- * que essa marcação já tinha lançado, outros status tiram, e uma falha não deixa meio feito.
+ * Grava a marcação de um bloco e o diário juntos (record_meal_check, numa transação). O banco
+ * confere que o bloco é da versão do dia e que "Comi" tem os itens fixos e uma opção por grupo.
+ * "Comi" substitui o que essa marcação já tinha lançado, outros status tiram, e `operationId`
+ * faz a mesma tentativa repetida (clique duplo, internet caindo) não gravar duas vezes.
  */
 export async function saveCheckWithDiary(input: {
   planId: string;
   date: string;
-  meal: MealSlot;
+  mealId: string;
   status: CheckStatus;
-  chosen?: string[];
   note?: string;
   entries: CheckDiaryEntry[];
+  operationId: string;
 }): Promise<MealCheck> {
-  const { data, error } = await supabase.rpc('save_meal_check', {
+  const { data, error } = await supabase.rpc('record_meal_check', {
     p_plan: input.planId,
     p_date: input.date,
-    p_meal: input.meal,
+    p_meal: input.mealId,
     p_status: input.status,
-    p_chosen: (input.chosen ?? []).slice(0, 20).map((c) => c.slice(0, 200)),
+    p_items: toJson(input.status === 'ate' ? input.entries : []),
     p_note: (input.note ?? '').trim().slice(0, 300),
-    p_entries: toJson(input.status === 'ate' ? input.entries.slice(0, 30) : []),
+    p_operation: input.operationId,
   });
   if (error) throw error;
   const row = data as Record<string, unknown>;
   return {
-    id: row.id, plan_id: row.plan_id, check_date: row.check_date, meal: row.meal,
-    status: row.status, chosen: row.chosen, note: row.note,
+    id: row.id, plan_id: row.plan_id, check_date: row.check_date, meal_id: row.meal_id, meal_name: row.meal_name,
+    meal: row.meal, status: row.status, chosen: row.chosen, note: row.note,
   } as unknown as MealCheck;
 }
 
@@ -83,7 +84,7 @@ export async function loadAdherence(clientId: string, authorId: string): Promise
   const plan = mine.find((v) => v.active) ?? mine[0];
   if (!plan) return null;
   const versions = await listPlanVersions(plan.id);
-  const schedule = { itemsOn: (date: string) => versionOn(versions, date)?.items ?? null };
+  const schedule = { planOn: (date: string) => versionOn(versions, date) };
   const relevant = checks.filter((c) => c.plan_id === plan.id);
   return {
     current: summarizeAdherence(schedule, relevant, dateRange(daysAgo(6), daysAgo(0))),

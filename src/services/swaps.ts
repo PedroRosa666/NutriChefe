@@ -9,7 +9,8 @@ import { fmtNum } from '../lib/format';
 /** O que se pede ou oferece no lugar do item: um alimento com quantidade OU uma receita com porções. */
 export type SwapChoice = { kind: 'food'; picked: PickedFood } | { kind: 'recipe'; recipeId: string; title: string; servings: number };
 
-export type SwapStatus = 'pending' | 'approved' | 'rejected' | 'canceled';
+/** outdated: o item mudou numa publicação depois do pedido (não é aplicado a outro item; dá para pedir de novo). */
+export type SwapStatus = 'pending' | 'approved' | 'rejected' | 'canceled' | 'outdated';
 
 export interface SwapRequest {
   id: string;
@@ -17,7 +18,12 @@ export interface SwapRequest {
   client_id: string;
   nutritionist_id: string;
   day: number;
-  meal: MealSlot;
+  meal: MealSlot | null;
+  /** Bloco de refeição e o nome dele quando o pedido foi feito. */
+  meal_id: string | null;
+  meal_name: string | null;
+  /** Item do plano pedido (pedidos antigos não têm). */
+  item_id: string | null;
   option_group: number | null;
   original_recipe_id: string | null;
   original_food_id: string | null;
@@ -46,7 +52,7 @@ export interface SwapRequest {
 }
 
 const COLUMNS =
-  'id, plan_id, client_id, nutritionist_id, day, meal, option_group, original_recipe_id, original_food_id, original_label, ' +
+  'id, plan_id, client_id, nutritionist_id, day, meal, meal_id, meal_name, item_id, option_group, original_recipe_id, original_food_id, original_label, ' +
   'requested_food_id, requested_grams, requested_label, requested_recipe_id, requested_servings, reason, status, response_note, ' +
   'counter_food_id, counter_label, counter_recipe_id, counter_servings, applied, effective_from, created_at, resolved_at, ' +
   'requested:foods!food_swap_requests_requested_food_id_fkey(name), counter:foods!food_swap_requests_counter_food_id_fkey(name), ' +
@@ -132,8 +138,9 @@ export async function requestSwap(input: {
   const recipe = requested?.kind === 'recipe' ? requested : null;
   const { error } = await supabase.rpc('request_food_swap', {
     p_plan: input.planId,
+    // O banco tira dia, bloco, grupo e original do item na versão vigente (p_item); o resto é do app antigo.
     p_day: item.day,
-    p_meal: item.meal,
+    p_meal: sqlArg(item.meal ?? null),
     p_option_group: sqlArg(item.option_group),
     p_original_recipe: sqlArg(item.food_id ? null : item.recipe_id),
     p_original_food: sqlArg(item.food_id),
@@ -144,6 +151,7 @@ export async function requestSwap(input: {
     p_requested_recipe: sqlArg(recipe?.recipeId ?? null),
     p_requested_servings: sqlArg(recipe?.servings ?? null),
     p_reason: input.reason.trim(),
+    p_item: sqlArg(item.id ?? null),
   });
   if (error) throw error;
 }
@@ -183,10 +191,12 @@ export function pendingFor(swaps: SwapRequest[], planId: string, item: MealPlanI
     (s) =>
       s.status === 'pending' &&
       s.plan_id === planId &&
-      s.day === item.day &&
-      s.meal === item.meal &&
-      s.option_group === item.option_group &&
-      (item.food_id ? s.original_food_id === item.food_id : s.original_recipe_id === item.recipe_id)
+      (s.item_id
+        ? s.item_id === item.id
+        : s.day === item.day &&
+          s.meal_id === item.meal_id &&
+          s.option_group === item.option_group &&
+          (item.food_id ? s.original_food_id === item.food_id : s.original_recipe_id === item.recipe_id))
   );
 }
 

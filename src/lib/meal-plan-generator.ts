@@ -3,10 +3,9 @@
 // meta diária de calorias. Roda no navegador, sem custo de IA.
 import { blockedTerms, normalizeText, withoutAllergens, type SearchableRecipe } from '../../supabase/functions/_shared/recipe-search';
 import type { Recipe } from '../types/recipe';
-import type { MealPlanItem, MealSlot } from '../services/care';
+import type { MealPlanItem, MealSlot, PlanMeal } from '../services/care';
 import { MEAL_SLOTS } from '../services/care';
-
-const SLOT_SHARE: Record<MealSlot, number> = { breakfast: 0.25, lunch: 0.35, snack: 0.1, dinner: 0.3 };
+import { ALL_DAYS, dayShares, mealsOnDay } from './plan-meals';
 
 const SLOT_WORDS: Record<MealSlot, string[]> = {
   breakfast: ['cafe', 'manha', 'panqueca', 'aveia', 'tapioca', 'smoothie', 'vitamina', 'iogurte', 'omelete', 'mingau', 'pao', 'granola', 'crepioca', 'overnight', 'torrada', 'breakfast', 'pancake', 'oat'],
@@ -67,8 +66,8 @@ export interface GeneratorOptions {
   dailyCalories: number;
   allergies: string[];
   preferences: string[];
-  /** Refeições a incluir (padrão: as quatro). */
-  slots?: MealSlot[];
+  /** Blocos de refeição do plano (padrão: as quatro de sempre). Cada bloco recebe a sua parte da meta do dia. */
+  meals?: PlanMeal[];
   /** Semente para variar o resultado ao gerar de novo. */
   seed?: number;
 }
@@ -77,7 +76,26 @@ export interface GeneratedPlan {
   items: MealPlanItem[];
   /** Preferências flexíveis que ficaram de fora por falta de receitas (ex.: 'lowCarb'). */
   relaxed: string[];
+  /** A divisão das calorias foi sugerida (os blocos não tinham % definidas que somassem 100). */
+  suggestedShares: boolean;
+  /**
+   * Dias que ficaram longe da meta (mais de 10%) por causa dos limites de porção (0,5 a 3 por
+   * receita): a diferença aparece para o profissional revisar, a meta não muda.
+   */
+  offTarget: { day: number; kcal: number; target: number }[];
 }
+
+/** As quatro refeições de sempre, para quem chama sem blocos. */
+const LEGACY_MEALS: PlanMeal[] = MEAL_SLOTS.map((category) => ({
+  id: category,
+  name: category,
+  category,
+  days: ALL_DAYS,
+  time: null,
+  guidance: '',
+  dayOverrides: {},
+  kcalShare: null,
+}));
 
 export function generateWeeklyPlan(options: GeneratorOptions): MealPlanItem[] {
   return generateWeeklyPlanDetailed(options).items;
@@ -88,7 +106,7 @@ export function generateWeeklyPlanDetailed({
   dailyCalories,
   allergies,
   preferences,
-  slots = MEAL_SLOTS,
+  meals = LEGACY_MEALS,
   seed = Date.now(),
 }: GeneratorOptions): GeneratedPlan {
   // Alergias e dietas: obrigatórias. Se faltar variedade, as receitas que servem se repetem.
@@ -102,7 +120,7 @@ export function generateWeeklyPlanDetailed({
     if (filtered.length >= 4) pool = filtered;
     else relaxed.push(pref);
   }
-  if (!pool.length) return { items: [], relaxed };
+  if (!pool.length) return { items: [], relaxed, suggestedShares: false, offTarget: [] };
 
   // Embaralha de forma reproduzível pela semente.
   let s = seed % 2147483647 || 1;
@@ -111,13 +129,26 @@ export function generateWeeklyPlanDetailed({
 
   const items: MealPlanItem[] = [];
   const used = new Map<string, number>();
+  const daily = Math.max(dailyCalories, 1200);
+  let suggestedShares = false;
+  const offTarget: GeneratedPlan['offTarget'] = [];
+  // Candidatas por categoria (bloco livre: como lanche), embaralhadas uma vez.
+  const candidatesFor = new Map<MealSlot, Recipe[]>();
+  const candidates = (slot: MealSlot) => {
+    if (!candidatesFor.has(slot)) candidatesFor.set(slot, shuffled(slotCandidates(pool, slot)));
+    return candidatesFor.get(slot)!;
+  };
 
-  for (const slot of slots) {
-    const candidates = shuffled(slotCandidates(pool, slot));
-    const target = Math.max(dailyCalories, 1200) * SLOT_SHARE[slot];
-    for (let day = 0; day < 7; day++) {
+  for (let day = 0; day < 7; day++) {
+    const dayMeals = mealsOnDay(meals, day);
+    if (!dayMeals.length) continue;
+    const { shares, suggested } = dayShares(meals, day);
+    suggestedShares ||= suggested;
+    let dayKcal = 0;
+    for (const meal of dayMeals) {
+      const target = (daily * (shares.get(meal.id) ?? 0)) / 100;
       // Menos usada primeiro; empate decide pela proximidade da meta da refeição.
-      const ranked = candidates.slice().sort((a, b) => {
+      const ranked = candidates(meal.category ?? 'snack').slice().sort((a, b) => {
         const ua = used.get(a.id) ?? 0;
         const ub = used.get(b.id) ?? 0;
         if (ua !== ub) return ua - ub;
@@ -132,10 +163,13 @@ export function generateWeeklyPlanDetailed({
       const pick = top[Math.floor(rand() * top.length)];
       used.set(pick.id, (used.get(pick.id) ?? 0) + 1);
       const kcal = pick.nutritionFacts.calories;
+      // Porções de meia em meia, entre 0,5 e 3 (regra mostrada ao profissional quando a meta não fecha).
       const servings = kcal > 0 ? Math.min(3, Math.max(0.5, Math.round((target / kcal) * 2) / 2)) : 1;
-      items.push({ day, meal: slot, recipe_id: pick.id, servings, food_id: null, grams: null, measure_label: null, option_group: null, note: '' });
+      dayKcal += kcal * servings;
+      items.push({ day, meal_id: meal.id, meal: meal.category, recipe_id: pick.id, servings, food_id: null, grams: null, measure_label: null, option_group: null, note: '' });
     }
+    if (Math.abs(dayKcal - daily) / daily > 0.1) offTarget.push({ day, kcal: Math.round(dayKcal), target: Math.round(daily) });
   }
 
-  return { items: items.sort((a, b) => a.day - b.day || MEAL_SLOTS.indexOf(a.meal) - MEAL_SLOTS.indexOf(b.meal)), relaxed };
+  return { items, relaxed, suggestedShares, offTarget };
 }

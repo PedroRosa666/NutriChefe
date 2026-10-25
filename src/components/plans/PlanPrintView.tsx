@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useSettingsStore } from '../../store/settings';
-import { MEAL_SLOTS, type MealPlan, type MealPlanItem } from '../../services/care';
+import type { MealPlan, MealPlanItem } from '../../services/care';
+import { mealGuidanceOn, mealItems, mealTimeOn, mealsOnDay } from '../../lib/plan-meals';
 import { groupEqualDays, itemNutrition, itemsTotals, mealBlocks } from '../../lib/plan-items';
 import type { Recipe } from '../../types/recipe';
 import { fmtNum, appLocale } from '../../lib/format';
@@ -73,7 +74,7 @@ export function PlanPrintView({ plan, recipesById, patientName, onDone }: PlanPr
     );
   };
 
-  const groups = groupEqualDays(plan.items);
+  const groups = groupEqualDays(plan.items, plan.meals);
   const today = new Date().toLocaleDateString(appLocale());
 
   return createPortal(
@@ -117,14 +118,20 @@ export function PlanPrintView({ plan, recipesById, patientName, onDone }: PlanPr
               </p>
             </div>
             <div className="space-y-2">
-              {MEAL_SLOTS.map((meal) => {
-                const mealItems = items.filter((i) => i.meal === meal);
-                if (!mealItems.length) return null;
+              {mealsOnDay(plan.meals, days[0]).map((meal) => {
+                const blockItems = mealItems(items, meal.id, days[0]);
+                if (!blockItems.length) return null;
+                const time = mealTimeOn(meal, days[0]);
+                const guidance = mealGuidanceOn(meal, days[0]);
                 return (
-                  <div key={meal} className="break-inside-avoid">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{p.meals[meal]}</h3>
+                  <div key={meal.id} className="break-inside-avoid">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                      {meal.name}
+                      {time && <span className="ml-1.5 font-semibold normal-case">· {time}</span>}
+                    </h3>
+                    {guidance && <p className="whitespace-pre-line text-[11px] italic text-slate-500">{guidance}</p>}
                     <ul className="mt-0.5 space-y-1">
-                      {mealBlocks(mealItems).map((block, i) =>
+                      {mealBlocks(blockItems).map((block, i) =>
                         block.kind === 'single' ? (
                           <li key={i} className="pl-3">
                             • {itemLine(block.item)}

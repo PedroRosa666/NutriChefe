@@ -11,7 +11,7 @@ const pao: Food = {
 const tapioca: Food = { ...pao, id: 'f-tap', taco_id: 124, name: 'Fécula, de mandioca', kcal: 331, protein: 0.5, carbs: 81.1, fat: 0.3, fiber: 0.6 };
 const recipes = new Map([['r1', { id: 'r1', nutritionFacts: { calories: 400, protein: 30, carbs: 40, fat: 10, fiber: 5 } } as Recipe]]);
 
-const base = { day: 0, meal: 'breakfast' as const, servings: 1, note: '', measure_label: null };
+const base = { day: 0, meal_id: 'm-cafe', servings: 1, note: '', measure_label: null };
 const food = (f: Food, grams: number, group: number | null = null): MealPlanItem => ({ ...base, recipe_id: null, food_id: f.id, food: f, grams, option_group: group });
 const recipe = (servings: number, group: number | null = null): MealPlanItem => ({ ...base, recipe_id: 'r1', food_id: null, grams: null, servings, option_group: group });
 

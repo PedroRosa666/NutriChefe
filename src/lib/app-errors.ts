@@ -12,6 +12,8 @@ const APP_ERROR_CODES = [
   'resource_archived',
   'temporarily_unavailable',
   'premium_required',
+  'app_outdated',
+  'limit_exceeded',
 ] as const;
 
 export type AppErrorCode = (typeof APP_ERROR_CODES)[number] | 'unknown';

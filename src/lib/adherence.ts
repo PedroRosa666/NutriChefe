@@ -1,7 +1,8 @@
 // Adesão ao plano: o paciente marca cada refeição (comeu / outra coisa / pulou) e o
 // nutricionista vê a % de refeições seguidas. Regras puras, usadas pelas duas telas.
-import type { MealPlan, MealPlanItem, MealSlot } from '../services/care';
-import { MEAL_SLOTS, planDayOf } from '../services/care';
+import type { MealPlan, MealPlanItem, MealSlot, PlanMeal } from '../services/care';
+import { planDayOf } from '../services/care';
+import { mealItems, mealsOnDay } from './plan-meals';
 import { toISODate } from '../store/nutrition-tracking';
 
 export type CheckStatus = 'ate' | 'other' | 'skipped';
@@ -11,7 +12,10 @@ export interface MealCheck {
   id: string;
   plan_id: string;
   check_date: string; // AAAA-MM-DD
-  meal: MealSlot;
+  /** Bloco de refeição marcado e o nome dele no dia da marcação. */
+  meal_id: string;
+  meal_name: string | null;
+  meal: MealSlot | null;
   status: CheckStatus;
   chosen: string[];
   note: string;
@@ -46,47 +50,53 @@ export interface AdherenceSummary {
   unmarked: number;
   /** % de refeições seguidas (comeu o do plano) sobre as previstas; null sem refeições previstas. */
   percent: number | null;
-  /** Grade dia × refeição (só as refeições previstas aparecem). */
-  grid: { date: string; slots: { meal: MealSlot; status: SlotStatus }[] }[];
-  /** Por refeição: quantas vezes saiu do plano (outra coisa ou pulou) e as anotações. */
-  byMeal: { meal: MealSlot; planned: number; ate: number; off: number; notes: string[] }[];
+  /** Grade dia × refeição (só as refeições previstas em cada dia aparecem). */
+  grid: { date: string; slots: { mealId: string; status: SlotStatus }[] }[];
+  /** Por refeição (bloco): quantas vezes saiu do plano (outra coisa ou pulou) e as anotações. */
+  byMeal: { mealId: string; name: string; planned: number; ate: number; off: number; notes: string[] }[];
 }
 
-/** O que estava prescrito em cada data: itens do plano naquele dia, ou null se não havia plano. */
+/** O que estava prescrito em cada data: blocos e itens da versão daquele dia, ou null se não havia plano. */
 export interface PlanSchedule {
-  itemsOn: (date: string) => MealPlanItem[] | null;
+  planOn: (date: string) => { meals: PlanMeal[]; items: MealPlanItem[] } | null;
 }
 
 /** Um plano sem versões: o mesmo cardápio desde o dia em que foi criado. */
-function staticSchedule(plan: Pick<MealPlan, 'items' | 'created_at'>): PlanSchedule {
+function staticSchedule(plan: Pick<MealPlan, 'meals' | 'items' | 'created_at'>): PlanSchedule {
   // Data local de criação (em UTC, um plano criado depois das 21h cairia no dia seguinte).
   const created = new Date(plan.created_at);
   const planStart = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`;
-  return { itemsOn: (date) => (date < planStart ? null : plan.items) };
+  return { planOn: (date) => (date < planStart ? null : plan) };
 }
 
 /**
- * Resume a adesão de `dates` com o que estava prescrito em cada data (a versão do plano que
- * valia no dia) e as marcações. Dias sem plano não contam.
+ * Resume a adesão de `dates` com o que estava prescrito em cada data (a versão do plano que valia
+ * no dia) e as marcações. Cada dia conta só as refeições daquele dia: um dia com quatro refeições
+ * não ganha faltas por causa de outro com seis. Dias sem plano não contam.
  */
 export function summarizeAdherence(
-  plan: PlanSchedule | Pick<MealPlan, 'items' | 'created_at'>,
+  plan: PlanSchedule | Pick<MealPlan, 'meals' | 'items' | 'created_at'>,
   checks: MealCheck[],
   dates: string[]
 ): AdherenceSummary {
-  const schedule = 'itemsOn' in plan ? plan : staticSchedule(plan);
-  const byKey = new Map(checks.map((c) => [`${c.check_date}|${c.meal}`, c]));
-  const meals = new Map(MEAL_SLOTS.map((m) => [m, { meal: m, planned: 0, ate: 0, off: 0, notes: [] as string[] }]));
+  const schedule = 'planOn' in plan ? plan : staticSchedule(plan);
+  const byKey = new Map(checks.map((c) => [`${c.check_date}|${c.meal_id}`, c]));
+  const meals = new Map<string, AdherenceSummary['byMeal'][number]>();
   const summary: AdherenceSummary = { planned: 0, ate: 0, other: 0, skipped: 0, unmarked: 0, percent: null, grid: [], byMeal: [] };
 
   for (const date of dates) {
-    const items = schedule.itemsOn(date);
-    if (!items) continue;
+    const prescribed = schedule.planOn(date);
+    if (!prescribed) continue;
     const day = planDayOf(new Date(`${date}T12:00:00`));
-    const slots = MEAL_SLOTS.filter((m) => items.some((i) => i.day === day && i.meal === m)).map((meal) => {
-      const check = byKey.get(`${date}|${meal}`);
+    // Bloco sem itens no dia não é refeição prescrita.
+    const dayMeals = mealsOnDay(prescribed.meals, day).filter((m) => mealItems(prescribed.items, m.id, day).length > 0);
+    const slots = dayMeals.map((meal) => {
+      const check = byKey.get(`${date}|${meal.id}`);
       const status: SlotStatus = check?.status ?? 'none';
-      const row = meals.get(meal)!;
+      const row = meals.get(meal.id) ?? { mealId: meal.id, name: meal.name, planned: 0, ate: 0, off: 0, notes: [] };
+      // O nome mais recente (datas em ordem): renomear não separa a mesma refeição em duas linhas.
+      row.name = meal.name;
+      meals.set(meal.id, row);
       row.planned++;
       summary.planned++;
       if (status === 'ate') {
@@ -99,12 +109,12 @@ export function summarizeAdherence(
         row.off++;
         if (check?.note) row.notes.push(check.note);
       }
-      return { meal, status };
+      return { mealId: meal.id, status };
     });
     if (slots.length) summary.grid.push({ date, slots });
   }
 
   summary.percent = summary.planned ? Math.round((summary.ate / summary.planned) * 100) : null;
-  summary.byMeal = [...meals.values()].filter((m) => m.planned > 0);
+  summary.byMeal = [...meals.values()];
   return summary;
 }

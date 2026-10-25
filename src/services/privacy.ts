@@ -16,7 +16,7 @@ export const EXPORT_SOURCES: { key: string; table: TableName; columns: string[];
   { key: 'nutrition_goals', table: 'nutrition_goals', columns: ['user_id'] },
   { key: 'diary', table: 'nutrition_log_entries', columns: ['user_id'] },
   { key: 'weight_logs', table: 'weight_logs', columns: ['user_id'] },
-  { key: 'meal_plans', table: 'meal_plans', columns: ['client_id'], select: '*, meal_plan_items(*), meal_plan_versions(*)' },
+  { key: 'meal_plans', table: 'meal_plans', columns: ['client_id'], select: '*, meal_plan_meals(*), meal_plan_items(*), meal_plan_versions(*)' },
   { key: 'active_plan', table: 'client_plan_selection', columns: ['client_id'] },
   { key: 'care_history', table: 'care_events', columns: ['client_id'] },
   { key: 'meal_checks', table: 'meal_plan_checks', columns: ['client_id'] },

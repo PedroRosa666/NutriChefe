@@ -1,5 +1,6 @@
 // A Mentoria IA roda na Edge Function `ai-chat`: a chave do Gemini fica no servidor,
 // que também confere o acesso Premium, o limite de mensagens por hora e busca as receitas.
+import type { MealSlot, PlanMeal } from './care';
 import { supabase } from '../lib/supabase';
 import type { AIConfiguration, AIMessage, AIResponse } from '../types/ai';
 
@@ -124,7 +125,7 @@ export async function estimateFoodPhoto(file: File): Promise<PhotoEstimate> {
 
 export interface AIPlanItem {
   day: number;
-  meal: 'breakfast' | 'lunch' | 'snack' | 'dinner';
+  meal_id: string;
   recipe_id: string | null;
   servings: number;
   food_id: string | null;
@@ -132,13 +133,43 @@ export interface AIPlanItem {
   note: string;
 }
 
-/** Plano da semana montado pela IA para um paciente (Premium Nutricionista). O nutricionista revisa antes de salvar. */
-export async function generatePlanWithAI(clientId: string, notes: string, dailyCalories: number): Promise<{ items: AIPlanItem[]; summary: string }> {
-  const { data, error } = await supabase.functions.invoke<{ ok: boolean; items?: AIPlanItem[]; summary?: string; code?: string; error?: string }>(
+/** Item como a função devolve: com o bloco (meal_id) ou, na versão anterior dela, só a categoria. */
+type RawAIPlanItem = Omit<AIPlanItem, 'meal_id'> & { meal_id?: string; meal?: MealSlot };
+
+/**
+ * Plano da semana montado pela IA nos blocos de refeição do plano (Premium Nutricionista ou o próprio
+ * plano do cliente Premium). Só rascunho: quem pediu revisa antes de salvar. Itens fora dos blocos e
+ * dos dias de cada um não entram (`dropped` diz quantos).
+ */
+export async function generatePlanWithAI(
+  clientId: string,
+  notes: string,
+  dailyCalories: number,
+  meals: PlanMeal[]
+): Promise<{ items: AIPlanItem[]; summary: string; dropped: number }> {
+  const { data, error } = await supabase.functions.invoke<{ ok: boolean; items?: RawAIPlanItem[]; summary?: string; code?: string; error?: string }>(
     'ai-chat',
-    { body: { action: 'plan', client_id: clientId, notes, dailyCalories } }
+    {
+      body: {
+        action: 'plan',
+        client_id: clientId,
+        notes,
+        dailyCalories,
+        meals: meals.map((m) => ({ id: m.id, name: m.name, category: m.category, days: m.days, share: m.kcalShare })),
+      },
+    }
   );
   if (error && !data) throw error;
   if (!data?.ok || !data.items) throw new Error(data?.error ?? data?.code ?? 'plan_failed');
-  return { items: data.items, summary: data.summary ?? '' };
+  const items: AIPlanItem[] = [];
+  let dropped = 0;
+  for (const raw of data.items) {
+    const { meal, meal_id, ...rest } = raw;
+    const block = meal_id
+      ? meals.find((m) => m.id === meal_id && m.days.includes(raw.day))
+      : meals.find((m) => m.category === meal && m.days.includes(raw.day));
+    if (block) items.push({ ...rest, meal_id: block.id });
+    else dropped++;
+  }
+  return { items, summary: data.summary ?? '', dropped };
 }

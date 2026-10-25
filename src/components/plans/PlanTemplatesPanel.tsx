@@ -4,20 +4,21 @@ import { useAuthStore } from '../../store/auth';
 import { useFoodsStore } from '../../store/foods';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
-import type { MealPlanItem } from '../../services/care';
-import { createTemplate, deleteTemplate, listTemplates, templateToItems, type PlanTemplate } from '../../services/templates';
+import type { MealPlanItem, PlanMeal } from '../../services/care';
+import { createTemplate, deleteTemplate, listTemplates, templateToPlan, type PlanTemplate } from '../../services/templates';
 import { confirmDialog } from '../../store/confirm';
 
 interface PlanTemplatesPanelProps {
   /** Cardápio aberto no editor (para salvar como modelo). */
+  meals: PlanMeal[];
   items: MealPlanItem[];
   title: string;
   notes: string;
-  onApply: (input: { items: MealPlanItem[]; title: string; notes: string }) => void;
+  onApply: (input: { meals: PlanMeal[]; items: MealPlanItem[]; title: string; notes: string }) => void;
 }
 
 /** Modelos do usuário dentro do editor: aplicar um modelo ou salvar o cardápio atual como modelo. */
-export function PlanTemplatesPanel({ items, title, notes, onApply }: PlanTemplatesPanelProps) {
+export function PlanTemplatesPanel({ meals, items, title, notes, onApply }: PlanTemplatesPanelProps) {
   const user = useAuthStore((s) => s.user);
   const { showToast } = useToastStore();
   const t = useTranslation();
@@ -41,7 +42,7 @@ export function PlanTemplatesPanel({ items, title, notes, onApply }: PlanTemplat
     if (!user || !name.trim() || !items.length) return;
     setSaving(true);
     try {
-      const created = await createTemplate(user.id, { title: name, notes, items });
+      const created = await createTemplate(user.id, { title: name, notes, meals, items });
       setTemplates((prev) => [created, ...(prev ?? [])]);
       showToast(s.saved, 'success');
     } catch (error) {
@@ -58,9 +59,11 @@ export function PlanTemplatesPanel({ items, title, notes, onApply }: PlanTemplat
       // Os alimentos do modelo precisam do catálogo carregado (nome e nutrientes).
       await useFoodsStore.getState().fetch();
       const foodsById = new Map(useFoodsStore.getState().foods.map((f) => [f.id, f]));
-      const next = templateToItems(template, foodsById);
-      onApply({ items: next, title: template.title, notes: template.notes });
-      showToast(next.length < template.items.length ? s.appliedMissing : s.applied, next.length < template.items.length ? 'warning' : 'success');
+      // Cópia com ids novos: o plano não fica ligado ao modelo nem a quem o usou antes.
+      const next = templateToPlan(template, foodsById, t.plan.meals);
+      onApply({ ...next, title: template.title, notes: template.notes });
+      const missing = next.items.length < template.items.length;
+      showToast(missing ? s.appliedMissing : s.applied, missing ? 'warning' : 'success');
     } catch (error) {
       console.error('Error applying template:', error);
       showToast(s.error, 'error');

@@ -28,14 +28,44 @@ export interface Invite {
   used_at: string | null;
 }
 
+/** Categorias das refeições de sempre: classificam um bloco (sugestões, diário sem plano), nunca o nomeiam. */
 export type MealSlot = 'breakfast' | 'lunch' | 'snack' | 'dinner';
 export const MEAL_SLOTS: MealSlot[] = ['breakfast', 'lunch', 'snack', 'dinner'];
+
+/** Horário e orientação diferentes num dia da semana. */
+export interface MealDayOverride {
+  time?: string;
+  guidance?: string;
+}
+
+/**
+ * Bloco de refeição do plano (café, pré-treino, ceia...). O id é fixo: marcações, diário e trocas
+ * apontam para ele, então renomear ou reordenar não muda nada do que já foi registrado.
+ */
+export interface PlanMeal {
+  id: string;
+  /** Nome escrito pelo profissional (mostrado como está, sem tradução). */
+  name: string;
+  category: MealSlot | null;
+  /** Dias da semana em que aparece (0 = segunda). */
+  days: number[];
+  /** Horário 'HH:MM' (opcional; não muda a ordem). */
+  time: string | null;
+  guidance: string;
+  /** Por dia da semana ('0'..'6'). */
+  dayOverrides: Record<string, MealDayOverride>;
+  /** % das calorias do dia, para o gerador (opcional). */
+  kcalShare: number | null;
+}
 
 /** Item do plano: uma receita (recipe_id + servings) OU um alimento do catálogo (food_id + grams). */
 export interface MealPlanItem {
   id?: string;
   day: number; // 0 = segunda
-  meal: MealSlot;
+  /** Bloco de refeição (PlanMeal.id). */
+  meal_id: string;
+  /** Categoria do bloco, quando tem (só leitura: vem do banco). */
+  meal?: MealSlot | null;
   recipe_id: string | null;
   servings: number;
   food_id: string | null;
@@ -58,6 +88,8 @@ export interface MealPlan {
   created_at: string;
   updated_at: string;
   authorName: string | null;
+  /** Blocos de refeição, na ordem do plano. */
+  meals: PlanMeal[];
   items: MealPlanItem[];
   /** Revisão do rascunho (conferida ao salvar: outra aba salvou antes -> version_conflict). */
   revision?: number;

@@ -8,6 +8,19 @@ import { feedback } from '../lib/i18n/current';
 export type DiaryMeal = 'breakfast' | 'lunch' | 'snack' | 'dinner';
 export const DIARY_MEALS: DiaryMeal[] = ['breakfast', 'lunch', 'snack', 'dinner'];
 
+/**
+ * Onde entra um registro do diário: uma das refeições de sempre, um bloco do plano em uso (id e
+ * nome como estão no plano) ou nenhuma (null: "Fora do plano"/"Outros").
+ */
+export type DiaryMealTarget = DiaryMeal | { id: string; name: string; category: DiaryMeal | null } | null;
+
+/** Colunas gravadas para um destino. */
+export function mealColumns(target: DiaryMealTarget): { meal: DiaryMeal | null; meal_id: string | null; meal_name: string | null } {
+  if (target === null) return { meal: null, meal_id: null, meal_name: null };
+  if (typeof target === 'string') return { meal: target, meal_id: null, meal_name: null };
+  return { meal: target.category, meal_id: target.id, meal_name: target.name.slice(0, 60) };
+}
+
 /** Refeição provável pelo horário (o padrão ao registrar; a pessoa pode trocar). */
 export function mealForTime(date = new Date()): DiaryMeal {
   const minutes = date.getHours() * 60 + date.getMinutes();
@@ -35,6 +48,11 @@ export interface NutritionLogEntry {
   perServing: NutritionTotals;
   /** Refeição; registros antigos não têm (aparecem em "Outros"). */
   meal: DiaryMeal | null;
+  /** Bloco do plano (e o nome dele quando foi registrado), se o registro foi numa refeição do plano. */
+  mealId: string | null;
+  mealName: string | null;
+  /** Veio do "Comi" do plano: acompanha a marcação (desmarcar tira). */
+  planCheckId: string | null;
   createdAt: string; // ISO
 }
 
@@ -46,6 +64,9 @@ export interface NutritionLogRow {
   servings: number | string;
   per_serving: Partial<NutritionTotals> | null;
   meal?: string | null;
+  meal_id?: string | null;
+  meal_name?: string | null;
+  plan_check_id?: string | null;
   created_at: string;
 }
 
@@ -54,7 +75,7 @@ interface NutritionTrackingState {
   loading: boolean;
 
   fetchEntries: (userId: string) => Promise<void>;
-  addRecipeToLog: (recipe: Recipe, servings?: number, date?: string, meal?: DiaryMeal | null) => Promise<void>;
+  addRecipeToLog: (recipe: Recipe, servings?: number, date?: string, meal?: DiaryMealTarget) => Promise<void>;
   /** Alimento avulso (lista de alimentos comuns ou valores digitados). */
   addFoodToLog: (
     title: string,
@@ -62,10 +83,13 @@ interface NutritionTrackingState {
     servings?: number,
     date?: string,
     extra?: Record<string, number>,
-    meal?: DiaryMeal | null
+    meal?: DiaryMealTarget
   ) => Promise<void>;
-  /** Corrige um registro: porções e refeição. */
-  updateEntry: (id: string, patch: { servings?: number; meal?: DiaryMeal | null }) => Promise<void>;
+  /**
+   * Corrige um registro: porções e refeição. Um registro que veio do "Comi" deixa de acompanhar a
+   * marcação (senão marcar de novo o sobrescreveria).
+   */
+  updateEntry: (id: string, patch: { servings?: number; meal?: DiaryMealTarget }) => Promise<void>;
   removeEntry: (id: string) => Promise<void>;
   clearDate: (date: string) => Promise<void>;
   reset: () => void;
@@ -116,10 +140,13 @@ export const fromRow = (row: NutritionLogRow): NutritionLogEntry => ({
   servings: Number(row.servings) || 1,
   perServing: toTotals(row.per_serving),
   meal: DIARY_MEALS.includes(row.meal as DiaryMeal) ? (row.meal as DiaryMeal) : null,
+  mealId: row.meal_id ?? null,
+  mealName: row.meal_name ?? null,
+  planCheckId: row.plan_check_id ?? null,
   createdAt: row.created_at,
 });
 
-const ENTRY_COLUMNS = 'id, entry_date, recipe_id, recipe_title, servings, per_serving, meal, created_at';
+const ENTRY_COLUMNS = 'id, entry_date, recipe_id, recipe_title, servings, per_serving, meal, meal_id, meal_name, plan_check_id, created_at';
 
 const requireUserId = () => {
   const userId = useAuthStore.getState().user?.id;
@@ -134,7 +161,7 @@ async function insertEntry(
   perServing: NutritionTotals | (NutritionTotals & Record<string, number>),
   servings: number,
   date?: string,
-  meal?: DiaryMeal | null
+  meal?: DiaryMealTarget
 ) {
   const userId = requireUserId();
   const { data, error } = await supabase
@@ -147,7 +174,7 @@ async function insertEntry(
       servings: sanitizeServings(servings),
       per_serving: toJson(perServing),
       // Sem refeição informada: a do horário (registro de hoje) ou nenhuma (outro dia).
-      meal: meal !== undefined ? meal : !date || date === toISODate(new Date()) ? mealForTime() : null,
+      ...mealColumns(meal !== undefined ? meal : !date || date === toISODate(new Date()) ? mealForTime() : null),
     })
     .select(ENTRY_COLUMNS)
     .single();
@@ -210,10 +237,17 @@ export const useNutritionTrackingStore = create<NutritionTrackingState>()((set, 
 
   updateEntry: async (id, patch) => {
     const previous = get().entries;
-    const changes: { servings?: number; meal?: DiaryMeal | null } = {};
+    const changes: { servings?: number; meal?: DiaryMeal | null; meal_id?: string | null; meal_name?: string | null; plan_check_id?: null } = {};
     if (patch.servings !== undefined) changes.servings = sanitizeServings(patch.servings);
-    if (patch.meal !== undefined) changes.meal = patch.meal;
-    set({ entries: previous.map((e) => (e.id === id ? { ...e, ...changes } : e)) });
+    if (patch.meal !== undefined) Object.assign(changes, mealColumns(patch.meal));
+    // Editado à mão: desliga da marcação do plano (fica como registro avulso).
+    if (previous.find((e) => e.id === id)?.planCheckId) changes.plan_check_id = null;
+    const local: Partial<NutritionLogEntry> = {
+      ...(changes.servings !== undefined && { servings: changes.servings }),
+      ...(patch.meal !== undefined && { meal: changes.meal ?? null, mealId: changes.meal_id ?? null, mealName: changes.meal_name ?? null }),
+      ...('plan_check_id' in changes && { planCheckId: null }),
+    };
+    set({ entries: previous.map((e) => (e.id === id ? { ...e, ...local } : e)) });
     const { error } = await supabase.from('nutrition_log_entries').update(changes).eq('id', id);
     if (error) {
       set({ entries: previous });

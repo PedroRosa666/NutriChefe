@@ -7,8 +7,9 @@
 //   O paciente vê sempre a versão vigente; o diário e as marcações usam esse retrato.
 import { fromJson, sqlArg, supabase, toJson } from '../lib/supabase';
 import type { Recipe } from '../types/recipe';
-import { MEAL_SLOTS, type MealPlan, type MealPlanItem, type MealSlot } from './care';
+import type { MealPlan, MealPlanItem, MealSlot, PlanMeal } from './care';
 import { toFood, type FoodRow } from './foods';
+import { mealToJson, sortItemsByMeals, toPlanMeal, type MealRow } from '../lib/plan-meals';
 
 const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
 
@@ -16,13 +17,15 @@ const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? nul
 
 const PLAN_SELECT =
   'id, client_id, created_by, title, notes, created_at, updated_at, revision, author:profiles!meal_plans_created_by_fkey(full_name), ' +
-  'items:meal_plan_items(id, day, meal, recipe_id, servings, food_id, grams, measure_label, option_group, note, position, ' +
+  'meals:meal_plan_meals(id, name, position, category, days, time_of_day, guidance, day_overrides, kcal_share), ' +
+  'items:meal_plan_items(id, day, meal_id, meal, recipe_id, servings, food_id, grams, measure_label, option_group, note, position, ' +
   'food:foods(id, taco_id, owner_id, name, category, kcal, protein, carbs, fat, fiber, sodium, nutrients, measures))';
 
 interface ItemRow {
   id: string;
   day: number;
-  meal: MealSlot;
+  meal_id: string;
+  meal: MealSlot | null;
   recipe_id: string | null;
   servings: number | string;
   food_id: string | null;
@@ -44,6 +47,7 @@ interface PlanRow {
   updated_at: string;
   revision?: number;
   author: { full_name: string | null } | { full_name: string | null }[] | null;
+  meals: (MealRow & { position: number })[] | null;
   items: ItemRow[] | null;
 }
 
@@ -52,7 +56,8 @@ const toItem = (i: ItemRow): MealPlanItem => {
   return {
     id: i.id,
     day: i.day,
-    meal: i.meal,
+    meal_id: i.meal_id,
+    meal: i.meal ?? null,
     recipe_id: i.recipe_id,
     servings: Number(i.servings) || 1,
     food_id: i.food_id,
@@ -64,25 +69,29 @@ const toItem = (i: ItemRow): MealPlanItem => {
   };
 };
 
-const byDayAndMeal = (a: MealPlanItem, b: MealPlanItem) => a.day - b.day || MEAL_SLOTS.indexOf(a.meal) - MEAL_SLOTS.indexOf(b.meal);
-
-const toPlan = (row: PlanRow): MealPlan => ({
-  id: row.id,
-  client_id: row.client_id,
-  created_by: row.created_by,
-  title: row.title,
-  notes: row.notes,
-  created_at: row.created_at,
-  updated_at: row.updated_at,
-  authorName: one(row.author)?.full_name ?? null,
-  revision: row.revision,
-  // Ordem do rascunho: dia, refeição e a posição gravada (a ordem em que o profissional montou).
-  items: (row.items ?? [])
-    .slice()
-    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-    .map(toItem)
-    .sort(byDayAndMeal),
-});
+const toPlan = (row: PlanRow): MealPlan => {
+  const meals = (row.meals ?? []).slice().sort((a, b) => a.position - b.position).map(toPlanMeal);
+  return {
+    id: row.id,
+    client_id: row.client_id,
+    created_by: row.created_by,
+    title: row.title,
+    notes: row.notes,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    authorName: one(row.author)?.full_name ?? null,
+    revision: row.revision,
+    meals,
+    // Ordem do rascunho: dia, ordem dos blocos e a posição gravada (a ordem em que o profissional montou).
+    items: sortItemsByMeals(
+      (row.items ?? [])
+        .slice()
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map(toItem),
+      meals
+    ),
+  };
+};
 
 /** Rascunho atual (só quem fez o plano edita): abre o editor. */
 export async function getPlanDraft(planId: string): Promise<MealPlan> {
@@ -111,6 +120,7 @@ export async function savePlanDraft(input: {
   clientId: string;
   title: string;
   notes: string;
+  meals: PlanMeal[];
   items: MealPlanItem[];
   expectedRevision?: number;
   publish: boolean;
@@ -119,7 +129,7 @@ export async function savePlanDraft(input: {
   const items = input.items.map((i) => ({
     id: i.id,
     day: i.day,
-    meal: i.meal,
+    meal_id: i.meal_id,
     recipe_id: i.food_id ? null : i.recipe_id,
     servings: i.food_id ? 1 : i.servings,
     food_id: i.food_id,
@@ -137,6 +147,7 @@ export async function savePlanDraft(input: {
     p_expected_revision: sqlArg(input.expectedRevision),
     p_publish: input.publish,
     p_operation: input.operationId,
+    p_meals: toJson(input.meals.map(mealToJson)),
   });
   if (error) throw error;
   const r = fromJson<{ plan_id: string; revision: number; version: unknown }>(data);
@@ -215,6 +226,7 @@ export interface PlanVersion {
   legacy: boolean;
   title: string;
   notes: string;
+  meals: PlanMeal[];
   items: MealPlanItem[];
   /** Receitas do retrato, pelo id. */
   recipes: Map<string, Recipe>;
@@ -226,20 +238,25 @@ interface VersionRow {
   valid_from: string;
   published_at: string;
   legacy: boolean;
-  content: { title?: string; notes?: string; items?: ItemRow[]; recipes?: Record<string, RecipeSnapshot> };
+  content: { title?: string; notes?: string; meals?: MealRow[]; items?: ItemRow[]; recipes?: Record<string, RecipeSnapshot> };
 }
 
-const toVersion = (row: VersionRow): PlanVersion => ({
-  id: row.id,
-  number: Number(row.number),
-  validFrom: row.valid_from,
-  publishedAt: row.published_at,
-  legacy: row.legacy === true,
-  title: row.content.title ?? '',
-  notes: row.content.notes ?? '',
-  items: (row.content.items ?? []).map(toItem),
-  recipes: new Map(Object.entries(row.content.recipes ?? {}).map(([id, s]) => [id, snapshotRecipe(id, s)])),
-});
+const toVersion = (row: VersionRow): PlanVersion => {
+  const meals = (row.content.meals ?? []).map(toPlanMeal);
+  return {
+    id: row.id,
+    number: Number(row.number),
+    validFrom: row.valid_from,
+    publishedAt: row.published_at,
+    legacy: row.legacy === true,
+    title: row.content.title ?? '',
+    notes: row.content.notes ?? '',
+    meals,
+    // Só itens de blocos que a versão tem naquele dia (o retrato já vem assim).
+    items: (row.content.items ?? []).map(toItem).filter((i) => meals.some((m) => m.id === i.meal_id && m.days.includes(i.day))),
+    recipes: new Map(Object.entries(row.content.recipes ?? {}).map(([id, s]) => [id, snapshotRecipe(id, s)])),
+  };
+};
 
 /** Plano como aparece na tela: a versão vigente, a próxima (se já publicada) e o estado do rascunho. */
 export interface PlanView {
@@ -329,7 +346,8 @@ export function versionAsPlan(view: PlanView, version: PlanVersion): MealPlan {
     created_at: view.createdAt,
     updated_at: version.publishedAt,
     authorName: view.authorName,
-    items: version.items.slice().sort(byDayAndMeal),
+    meals: version.meals,
+    items: sortItemsByMeals(version.items, version.meals),
     revision: view.revision,
   };
 }

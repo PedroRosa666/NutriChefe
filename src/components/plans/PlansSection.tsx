@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeftRight, CalendarRange, CheckCircle2, FileDown, ListChecks, Pencil, Plus, Send, ShoppingCart, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, CalendarRange, CheckCircle2, Clock, FileDown, ListChecks, Pencil, Plus, Send, ShoppingCart, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipeIndex } from '../../hooks/useRecipeIndex';
 import { useToastStore } from '../../store/toast';
@@ -8,7 +8,8 @@ import { toTotals, useNutritionTrackingStore } from '../../store/nutrition-track
 import { useShoppingListStore } from '../../store/shopping-list';
 import { useNotificationSignal } from '../../store/notifications';
 import { useTranslation } from '../../hooks/useTranslation';
-import { MEAL_SLOTS, planDayOf, type MealPlan, type MealPlanItem } from '../../services/care';
+import { planDayOf, type MealPlan, type MealPlanItem, type PlanMeal } from '../../services/care';
+import { mealGuidanceOn, mealItems, mealTimeOn, mealsOnDay } from '../../lib/plan-meals';
 import {
   deletePlan,
   getPlanDraft,
@@ -23,7 +24,7 @@ import {
   type PlanVersion,
   type PlanView,
 } from '../../services/plans';
-import { errorText } from '../../lib/app-errors';
+import { errorCode, errorText } from '../../lib/app-errors';
 import { itemsCalories, mealBlocks } from '../../lib/plan-items';
 import { foodLogValues } from '../../lib/food-math';
 import { PlanItemRow } from './PlanItemRow';
@@ -122,6 +123,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   const [checks, setChecks] = useState<MealCheck[]>([]);
   const [checkingMeal, setCheckingMeal] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
+  const pendingCheck = useRef<{ op: string; key: string } | null>(null);
   const stopPrinting = useCallback(() => setPrinting(false), []);
   // O paciente recebe aviso quando o nutricionista muda o plano, responde uma troca ou encerra o
   // acompanhamento (os planos dele somem): recarrega na hora.
@@ -244,7 +246,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     const counted = new Set<string>();
     const weekItems = plan.items.filter((item) => {
       if (item.option_group === null) return true;
-      const key = `${item.day}-${item.meal}-${item.option_group}`;
+      const key = `${item.day}-${item.meal_id}-${item.option_group}`;
       if (counted.has(key)) return false;
       counted.add(key);
       return true;
@@ -284,12 +286,13 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
 
   /** O item do plano como entra no diário (mesmos valores do botão de lançar no diário). */
   const diaryEntryOf = (item: MealPlanItem): CheckDiaryEntry | null => {
+    if (!item.id) return null;
     if (item.food_id && item.food && item.grams) {
       const { totals, extra } = foodLogValues(item.food, item.grams);
-      return { recipe_id: null, title: `${item.food.name} — ${item.measure_label ?? `${item.grams} g`}`.slice(0, 200), servings: 1, per_serving: { ...extra, ...totals } };
+      return { item_id: item.id, title: `${item.food.name} — ${item.measure_label ?? `${item.grams} g`}`.slice(0, 200), servings: 1, per_serving: { ...extra, ...totals } };
     }
     const recipe = item.recipe_id ? byId.get(item.recipe_id) : undefined;
-    return recipe ? { recipe_id: recipe.id, title: recipe.title, servings: item.servings, per_serving: { ...toTotals(recipe.nutritionFacts) } } : null;
+    return recipe ? { item_id: item.id, title: recipe.title, servings: item.servings, per_serving: { ...toTotals(recipe.nutritionFacts) } } : null;
   };
 
   const createButtons = (
@@ -420,30 +423,37 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   }
 
   const dayItems = plan.items.filter((i) => i.day === day);
+  const dayMeals = mealsOnDay(plan.meals, day).filter((m) => mealItems(dayItems, m.id, day).length > 0);
 
   const itemName = (item: MealPlanItem) =>
     item.food_id ? item.food?.name ?? '' : (item.recipe_id && byId.get(item.recipe_id)?.title) || '';
 
-  const saveMealCheck = async (meal: MealPlanItem['meal'], status: CheckStatus, eaten: MealPlanItem[], note: string) => {
-    setCheckingMeal(meal);
+  const saveMealCheck = async (meal: PlanMeal, status: CheckStatus, eaten: MealPlanItem[], note: string) => {
+    setCheckingMeal(meal.id);
+    // Marcação e diário numa operação só: "Comi" de novo substitui (não duplica) e uma falha no
+    // meio não deixa a refeição marcada sem ter ido para o diário. Mesmo conteúdo depois de uma
+    // falha de conexão: o mesmo id de operação (o banco devolve o resultado em vez de gravar de novo).
+    const entries = eaten.map(diaryEntryOf).filter((e): e is CheckDiaryEntry => e !== null);
+    const key = JSON.stringify([plan.id, dayDate, meal.id, status, note, entries.map((e) => e.item_id)]);
+    const op = pendingCheck.current?.key === key ? pendingCheck.current.op : newOperationId();
+    pendingCheck.current = { op, key };
     try {
-      // Marcação e diário numa operação só: "Comi" de novo substitui (não duplica) e uma
-      // falha no meio não deixa a refeição marcada sem ter ido para o diário.
-      const entries = eaten.map(diaryEntryOf).filter((e): e is CheckDiaryEntry => e !== null);
-      const saved = await saveCheckWithDiary({ planId: plan.id, date: dayDate, meal, status, chosen: eaten.map(itemName), note, entries });
+      const saved = await saveCheckWithDiary({ planId: plan.id, date: dayDate, mealId: meal.id, status, note, entries, operationId: op });
+      pendingCheck.current = null;
       setChecks((prev) => [saved, ...prev.filter((c) => c.id !== saved.id)]);
       if (user) await useNutritionTrackingStore.getState().fetchEntries(user.id);
       showToast(status === 'ate' ? t.adherence.savedAte : t.adherence.saved, 'success');
     } catch (error) {
       console.error('Error saving meal check:', error);
-      showToast(t.adherence.error, 'error');
+      if (errorCode(error) !== 'temporarily_unavailable') pendingCheck.current = null;
+      showToast(errorCode(error) === 'unknown' ? t.adherence.error : errorText(error, t.appErrors), 'error');
     } finally {
       setCheckingMeal(null);
     }
   };
 
   const clearMealCheck = async (check: MealCheck) => {
-    setCheckingMeal(check.meal);
+    setCheckingMeal(check.meal_id);
     try {
       await deleteCheck(check.id);
       setChecks((prev) => prev.filter((c) => c.id !== check.id));
@@ -649,27 +659,41 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
       {dayHasOptions && <p className="-mt-3 text-xs text-slate-500 dark:text-slate-400">{t.plan.firstOptionNote}</p>}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {MEAL_SLOTS.map((meal) => {
-          const mealItems = dayItems.filter((i) => i.meal === meal);
+        {/* Os blocos na ordem prescrita, com o nome escrito pelo profissional; bloco sem itens no dia não aparece. */}
+        {dayMeals.map((meal) => {
+          const blockItems = mealItems(dayItems, meal.id, day);
+          const time = mealTimeOn(meal, day);
+          const guidance = mealGuidanceOn(meal, day);
+          const check = checks.find((c) => c.plan_id === plan.id && c.check_date === dayDate && c.meal_id === meal.id);
           return (
-            <div key={meal} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t.plan.meals[meal]}</p>
-              {!mealItems.length && <p className="text-sm text-slate-400 dark:text-slate-500">{t.plan.emptyMeal}</p>}
+            <div key={meal.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="mb-3">
+                <p className="flex items-baseline justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  <span className="min-w-0 break-words">{meal.name}</span>
+                  {time && (
+                    <span className="inline-flex flex-shrink-0 items-center gap-1 font-medium normal-case">
+                      <Clock className="h-3 w-3" />
+                      {time}
+                    </span>
+                  )}
+                </p>
+                {guidance && <p className="mt-1 whitespace-pre-line text-xs text-slate-500 dark:text-slate-400">{guidance}</p>}
+              </div>
               <div className="space-y-3">
-                {mealBlocks(mealItems).map((block, blockIndex) => {
+                {mealBlocks(blockItems).map((block, blockIndex) => {
                   if (block.kind === 'single') {
-                    const key = `${meal}-${blockIndex}`;
+                    const key = `${meal.id}-${blockIndex}`;
                     return <PlanItemRow key={key} item={block.item} recipesById={byId} actions={itemActions(block.item)} />;
                   }
                   // Lista de substituição: o paciente escolhe uma das opções e registra a que comeu.
                   return (
-                    <div key={`${meal}-g${block.group}`} className="space-y-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-3 dark:border-amber-700/50 dark:bg-amber-900/10">
+                    <div key={`${meal.id}-g${block.group}`} className="space-y-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-3 dark:border-amber-700/50 dark:bg-amber-900/10">
                       <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                         <ListChecks className="h-3.5 w-3.5" />
                         {t.plan.chooseOne}
                       </p>
                       {block.items.map((item, index) => {
-                        const key = `${meal}-g${block.group}-${index}`;
+                        const key = `${meal.id}-g${block.group}-${index}`;
                         return (
                           <div key={key}>
                             {index > 0 && <p className="pb-1 text-center text-xs font-semibold uppercase text-amber-600 dark:text-amber-400">{t.plan.or}</p>}
@@ -681,17 +705,16 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
                   );
                 })}
               </div>
-              {mode === 'client' && mealItems.length > 0 && (
+              {mode === 'client' && (
                 <MealCheckBar
-                  key={`${dayDate}-${meal}`}
-                  items={mealItems}
-                  check={checks.find((c) => c.plan_id === plan.id && c.check_date === dayDate && c.meal === meal)}
-                  busy={checkingMeal === meal}
+                  key={`${dayDate}-${meal.id}`}
+                  items={blockItems}
+                  check={check}
+                  busy={checkingMeal === meal.id}
                   itemName={itemName}
                   onSave={(status, eaten, note) => saveMealCheck(meal, status, eaten, note)}
                   onClear={() => {
-                    const current = checks.find((c) => c.plan_id === plan.id && c.check_date === dayDate && c.meal === meal);
-                    if (current) clearMealCheck(current);
+                    if (check) clearMealCheck(check);
                   }}
                 />
               )}

@@ -1,5 +1,6 @@
 // Regras do plano alimentar usadas pelo editor do nutricionista e pela tela do paciente.
-import type { MealPlanItem } from '../services/care';
+import type { MealPlanItem, PlanMeal } from '../services/care';
+import { mealGuidanceOn, mealTimeOn, mealsOnDay } from './plan-meals';
 import type { NutritionTotals } from '../store/nutrition-tracking';
 import type { Recipe } from '../types/recipe';
 import { nutrientsFor, quantityLabel } from './food-math';
@@ -62,7 +63,7 @@ export function itemsTotals(items: MealPlanItem[], recipesById: Map<string, Reci
   const total: NutritionTotals = { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 };
   for (const item of items) {
     if (item.option_group !== null) {
-      const key = `${item.day}-${item.meal}-${item.option_group}`;
+      const key = `${item.day}-${item.meal_id}-${item.option_group}`;
       if (counted.has(key)) continue;
       counted.add(key);
     }
@@ -88,21 +89,23 @@ export const itemsCalories = (items: MealPlanItem[], recipesById: Map<string, Re
   itemsTotals(items, recipesById).calories;
 
 /** Assinatura do cardápio de um dia (o que se come, sem ids), para juntar dias iguais. */
-const daySignature = (items: MealPlanItem[]) =>
-  JSON.stringify(
-    items.map((i) => [i.meal, i.recipe_id, i.food_id, i.servings, i.grams, i.measure_label, i.option_group, i.note])
-  );
+const daySignature = (items: MealPlanItem[], meals: PlanMeal[], day: number) =>
+  JSON.stringify([
+    items.map((i) => [i.meal_id, i.recipe_id, i.food_id, i.servings, i.grams, i.measure_label, i.option_group, i.note]),
+    // Horário e orientação podem mudar por dia: dias com textos diferentes não se juntam.
+    mealsOnDay(meals, day).map((m) => [m.id, mealTimeOn(m, day), mealGuidanceOn(m, day)]),
+  ]);
 
 /**
  * Agrupa dias seguidos com o mesmo cardápio (ex.: segunda a sexta iguais viram um bloco).
  * Dias sem itens ficam de fora. Os itens de cada dia mantêm a ordem recebida.
  */
-export function groupEqualDays(items: MealPlanItem[]): { days: number[]; items: MealPlanItem[] }[] {
+export function groupEqualDays(items: MealPlanItem[], meals: PlanMeal[] = []): { days: number[]; items: MealPlanItem[] }[] {
   const groups: { days: number[]; items: MealPlanItem[]; sig: string }[] = [];
   for (let day = 0; day < 7; day++) {
     const dayItems = items.filter((i) => i.day === day);
     if (!dayItems.length) continue;
-    const sig = daySignature(dayItems);
+    const sig = daySignature(dayItems, meals, day);
     const last = groups[groups.length - 1];
     if (last && last.sig === sig && last.days[last.days.length - 1] === day - 1) last.days.push(day);
     else groups.push({ days: [day], items: dayItems, sig });

@@ -75,7 +75,7 @@ describe('marcação de refeição por plano', () => {
     for (const plan of [a, b]) {
       await asUser(db, PATIENT, (tx) => tx.query(
         `INSERT INTO meal_plan_checks (client_id, plan_id, check_date, meal, status) VALUES ($1, $2, current_date, 'lunch', 'ate')
-         ON CONFLICT (client_id, plan_id, check_date, meal) DO UPDATE SET status = 'ate'`, [PATIENT, plan]));
+         ON CONFLICT (client_id, plan_id, check_date, meal_id) DO UPDATE SET status = 'ate'`, [PATIENT, plan]));
     }
     expect((await db.query('SELECT 1 FROM meal_plan_checks WHERE client_id = $1', [PATIENT])).rows).toHaveLength(2);
   });

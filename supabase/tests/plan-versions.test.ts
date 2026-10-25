@@ -121,7 +121,7 @@ describe('rascunho e publicação', () => {
 
   it('com refeição marcada hoje, a nova versão vale a partir de amanhã', async () => {
     await asUser(db, PATIENT, (tx) =>
-      tx.query(`SELECT save_meal_check($1, app_today(), 'breakfast', 'ate', '[]', '', '[]')`, [planId])
+      tx.query(`INSERT INTO meal_plan_checks (client_id, plan_id, check_date, meal, status) VALUES ($1, $2, app_today(), 'breakfast', 'ate')`, [PATIENT, planId])
     );
     const check = await db.query<{ number: number }>(
       `SELECT v.number FROM meal_plan_checks c JOIN meal_plan_versions v ON v.id = c.version_id WHERE c.plan_id = $1`,

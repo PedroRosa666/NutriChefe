@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { dateForPlanDay, dateRange, summarizeAdherence, type MealCheck } from '../adherence';
-import type { MealPlanItem } from '../../services/care';
+import type { MealPlanItem, PlanMeal } from '../../services/care';
 
-const item = (day: number, meal: MealPlanItem['meal']): MealPlanItem => ({
-  day, meal, recipe_id: 'r', servings: 1, food_id: null, grams: null, measure_label: null, option_group: null, note: '',
+const ALL = [0, 1, 2, 3, 4, 5, 6];
+const meal = (id: string, name: string, days = ALL): PlanMeal => ({
+  id, name, category: null, days, time: null, guidance: '', dayOverrides: {}, kcalShare: null,
 });
-const check = (check_date: string, meal: MealCheck['meal'], status: MealCheck['status'], note = ''): MealCheck => ({
-  id: `${check_date}${meal}`, plan_id: 'p', check_date, meal, status, chosen: [], note,
+const item = (day: number, mealId: string): MealPlanItem => ({
+  day, meal_id: mealId, recipe_id: 'r', servings: 1, food_id: null, grams: null, measure_label: null, option_group: null, note: '',
+});
+const check = (check_date: string, mealId: string, status: MealCheck['status'], note = ''): MealCheck => ({
+  id: `${check_date}${mealId}`, plan_id: 'p', check_date, meal_id: mealId, meal_name: null, meal: null, status, chosen: [], note,
 });
 
 describe('dateForPlanDay', () => {
@@ -22,22 +26,37 @@ describe('dateForPlanDay', () => {
 
 describe('summarizeAdherence', () => {
   // Plano: almoço todo dia; jantar só na segunda (19/10).
-  const plan = { created_at: '2026-10-19T08:00:00Z', items: [...[0, 1, 2, 3, 4, 5, 6].map((d) => item(d, 'lunch')), item(0, 'dinner')] };
+  const meals = [meal('almoco', 'Almoço'), meal('jantar', 'Jantar', [0])];
+  const plan = { created_at: '2026-10-19T08:00:00Z', meals, items: [...ALL.map((d) => item(d, 'almoco')), item(0, 'jantar')] };
   const dates = dateRange('2026-10-18', '2026-10-21'); // domingo (antes do plano) a quarta
 
   it('conta só refeições previstas e depois de o plano existir', () => {
-    const s = summarizeAdherence(plan, [check('2026-10-19', 'lunch', 'ate'), check('2026-10-19', 'dinner', 'skipped'), check('2026-10-20', 'lunch', 'other', 'pizza')], dates);
+    const s = summarizeAdherence(plan, [check('2026-10-19', 'almoco', 'ate'), check('2026-10-19', 'jantar', 'skipped'), check('2026-10-20', 'almoco', 'other', 'pizza')], dates);
     // seg: almoço + jantar; ter e qua: almoço -> 4 previstas
     expect(s).toMatchObject({ planned: 4, ate: 1, other: 1, skipped: 1, unmarked: 1, percent: 25 });
     expect(s.grid.map((g) => g.date)).toEqual(['2026-10-19', '2026-10-20', '2026-10-21']);
   });
 
-  it('agrupa por refeição o que saiu do plano, com as anotações', () => {
-    const s = summarizeAdherence(plan, [check('2026-10-20', 'lunch', 'other', 'pizza'), check('2026-10-21', 'lunch', 'skipped')], dates);
-    expect(s.byMeal.find((m) => m.meal === 'lunch')).toMatchObject({ planned: 3, ate: 0, off: 2, notes: ['pizza'] });
+  it('agrupa por refeição (bloco) o que saiu do plano, com as anotações e o nome do bloco', () => {
+    const s = summarizeAdherence(plan, [check('2026-10-20', 'almoco', 'other', 'pizza'), check('2026-10-21', 'almoco', 'skipped')], dates);
+    expect(s.byMeal.find((m) => m.mealId === 'almoco')).toMatchObject({ name: 'Almoço', planned: 3, ate: 0, off: 2, notes: ['pizza'] });
+  });
+
+  it('REF 04: um dia com quatro refeições não ganha faltas por causa de outro com seis; dois "Lanche" contam separados', () => {
+    const six = [meal('cafe', 'Café'), meal('l1', 'Lanche', [0]), meal('almoco', 'Almoço'), meal('l2', 'Lanche', [0]), meal('pre', 'Pré-treino', [0]), meal('jantar', 'Jantar')];
+    const items = [0, 1].flatMap((d) => six.filter((m) => m.days.includes(d)).map((m) => item(d, m.id)));
+    const s = summarizeAdherence({ created_at: '2026-10-19T08:00:00Z', meals: six, items }, [check('2026-10-20', 'cafe', 'ate'), check('2026-10-19', 'l1', 'ate')], dateRange('2026-10-19', '2026-10-20'));
+    expect(s.grid.map((g) => g.slots.length)).toEqual([6, 3]);
+    expect(s).toMatchObject({ planned: 9, ate: 2, unmarked: 7 });
+    expect(s.byMeal.filter((m) => m.name === 'Lanche')).toHaveLength(2);
+  });
+
+  it('bloco sem itens no dia não é refeição prevista', () => {
+    const s = summarizeAdherence({ created_at: '2026-10-19T08:00:00Z', meals: [meal('ceia', 'Ceia')], items: [item(0, 'ceia')] }, [], dateRange('2026-10-19', '2026-10-20'));
+    expect(s.planned).toBe(1);
   });
 
   it('sem refeições previstas, sem %', () => {
-    expect(summarizeAdherence({ created_at: '2026-10-19T00:00:00Z', items: [] }, [], dates).percent).toBeNull();
+    expect(summarizeAdherence({ created_at: '2026-10-19T00:00:00Z', meals: [], items: [] }, [], dates).percent).toBeNull();
   });
 });

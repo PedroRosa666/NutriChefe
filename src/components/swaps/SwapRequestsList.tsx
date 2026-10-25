@@ -36,6 +36,7 @@ const STATUS_STYLE: Record<SwapStatus, string> = {
   approved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
   rejected: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300',
   canceled: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  outdated: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
 };
 
 /** Pedidos de troca de um paciente. Paciente acompanha e cancela; nutricionista aprova ou recusa. */
@@ -68,7 +69,8 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
   // O paciente só vê a seção quando há pedidos; o nutricionista vê sempre (com o estado vazio).
   if (!swaps.length && role === 'client') return null;
 
-  const where = (r: SwapRequest) => `${t.plan.daysLong[r.day]} • ${t.plan.meals[r.meal]}`;
+  // O nome do bloco como era no pedido (escrito pelo profissional); pedidos antigos: a refeição de sempre.
+  const where = (r: SwapRequest) => `${t.plan.daysLong[r.day]} • ${r.meal_name ?? (r.meal ? t.plan.meals[r.meal] : '')}`;
 
   const approve = async (r: SwapRequest) => {
     if (!hasRequestedChoice(r)) {
@@ -160,6 +162,7 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
             {r.status !== 'pending' && r.status !== 'canceled' && (r.status === 'approved' || r.counter_food_id || r.counter_recipe_id) && !r.applied && (
               <p className="text-xs text-amber-700 dark:text-amber-300">{s.notApplied}</p>
             )}
+            {r.status === 'outdated' && <p className="text-xs text-slate-500 dark:text-slate-400">{s.outdatedHint}</p>}
             {/* "Aprovada" e "já vale" são estados diferentes: a troca entra no plano com a publicação. */}
             {r.applied && (
               <p className="text-xs text-slate-500 dark:text-slate-400">

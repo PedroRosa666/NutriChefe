@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Bot, Carrot, ChevronDown, Crown, LayoutTemplate, ListChecks, Loader2, Scale, Search, Send, Sparkles, Trash2, Save, X } from 'lucide-react';
+import { BookOpen, Bot, Carrot, ChevronDown, Crown, LayoutTemplate, ListChecks, Loader2, Plus, Scale, Search, Send, Sparkles, Trash2, Save, X } from 'lucide-react';
 import { confirmDialog } from '../../store/confirm';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
-import { MEAL_SLOTS, planDayOf, type MealPlan, type MealPlanItem, type MealSlot } from '../../services/care';
+import { planDayOf, type MealPlan, type MealPlanItem, type PlanMeal } from '../../services/care';
 import { newOperationId, savePlanDraft } from '../../services/plans';
 import { errorCode, errorText } from '../../lib/app-errors';
 import { appLocale } from '../../lib/format';
 import { toISODate } from '../../store/nutrition-tracking';
 import { generateWeeklyPlanDetailed } from '../../lib/meal-plan-generator';
 import { isItemAvailable, itemsCalories, mealBlocks, nextOptionGroup, scaleItemsToTarget } from '../../lib/plan-items';
+import { ALL_DAYS, MEAL_LIMITS, dayShares, defaultMeals, definedShareSum, mealItems, mealTimeOn, mealsOnDay, newMealId } from '../../lib/plan-meals';
+import { MealBlockHeader } from './MealBlockHeader';
 import { FoodQuantityPicker, type PickedFood } from '../foods/FoodQuantityPicker';
 import { EquivalentFoods } from '../foods/EquivalentFoods';
 import { PlanItemRow } from './PlanItemRow';
@@ -41,7 +43,7 @@ interface MealPlanEditorProps {
 
 /** Painel de inclusão aberto numa refeição: receita ou alimento, solto ou dentro de um grupo de opções. */
 interface Adder {
-  meal: MealSlot;
+  mealId: string;
   kind: 'recipe' | 'food';
   group: number | null;
 }
@@ -51,9 +53,9 @@ const inputClass =
 const chipClass =
   'inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:border-emerald-400 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:text-emerald-300';
 
-const emptyItem = (day: number, meal: MealSlot, group: number | null): Omit<MealPlanItem, 'recipe_id' | 'food_id'> => ({
+const emptyItem = (day: number, mealId: string, group: number | null): Omit<MealPlanItem, 'recipe_id' | 'food_id'> => ({
   day,
-  meal,
+  meal_id: mealId,
   servings: 1,
   grams: null,
   measure_label: null,
@@ -77,7 +79,9 @@ export function MealPlanEditor({
   const { showToast } = useToastStore();
   const t = useTranslation();
 
-  const generate = () => generateWeeklyPlanDetailed({ recipes, dailyCalories, allergies, preferences });
+  // Plano novo começa com as quatro refeições de sempre; o profissional adiciona, renomeia e remove.
+  const [meals, setMeals] = useState<PlanMeal[]>(() => plan?.meals ?? defaultMeals(t.plan.meals));
+  const generate = () => generateWeeklyPlanDetailed({ recipes, dailyCalories, allergies, preferences, meals });
 
   const [title, setTitle] = useState(plan?.title ?? '');
   const [notes, setNotes] = useState(plan?.notes ?? '');
@@ -100,8 +104,8 @@ export function MealPlanEditor({
   }, [fillOpen]);
 
   // Alterações não salvas: comparadas com o que abriu (um plano gerado na abertura já conta como mudança).
-  const initial = useRef(JSON.stringify({ title: plan?.title ?? '', notes: plan?.notes ?? '', items: plan?.items ?? [] }));
-  const dirty = JSON.stringify({ title, notes, items }) !== initial.current;
+  const initial = useRef(JSON.stringify({ title: plan?.title ?? '', notes: plan?.notes ?? '', meals, items: plan?.items ?? [] }));
+  const dirty = JSON.stringify({ title, notes, meals, items }) !== initial.current;
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
   // Fechar ou recarregar a aba com alterações: o navegador pergunta antes.
   useEffect(() => {
@@ -129,21 +133,26 @@ export function MealPlanEditor({
   const runAI = async () => {
     setAiLoading(true);
     try {
-      const result = await generatePlanWithAI(clientId, aiNotes.trim(), dailyCalories);
+      const result = await generatePlanWithAI(clientId, aiNotes.trim(), dailyCalories, meals);
       // Os alimentos vêm só com o id: o catálogo precisa estar carregado para mostrar nome e nutrientes.
       await useFoodsStore.getState().fetch();
       const foodsById = new Map(useFoodsStore.getState().foods.map((f) => [f.id, f]));
-      setItems(
-        result.items.map((i) => ({
-          ...i,
-          food: i.food_id ? foodsById.get(i.food_id) ?? null : null,
-          measure_label: null,
-          option_group: null,
-        }))
-      );
+      const next = result.items.map((i) => ({
+        ...i,
+        food: i.food_id ? foodsById.get(i.food_id) ?? null : null,
+        measure_label: null,
+        option_group: null,
+      }));
+      setItems(next);
       setAiSummary(result.summary);
       setAiOpen(false);
-      showToast(t.plan.aiDone, 'success');
+      // Refeição que a IA deixou vazia ou itens fora das refeições do plano: avisa, nunca esconde.
+      const gaps = meals.flatMap((m) =>
+        m.days.filter((d) => !next.some((i) => i.meal_id === m.id && i.day === d)).map((d) => `${m.name} (${t.plan.days[d]})`)
+      );
+      if (result.dropped) showToast(t.plan.aiDropped.replace('{count}', String(result.dropped)), 'warning');
+      else if (gaps.length) showToast(t.plan.aiGaps.replace('{meals}', gaps.slice(0, 6).join(', ') + (gaps.length > 6 ? '…' : '')), 'warning');
+      else showToast(t.plan.aiDone, 'success');
     } catch (error) {
       showToast(error instanceof Error && error.message && !error.message.includes('_') ? error.message : t.plan.aiError, 'error');
     } finally {
@@ -164,6 +173,15 @@ export function MealPlanEditor({
   }, [recipeQuery, sortedRecipes, user?.id]);
 
   const dayCalories = (d: number) => itemsCalories(items.filter((i) => i.day === d), byId);
+  const dayMeals = mealsOnDay(meals, day);
+  // Sugestão de % por refeição (mostrada quando o bloco não tem a sua) e a soma das % definidas.
+  const { shares: suggestedShares } = dayShares(meals.map((m) => ({ ...m, kcalShare: null })), day);
+  const shareSum = definedShareSum(meals, day);
+  const shareOff = shareSum !== null && Math.abs(shareSum - 100) >= 0.5;
+  // Nomes repetidos no dia são permitidos ("Lanche" duas vezes); sem horário, sugere diferenciar.
+  const repeatedName = dayMeals.find((m, i) =>
+    dayMeals.some((o, j) => j !== i && o.name.trim() === m.name.trim() && !mealTimeOn(o, day) && !mealTimeOn(m, day))
+  );
 
   /** Média de calorias dos dias que têm itens. */
   const averageDayCalories = (list: MealPlanItem[]) => {
@@ -174,19 +192,26 @@ export function MealPlanEditor({
   const regenerate = async () => {
     // Gerar de novo troca todas as receitas: com o plano já montado, confirma antes.
     if (items.some((i) => i.recipe_id && i.option_group === null) && !(await confirmDialog(t.plan.regenerateConfirm))) return;
-    const { items: next, relaxed } = generate();
+    const { items: next, relaxed, suggestedShares: suggested, offTarget } = generate();
     if (!next.length) {
       showToast(t.plan.generateEmpty, 'warning');
       return;
     }
     // O gerador só monta receitas; alimentos e grupos de opções do dia ficam como estavam.
     setItems((prev) => [...prev.filter((i) => i.food_id || i.option_group !== null), ...next]);
-    // Preferência deixada de lado por falta de receitas: avisa em vez de ignorar calado.
+    // Preferência deixada de lado ou meta que não fechou: avisa em vez de ignorar calado.
     if (relaxed.length) {
       const names = relaxed.map((p) => t.health.diets[p as keyof typeof t.health.diets] ?? p).join(', ');
       showToast(t.plan.generatedRelaxed.replace('{prefs}', names), 'warning');
+    } else if (offTarget.length) {
+      showToast(
+        t.plan.generatedOffTarget
+          .replace('{days}', offTarget.map((o) => `${t.plan.days[o.day]} (${o.kcal} kcal)`).join(', '))
+          .replace('{kcal}', String(offTarget[0].target)),
+        'warning'
+      );
     } else {
-      showToast(t.plan.generated, 'success');
+      showToast(suggested ? t.plan.generatedSuggested : t.plan.generated, 'success');
     }
   };
 
@@ -207,8 +232,9 @@ export function MealPlanEditor({
     showToast(t.plan.scaled.replace('{before}', String(before)).replace('{after}', String(after)).replace('{kcal}', goal), 'success');
   };
 
-  const applyTemplate = async (input: { items: MealPlanItem[]; title: string; notes: string }) => {
+  const applyTemplate = async (input: { meals: PlanMeal[]; items: MealPlanItem[]; title: string; notes: string }) => {
     if (items.length && !(await confirmDialog(t.plan.templateReplaceConfirm))) return;
+    setMeals(input.meals);
     setItems(input.items);
     setTitle((current) => current || input.title);
     setNotes((current) => current || input.notes);
@@ -218,7 +244,7 @@ export function MealPlanEditor({
 
   const addRecipe = (target: Adder, recipeId: string) => {
     if (!recipeId) return;
-    setItems((prev) => [...prev, { ...emptyItem(day, target.meal, target.group), recipe_id: recipeId, food_id: null }]);
+    setItems((prev) => [...prev, { ...emptyItem(day, target.mealId, target.group), recipe_id: recipeId, food_id: null }]);
     // Fora de um grupo, fecha; dentro, fica aberto para a próxima opção.
     if (target.group === null) setAdder(null);
   };
@@ -227,7 +253,7 @@ export function MealPlanEditor({
     setItems((prev) => [
       ...prev,
       {
-        ...emptyItem(day, target.meal, target.group),
+        ...emptyItem(day, target.mealId, target.group),
         recipe_id: null,
         food_id: picked.food.id,
         food: picked.food,
@@ -243,8 +269,84 @@ export function MealPlanEditor({
 
   const removeItem = (target: MealPlanItem) => setItems((prev) => prev.filter((i) => i !== target));
 
-  const removeGroup = (meal: MealSlot, group: number) =>
-    setItems((prev) => prev.filter((i) => !(i.day === day && i.meal === meal && i.option_group === group)));
+  const removeGroup = (mealId: string, group: number) =>
+    setItems((prev) => prev.filter((i) => !(i.day === day && i.meal_id === mealId && i.option_group === group)));
+
+  // ------------------------------------------------------------ blocos de refeição
+  const countOn = (list: PlanMeal[], d: number) => mealsOnDay(list, d).length;
+  const updateMeal = (id: string, patch: Partial<PlanMeal>) => setMeals((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+  const limitToast = () => showToast(t.plan.mealLimitDay.replace('{n}', String(MEAL_LIMITS.mealsPerDay)), 'warning');
+
+  const addMeal = () => {
+    if (countOn(meals, day) >= MEAL_LIMITS.mealsPerDay || meals.length >= MEAL_LIMITS.mealsPerPlan) {
+      limitToast();
+      return;
+    }
+    // Entra nos dias que ainda têm espaço (sempre no dia aberto).
+    const days = ALL_DAYS.filter((d) => d === day || countOn(meals, d) < MEAL_LIMITS.mealsPerDay);
+    setMeals((prev) => [
+      ...prev,
+      { id: newMealId(), name: t.plan.newMealName, category: null, days, time: null, guidance: '', dayOverrides: {}, kcalShare: null },
+    ]);
+  };
+
+  const toggleMealDay = async (meal: PlanMeal, d: number) => {
+    if (meal.days.includes(d)) {
+      const lost = mealItems(items, meal.id, d).length;
+      const question = t.plan.mealDayOffConfirm.replace('{name}', meal.name).replace('{day}', t.plan.daysLong[d]).replace('{count}', String(lost));
+      if (lost && !(await confirmDialog(question))) return;
+      setItems((prev) => prev.filter((i) => !(i.meal_id === meal.id && i.day === d)));
+      updateMeal(meal.id, { days: meal.days.filter((x) => x !== d) });
+      return;
+    }
+    if (countOn(meals, d) >= MEAL_LIMITS.mealsPerDay) {
+      limitToast();
+      return;
+    }
+    updateMeal(meal.id, { days: [...meal.days, d].sort((a, b) => a - b) });
+  };
+
+  // Sobe ou desce entre as refeições do dia aberto (troca de lugar com a vizinha na ordem do plano).
+  const moveMeal = (meal: PlanMeal, direction: -1 | 1) => {
+    const neighbor = dayMeals[dayMeals.indexOf(meal) + direction];
+    if (!neighbor) return;
+    setMeals((prev) => {
+      const next = prev.slice();
+      const a = next.findIndex((m) => m.id === meal.id);
+      const b = next.findIndex((m) => m.id === neighbor.id);
+      [next[a], next[b]] = [next[b], next[a]];
+      return next;
+    });
+  };
+
+  // Cópia com id novo e itens novos (marcações, trocas e diário do original não vêm junto).
+  const duplicateMeal = (meal: PlanMeal) => {
+    if (meal.days.some((d) => countOn(meals, d) >= MEAL_LIMITS.mealsPerDay) || meals.length >= MEAL_LIMITS.mealsPerPlan) {
+      limitToast();
+      return;
+    }
+    const copy: PlanMeal = {
+      ...meal,
+      id: newMealId(),
+      name: t.plan.copyName.replace('{name}', meal.name).slice(0, MEAL_LIMITS.name),
+      days: [...meal.days],
+      dayOverrides: { ...meal.dayOverrides },
+    };
+    setMeals((prev) => {
+      const next = prev.slice();
+      next.splice(next.findIndex((m) => m.id === meal.id) + 1, 0, copy);
+      return next;
+    });
+    setItems((prev) => [...prev, ...prev.filter((i) => i.meal_id === meal.id).map((i) => ({ ...i, id: undefined, meal_id: copy.id }))]);
+  };
+
+  const removeMeal = async (meal: PlanMeal) => {
+    const count = items.filter((i) => i.meal_id === meal.id).length;
+    if (count && !(await confirmDialog(t.plan.removeMealConfirm.replace('{name}', meal.name).replace('{count}', String(count))))) return;
+    setItems((prev) => prev.filter((i) => i.meal_id !== meal.id));
+    setMeals((prev) => prev.filter((m) => m.id !== meal.id));
+    if (adder?.mealId === meal.id) setAdder(null);
+  };
 
   // O próprio plano do paciente (ownPlan) vale assim que salvo; o do nutricionista pode ficar em rascunho.
   // Tentativa em andamento: se a internet cair, salvar de novo o mesmo conteúdo reaproveita o id
@@ -254,7 +356,7 @@ export function MealPlanEditor({
   const save = async (publish: boolean) => {
     if (!user || saving) return;
     setSaving(true);
-    const payload = { title: title || t.plan.title, notes, items: items.filter((i) => isItemAvailable(i, byId)), publish };
+    const payload = { title: title || t.plan.title, notes, meals, items: items.filter((i) => isItemAvailable(i, byId)), publish };
     const key = JSON.stringify(payload);
     const op = pendingSave.current?.payload === key ? pendingSave.current.op : newOperationId();
     pendingSave.current = { op, payload: key };
@@ -264,6 +366,7 @@ export function MealPlanEditor({
         clientId,
         title: payload.title,
         notes,
+        meals,
         items: payload.items,
         expectedRevision: plan?.revision,
         publish,
@@ -282,7 +385,7 @@ export function MealPlanEditor({
               : t.plan.publishedToday,
         'success'
       );
-      initial.current = JSON.stringify({ title, notes, items });
+      initial.current = JSON.stringify({ title, notes, meals, items });
       onDirtyChange?.(false);
       onSaved(result.planId);
     } catch (error) {
@@ -535,7 +638,7 @@ export function MealPlanEditor({
               {t.plan.closeTemplates}
             </button>
           </div>
-          <PlanTemplatesPanel items={items} title={title} notes={notes} onApply={applyTemplate} />
+          <PlanTemplatesPanel meals={meals} items={items} title={title} notes={notes} onApply={applyTemplate} />
         </div>
       )}
 
@@ -567,15 +670,39 @@ export function MealPlanEditor({
         })}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {MEAL_SLOTS.map((meal) => {
-          const mealItems = items.filter((i) => i.day === day && i.meal === meal);
-          const isOpen = (group: number | null) => adder?.meal === meal && adder.group === group;
-          return (
-            <div key={meal} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-950/40">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.plan.meals[meal]}</p>
+      {(shareOff || repeatedName) && (
+        <div className="space-y-1 text-xs text-amber-700 dark:text-amber-300">
+          {shareOff && <p>{t.plan.mealShareSum.replace('{day}', t.plan.daysLong[day]).replace('{n}', String(shareSum))}</p>}
+          {repeatedName && <p>{t.plan.sameNameHint.replace('{name}', repeatedName.name)}</p>}
+        </div>
+      )}
 
-              {mealBlocks(mealItems).map((block) =>
+      {!dayMeals.length && (
+        <p className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">{t.plan.noMealsDay}</p>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {dayMeals.map((meal, mealIndex) => {
+          const mealId = meal.id;
+          const blockItems = mealItems(items, mealId, day);
+          const full = blockItems.length >= MEAL_LIMITS.itemsPerMeal;
+          const isOpen = (group: number | null) => adder?.mealId === mealId && adder.group === group;
+          return (
+            <div key={mealId} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+              <MealBlockHeader
+                meal={meal}
+                day={day}
+                canMoveUp={mealIndex > 0}
+                canMoveDown={mealIndex < dayMeals.length - 1}
+                suggestedShare={suggestedShares.get(mealId) ?? null}
+                onChange={(patch) => updateMeal(mealId, patch)}
+                onToggleDay={(d) => toggleMealDay(meal, d)}
+                onMove={(direction) => moveMeal(meal, direction)}
+                onDuplicate={() => duplicateMeal(meal)}
+                onRemove={() => removeMeal(meal)}
+              />
+
+              {mealBlocks(blockItems).map((block) =>
                 block.kind === 'single' ? (
                   <div key={items.indexOf(block.item)} className="rounded-lg bg-white p-2 dark:bg-slate-900">
                     <PlanItemRow item={block.item} recipesById={byId} compact actions={itemActions(block.item)} />
@@ -589,7 +716,7 @@ export function MealPlanEditor({
                       </p>
                       <button
                         type="button"
-                        onClick={() => removeGroup(meal, block.group)}
+                        onClick={() => removeGroup(mealId, block.group)}
                         className="rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
                         aria-label={t.plan.removeGroup}
                         title={t.plan.removeGroup}
@@ -607,8 +734,8 @@ export function MealPlanEditor({
                     ))}
                     {isOpen(block.group) ? (
                       adderPanel(adder!)
-                    ) : (
-                      <button type="button" onClick={() => setAdder({ meal, kind: 'food', group: block.group })} className={chipClass}>
+                    ) : full ? null : (
+                      <button type="button" onClick={() => setAdder({ mealId, kind: 'food', group: block.group })} className={chipClass}>
                         <ListChecks className="h-3.5 w-3.5" />
                         {t.plan.addOption}
                       </button>
@@ -624,7 +751,7 @@ export function MealPlanEditor({
                           grams={baseItem.grams}
                           exclude={block.items.flatMap((i) => (i.food_id ? [i.food_id] : []))}
                           pickLabel={t.plan.addAsOption}
-                          onPick={(picked) => addFood({ meal, kind: 'food', group: block.group }, picked)}
+                          onPick={(picked) => addFood({ mealId, kind: 'food', group: block.group }, picked)}
                         />
                       );
                     })()}
@@ -634,7 +761,7 @@ export function MealPlanEditor({
 
               {isOpen(null) && adderPanel(adder!)}
               {/* Novo grupo de opções: o painel abre já ligado ao próximo número de grupo. */}
-              {adder?.meal === meal && adder.group !== null && !mealItems.some((i) => i.option_group === adder.group) && (
+              {adder?.mealId === mealId && adder.group !== null && !blockItems.some((i) => i.option_group === adder.group) && (
                 <div className="space-y-2 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-2 dark:border-amber-700/50 dark:bg-amber-900/10">
                   <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                     <ListChecks className="h-3.5 w-3.5" />
@@ -644,24 +771,40 @@ export function MealPlanEditor({
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                <button type="button" onClick={() => setAdder({ meal, kind: 'recipe', group: null })} className={chipClass}>
-                  <BookOpen className="h-3.5 w-3.5" />
-                  {t.plan.addRecipeButton}
-                </button>
-                <button type="button" onClick={() => setAdder({ meal, kind: 'food', group: null })} className={chipClass}>
-                  <Carrot className="h-3.5 w-3.5" />
-                  {t.plan.addFoodButton}
-                </button>
-                <button type="button" onClick={() => setAdder({ meal, kind: 'food', group: nextOptionGroup(mealItems) })} className={chipClass}>
-                  <ListChecks className="h-3.5 w-3.5" />
-                  {t.plan.addOptionsButton}
-                </button>
-              </div>
+              {/* Limite de itens por refeição (o "Comi" leva todos ao diário): não deixa passar. */}
+              {full ? (
+                <p className="pt-1 text-xs text-slate-500 dark:text-slate-400">{t.plan.mealFull.replace('{n}', String(MEAL_LIMITS.itemsPerMeal))}</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <button type="button" onClick={() => setAdder({ mealId, kind: 'recipe', group: null })} className={chipClass}>
+                    <BookOpen className="h-3.5 w-3.5" />
+                    {t.plan.addRecipeButton}
+                  </button>
+                  <button type="button" onClick={() => setAdder({ mealId, kind: 'food', group: null })} className={chipClass}>
+                    <Carrot className="h-3.5 w-3.5" />
+                    {t.plan.addFoodButton}
+                  </button>
+                  <button type="button" onClick={() => setAdder({ mealId, kind: 'food', group: nextOptionGroup(blockItems) })} className={chipClass}>
+                    <ListChecks className="h-3.5 w-3.5" />
+                    {t.plan.addOptionsButton}
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
+
+      <button
+        type="button"
+        onClick={addMeal}
+        disabled={dayMeals.length >= MEAL_LIMITS.mealsPerDay}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-300 px-3 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:border-emerald-800/60 dark:text-emerald-300 dark:hover:bg-emerald-900/20"
+      >
+        <Plus className="h-4 w-4" />
+        {dayMeals.length >= MEAL_LIMITS.mealsPerDay ? t.plan.mealLimitDay.replace('{n}', String(MEAL_LIMITS.mealsPerDay)) : t.plan.addMeal}
+      </button>
+
 
       <div className="sticky bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))] z-10 -mx-4 -mb-4 flex items-center justify-end gap-2 rounded-b-2xl border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-5 sm:-mb-5 sm:px-5 md:bottom-0 dark:border-slate-800 dark:bg-slate-900/95">
         {dirty && <span className="mr-auto text-xs font-medium text-amber-600 dark:text-amber-400">{t.plan.unsaved}</span>}
