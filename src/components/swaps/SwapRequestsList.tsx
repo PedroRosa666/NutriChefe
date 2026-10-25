@@ -160,6 +160,14 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
             {r.status !== 'pending' && r.status !== 'canceled' && (r.status === 'approved' || r.counter_food_id || r.counter_recipe_id) && !r.applied && (
               <p className="text-xs text-amber-700 dark:text-amber-300">{s.notApplied}</p>
             )}
+            {/* "Aprovada" e "já vale" são estados diferentes: a troca entra no plano com a publicação. */}
+            {r.applied && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {r.effective_from
+                  ? s.effectiveFrom.replace('{date}', new Date(`${r.effective_from}T12:00:00`).toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit' }))
+                  : s.awaitingPublish}
+              </p>
+            )}
 
             {r.status === 'pending' && role === 'client' && (
               <button

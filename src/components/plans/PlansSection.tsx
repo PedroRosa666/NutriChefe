@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeftRight, CalendarRange, FileDown, ListChecks, Pencil, Plus, ShoppingCart, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, CalendarRange, CheckCircle2, FileDown, ListChecks, Pencil, Plus, Send, ShoppingCart, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipeIndex } from '../../hooks/useRecipeIndex';
 import { useToastStore } from '../../store/toast';
@@ -8,7 +8,22 @@ import { toTotals, useNutritionTrackingStore } from '../../store/nutrition-track
 import { useShoppingListStore } from '../../store/shopping-list';
 import { useNotificationSignal } from '../../store/notifications';
 import { useTranslation } from '../../hooks/useTranslation';
-import { deletePlan, listPlans, MEAL_SLOTS, planDayOf, type MealPlan, type MealPlanItem } from '../../services/care';
+import { MEAL_SLOTS, planDayOf, type MealPlan, type MealPlanItem } from '../../services/care';
+import {
+  deletePlan,
+  getPlanDraft,
+  listPlanVersions,
+  listPlanViews,
+  newOperationId,
+  publishPlan,
+  selectActivePlan,
+  versionAsPlan,
+  versionOn,
+  withSnapshotRecipes,
+  type PlanVersion,
+  type PlanView,
+} from '../../services/plans';
+import { errorText } from '../../lib/app-errors';
 import { itemsCalories, mealBlocks } from '../../lib/plan-items';
 import { foodLogValues } from '../../lib/food-math';
 import { PlanItemRow } from './PlanItemRow';
@@ -46,9 +61,12 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   const { showToast } = useToastStore();
   const t = useTranslation();
 
-  const [plans, setPlans] = useState<MealPlan[]>([]);
+  const [views, setViews] = useState<PlanView[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Versões do plano escolhido: cada dia da semana mostra a que valia naquela data.
+  const [versions, setVersions] = useState<PlanVersion[]>([]);
+  const [publishing, setPublishing] = useState(false);
   const [editing, setEditingState] = useState<{ plan: MealPlan | null; generated: boolean } | null>(null);
   // O editor aberto fica na URL (?editar=1): o voltar do celular fecha o editor em vez de sair da tela,
   // e pergunta antes se há alterações não salvas.
@@ -111,15 +129,19 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
 
   const load = useCallback(async () => {
     try {
-      const list = await listPlans(clientId);
-      setPlans(list);
+      const all = await listPlanViews(clientId);
+      // Plano de outra pessoa só aparece depois de publicado; o próprio rascunho aparece para quem o fez.
+      const list = all
+        .filter((p) => p.current || p.next || p.createdBy === user?.id)
+        .sort((a, b) => Number(b.active) - Number(a.active));
+      setViews(list);
       setSelectedId((current) => (current && list.some((p) => p.id === current) ? current : list[0]?.id ?? null));
     } catch (error) {
       console.error('Error loading plans:', error);
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, user?.id]);
 
   useEffect(() => {
     load();
@@ -143,11 +165,37 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
       .catch((error) => console.error('Error loading meal checks:', error));
   }, [clientId, mode, planSignal, today]);
 
-  const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
-  const plan = plans.find((p) => p.id === selectedId) ?? null;
-  const canEdit = !!plan && plan.created_by === user?.id;
+  const view = views.find((p) => p.id === selectedId) ?? null;
+  const viewId = view?.id;
+  const currentVersionId = view?.current?.id;
+  const nextVersionId = view?.next?.id;
+  useEffect(() => {
+    if (!viewId) {
+      setVersions([]);
+      return;
+    }
+    let alive = true;
+    listPlanVersions(viewId)
+      .then((list) => {
+        if (alive) setVersions(list);
+      })
+      .catch((error) => console.error('Error loading plan versions:', error));
+    return () => {
+      alive = false;
+    };
+  }, [viewId, currentVersionId, nextVersionId]);
+
+  // A data real do dia escolhido: hoje ou um dia passado desta semana (nunca futuro).
+  const dayDate = dateForPlanDay(day, new Date(`${today}T12:00:00`));
+  // Versão que valia na data do dia escolhido (as da lista carregada são deste plano).
+  const loaded = versions.length && view && versions.some((v) => v.id === view.current?.id) ? versions : view?.current ? [view.current] : [];
+  const shownVersion = (view && (versionOn(loaded, dayDate) ?? view.current)) || null;
+  const plan: MealPlan | null = view && shownVersion ? versionAsPlan(view, shownVersion) : null;
+  const catalog = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
+  const byId = useMemo(() => withSnapshotRecipes(catalog, shownVersion), [catalog, shownVersion]);
+  const canEdit = !!view && view.createdBy === user?.id;
   // O paciente que segue o plano do nutricionista não precisa de "Novo plano" no topo (ficava competindo).
-  const followsNutritionist = mode === 'client' && plans.some((p) => p.created_by !== user?.id);
+  const followsNutritionist = mode === 'client' && views.some((p) => p.createdBy !== user?.id);
 
   if (loading) {
     return (
@@ -169,19 +217,19 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
         startGenerated={editing.generated}
         onDirtyChange={setDirty}
         onCancel={() => setEditing(null)}
-        onSaved={(saved) => {
-          setPlans((prev) => [saved, ...prev.filter((p) => p.id !== saved.id)]);
-          setSelectedId(saved.id);
+        onSaved={(planId) => {
+          setSelectedId(planId);
           setEditing(null);
+          load();
         }}
       />
     );
   }
 
   const remove = async () => {
-    if (!plan || !(await confirmDialog(t.plan.deleteConfirm))) return;
+    if (!view || !(await confirmDialog(t.plan.deleteConfirm))) return;
     try {
-      await deletePlan(plan.id);
+      await deletePlan(view.id);
       showToast(t.plan.deleted, 'info');
       load();
     } catch (error) {
@@ -265,7 +313,87 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     </div>
   );
 
-  if (!plan) {
+  // Abre o editor com o rascunho atual (pode ter alterações que o paciente ainda não vê).
+  const editDraft = async () => {
+    if (!view) return;
+    try {
+      setEditing({ plan: await getPlanDraft(view.id), generated: false });
+    } catch (error) {
+      console.error('Error loading plan draft:', error);
+      showToast(errorText(error, t.appErrors), 'error');
+    }
+  };
+
+  const shortDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit' });
+
+  const publish = async () => {
+    if (!view) return;
+    setPublishing(true);
+    try {
+      const version = await publishPlan(view.id, view.revision, newOperationId());
+      if (version) {
+        showToast(version.validFrom > today ? t.plan.publishedFrom.replace('{date}', shortDate(version.validFrom)) : t.plan.publishedToday, 'success');
+      }
+      load();
+    } catch (error) {
+      console.error('Error publishing plan:', error);
+      showToast(errorText(error, t.appErrors), 'error');
+      load();
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const useThisPlan = async () => {
+    if (!view) return;
+    try {
+      await selectActivePlan(view.id);
+      showToast(t.plan.nowInUse, 'success');
+      load();
+    } catch (error) {
+      console.error('Error selecting plan:', error);
+      showToast(errorText(error, t.appErrors), 'error');
+    }
+  };
+
+  // Plano ainda sem versão publicada: só quem o fez vê, como rascunho.
+  if (view && !plan && !view.next) {
+    return (
+      <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-amber-300 px-6 py-10 text-center dark:border-amber-700/50">
+        <CalendarRange className="h-10 w-10 text-amber-500" />
+        <div>
+          <p className="font-semibold text-slate-900 dark:text-white">{view.title}</p>
+          <p className="mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">{t.plan.draftNotPublished}</p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2">
+          <button type="button" onClick={publish} disabled={publishing} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+            <Send className="h-4 w-4" />
+            {t.plan.publish}
+          </button>
+          <button type="button" onClick={editDraft} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+            <Pencil className="h-4 w-4" />
+            {t.plan.edit}
+          </button>
+          <button type="button" onClick={remove} className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20">
+            <Trash2 className="h-4 w-4" />
+            {t.plan.delete}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // A primeira versão começa depois (o paciente já tinha marcado refeições hoje).
+  if (view && !plan && view.next) {
+    return (
+      <div className="rounded-2xl border border-dashed border-emerald-300 px-6 py-10 text-center text-sm text-slate-600 dark:border-emerald-700/50 dark:text-slate-300">
+        <p className="font-semibold text-slate-900 dark:text-white">{view.title}</p>
+        <p className="mt-1">{t.plan.startsOn.replace('{date}', shortDate(view.next.validFrom))}</p>
+      </div>
+    );
+  }
+
+  if (!plan || !view) {
     return (
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-slate-200 px-6 py-12 text-center dark:border-slate-700">
         <CalendarRange className="h-10 w-10 text-emerald-500" />
@@ -292,8 +420,6 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
   }
 
   const dayItems = plan.items.filter((i) => i.day === day);
-  // A data real do dia escolhido: hoje ou um dia passado desta semana (nunca futuro).
-  const dayDate = dateForPlanDay(day, new Date(`${today}T12:00:00`));
 
   const itemName = (item: MealPlanItem) =>
     item.food_id ? item.food?.name ?? '' : (item.recipe_id && byId.get(item.recipe_id)?.title) || '';
@@ -372,16 +498,17 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          {plans.length > 1 ? (
+          {views.length > 1 ? (
             <select
-              value={plan.id}
+              value={view.id}
               onChange={(e) => setSelectedId(e.target.value)}
               className="max-w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-base font-semibold text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               aria-label={t.plan.choosePlan}
             >
-              {plans.map((p) => (
+              {views.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title}
+                  {mode === 'client' && p.active ? ` · ${t.plan.inUse}` : ''}
                 </option>
               ))}
             </select>
@@ -391,7 +518,13 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             {plan.created_by === user?.id ? t.plan.byYou : t.plan.byNutritionist.replace('{name}', plan.authorName ?? '')}
             {' • '}
-            {t.plan.updated} {new Date(plan.updated_at).toLocaleDateString(appLocale())}
+            {t.plan.versionSince.replace('{n}', String(shownVersion?.number ?? 1)).replace('{date}', shortDate(shownVersion?.validFrom ?? today))}
+            {mode === 'client' && view.active && views.length > 1 && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+                <CheckCircle2 className="h-3 w-3" />
+                {t.plan.inUse}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -414,10 +547,20 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
             <FileDown className="h-4 w-4" />
             {t.plan.pdf}
           </button>
+          {mode === 'client' && !view.active && (
+            <button
+              type="button"
+              onClick={useThisPlan}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {t.plan.useThisPlan}
+            </button>
+          )}
           {canEdit && (
             <button
               type="button"
-              onClick={() => setEditing({ plan, generated: false })}
+              onClick={editDraft}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <Pencil className="h-4 w-4" />
@@ -448,6 +591,21 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
           )}
         </div>
       </div>
+
+      {view.next && (
+        <p className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900/40 dark:bg-sky-900/10 dark:text-sky-200">
+          {t.plan.nextVersion.replace('{n}', String(view.next.number)).replace('{date}', shortDate(view.next.validFrom))}
+        </p>
+      )}
+      {canEdit && view.hasUnpublished && view.createdBy !== view.clientId && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-900/10">
+          <p className="text-sm text-amber-900 dark:text-amber-200">{t.plan.unpublishedChanges}</p>
+          <button type="button" onClick={publish} disabled={publishing} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+            <Send className="h-4 w-4" />
+            {t.plan.publish}
+          </button>
+        </div>
+      )}
 
       {plan.notes && (
         <p className="rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-900/10 dark:text-amber-200">

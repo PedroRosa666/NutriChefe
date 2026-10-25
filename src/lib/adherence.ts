@@ -1,6 +1,6 @@
 // Adesão ao plano: o paciente marca cada refeição (comeu / outra coisa / pulou) e o
 // nutricionista vê a % de refeições seguidas. Regras puras, usadas pelas duas telas.
-import type { MealPlan, MealSlot } from '../services/care';
+import type { MealPlan, MealPlanItem, MealSlot } from '../services/care';
 import { MEAL_SLOTS, planDayOf } from '../services/care';
 import { toISODate } from '../store/nutrition-tracking';
 
@@ -52,22 +52,38 @@ export interface AdherenceSummary {
   byMeal: { meal: MealSlot; planned: number; ate: number; off: number; notes: string[] }[];
 }
 
-/**
- * Resume a adesão de `dates` usando o cardápio de `plan` (o que estava previsto em cada dia
- * da semana) e as marcações. Dias antes de o plano existir não contam.
- */
-export function summarizeAdherence(plan: Pick<MealPlan, 'items' | 'created_at'>, checks: MealCheck[], dates: string[]): AdherenceSummary {
+/** O que estava prescrito em cada data: itens do plano naquele dia, ou null se não havia plano. */
+export interface PlanSchedule {
+  itemsOn: (date: string) => MealPlanItem[] | null;
+}
+
+/** Um plano sem versões: o mesmo cardápio desde o dia em que foi criado. */
+function staticSchedule(plan: Pick<MealPlan, 'items' | 'created_at'>): PlanSchedule {
   // Data local de criação (em UTC, um plano criado depois das 21h cairia no dia seguinte).
   const created = new Date(plan.created_at);
   const planStart = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}-${String(created.getDate()).padStart(2, '0')}`;
+  return { itemsOn: (date) => (date < planStart ? null : plan.items) };
+}
+
+/**
+ * Resume a adesão de `dates` com o que estava prescrito em cada data (a versão do plano que
+ * valia no dia) e as marcações. Dias sem plano não contam.
+ */
+export function summarizeAdherence(
+  plan: PlanSchedule | Pick<MealPlan, 'items' | 'created_at'>,
+  checks: MealCheck[],
+  dates: string[]
+): AdherenceSummary {
+  const schedule = 'itemsOn' in plan ? plan : staticSchedule(plan);
   const byKey = new Map(checks.map((c) => [`${c.check_date}|${c.meal}`, c]));
   const meals = new Map(MEAL_SLOTS.map((m) => [m, { meal: m, planned: 0, ate: 0, off: 0, notes: [] as string[] }]));
   const summary: AdherenceSummary = { planned: 0, ate: 0, other: 0, skipped: 0, unmarked: 0, percent: null, grid: [], byMeal: [] };
 
   for (const date of dates) {
-    if (date < planStart) continue;
+    const items = schedule.itemsOn(date);
+    if (!items) continue;
     const day = planDayOf(new Date(`${date}T12:00:00`));
-    const slots = MEAL_SLOTS.filter((m) => plan.items.some((i) => i.day === day && i.meal === m)).map((meal) => {
+    const slots = MEAL_SLOTS.filter((m) => items.some((i) => i.day === day && i.meal === m)).map((meal) => {
       const check = byKey.get(`${date}|${meal}`);
       const status: SlotStatus = check?.status ?? 'none';
       const row = meals.get(meal)!;

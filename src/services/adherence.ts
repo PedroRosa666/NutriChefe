@@ -2,7 +2,8 @@
 import { supabase, toJson } from '../lib/supabase';
 import { dateRange, summarizeAdherence, type AdherenceSummary, type CheckStatus, type MealCheck } from '../lib/adherence';
 import { toISODate } from '../store/nutrition-tracking';
-import { listPlans, type MealPlan, type MealSlot } from './care';
+import type { MealSlot } from './care';
+import { listPlanVersions, listPlanViews, versionOn } from './plans';
 
 const COLUMNS = 'id, plan_id, check_date, meal, status, chosen, note';
 
@@ -72,15 +73,20 @@ export interface AdherenceResult {
   previous: AdherenceSummary;
 }
 
-/** Adesão do paciente ao plano mais recente feito pelo nutricionista logado (últimos 7 dias). */
-export async function loadAdherence(clientId: string, nutritionistId: string): Promise<AdherenceResult | null> {
-  const [plans, checks] = await Promise.all([listPlans(clientId), listChecks(clientId, daysAgo(13))]);
-  const plan: MealPlan | undefined = plans.find((p) => p.created_by === nutritionistId);
+/**
+ * Adesão do paciente ao plano feito por `authorId` (últimos 7 dias e os 7 anteriores): o plano em
+ * uso, se for desse autor, ou o mais recente dele. Cada dia conta o que a versão daquele dia previa.
+ */
+export async function loadAdherence(clientId: string, authorId: string): Promise<AdherenceResult | null> {
+  const [views, checks] = await Promise.all([listPlanViews(clientId), listChecks(clientId, daysAgo(13))]);
+  const mine = views.filter((v) => v.createdBy === authorId && (v.current || v.next));
+  const plan = mine.find((v) => v.active) ?? mine[0];
   if (!plan) return null;
-  const mine = new Set(plans.filter((p) => p.created_by === nutritionistId).map((p) => p.id));
-  const relevant = checks.filter((c) => mine.has(c.plan_id));
+  const versions = await listPlanVersions(plan.id);
+  const schedule = { itemsOn: (date: string) => versionOn(versions, date)?.items ?? null };
+  const relevant = checks.filter((c) => c.plan_id === plan.id);
   return {
-    current: summarizeAdherence(plan, relevant, dateRange(daysAgo(6), daysAgo(0))),
-    previous: summarizeAdherence(plan, relevant, dateRange(daysAgo(13), daysAgo(7))),
+    current: summarizeAdherence(schedule, relevant, dateRange(daysAgo(6), daysAgo(0))),
+    previous: summarizeAdherence(schedule, relevant, dateRange(daysAgo(13), daysAgo(7))),
   };
 }

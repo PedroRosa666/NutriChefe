@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Bot, Carrot, ChevronDown, Crown, LayoutTemplate, ListChecks, Loader2, Scale, Search, Sparkles, Trash2, Save, X } from 'lucide-react';
+import { BookOpen, Bot, Carrot, ChevronDown, Crown, LayoutTemplate, ListChecks, Loader2, Scale, Search, Send, Sparkles, Trash2, Save, X } from 'lucide-react';
 import { confirmDialog } from '../../store/confirm';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
-import { MEAL_SLOTS, planDayOf, savePlan, type MealPlan, type MealPlanItem, type MealSlot } from '../../services/care';
+import { MEAL_SLOTS, planDayOf, type MealPlan, type MealPlanItem, type MealSlot } from '../../services/care';
+import { newOperationId, savePlanDraft } from '../../services/plans';
+import { errorCode, errorText } from '../../lib/app-errors';
+import { appLocale } from '../../lib/format';
+import { toISODate } from '../../store/nutrition-tracking';
 import { generateWeeklyPlanDetailed } from '../../lib/meal-plan-generator';
 import { isItemAvailable, itemsCalories, mealBlocks, nextOptionGroup, scaleItemsToTarget } from '../../lib/plan-items';
 import { FoodQuantityPicker, type PickedFood } from '../foods/FoodQuantityPicker';
@@ -28,7 +32,8 @@ interface MealPlanEditorProps {
   preferences: string[];
   /** Abre já com um cardápio gerado. */
   startGenerated?: boolean;
-  onSaved: (plan: MealPlan) => void;
+  /** Salvou (e talvez publicou): id do plano. */
+  onSaved: (planId: string) => void;
   onCancel: () => void;
   /** Avisa quando há alterações não salvas (para o voltar do celular pedir confirmação). */
   onDirtyChange?: (dirty: boolean) => void;
@@ -241,25 +246,50 @@ export function MealPlanEditor({
   const removeGroup = (meal: MealSlot, group: number) =>
     setItems((prev) => prev.filter((i) => !(i.day === day && i.meal === meal && i.option_group === group)));
 
-  const save = async () => {
+  // O próprio plano do paciente (ownPlan) vale assim que salvo; o do nutricionista pode ficar em rascunho.
+  // Tentativa em andamento: se a internet cair, salvar de novo o mesmo conteúdo reaproveita o id
+  // (o banco devolve o resultado da 1ª vez em vez de gravar duas).
+  const pendingSave = useRef<{ op: string; payload: string } | null>(null);
+
+  const save = async (publish: boolean) => {
     if (!user || saving) return;
     setSaving(true);
+    const payload = { title: title || t.plan.title, notes, items: items.filter((i) => isItemAvailable(i, byId)), publish };
+    const key = JSON.stringify(payload);
+    const op = pendingSave.current?.payload === key ? pendingSave.current.op : newOperationId();
+    pendingSave.current = { op, payload: key };
     try {
-      const saved = await savePlan({
+      const result = await savePlanDraft({
         id: plan?.id,
         clientId,
-        authorId: user.id,
-        title: title || t.plan.title,
+        title: payload.title,
         notes,
-        items: items.filter((i) => isItemAvailable(i, byId)),
+        items: payload.items,
+        expectedRevision: plan?.revision,
+        publish,
+        operationId: op,
       });
-      showToast(t.plan.saved, 'success');
+      pendingSave.current = null;
+      const v = result.version;
+      const shortDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit' });
+      showToast(
+        !v
+          ? t.plan.draftSaved
+          : v.validFrom > toISODate(new Date())
+            ? t.plan.publishedFrom.replace('{date}', shortDate(v.validFrom))
+            : ownPlan
+              ? t.plan.saved
+              : t.plan.publishedToday,
+        'success'
+      );
       initial.current = JSON.stringify({ title, notes, items });
       onDirtyChange?.(false);
-      onSaved(saved);
+      onSaved(result.planId);
     } catch (error) {
       console.error('Error saving plan:', error);
-      showToast(t.plan.saveError, 'error');
+      // Só a falha de conexão pode ser repetida com o mesmo id; o resto pede um envio novo.
+      if (errorCode(error) !== 'temporarily_unavailable') pendingSave.current = null;
+      showToast(errorCode(error) === 'unknown' ? t.plan.saveError : errorText(error, t.appErrors), 'error');
     } finally {
       setSaving(false);
     }
@@ -642,14 +672,27 @@ export function MealPlanEditor({
         >
           {t.plan.cancel}
         </button>
+        {/* Nutricionista: rascunho (o paciente ainda não vê) ou salvar e publicar. Plano próprio: vale ao salvar. */}
+        {!ownPlan && (
+          <button
+            type="button"
+            onClick={() => save(false)}
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <Save className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.plan.saveDraft}</span>
+            <span className="sm:hidden">{t.plan.draftShort}</span>
+          </button>
+        )}
         <button
           type="button"
-          onClick={save}
+          onClick={() => save(true)}
           disabled={saving}
           className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
         >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {t.plan.save}
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : ownPlan ? <Save className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+          {ownPlan ? t.plan.save : t.plan.saveAndPublish}
         </button>
       </div>
     </div>

@@ -39,6 +39,8 @@ export interface SwapRequest {
   counter_servings: number | null;
   counterRecipeTitle: string | null;
   applied: boolean;
+  /** A partir de quando a troca vale no plano (null: aprovada, esperando a publicação). */
+  effective_from: string | null;
   created_at: string;
   resolved_at: string | null;
 }
@@ -46,7 +48,7 @@ export interface SwapRequest {
 const COLUMNS =
   'id, plan_id, client_id, nutritionist_id, day, meal, option_group, original_recipe_id, original_food_id, original_label, ' +
   'requested_food_id, requested_grams, requested_label, requested_recipe_id, requested_servings, reason, status, response_note, ' +
-  'counter_food_id, counter_label, counter_recipe_id, counter_servings, applied, created_at, resolved_at, ' +
+  'counter_food_id, counter_label, counter_recipe_id, counter_servings, applied, effective_from, created_at, resolved_at, ' +
   'requested:foods!food_swap_requests_requested_food_id_fkey(name), counter:foods!food_swap_requests_counter_food_id_fkey(name), ' +
   'requestedRecipe:recipes!food_swap_requests_requested_recipe_id_fkey(title), counterRecipe:recipes!food_swap_requests_counter_recipe_id_fkey(title)';
 

@@ -3,7 +3,7 @@
 // soltas no texto da exceção.
 import { translations } from './i18n/translations';
 
-export const APP_ERROR_CODES = [
+const APP_ERROR_CODES = [
   'not_authenticated',
   'not_allowed',
   'version_conflict',

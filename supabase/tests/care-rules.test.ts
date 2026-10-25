@@ -88,6 +88,9 @@ describe('plano e trocas', () => {
       );
       return plan.id;
     });
+    // Rascunho ainda não avisa; a publicação sim.
+    expect((await notifications(PATIENT)).map((n) => n.kind)).not.toContain('plan_updated');
+    await asUser(db, NUTRI, (tx) => tx.query('SELECT publish_plan($1, NULL, NULL)', [planId]));
     expect((await notifications(PATIENT)).map((n) => n.kind)).toContain('plan_updated');
   });
 

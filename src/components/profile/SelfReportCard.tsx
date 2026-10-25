@@ -6,7 +6,8 @@ import { useAuthStore } from '../../store/auth';
 import { useHealthProfileStore } from '../../store/health-profile';
 import { useOwnPremium } from '../../store/premium';
 import { useToastStore } from '../../store/toast';
-import { getPatientData, listPlans, type PatientData } from '../../services/care';
+import { getPatientData, type PatientData } from '../../services/care';
+import { listPlanViews } from '../../services/plans';
 import { loadAdherence, type AdherenceResult } from '../../services/adherence';
 import { PatientReportView } from '../care/PatientReportView';
 
@@ -33,9 +34,10 @@ export function SelfReportCard() {
     if (!user) return;
     setLoading(days);
     try {
-      const [data, plans] = await Promise.all([getPatientData(user.id, days), listPlans(user.id).catch(() => [])]);
-      // Adesão ao plano mais recente (do nutricionista ou do próprio cliente).
-      const adherence = plans[0] ? await loadAdherence(user.id, plans[0].created_by).catch(() => null) : null;
+      const [data, plans] = await Promise.all([getPatientData(user.id, days), listPlanViews(user.id).catch(() => [])]);
+      // Adesão ao plano em uso (ou o mais recente), do nutricionista ou do próprio cliente.
+      const plan = plans.find((p) => p.active && p.current) ?? plans.find((p) => p.current);
+      const adherence = plan ? await loadAdherence(user.id, plan.createdBy).catch(() => null) : null;
       setReport({ days, data, adherence });
     } catch (error) {
       console.error('Error preparing report:', error);

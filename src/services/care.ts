@@ -1,12 +1,12 @@
 // Acompanhamento nutricionista <-> paciente, planos alimentares e lista de compras.
 // As permissões ficam no banco (RLS + funções em 20261021150000_patients_plans_shopping.sql):
 // o nutricionista só enxerga dados de quem aceitou um convite e enquanto o vínculo estiver ativo.
-import { fromJson, sqlArg, supabase, toJson } from '../lib/supabase';
+import { fromJson, supabase, toJson } from '../lib/supabase';
 import { fromRow, toISODate, type NutritionLogEntry, type NutritionLogRow } from '../store/nutrition-tracking';
 import type { HealthProfile, WeightLog } from '../store/health-profile';
 import type { GoalKey, NutritionGoals } from '../store/nutrition-goals';
 import type { ShoppingItem } from '../lib/ingredients';
-import { toFood, type Food, type FoodRow } from './foods';
+import type { Food } from './foods';
 
 export interface PersonSummary {
   id: string;
@@ -59,6 +59,8 @@ export interface MealPlan {
   updated_at: string;
   authorName: string | null;
   items: MealPlanItem[];
+  /** Revisão do rascunho (conferida ao salvar: outra aba salvou antes -> version_conflict). */
+  revision?: number;
 }
 
 const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
@@ -223,109 +225,7 @@ export async function setPatientGoals(clientId: string, nutritionistId: string, 
 }
 
 // ---------------------------------------------------------------- planos
-
-const PLAN_SELECT =
-  'id, client_id, created_by, title, notes, created_at, updated_at, author:profiles!meal_plans_created_by_fkey(full_name), ' +
-  'items:meal_plan_items(id, day, meal, recipe_id, servings, food_id, grams, measure_label, option_group, note, ' +
-  'food:foods(id, taco_id, owner_id, name, category, kcal, protein, carbs, fat, fiber, sodium, nutrients, measures))';
-
-interface PlanRow {
-  id: string;
-  client_id: string;
-  created_by: string;
-  title: string;
-  notes: string;
-  created_at: string;
-  updated_at: string;
-  author: { full_name: string | null } | { full_name: string | null }[] | null;
-  items:
-    | {
-        id: string;
-        day: number;
-        meal: MealSlot;
-        recipe_id: string | null;
-        servings: number | string;
-        food_id: string | null;
-        grams: number | string | null;
-        measure_label: string | null;
-        option_group: number | null;
-        note: string;
-        food: FoodRow | FoodRow[] | null;
-      }[]
-    | null;
-}
-
-const toPlan = (row: PlanRow): MealPlan => ({
-  id: row.id,
-  client_id: row.client_id,
-  created_by: row.created_by,
-  title: row.title,
-  notes: row.notes,
-  created_at: row.created_at,
-  updated_at: row.updated_at,
-  authorName: one(row.author)?.full_name ?? null,
-  items: (row.items ?? [])
-    .map((i) => {
-      const food = one(i.food);
-      return {
-        ...i,
-        servings: Number(i.servings) || 1,
-        grams: i.grams === null ? null : Number(i.grams),
-        option_group: i.option_group ?? null,
-        food: food ? toFood(food) : null,
-      };
-    })
-    .sort((a, b) => a.day - b.day || MEAL_SLOTS.indexOf(a.meal) - MEAL_SLOTS.indexOf(b.meal)),
-});
-
-export async function listPlans(clientId: string): Promise<MealPlan[]> {
-  const { data, error } = await supabase
-    .from('meal_plans')
-    .select(PLAN_SELECT)
-    .eq('client_id', clientId)
-    .order('updated_at', { ascending: false });
-  if (error) throw error;
-  return ((data ?? []) as unknown as PlanRow[]).map(toPlan);
-}
-
-/** Salva o plano e os itens numa transação só (save_meal_plan): se falhar no meio, nada muda. */
-export async function savePlan(input: {
-  id?: string;
-  clientId: string;
-  authorId: string;
-  title: string;
-  notes: string;
-  items: MealPlanItem[];
-}): Promise<MealPlan> {
-  const items = input.items.map((i) => ({
-    day: i.day,
-    meal: i.meal,
-    recipe_id: i.food_id ? null : i.recipe_id,
-    servings: i.food_id ? 1 : i.servings,
-    food_id: i.food_id,
-    grams: i.food_id ? i.grams : null,
-    measure_label: i.food_id ? i.measure_label ?? null : null,
-    option_group: i.option_group,
-    note: i.note,
-  }));
-  const { data: planId, error: saveError } = await supabase.rpc('save_meal_plan', {
-    p_plan: sqlArg(input.id),
-    p_client: input.clientId,
-    p_title: input.title,
-    p_notes: input.notes,
-    p_items: items,
-  });
-  if (saveError) throw saveError;
-
-  const { data, error } = await supabase.from('meal_plans').select(PLAN_SELECT).eq('id', planId as string).single();
-  if (error) throw error;
-  return toPlan(data as unknown as PlanRow);
-}
-
-export async function deletePlan(planId: string) {
-  const { error } = await supabase.from('meal_plans').delete().eq('id', planId);
-  if (error) throw error;
-}
+// Ler, salvar e publicar planos: services/plans.ts.
 
 /** Dia do plano (0 = segunda) para uma data. */
 export const planDayOf = (date: Date) => (date.getDay() + 6) % 7;

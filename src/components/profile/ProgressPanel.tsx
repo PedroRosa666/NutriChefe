@@ -7,7 +7,7 @@ import { useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useOwnPremium } from '../../store/premium';
 import { achievementsFor, weeklyChallenges, type Progress } from '../../lib/achievements';
 import { getMyProgress } from '../../services/progress';
-import { listPlans } from '../../services/care';
+import { listPlanViews } from '../../services/plans';
 import { useAuthStore } from '../../store/auth';
 import { cn } from '../../lib/utils';
 import { appLocale } from '../../lib/format';
@@ -36,8 +36,8 @@ export function ProgressPanel() {
 
   useEffect(() => {
     if (!userId) return;
-    listPlans(userId)
-      .then((plans) => setHasPlan(plans.length > 0))
+    listPlanViews(userId)
+      .then((plans) => setHasPlan(plans.some((p) => p.current)))
       .catch(() => setHasPlan(false));
   }, [userId]);
 

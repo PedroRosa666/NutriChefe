@@ -356,6 +356,67 @@ export type Database = {
           },
         ]
       }
+      care_events: {
+        Row: {
+          actor_id: string | null
+          client_id: string
+          dedupe_key: string
+          entity_id: string | null
+          entity_version: number | null
+          id: string
+          kind: string
+          nutritionist_id: string | null
+          occurred_at: string
+          summary: Json
+        }
+        Insert: {
+          actor_id?: string | null
+          client_id: string
+          dedupe_key: string
+          entity_id?: string | null
+          entity_version?: number | null
+          id?: string
+          kind: string
+          nutritionist_id?: string | null
+          occurred_at?: string
+          summary?: Json
+        }
+        Update: {
+          actor_id?: string | null
+          client_id?: string
+          dedupe_key?: string
+          entity_id?: string | null
+          entity_version?: number | null
+          id?: string
+          kind?: string
+          nutritionist_id?: string | null
+          occurred_at?: string
+          summary?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "care_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_events_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       care_messages: {
         Row: {
           body: string
@@ -499,6 +560,39 @@ export type Database = {
           },
         ]
       }
+      client_plan_selection: {
+        Row: {
+          client_id: string
+          plan_id: string
+          selected_at: string
+        }
+        Insert: {
+          client_id: string
+          plan_id: string
+          selected_at?: string
+        }
+        Update: {
+          client_id?: string
+          plan_id?: string
+          selected_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_plan_selection_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_plan_selection_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       favorites: {
         Row: {
           created_at: string | null
@@ -546,6 +640,7 @@ export type Database = {
           counter_servings: number | null
           created_at: string
           day: number
+          effective_from: string | null
           id: string
           meal: string
           nutritionist_id: string
@@ -563,6 +658,7 @@ export type Database = {
           resolved_at: string | null
           response_note: string
           status: string
+          version_id: string | null
         }
         Insert: {
           applied?: boolean
@@ -574,6 +670,7 @@ export type Database = {
           counter_servings?: number | null
           created_at?: string
           day: number
+          effective_from?: string | null
           id?: string
           meal: string
           nutritionist_id: string
@@ -591,6 +688,7 @@ export type Database = {
           resolved_at?: string | null
           response_note?: string
           status?: string
+          version_id?: string | null
         }
         Update: {
           applied?: boolean
@@ -602,6 +700,7 @@ export type Database = {
           counter_servings?: number | null
           created_at?: string
           day?: number
+          effective_from?: string | null
           id?: string
           meal?: string
           nutritionist_id?: string
@@ -619,6 +718,7 @@ export type Database = {
           resolved_at?: string | null
           response_note?: string
           status?: string
+          version_id?: string | null
         }
         Relationships: [
           {
@@ -668,6 +768,13 @@ export type Database = {
             columns: ["requested_recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_swap_requests_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plan_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -746,6 +853,7 @@ export type Database = {
           plan_id: string
           status: string
           updated_at: string
+          version_id: string | null
         }
         Insert: {
           check_date: string
@@ -758,6 +866,7 @@ export type Database = {
           plan_id: string
           status: string
           updated_at?: string
+          version_id?: string | null
         }
         Update: {
           check_date?: string
@@ -770,6 +879,7 @@ export type Database = {
           plan_id?: string
           status?: string
           updated_at?: string
+          version_id?: string | null
         }
         Relationships: [
           {
@@ -786,6 +896,13 @@ export type Database = {
             referencedRelation: "meal_plans"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "meal_plan_checks_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plan_versions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       meal_plan_items: {
@@ -800,6 +917,7 @@ export type Database = {
           note: string
           option_group: number | null
           plan_id: string
+          position: number
           recipe_id: string | null
           servings: number
         }
@@ -814,6 +932,7 @@ export type Database = {
           note?: string
           option_group?: number | null
           plan_id: string
+          position?: number
           recipe_id?: string | null
           servings?: number
         }
@@ -828,6 +947,7 @@ export type Database = {
           note?: string
           option_group?: number | null
           plan_id?: string
+          position?: number
           recipe_id?: string | null
           servings?: number
         }
@@ -893,6 +1013,67 @@ export type Database = {
           },
         ]
       }
+      meal_plan_versions: {
+        Row: {
+          client_id: string
+          content: Json
+          id: string
+          legacy: boolean
+          number: number
+          plan_id: string
+          plan_revision: number
+          published_at: string
+          published_by: string | null
+          valid_from: string
+        }
+        Insert: {
+          client_id: string
+          content: Json
+          id?: string
+          legacy?: boolean
+          number: number
+          plan_id: string
+          plan_revision: number
+          published_at?: string
+          published_by?: string | null
+          valid_from: string
+        }
+        Update: {
+          client_id?: string
+          content?: Json
+          id?: string
+          legacy?: boolean
+          number?: number
+          plan_id?: string
+          plan_revision?: number
+          published_at?: string
+          published_by?: string | null
+          valid_from?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plan_versions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plan_versions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plan_versions_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_plans: {
         Row: {
           client_id: string
@@ -900,6 +1081,8 @@ export type Database = {
           created_by: string
           id: string
           notes: string
+          published_revision: number
+          revision: number
           title: string
           updated_at: string
         }
@@ -909,6 +1092,8 @@ export type Database = {
           created_by: string
           id?: string
           notes?: string
+          published_revision?: number
+          revision?: number
           title?: string
           updated_at?: string
         }
@@ -918,6 +1103,8 @@ export type Database = {
           created_by?: string
           id?: string
           notes?: string
+          published_revision?: number
+          revision?: number
           title?: string
           updated_at?: string
         }
@@ -1750,6 +1937,7 @@ export type Database = {
         Args: { p_client: string; p_nutritionist: string }
         Returns: boolean
       }
+      app_today: { Args: never; Returns: string }
       apply_swap_to_plan: {
         Args: {
           p_food: string
@@ -1859,6 +2047,12 @@ export type Database = {
           unread_messages: number
         }[]
       }
+      plan_snapshot: { Args: { p_plan: string }; Returns: Json }
+      plan_version_on: {
+        Args: { p_date: string; p_plan: string }
+        Returns: string
+      }
+      plan_views: { Args: { p_client: string }; Returns: Json }
       premium_content: { Args: never; Returns: boolean }
       premium_recipe_teasers: {
         Args: never
@@ -1873,6 +2067,15 @@ export type Database = {
       }
       pro_nutritionist_ids: { Args: never; Returns: string[] }
       profile_name: { Args: { p_id: string }; Returns: string }
+      publish_plan: {
+        Args: {
+          p_expected_revision: number
+          p_operation: string
+          p_plan: string
+        }
+        Returns: Json
+      }
+      publish_plan_internal: { Args: { p_plan: string }; Returns: Json }
       recipe_author_stats: {
         Args: never
         Returns: {
@@ -1881,6 +2084,18 @@ export type Database = {
           in_plans: number
           recipe_id: string
         }[]
+      }
+      record_care_event: {
+        Args: {
+          p_client: string
+          p_dedupe: string
+          p_entity: string
+          p_kind: string
+          p_nutritionist: string
+          p_summary: Json
+          p_version: number
+        }
+        Returns: undefined
       }
       redeem_nutritionist_invite: { Args: { p_code: string }; Returns: string }
       remove_plan_items_of: {
@@ -1955,6 +2170,7 @@ export type Database = {
           plan_id: string
           status: string
           updated_at: string
+          version_id: string | null
         }
         SetofOptions: {
           from: "*"
@@ -1972,6 +2188,19 @@ export type Database = {
           p_title: string
         }
         Returns: string
+      }
+      save_plan_draft: {
+        Args: {
+          p_client: string
+          p_expected_revision: number
+          p_items: Json
+          p_notes: string
+          p_operation: string
+          p_plan: string
+          p_publish: boolean
+          p_title: string
+        }
+        Returns: Json
       }
       save_push_subscription: {
         Args: {
@@ -2021,6 +2250,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      select_active_plan: { Args: { p_plan: string }; Returns: undefined }
       send_appointment_reminders: { Args: never; Returns: number }
       submit_crn_verification: {
         Args: {
