@@ -36,6 +36,30 @@ export const EXPORT_SOURCES: { key: string; table: TableName; columns: string[];
   { key: 'subscriptions', table: 'user_subscriptions', columns: ['user_id'] },
 ];
 
+/**
+ * Tabelas que ficam fora da exportação, cada uma com o motivo. Toda tabela das migrations precisa
+ * estar em EXPORT_SOURCES (direto ou dentro de um select) ou aqui: o teste cobra, para tabela nova
+ * não ficar esquecida.
+ */
+export const NOT_EXPORTED: Record<string, string> = {
+  subscription_plans: 'catálogo de preços, sem dados de usuário',
+  app_admins: 'controle interno de quem administra o app',
+  admin_demo_accounts: 'contas demo do administrador',
+  ai_usage: 'contador técnico de uso da IA (limite diário)',
+  client_errors: 'registro técnico de erros da tela, apagado em 30 dias',
+  push_subscriptions: 'endereço técnico do aparelho para notificações',
+  app_operations: 'resultado técnico de gravações repetíveis, apagado em 7 dias',
+  message_attachments: 'tabela antiga sem uso (schema legacy)',
+  messages: 'tabela antiga sem uso (schema legacy)',
+  conversations: 'tabela antiga sem uso (schema legacy)',
+  mentoring_relationships: 'tabela antiga sem uso (schema legacy)',
+  mentoring_sessions: 'tabela antiga sem uso (schema legacy)',
+  client_goals: 'tabela antiga sem uso (schema legacy)',
+  goal_progress: 'tabela antiga sem uso (schema legacy)',
+  nutrition_log: 'tabela antiga sem uso (schema legacy)',
+  nutritionist_services: 'tabela antiga sem uso (schema legacy)',
+};
+
 const PAGE = 1000;
 
 interface PageQuery {

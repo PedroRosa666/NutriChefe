@@ -35,4 +35,12 @@ describe('fontes da exportação de dados', () => {
     }
     expect(problems).toEqual([]);
   });
+
+  it('toda tabela das migrations é exportada ou está em NOT_EXPORTED com motivo', async () => {
+    const { EXPORT_SOURCES, NOT_EXPORTED } = await import('../../src/services/privacy');
+    const tables = new Set([...sql.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?([a-z_]+)/gi)].map((m) => m[1]));
+    const exported = new Set(EXPORT_SOURCES.flatMap((s) => [s.table, ...[...(s.select ?? '').matchAll(/([a-z_]+)\(/g)].map((m) => m[1])]));
+    const forgotten = [...tables].filter((t) => !exported.has(t) && !NOT_EXPORTED[t]);
+    expect(forgotten).toEqual([]);
+  });
 });

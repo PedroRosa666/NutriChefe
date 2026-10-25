@@ -30,6 +30,7 @@ const MIGRATIONS = [
   '20261102120000_ai_push_security.sql',
   '20261102130000_checks_search_billing.sql',
   '20261103120000_recipe_catalog.sql',
+  '20261104120000_base_hardening.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -123,6 +124,10 @@ const BASE = `
     BEGIN UPDATE ai_conversations SET last_message_at = NEW.created_at WHERE id = NEW.conversation_id; RETURN NEW; END; $fn$;
   CREATE TRIGGER update_ai_conversation_last_message_trigger AFTER INSERT ON ai_messages
     FOR EACH ROW EXECUTE FUNCTION public.update_ai_conversation_last_message();
+  -- Tabelas da primeira versão (sem uso), como "messages" em produção: sem RLS.
+  CREATE TABLE messages (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), content text);
+  CREATE TABLE client_goals (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), client_id uuid);
+  ALTER TABLE client_goals ENABLE ROW LEVEL SECURITY;
   GRANT SELECT ON recipes TO anon, authenticated;
   -- Como em produção (20261021140000): leitura de perfis só por coluna.
   REVOKE ALL ON profiles FROM anon, authenticated;

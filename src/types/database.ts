@@ -256,6 +256,33 @@ export type Database = {
           },
         ]
       }
+      app_operations: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          request_hash: string
+          result: Json | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          kind: string
+          request_hash: string
+          result?: Json | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          request_hash?: string
+          result?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           canceled_by: string | null
@@ -419,72 +446,6 @@ export type Database = {
           },
         ]
       }
-      client_goals: {
-        Row: {
-          client_id: string
-          created_at: string | null
-          current_value: number | null
-          description: string | null
-          goal_type: string
-          id: string
-          nutritionist_id: string | null
-          priority: string | null
-          status: string | null
-          target_date: string | null
-          target_value: number | null
-          title: string
-          unit: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          client_id: string
-          created_at?: string | null
-          current_value?: number | null
-          description?: string | null
-          goal_type: string
-          id?: string
-          nutritionist_id?: string | null
-          priority?: string | null
-          status?: string | null
-          target_date?: string | null
-          target_value?: number | null
-          title: string
-          unit?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          client_id?: string
-          created_at?: string | null
-          current_value?: number | null
-          description?: string | null
-          goal_type?: string
-          id?: string
-          nutritionist_id?: string | null
-          priority?: string | null
-          status?: string | null
-          target_date?: string | null
-          target_value?: number | null
-          title?: string
-          unit?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_goals_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "client_goals_nutritionist_id_fkey"
-            columns: ["nutritionist_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       client_health_profiles: {
         Row: {
           activity_level: string | null
@@ -534,41 +495,6 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      conversations: {
-        Row: {
-          created_at: string | null
-          id: string
-          last_message_at: string | null
-          mentoring_relationship_id: string
-          title: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          last_message_at?: string | null
-          mentoring_relationship_id: string
-          title?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          last_message_at?: string | null
-          mentoring_relationship_id?: string
-          title?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conversations_mentoring_relationship_id_fkey"
-            columns: ["mentoring_relationship_id"]
-            isOneToOne: false
-            referencedRelation: "mentoring_relationships"
             referencedColumns: ["id"]
           },
         ]
@@ -808,51 +734,6 @@ export type Database = {
           },
         ]
       }
-      goal_progress: {
-        Row: {
-          created_at: string | null
-          goal_id: string
-          id: string
-          notes: string | null
-          recorded_at: string | null
-          recorded_by: string
-          value: number
-        }
-        Insert: {
-          created_at?: string | null
-          goal_id: string
-          id?: string
-          notes?: string | null
-          recorded_at?: string | null
-          recorded_by: string
-          value: number
-        }
-        Update: {
-          created_at?: string | null
-          goal_id?: string
-          id?: string
-          notes?: string | null
-          recorded_at?: string | null
-          recorded_by?: string
-          value?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "goal_progress_goal_id_fkey"
-            columns: ["goal_id"]
-            isOneToOne: false
-            referencedRelation: "client_goals"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "goal_progress_recorded_by_fkey"
-            columns: ["recorded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       meal_plan_checks: {
         Row: {
           check_date: string
@@ -1057,134 +938,6 @@ export type Database = {
           },
         ]
       }
-      mentoring_relationships: {
-        Row: {
-          client_id: string
-          created_at: string | null
-          ended_at: string | null
-          id: string
-          notes: string | null
-          nutritionist_id: string
-          started_at: string | null
-          status: string
-          updated_at: string | null
-        }
-        Insert: {
-          client_id: string
-          created_at?: string | null
-          ended_at?: string | null
-          id?: string
-          notes?: string | null
-          nutritionist_id: string
-          started_at?: string | null
-          status?: string
-          updated_at?: string | null
-        }
-        Update: {
-          client_id?: string
-          created_at?: string | null
-          ended_at?: string | null
-          id?: string
-          notes?: string | null
-          nutritionist_id?: string
-          started_at?: string | null
-          status?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mentoring_relationships_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mentoring_relationships_nutritionist_id_fkey"
-            columns: ["nutritionist_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      mentoring_sessions: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          duration_minutes: number | null
-          id: string
-          meeting_link: string | null
-          mentoring_relationship_id: string
-          notes: string | null
-          scheduled_at: string
-          status: string | null
-          title: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          duration_minutes?: number | null
-          id?: string
-          meeting_link?: string | null
-          mentoring_relationship_id: string
-          notes?: string | null
-          scheduled_at: string
-          status?: string | null
-          title: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          duration_minutes?: number | null
-          id?: string
-          meeting_link?: string | null
-          mentoring_relationship_id?: string
-          notes?: string | null
-          scheduled_at?: string
-          status?: string | null
-          title?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mentoring_sessions_mentoring_relationship_id_fkey"
-            columns: ["mentoring_relationship_id"]
-            isOneToOne: false
-            referencedRelation: "mentoring_relationships"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      messages: {
-        Row: {
-          country: string | null
-          id: number
-          is_authenticated: boolean | null
-          text: string
-          timestamp: string
-          username: string
-        }
-        Insert: {
-          country?: string | null
-          id?: number
-          is_authenticated?: boolean | null
-          text: string
-          timestamp?: string
-          username: string
-        }
-        Update: {
-          country?: string | null
-          id?: number
-          is_authenticated?: boolean | null
-          text?: string
-          timestamp?: string
-          username?: string
-        }
-        Relationships: []
-      }
       notifications: {
         Row: {
           created_at: string
@@ -1275,51 +1028,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      nutrition_log: {
-        Row: {
-          calories: number | null
-          carbs: number | null
-          created_at: string | null
-          date: string
-          fat: number | null
-          fiber: number | null
-          id: string
-          protein: number | null
-          recipe_id: number
-          recipe_title: string
-          servings: number | null
-          user_id: string
-        }
-        Insert: {
-          calories?: number | null
-          carbs?: number | null
-          created_at?: string | null
-          date: string
-          fat?: number | null
-          fiber?: number | null
-          id?: string
-          protein?: number | null
-          recipe_id: number
-          recipe_title: string
-          servings?: number | null
-          user_id: string
-        }
-        Update: {
-          calories?: number | null
-          carbs?: number | null
-          created_at?: string | null
-          date?: string
-          fat?: number | null
-          fiber?: number | null
-          id?: string
-          protein?: number | null
-          recipe_id?: number
-          recipe_title?: string
-          servings?: number | null
-          user_id?: string
-        }
-        Relationships: []
       }
       nutrition_log_entries: {
         Row: {
@@ -1464,56 +1172,6 @@ export type Database = {
             foreignKeyName: "nutritionist_invites_used_by_fkey"
             columns: ["used_by"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      nutritionist_services: {
-        Row: {
-          availability_notes: string | null
-          created_at: string | null
-          description: string | null
-          id: string
-          is_available: boolean | null
-          nutritionist_id: string
-          requirements: string | null
-          response_time: string | null
-          service_price: number | null
-          specializations: Json | null
-          updated_at: string | null
-        }
-        Insert: {
-          availability_notes?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_available?: boolean | null
-          nutritionist_id: string
-          requirements?: string | null
-          response_time?: string | null
-          service_price?: number | null
-          specializations?: Json | null
-          updated_at?: string | null
-        }
-        Update: {
-          availability_notes?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_available?: boolean | null
-          nutritionist_id?: string
-          requirements?: string | null
-          response_time?: string | null
-          service_price?: number | null
-          specializations?: Json | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "nutritionist_services_nutritionist_id_fkey"
-            columns: ["nutritionist_id"]
-            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2163,21 +1821,6 @@ export type Database = {
       }
       delete_my_account: { Args: never; Returns: undefined }
       delete_my_archived_plans: { Args: never; Returns: number }
-      get_nutritionist_stats: {
-        Args: { nutritionist_uuid: string }
-        Returns: {
-          active_clients: number
-          average_rating: number
-          completed_goals: number
-          total_clients: number
-          total_reviews: number
-          total_sessions: number
-        }[]
-      }
-      get_unread_messages_count: {
-        Args: { conversation_uuid: string; user_uuid: string }
-        Returns: number
-      }
       has_feature: {
         Args: { p_feature: string; p_user: string }
         Returns: boolean
@@ -2196,6 +1839,11 @@ export type Database = {
         Args: { p_data: Json; p_kind: string; p_ref: string; p_user: string }
         Returns: undefined
       }
+      op_begin: {
+        Args: { p_id: string; p_kind: string; p_payload: Json }
+        Returns: Json
+      }
+      op_finish: { Args: { p_id: string; p_result: Json }; Returns: Json }
       patient_limit_reached: {
         Args: { p_nutritionist: string }
         Returns: boolean

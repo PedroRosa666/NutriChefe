@@ -1,5 +1,16 @@
 export const translations = {
   en: {
+    appErrors: {
+      not_authenticated: 'Your session ended. Sign in again.',
+      not_allowed: 'You do not have permission for this.',
+      version_conflict: 'This was changed somewhere else (another tab or device). Your changes were kept here: reload to see the latest version before saving.',
+      operation_conflict: 'This action was already sent with different content. Reload the page and try again.',
+      validation_failed: 'Some information is invalid. Check the fields and try again.',
+      resource_archived: 'This item is no longer available.',
+      temporarily_unavailable: 'Could not confirm the result (connection problem). Check before trying again.',
+      premium_required: 'This feature is part of Premium.',
+      unknown: 'Something went wrong. Try again.',
+    },
     common: {
       confirm: 'Confirm',
       forgotPassword: 'Forgot my password',
@@ -1715,6 +1726,17 @@ export const translations = {
   },
 
   pt: {
+    appErrors: {
+      not_authenticated: 'Sua sessão terminou. Entre de novo.',
+      not_allowed: 'Você não tem permissão para isso.',
+      version_conflict: 'Isso foi alterado em outro lugar (outra aba ou aparelho). Suas alterações continuam aqui: recarregue para ver a versão mais nova antes de salvar.',
+      operation_conflict: 'Esta ação já foi enviada com outro conteúdo. Recarregue a página e tente de novo.',
+      validation_failed: 'Alguma informação está inválida. Confira os campos e tente de novo.',
+      resource_archived: 'Este item não está mais disponível.',
+      temporarily_unavailable: 'Não foi possível confirmar o resultado (problema de conexão). Confira antes de tentar de novo.',
+      premium_required: 'Este recurso faz parte do Premium.',
+      unknown: 'Algo deu errado. Tente de novo.',
+    },
     common: {
       confirm: 'Confirmar',
       forgotPassword: 'Esqueci minha senha',
