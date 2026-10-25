@@ -1,4 +1,5 @@
-import React, { lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazyNamed } from '../../lib/stale-build';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LayoutDashboard, NotebookPen, HeartPulse, Heart, Settings, BookOpen, Briefcase, Users, CalendarRange, ShoppingCart, Carrot, MessageCircle, Plus, Library } from 'lucide-react';
@@ -16,8 +17,6 @@ import { sectionOfTab, tabsFor, type TabKey } from '../../lib/app-sections';
 import { useAppRole } from '../../hooks/useAppNav';
 
 // Cada aba é carregada só quando aberta: o celular baixa menos código ao entrar no perfil.
-const lazyNamed = <M,>(load: () => Promise<M>, name: keyof M) =>
-  lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
 
 const NutritionGoalsForm = lazyNamed(() => import('../nutrition/NutritionGoalsForm'), 'NutritionGoalsForm');
 const ActiveGoalsSelector = lazyNamed(() => import('../nutrition/ActiveGoalsSelector'), 'ActiveGoalsSelector');
@@ -33,8 +32,8 @@ const ShoppingListPanel = lazyNamed(() => import('../plans/ShoppingListPanel'), 
 const MyFoodsPanel = lazyNamed(() => import('../foods/MyFoodsPanel'), 'MyFoodsPanel');
 const MessagesPanel = lazyNamed(() => import('../care/MessagesPanel'), 'MessagesPanel');
 const NutritionistInbox = lazyNamed(() => import('../care/NutritionistInbox'), 'NutritionistInbox');
-const CreateRecipeForm = lazy(() => import('../CreateRecipeForm').then((m) => ({ default: m.CreateRecipeForm })));
-const PlansSection = lazy(() => import('../plans/PlansSection').then((m) => ({ default: m.PlansSection })));
+const CreateRecipeForm = lazyNamed(() => import('../CreateRecipeForm'), 'CreateRecipeForm');
+const PlansSection = lazyNamed(() => import('../plans/PlansSection'), 'PlansSection');
 
 const ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
   overview: LayoutDashboard,

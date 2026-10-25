@@ -1,3 +1,5 @@
+import { lazy, type ComponentType } from 'react';
+
 // Depois de uma publicação, quem estava com o app aberto ainda tem a versão antiga, que pede
 // arquivos que não existem mais (ao abrir uma aba ou um modal). Em vez da tela de erro,
 // recarrega uma vez para pegar a versão nova.
@@ -34,4 +36,14 @@ export function installStaleBuildRecovery() {
   window.addEventListener('unhandledrejection', (event) => {
     if (isStaleBuildError(event.reason) && reloadForNewBuild()) event.preventDefault();
   });
+}
+
+/**
+ * Componente carregado sob demanda pelo nome exportado. Se o arquivo é de uma versão que não existe
+ * mais, o aviso acima recarrega a página e o import termina sem módulo: aqui fica carregando até o
+ * recarregamento, em vez de quebrar e mostrar a tela de erro por um instante.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- as props vêm do componente exportado
+export function lazyNamed<K extends string, C extends ComponentType<any>>(load: () => Promise<{ [P in K]: C }>, name: K) {
+  return lazy<C>(() => load().then((m) => (m ? { default: m[name] as C } : new Promise<{ default: C }>(() => undefined))));
 }

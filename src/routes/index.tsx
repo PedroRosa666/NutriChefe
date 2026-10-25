@@ -1,15 +1,16 @@
-import { lazy, Suspense, type ComponentType } from 'react';
+import { Suspense, type ComponentType } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { HomePage } from '../pages/HomePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { RootLayout } from '../layouts/RootLayout';
 import { RouteError } from '../components/common/RouteError';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { lazyNamed } from '../lib/stale-build';
 
 // Páginas fora da home são carregadas sob demanda: o bundle inicial fica menor
 // (a mentoria IA, por exemplo, traz o SDK do Gemini).
-function lazyPage<T>(load: () => Promise<T>, name: keyof T, overlay = false) {
-  const Page = lazy(() => load().then((m) => ({ default: m[name] as ComponentType })));
+function lazyPage<K extends string>(load: () => Promise<{ [P in K]: ComponentType }>, name: K, overlay = false) {
+  const Page = lazyNamed<K, ComponentType>(load, name);
   return (
     <Suspense
       fallback={
