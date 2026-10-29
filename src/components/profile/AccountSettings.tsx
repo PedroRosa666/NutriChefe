@@ -7,8 +7,8 @@ import { useSubscriptionStore } from '../../store/subscription';
 import { useToastStore } from '../../store/toast';
 import { useSettingsStore } from '../../store/settings';
 import { useTranslation } from '../../hooks/useTranslation';
-import { supabase } from '../../lib/supabase';
 import { openBillingPortal } from '../../services/subscription';
+import { updatePassword } from '../../services/database';
 import { countArchivedPlans, deleteArchivedPlans, DeleteAccountError, deleteMyAccount, downloadMyData } from '../../services/privacy';
 import { confirmDialog } from '../../store/confirm';
 import { AppDeviceCard } from './AppDeviceCard';
@@ -87,15 +87,13 @@ export function AccountSettings() {
     }
     setSavingPassword(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      await updatePassword(password);
       setPassword('');
       setConfirm('');
       showToast(a.passwordSaved, 'success');
     } catch (error) {
       console.error('Error updating password:', error);
-      const msg = error instanceof Error && /same|different/i.test(error.message) ? a.passwordSame : a.saveError;
-      showToast(msg, 'error');
+      showToast(error instanceof Error && error.message ? error.message : a.saveError, 'error');
     } finally {
       setSavingPassword(false);
     }

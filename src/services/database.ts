@@ -451,7 +451,12 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
     }
   );
 
-  if (error) throw error;
+  if (error) {
+    if (error.code === 'over_email_send_rate_limit' || error.status === 429) {
+      throw new Error(feedback().forgotPassword.rateLimited);
+    }
+    throw error;
+  }
 }
 
 export async function resendConfirmationEmail(email: string): Promise<void> {
@@ -474,7 +479,11 @@ export async function updatePassword(newPassword: string): Promise<void> {
   if (error) {
     console.error('Error updating password:', error);
 
-    if (error.message.includes('session_not_found')) {
+    // Pelo código do erro do Supabase Auth, não pelo texto (que muda entre versões).
+    const code = error.code ?? '';
+    if (code === 'same_password') throw new Error(feedback().auth.passwordSame);
+    if (code === 'weak_password') throw new Error(feedback().auth.passwordWeak);
+    if (code === 'session_not_found' || code === 'session_expired' || error.name === 'AuthSessionMissingError') {
       throw new Error(feedback().auth.recoverySessionExpired);
     }
     if (error.message.includes('Password should be at least')) {

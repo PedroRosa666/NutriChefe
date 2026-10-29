@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Shield, Loader2 } from 'lucide-react';
 import { validateRecoveryToken, updatePassword } from '../../services/database';
-import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import { useTranslation } from '../../hooks/useTranslation';
 import { feedback } from '../../lib/i18n/current';
 
 export function ResetPasswordPage() {
   const rp = useTranslation().feedback.resetPassword;
+  const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -47,6 +48,13 @@ export function ResetPasswordPage() {
     checkToken();
   }, []);
 
+  // Senha trocada: leva ao início depois da barra de progresso (3 s).
+  useEffect(() => {
+    if (status !== 'success') return;
+    const timer = setTimeout(() => navigate('/', { replace: true }), 3000);
+    return () => clearTimeout(timer);
+  }, [status, navigate]);
+
   const validatePassword = (pwd: string) => {
     const errors: string[] = [];
     if (pwd.length < 6) errors.push(rp.tooShort);
@@ -76,17 +84,9 @@ export function ResetPasswordPage() {
       // Atualizar a senha
       await updatePassword(password);
       
+      // A pessoa continua conectada com a senha nova. Sair aqui remontava esta tela (o layout
+      // troca de chave com o usuário), que revalidava o link já sem sessão e mostrava "link expirado".
       setStatus('success');
-      
-      // Fazer logout para limpar a sessão de recuperação após um delay
-      setTimeout(async () => {
-        await supabase.auth.signOut();
-        // Redirecionar para login após 3 segundos
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 3000);
-      }, 1000);
-      
     } catch (err) {
       console.error('Password reset error:', err);
       // Mantém o formulário: o link continua válido e o usuário pode tentar outra senha.
@@ -157,10 +157,10 @@ export function ResetPasswordPage() {
             />
           </div>
           <button
-            onClick={() => window.location.href = '/login'}
+            onClick={() => navigate('/', { replace: true })}
             className="w-full py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
           >
-            {rp.goToLogin}
+            {rp.goHome}
           </button>
         </motion.div>
       </div>
@@ -185,7 +185,7 @@ export function ResetPasswordPage() {
             {error || rp.invalidText}
           </p>
           <button
-            onClick={() => window.location.href = '/forgot-password'}
+            onClick={() => navigate('/forgot-password', { replace: true })}
             className="w-full py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
           >
             {rp.requestNewLink}
@@ -334,11 +334,11 @@ export function ResetPasswordPage() {
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => window.location.href = '/login'}
+            onClick={() => navigate('/', { replace: true })}
             className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium"
             disabled={loading}
           >
-            {rp.backToLogin}
+            {rp.cancel}
           </button>
         </div>
       </motion.div>
