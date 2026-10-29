@@ -17,13 +17,11 @@ export interface AIConversation {
   id: string;
   client_id: string;
   nutritionist_id?: string;
-  ai_config_id?: string;
   title?: string;
   last_message_at: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  ai_config?: AIConfiguration;
 }
 
 export interface AIMessage {

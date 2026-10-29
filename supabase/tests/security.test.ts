@@ -54,9 +54,6 @@ describe('perfis (RLS)', () => {
     expect(await asUser(db, STRANGER, visibleIds)).not.toContain(PATIENT);
   });
 
-  it('último acesso não é legível pelo app', async () => {
-    await expect(asUser(db, PATIENT, (tx) => tx.query('SELECT last_seen FROM profiles'))).rejects.toThrow(/permission denied/);
-  });
 });
 
 describe('limite da IA', () => {

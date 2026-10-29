@@ -32,7 +32,7 @@ const PT: { title: string; intro: string; updated: string; back: string; section
         'Saúde e alimentação (dados sensíveis): perfil de saúde (idade, sexo, altura, peso, objetivo, nível de atividade, alergias e preferências), metas diárias, diário alimentar, histórico de peso, planos alimentares, pedidos de troca e lista de compras.',
         'Nutricionistas: dados profissionais que você publicar (biografia, especialidades, experiência, valor da consulta, endereço), receitas e alimentos cadastrados.',
         'Assinatura: situação do plano Premium. Os dados do cartão ficam só com a Stripe; o NutriChef não os recebe.',
-        'Mentoria IA: as mensagens que você envia ao assistente.',
+        'NutriBot: as mensagens que você envia ao assistente.',
       ],
     },
     {
@@ -40,7 +40,7 @@ const PT: { title: string; intro: string; updated: string; back: string; section
       body: [
         'Fazer o app funcionar: login, diário, metas, planos, receitas, avisos e lista de compras.',
         'Permitir o acompanhamento nutricional quando você aceita o convite de um nutricionista.',
-        'Responder suas perguntas na Mentoria IA e cobrar a assinatura Premium.',
+        'Responder suas perguntas no NutriBot e cobrar a assinatura Premium.',
         'Não vendemos seus dados e não usamos seus dados de saúde para publicidade.',
       ],
     },
@@ -54,7 +54,7 @@ const PT: { title: string; intro: string; updated: string; back: string; section
       title: '5. Com quem compartilhamos',
       body: [
         'Seu nutricionista: só depois que você aceita o convite e só enquanto o acompanhamento estiver ativo. Ele vê diário, metas, perfil de saúde, peso, planos e pedidos de troca. Você pode encerrar a qualquer momento, e o acesso acaba na hora.',
-        'Fornecedores que operam o serviço: Supabase (banco de dados e login), Cloudflare (hospedagem do site), Stripe (pagamentos), Google (envio dos e-mails da conta e o modelo de IA da Mentoria IA). Eles tratam os dados só para prestar esse serviço. Alguns ficam fora do Brasil; a transferência segue o art. 33 da LGPD.',
+        'Fornecedores que operam o serviço: Supabase (banco de dados e login), Cloudflare (hospedagem do site), Stripe (pagamentos), Google (envio dos e-mails da conta e o modelo de IA do NutriBot). Eles tratam os dados só para prestar esse serviço. Alguns ficam fora do Brasil; a transferência segue o art. 33 da LGPD.',
       ],
     },
     {
@@ -98,7 +98,7 @@ const EN: typeof PT = {
         'Health and food (sensitive data): health profile (age, sex, height, weight, goal, activity level, allergies and preferences), daily goals, food diary, weight history, meal plans, swap requests and shopping list.',
         'Nutritionists: professional details you publish, recipes and foods you register.',
         'Subscription: Premium plan status. Card data stays with Stripe; NutriChef never receives it.',
-        'AI Mentoring: the messages you send to the assistant.',
+        'NutriBot: the messages you send to the assistant.',
       ],
     },
     {
@@ -106,7 +106,7 @@ const EN: typeof PT = {
       body: [
         'To run the app: login, diary, goals, plans, recipes, notifications and shopping list.',
         'To allow nutritional follow-up when you accept a nutritionist invite.',
-        'To answer your AI Mentoring questions and to bill the Premium subscription.',
+        'To answer your NutriBot questions and to bill the Premium subscription.',
         'We do not sell your data and do not use your health data for advertising.',
       ],
     },
@@ -115,7 +115,7 @@ const EN: typeof PT = {
       title: '5. Who we share it with',
       body: [
         'Your nutritionist: only after you accept the invite and only while the follow-up is active. You can end it anytime and access stops immediately.',
-        'Providers that run the service: Supabase (database and login), Cloudflare (hosting), Stripe (payments), Google (account e-mails and the AI Mentoring model). Some are outside Brazil; transfers follow LGPD art. 33.',
+        'Providers that run the service: Supabase (database and login), Cloudflare (hosting), Stripe (payments), Google (account e-mails and the NutriBot AI model). Some are outside Brazil; transfers follow LGPD art. 33.',
       ],
     },
     { title: '6. Retention', body: ['While your account exists. Read notifications are deleted after 60 days. When you delete your account, your data is deleted immediately, except what the law requires us to keep (e.g. payment records at Stripe).'] },

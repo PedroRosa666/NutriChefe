@@ -182,7 +182,8 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
         userName: review.profiles?.full_name ?? '',
         rating: review.rating,
         comment: review.comment || '',
-        date: new Date(review.created_at).toISOString().split('T')[0]
+        // Data local (em UTC, avaliações depois das 21h no Brasil mostravam o dia seguinte).
+        date: new Date(review.created_at).toLocaleDateString('sv-SE')
       })),
     authorId: dbRecipe.author_id,
     authorName: dbRecipe.profiles?.full_name,
@@ -224,7 +225,7 @@ export function ingredientRowsFor(recipe: Pick<Recipe, 'ingredients' | 'ingredie
  * Cria (recipeId null) ou atualiza a receita com rendimento, base dos nutrientes e ingredientes,
  * tudo de uma vez (save_recipe). `operationId` repetido não grava duas vezes.
  */
-export async function saveRecipe(recipeId: string | null, recipe: RecipeInput, operationId?: string): Promise<Recipe> {
+async function saveRecipe(recipeId: string | null, recipe: RecipeInput, operationId?: string): Promise<Recipe> {
   const declared = recipe.nutritionDeclared ?? recipe.nutritionFacts;
   // Uma cópia de receita antiga começa revisada: os valores antigos já eram os de uma porção.
   const basis = recipe.nutritionBasis === 'legacy_unit' && !recipeId ? 'per_serving' : recipe.nutritionBasis ?? 'per_serving';

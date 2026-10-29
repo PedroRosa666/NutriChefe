@@ -426,7 +426,7 @@ export function AIChatInterface() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 dark:text-white leading-none mb-0.5">
-            {currentConversation?.ai_config?.ai_name || 'NutriBot'}
+            NutriBot
           </p>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />

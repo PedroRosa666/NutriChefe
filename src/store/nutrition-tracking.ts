@@ -15,7 +15,7 @@ export const DIARY_MEALS: DiaryMeal[] = ['breakfast', 'lunch', 'snack', 'dinner'
 export type DiaryMealTarget = DiaryMeal | { id: string; name: string; category: DiaryMeal | null } | null;
 
 /** Colunas gravadas para um destino. */
-export function mealColumns(target: DiaryMealTarget): { meal: DiaryMeal | null; meal_id: string | null; meal_name: string | null } {
+function mealColumns(target: DiaryMealTarget): { meal: DiaryMeal | null; meal_id: string | null; meal_name: string | null } {
   if (target === null) return { meal: null, meal_id: null, meal_name: null };
   if (typeof target === 'string') return { meal: target, meal_id: null, meal_name: null };
   return { meal: target.category, meal_id: target.id, meal_name: target.name.slice(0, 60) };
@@ -99,7 +99,8 @@ interface NutritionTrackingState {
 }
 
 // Janela carregada do banco: suficiente para gráficos semanais/mensais e sequência de dias.
-const HISTORY_DAYS = 90;
+/** Dias de diário carregados (o seletor de data não vai além disso). */
+export const HISTORY_DAYS = 90;
 
 const zeroTotals = (): NutritionTotals => ({
   calories: 0,
@@ -216,6 +217,9 @@ export const useNutritionTrackingStore = create<NutritionTrackingState>()((set, 
       .eq('user_id', userId)
       .gte('entry_date', toISODate(since))
       .order('created_at', { ascending: false });
+
+    // Resposta de outra conta (troca de usuário no meio do caminho): descarta.
+    if (useAuthStore.getState().user?.id !== userId) return;
 
     if (error) {
       console.error('Error fetching nutrition log:', error);

@@ -18,6 +18,8 @@ interface NutritionGoalsState {
   activeGoals: GoalKey[];
   /** Nutricionista que definiu as metas atuais (null quando foi o próprio cliente). */
   setBy: string | null;
+  /** Metas do banco já lidas: antes disso, goals tem os padrões e não pode ser gravado por cima. */
+  loaded: boolean;
   loading: boolean;
   saving: boolean;
   fetchGoals: (userId: string) => Promise<void>;
@@ -57,6 +59,7 @@ export const useNutritionGoalsStore = create<NutritionGoalsState>()((set, get) =
   goals: DEFAULT_GOALS,
   activeGoals: GOAL_KEYS,
   setBy: null,
+  loaded: false,
   loading: false,
   saving: false,
 
@@ -74,6 +77,9 @@ export const useNutritionGoalsStore = create<NutritionGoalsState>()((set, get) =
       ({ data, error } = await query('calories, protein, carbs, fat, fiber, active_goals'));
     }
 
+    // Resposta de outra conta (troca de usuário no meio do caminho): descarta.
+    if (useAuthStore.getState().user?.id !== userId) return;
+
     if (error) {
       console.error('Error fetching nutrition goals:', error);
       set({ loading: false });
@@ -82,6 +88,7 @@ export const useNutritionGoalsStore = create<NutritionGoalsState>()((set, get) =
 
     // Sem linha: usuário novo, volta aos padrões (nunca herda metas de outro login).
     set({
+      loaded: true,
       goals: data
         ? {
             calories: Number(data.calories) || DEFAULT_GOALS.calories,
@@ -113,6 +120,8 @@ export const useNutritionGoalsStore = create<NutritionGoalsState>()((set, get) =
   },
 
   toggleGoal: async (goal) => {
+    // Sem as metas do banco, a gravação trocaria as do nutricionista pelos padrões.
+    if (!get().loaded) throw new Error('goals_not_loaded');
     const previous = get().activeGoals;
     const next = previous.includes(goal) ? previous.filter((g) => g !== goal) : [...previous, goal];
     set({ activeGoals: next });
@@ -124,7 +133,7 @@ export const useNutritionGoalsStore = create<NutritionGoalsState>()((set, get) =
     }
   },
 
-  reset: () => set({ goals: DEFAULT_GOALS, activeGoals: GOAL_KEYS, setBy: null, loading: false, saving: false }),
+  reset: () => set({ goals: DEFAULT_GOALS, activeGoals: GOAL_KEYS, setBy: null, loaded: false, loading: false, saving: false }),
 }));
 
 // Metas antigas ficavam no navegador sem separar por usuário.

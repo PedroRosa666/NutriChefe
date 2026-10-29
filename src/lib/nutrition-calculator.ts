@@ -13,7 +13,7 @@ export interface BodyData {
   goal: BodyGoal;
 }
 
-export const ACTIVITY_FACTORS: Record<ActivityLevel, number> = {
+const ACTIVITY_FACTORS: Record<ActivityLevel, number> = {
   sedentary: 1.2,
   light: 1.375,
   moderate: 1.55,
@@ -50,7 +50,7 @@ export function bmiRange(value: number): BmiRange {
 }
 
 /** Taxa metabólica basal (Mifflin-St Jeor), em kcal/dia. */
-export function bmr({ sex, age, heightCm, weightKg }: BodyData): number {
+function bmr({ sex, age, heightCm, weightKg }: BodyData): number {
   const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
   return sex === 'male' ? base + 5 : base - 161;
 }

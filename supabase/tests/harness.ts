@@ -36,6 +36,8 @@ const MIGRATIONS = [
   '20261107120000_recipe_yield.sql',
   '20261108120000_recipe_calc.sql',
   '20261110120000_demo_visitors.sql',
+  '20261111120000_audit_fixes.sql',
+  '20261112120000_cleanup_privacy_limit.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -65,7 +67,8 @@ const BASE = `
   CREATE TABLE auth.users (id uuid PRIMARY KEY, email text, last_sign_in_at timestamptz, banned_until timestamptz);
   CREATE TABLE profiles (
     id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE, full_name text, user_type text,
-    profile_visibility text DEFAULT 'public', last_seen timestamptz DEFAULT now(), created_at timestamptz DEFAULT now()
+    profile_visibility text DEFAULT 'public', last_seen timestamptz DEFAULT now(), created_at timestamptz DEFAULT now(),
+    phone text, whatsapp text, instagram text, website text, clinic_address text
   );
   ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
   CREATE TABLE subscription_plans (

@@ -18,10 +18,11 @@ import {
   Copy,
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
+import { usePremiumStore } from '../store/premium';
 import { useRecipesStore } from '../store/recipes';
 import { useFoodsStore } from '../store/foods';
 import { listFoods } from '../services/foods';
-import { useNutritionTrackingStore } from '../store/nutrition-tracking';
+import { toISODate, useNutritionTrackingStore } from '../store/nutrition-tracking';
 import { useToastStore } from '../store/toast';
 import { EditRecipeForm } from './recipe/EditRecipeForm';
 import { IngredientChecklist } from './recipe/IngredientChecklist';
@@ -222,7 +223,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
         userName: user.name,
         rating: newReview.rating,
         comment: newReview.comment,
-        date: new Date().toISOString().split('T')[0],
+        date: toISODate(new Date()),
       });
       setNewReview({ rating: 5, comment: '' });
     } catch (error) {
@@ -354,7 +355,9 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
 
   // Verificar se o usuário já avaliou esta receita
   const userReview = recipe.reviews.find((review) => review.userId === user?.id);
-  const canAddReview = isAuthenticated && !userReview;
+  // Visitante da demonstração não avalia (o banco recusa: avaliações aparecem para todos).
+  const isVisitor = usePremiumStore((s) => s.isVisitor);
+  const canAddReview = isAuthenticated && !userReview && !isVisitor;
 
   return (
     <>

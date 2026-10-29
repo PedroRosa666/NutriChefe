@@ -54,6 +54,8 @@ function useAccountBadge() {
 /** Cabeçalho da aba Conta: identidade, plano e atalhos do perfil. O convite ao Premium fica só no Início. */
 export function ProfileCard() {
   const { user } = useAuthStore();
+  // Visitante da demonstração não envia foto (o bucket de avatares é público).
+  const isVisitor = usePremiumStore((s) => s.isVisitor);
   const { language } = useSettingsStore();
   const t = useTranslation();
   const { badge, premium, isNutritionist, isAdmin } = useAccountBadge();
@@ -75,7 +77,7 @@ export function ProfileCard() {
       </div>
       <div className="flex flex-col gap-4 px-4 pb-5 sm:flex-row sm:items-end sm:px-6 sm:pb-6">
         <div className="-mt-12 flex-shrink-0 self-start sm:-mt-14">
-          <AvatarUpload currentAvatarUrl={user.avatar_url} size="xl" editable />
+          <AvatarUpload currentAvatarUrl={user.avatar_url} size="xl" editable={!isVisitor} />
         </div>
 
         <div className="min-w-0 flex-1 space-y-1.5">

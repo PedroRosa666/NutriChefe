@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as subscriptionService from '../services/subscription';
 import { useToastStore } from './toast';
+import { useAuthStore } from './auth';
 import type { SubscriptionPlan, UserSubscription } from '../types/subscription';
 import { feedback } from '../lib/i18n/current';
 
@@ -42,9 +43,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       fetchUserSubscription: async (userId: string) => {
         try {
           const subscription = await subscriptionService.getUserSubscription(userId);
+          // Resposta de outra conta (troca de usuário no meio do caminho): descarta.
+          if (useAuthStore.getState().user?.id !== userId) return;
           set({ userSubscription: subscription, subscriptionLoaded: true });
         } catch (error) {
           console.error('Error fetching user subscription:', error);
+          if (useAuthStore.getState().user?.id !== userId) return;
           set({ userSubscription: null, subscriptionLoaded: true });
         }
       },

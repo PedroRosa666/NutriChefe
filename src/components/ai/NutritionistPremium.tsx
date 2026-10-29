@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BarChart3, Bot, Check, Crown, FileText, Sparkles, Star, Users } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { getSubscriptionPlans, startCheckout } from '../../services/subscription';
+import { usePremiumStore } from '../../store/premium';
 import type { SubscriptionPlan } from '../../types/subscription';
 import { useToastStore } from '../../store/toast';
 
@@ -19,6 +20,8 @@ export function NutritionistPremium() {
       .catch(() => showToast(t.premium.loadPlansError, 'error'));
   }, [showToast, t.premium.loadPlansError]);
 
+  // Número do plano grátis vem do banco (free_patient_limit, por my_premium).
+  const freePatientLimit = usePremiumStore((s) => s.freePatientLimit);
   const plan = useMemo(() => plans.find((pl) => pl.features?.includes('nutritionist_pro')) ?? null, [plans]);
   const available = Boolean(plan?.stripe_price_id);
 
@@ -37,7 +40,7 @@ export function NutritionistPremium() {
     { icon: Sparkles, title: n.f1Title, text: n.f1Text },
     { icon: Bot, title: n.f2Title, text: n.f2Text },
     { icon: FileText, title: n.f3Title, text: n.f3Text },
-    { icon: Users, title: n.f4Title, text: n.f4Text },
+    { icon: Users, title: n.f4Title, text: n.f4Text.replace('{max}', String(freePatientLimit)) },
     { icon: BarChart3, title: n.f5Title, text: n.f5Text },
     { icon: Star, title: n.f6Title, text: n.f6Text },
   ];
@@ -67,7 +70,7 @@ export function NutritionistPremium() {
             {available ? (loading ? t.common.loading : n.subscribe) : n.soon}
           </button>
         </div>
-        <p className="mt-3 text-xs text-emerald-100">{n.freeNote}</p>
+        <p className="mt-3 text-xs text-emerald-100">{n.freeNote.replace('{max}', String(freePatientLimit))}</p>
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2">

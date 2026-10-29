@@ -4,7 +4,9 @@ import { Trash2, CalendarDays, Plus, XCircle, Loader2, Pencil, Check, X } from '
 import { WeeklyCaloriesChart } from './WeeklyCaloriesChart';
 import {
   DIARY_MEALS,
+  HISTORY_DAYS,
   mealForTime,
+  toISODate,
   useNutritionTrackingStore,
   type DiaryMeal,
   type DiaryMealTarget,
@@ -350,6 +352,7 @@ export function NutritionDiary() {
         <input
           type="date"
           value={date}
+          min={toISODate(new Date(Date.now() - HISTORY_DAYS * 86400000))}
           max={today}
           onChange={(e) => e.target.value && setDate(e.target.value)}
           aria-label={t.profileUi.diaryDate}

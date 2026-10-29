@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useSettingsStore } from '../../store/settings';
-import { sumEntries } from '../../store/nutrition-tracking';
+import { sumEntries, toISODate } from '../../store/nutrition-tracking';
 import type { PatientData } from '../../services/care';
 import type { AdherenceResult } from '../../services/adherence';
 
@@ -77,7 +77,7 @@ export function PatientReportView({ patientName, data, adherence, nutritionistNa
     };
   }, [patientName, onDone, r.fileName]);
 
-  const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  const since = toISODate(new Date(Date.now() - days * 86400000));
   const weights = data.weights.filter((w) => w.logged_on >= since).map((w) => ({ date: w.logged_on, kg: w.weight_kg }));
   const firstW = weights[0]?.kg;
   const lastW = weights[weights.length - 1]?.kg;

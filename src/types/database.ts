@@ -593,6 +593,33 @@ export type Database = {
           },
         ]
       }
+      demo_visitors: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip_hash: string
+          nutritionist_id: string
+          patient_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_hash: string
+          nutritionist_id: string
+          patient_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_hash?: string
+          nutritionist_id?: string
+          patient_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string | null
@@ -2166,6 +2193,7 @@ export type Database = {
         }
       }
       clean_day_overrides: { Args: { p: Json }; Returns: Json }
+      cleanup_demo_visitors: { Args: never; Returns: number }
       consume_ai_quota: {
         Args: {
           p_kind: string
@@ -2173,6 +2201,10 @@ export type Database = {
           p_per_hour: number
           p_user: string
         }
+        Returns: boolean
+      }
+      consume_demo_ai: {
+        Args: { p_limit: number; p_user: string }
         Returns: boolean
       }
       create_nutritionist_invite: {
@@ -2204,6 +2236,7 @@ export type Database = {
         Returns: Json
       }
       is_admin: { Args: never; Returns: boolean }
+      is_demo_visitor: { Args: { p_user?: string }; Returns: boolean }
       is_my_nutritionist: { Args: { p_nutritionist: string }; Returns: boolean }
       is_my_patient: { Args: { p_client: string }; Returns: boolean }
       legacy_meal_id: {
@@ -2493,6 +2526,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      seed_demo_data: {
+        Args: { p_nutri: string; p_patient: string }
+        Returns: undefined
       }
       select_active_plan: { Args: { p_plan: string }; Returns: undefined }
       send_appointment_reminders: { Args: never; Returns: number }

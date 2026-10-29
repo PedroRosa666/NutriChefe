@@ -22,7 +22,8 @@ interface ChatThreadProps {
 // Enter envia só com teclado físico; no celular o Enter quebra a linha e o envio é pelo botão.
 const enterSends = () => typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches;
 
-const sameDay = (a: string, b: string) => a.slice(0, 10) === b.slice(0, 10);
+// Dia local (o separador mostra a data local; comparar em UTC repetia o dia depois das 21h).
+const sameDay = (a: string, b: string) => new Date(a).toDateString() === new Date(b).toDateString();
 
 /** Conversa entre nutricionista e paciente, com mensagens chegando na hora. */
 export function ChatThread({ nutritionistId, clientId, otherName, tall = false, action }: ChatThreadProps) {

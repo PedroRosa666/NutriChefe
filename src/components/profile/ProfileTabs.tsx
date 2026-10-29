@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LayoutDashboard, NotebookPen, HeartPulse, Heart, Settings, BookOpen, Briefcase, Users, CalendarRange, ShoppingCart, Carrot, MessageCircle, Plus, Library } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
+import { usePremiumStore } from '../../store/premium';
 import { useRecipesStore } from '../../store/recipes';
 import { useFavoriteRecipes } from '../../hooks/useFavoriteRecipes';
 import { RecipeCard } from '../RecipeCard';
@@ -73,7 +74,9 @@ export function ProfileTabs() {
   const activeItem = section.items.find((i) => i.tabs.includes(activeTab)) ?? section.items[0];
   const [creatingRecipe, setCreatingRecipe] = useState(false);
   // Atalho "Nova receita" do painel (?nova=1): abre o formulário e tira o parâmetro da URL.
-  const wantsNewRecipe = isNutritionist && searchParams.has('nova');
+  // Visitante da demonstração não publica receitas (o banco recusa).
+  const isVisitor = usePremiumStore((s) => s.isVisitor);
+  const wantsNewRecipe = isNutritionist && !isVisitor && searchParams.has('nova');
   useEffect(() => {
     if (!wantsNewRecipe) return;
     setCreatingRecipe(true);
@@ -186,7 +189,7 @@ export function ProfileTabs() {
             ))}
           </div>
           {/* Sem receitas, o botão fica só no aviso de lista vazia. */}
-          {activeTab === 'recipes' && userRecipes.length > 0 && (
+          {activeTab === 'recipes' && userRecipes.length > 0 && !isVisitor && (
             <button
               type="button"
               onClick={() => setCreatingRecipe(true)}
@@ -259,6 +262,7 @@ export function ProfileTabs() {
             {userRecipes.length === 0 && (
               <div className="col-span-full rounded-2xl border border-dashed border-slate-200 py-10 text-center dark:border-slate-700">
                 <p className="text-sm text-slate-500 dark:text-slate-400">{t.profile.noRecipesYet}</p>
+                {!isVisitor && (
                 <button
                   type="button"
                   onClick={() => setCreatingRecipe(true)}
@@ -267,6 +271,7 @@ export function ProfileTabs() {
                   <Plus className="h-4 w-4" />
                   {t.profileUi.newRecipe}
                 </button>
+                )}
               </div>
             )}
           </div>

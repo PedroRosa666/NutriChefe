@@ -19,6 +19,7 @@ export function SubscriptionSuccessPage() {
     // As receitas exclusivas passam a aparecer quando o webhook ativa a assinatura.
     const retry = setTimeout(() => {
       fetchUserSubscription(userId);
+      usePremiumStore.getState().fetch(userId);
       useRecipesStore.getState().refresh();
     }, 3000);
     return () => clearTimeout(retry);

@@ -82,6 +82,30 @@ describe('o visitante não alcança pessoas reais', () => {
   });
 });
 
+describe('auditoria (20261111120000_audit_fixes.sql)', () => {
+  it('visitante não se vincula a conta demo de fora do par', async () => {
+    const LAB = '00000000-0000-4000-8000-0000000005a5';
+    await db.exec(`
+      INSERT INTO auth.users (id, email) VALUES ('${LAB}', 'demo.nutri@example.com');
+      INSERT INTO profiles (id, full_name, user_type, is_demo) VALUES ('${LAB}', 'Lab', 'Nutritionist', true);`);
+    await expect(db.query(`INSERT INTO nutritionist_clients (nutritionist_id, client_id, status) VALUES ('${LAB}', '${V_PATIENT}', 'active')`))
+      .rejects.toThrow(/demo_readonly/);
+  });
+
+  it('ninguém logado cria a própria linha de perfil (crn_status viria escolhido)', async () => {
+    const NEW = '00000000-0000-4000-8000-0000000005a6';
+    await db.exec(`INSERT INTO auth.users (id, email) VALUES ('${NEW}', 'novo@x.com')`);
+    await expect(asUser(db, NEW, (tx) => tx.query(
+      `INSERT INTO profiles (id, full_name, user_type, crn_status) VALUES ('${NEW}', 'X', 'Nutritionist', 'approved')`,
+    ))).rejects.toThrow(/permission denied/);
+  });
+
+  it('nutricionista demo não entra na lista de Premium', async () => {
+    const ids = (await db.query<{ id: string }>('SELECT pro_nutritionist_ids() AS id')).rows.map((r) => r.id);
+    expect(ids).not.toContain(V_NUTRI);
+  });
+});
+
 describe('IA da demonstração', () => {
   it('5 usos somando as duas contas do par; quem não é visitante fica de fora', async () => {
     const use = async (id: string) => (await db.query<{ ok: boolean | null }>(`SELECT consume_demo_ai('${id}', 5) AS ok`)).rows[0].ok;
@@ -93,5 +117,17 @@ describe('IA da demonstração', () => {
 
   it('o app não chama a contagem diretamente', async () => {
     await expect(asUser(db, V_PATIENT, (tx) => tx.query(`SELECT consume_demo_ai('${V_PATIENT}', 5)`))).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe('limpeza dos pares vencidos', () => {
+  it('apaga as duas contas e os dados delas', async () => {
+    await db.query(`UPDATE demo_visitors SET expires_at = now() - interval '1 minute' WHERE patient_id = '${V_PATIENT}'`);
+    const removed = (await db.query<{ n: number }>('SELECT cleanup_demo_visitors() AS n')).rows[0].n;
+    expect(removed).toBe(1);
+    const left = (await db.query<{ users: number; plans: number }>(`
+      SELECT (SELECT count(*)::int FROM auth.users WHERE id IN ('${V_PATIENT}', '${V_NUTRI}')) users,
+             (SELECT count(*)::int FROM meal_plans WHERE client_id = '${V_PATIENT}') plans`)).rows[0];
+    expect(left).toEqual({ users: 0, plans: 0 });
   });
 });

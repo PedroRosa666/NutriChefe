@@ -25,12 +25,12 @@ beforeAll(async () => {
 });
 
 describe('tabelas antigas', () => {
-  it('saem do schema public (a API não as enxerga) e os dados ficam guardados', async () => {
+  // Saíram do public aqui (schema legacy) e foram apagadas em 20261112120000_cleanup_privacy_limit.sql.
+  it('não existem mais, nem no public nem no legacy', async () => {
     const r = await db.query<{ pub: string | null; leg: string | null }>(
-      `SELECT to_regclass('public.messages')::text AS pub, to_regclass('legacy.messages')::text AS leg`
+      `SELECT to_regclass('public.messages')::text AS pub, to_regnamespace('legacy')::text AS leg`
     );
-    expect(r.rows[0]).toEqual({ pub: null, leg: 'legacy.messages' });
-    await expect(asUser(db, PATIENT, (tx) => tx.query(`SELECT * FROM legacy.messages`))).rejects.toThrow(/permission denied/);
+    expect(r.rows[0]).toEqual({ pub: null, leg: null });
   });
 });
 

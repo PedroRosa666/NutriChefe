@@ -8,17 +8,24 @@ import { installGlobalErrorReporting } from './lib/error-reporting';
 import { listenForInstallPrompt, registerServiceWorker } from './lib/push';
 import { installStaleBuildRecovery } from './lib/stale-build';
 
-installStaleBuildRecovery();
-installGlobalErrorReporting();
-registerServiceWorker();
-listenForInstallPrompt();
+// Endereço oficial sem "www": login, links dos e-mails e volta do pagamento usam um endereço só.
+const CANONICAL_HOST = 'nutrichef.app.br';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
-    </ErrorBoundary>
-  </StrictMode>
-);
+if (window.location.hostname === `www.${CANONICAL_HOST}`) {
+  window.location.replace(`https://${CANONICAL_HOST}${window.location.pathname}${window.location.search}${window.location.hash}`);
+} else {
+  installStaleBuildRecovery();
+  installGlobalErrorReporting();
+  registerServiceWorker();
+  listenForInstallPrompt();
+
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </ErrorBoundary>
+    </StrictMode>
+  );
+}

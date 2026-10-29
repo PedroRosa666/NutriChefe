@@ -75,6 +75,10 @@ export const useHealthProfileStore = create<HealthProfileState>()((set, get) => 
         .limit(180),
     ]);
 
+    // Resposta de outra conta (troca de usuário no meio do caminho): descarta. Sem isso, a próxima
+    // gravação levaria o perfil da conta antiga para a nova.
+    if (useAuthStore.getState().user?.id !== userId) return;
+
     if (profileRes.error) console.error('Error fetching health profile:', profileRes.error);
     if (weightRes.error) console.error('Error fetching weight logs:', weightRes.error);
     if (profileRes.error || weightRes.error) {

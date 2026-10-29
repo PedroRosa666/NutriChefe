@@ -79,7 +79,7 @@ export function NutritionistDashboard() {
   );
 
   const greeting = useGreeting();
-  const { nutritionistPro, activePatients, freePatientLimit } = usePremiumStore();
+  const { nutritionistPro, activePatients, freePatientLimit, isVisitor } = usePremiumStore();
 
   // Hooks acima precisam rodar sempre, antes de qualquer retorno antecipado.
   if (!user || user.type !== 'Nutritionist') return null;
@@ -144,13 +144,16 @@ export function NutritionistDashboard() {
           },
         ]}
         actions={[
-          { to: '/perfil?tab=patients&convidar=1', label: t.profileUi.invitePatient, icon: UserPlus },
-          { to: '/perfil?tab=recipes&nova=1', label: t.profileUi.newRecipe, icon: BookOpen },
+          // Visitante da demonstração não convida nem publica receitas.
+          ...(isVisitor ? [] : [
+            { to: '/perfil?tab=patients&convidar=1', label: t.profileUi.invitePatient, icon: UserPlus },
+            { to: '/perfil?tab=recipes&nova=1', label: t.profileUi.newRecipe, icon: BookOpen },
+          ]),
           { to: '/perfil?tab=foods', label: t.profileUi.myFoods, icon: Carrot },
           { to: `/nutricionista/${user.id}`, label: t.profileUi.publicProfile, icon: ExternalLink },
         ]}
       />
-      {crnStatus !== null && (
+      {crnStatus !== null && !isVisitor && (
         <GettingStarted
           userId={user.id}
           steps={[

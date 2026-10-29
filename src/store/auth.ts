@@ -267,7 +267,8 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (s) => ({ user: s.user, token: s.token, isAuthenticated: s.isAuthenticated })
+      // O token fica só na sessão do Supabase: guardar uma cópia aqui não servia para nada.
+      partialize: (s) => ({ user: s.user, isAuthenticated: s.isAuthenticated })
     }
   )
 );

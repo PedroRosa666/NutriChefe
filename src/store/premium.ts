@@ -7,6 +7,8 @@ import { useSubscriptionStore } from './subscription';
 
 interface PremiumState {
   loaded: boolean;
+  /** IA pela assinatura do próprio usuário, decidida no banco (has_feature, que vê todas as assinaturas). */
+  ownAI: boolean;
   nutritionistPro: boolean;
   /** Nutricionista Premium que paga a IA deste paciente (null = nenhum). */
   aiViaNutritionist: string | null;
@@ -21,7 +23,7 @@ interface PremiumState {
   reset: () => void;
 }
 
-const EMPTY = { loaded: false, nutritionistPro: false, aiViaNutritionist: null, activePatients: 0, freePatientLimit: 5, isAdmin: false, isDemo: false, isVisitor: false };
+const EMPTY = { loaded: false, ownAI: false, nutritionistPro: false, aiViaNutritionist: null, activePatients: 0, freePatientLimit: 0, isAdmin: false, isDemo: false, isVisitor: false };
 
 export const usePremiumStore = create<PremiumState>()((set) => ({
   ...EMPTY,
@@ -35,15 +37,17 @@ export const usePremiumStore = create<PremiumState>()((set) => ({
       return;
     }
     const p = fromJson<{
-      nutritionist_pro?: boolean; ai_via_nutritionist?: string | null; active_patients?: number;
+      ai?: boolean; nutritionist_pro?: boolean; ai_via_nutritionist?: string | null; active_patients?: number;
       free_patient_limit?: number; admin?: boolean; demo?: boolean; visitor?: boolean;
     }>(data);
     set({
       loaded: true,
+      ownAI: p.ai === true,
       nutritionistPro: p.nutritionist_pro === true,
       aiViaNutritionist: p.ai_via_nutritionist ?? null,
       activePatients: Number(p.active_patients) || 0,
-      freePatientLimit: Number(p.free_patient_limit) || 5,
+      // O número vem do banco (free_patient_limit()); 0 enquanto não carregou.
+      freePatientLimit: Number(p.free_patient_limit) || 0,
       isAdmin: p.admin === true,
       isDemo: p.demo === true,
       isVisitor: p.visitor === true,
@@ -54,7 +58,9 @@ export const usePremiumStore = create<PremiumState>()((set) => ({
 
 /** Assinatura Premium do próprio usuário (cardápio pela IA, relatório e desafios). */
 export function useOwnPremium(): boolean {
-  return useSubscriptionStore((s) => s.hasFeatureAccess('ai_mentoring'));
+  const fromSubscription = useSubscriptionStore((s) => s.hasFeatureAccess('ai_mentoring'));
+  const fromServer = usePremiumStore((s) => s.ownAI);
+  return fromSubscription || fromServer;
 }
 
 /** Vê as receitas exclusivas: mesma regra de premium_content() no banco. */
@@ -67,7 +73,7 @@ export function usePremiumContent(): boolean {
 
 /** Pode usar a IA: assinatura própria ou incluída pelo nutricionista Premium. */
 export function useCanUseAI(): boolean {
-  const own = useSubscriptionStore((s) => s.hasFeatureAccess('ai_mentoring'));
+  const own = useOwnPremium();
   const viaNutritionist = usePremiumStore((s) => s.aiViaNutritionist !== null);
   return own || viaNutritionist;
 }

@@ -145,7 +145,9 @@ export function PatientsPanel() {
   }, [user]);
   const crnBlocked = crnStatus !== null && crnStatus !== 'approved';
   const limitReached = premiumLoaded && !nutritionistPro && patients.length >= freePatientLimit;
-  const canInvite = !crnBlocked && !limitReached;
+  const isVisitor = usePremiumStore((s) => s.isVisitor);
+  // Visitante da demonstração não convida (o banco recusa: o par demo nunca se liga a conta real).
+  const canInvite = !crnBlocked && !limitReached && !isVisitor;
 
   const shareInvite = async (code: string) => {
     const text = t.care.inviteMessage.replace('{link}', inviteLink(code)).replace('{code}', code);
@@ -167,7 +169,7 @@ export function PatientsPanel() {
       if (canShare && window.matchMedia('(pointer: coarse)').matches) shareInvite(invite.code);
     } catch (error) {
       const key = error instanceof CareError ? error.code : 'unknown';
-      showToast(t.care.errors[key as keyof typeof t.care.errors] ?? t.care.errors.unknown, 'error');
+      showToast((t.care.errors[key as keyof typeof t.care.errors] ?? t.care.errors.unknown).replace('{max}', String(freePatientLimit)), 'error');
     } finally {
       setCreating(false);
     }
@@ -212,6 +214,8 @@ export function PatientsPanel() {
   if (selected) {
     return (
       <PatientDetail
+        // Outro paciente = componente novo: dados e formulário de metas nunca vêm do anterior.
+        key={selected.person.id}
         link={selected}
         openChat={openChat}
         pendingSwaps={pendingSwaps.get(selected.person.id) ?? 0}
@@ -265,6 +269,7 @@ export function PatientsPanel() {
             </p>
           )}
         </div>
+        {!isVisitor && (
         <button
           type="button"
           onClick={newInvite}
@@ -274,6 +279,7 @@ export function PatientsPanel() {
           {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
           {t.care.invitePatient}
         </button>
+        )}
       </div>
 
       {crnBlocked && (
@@ -290,7 +296,7 @@ export function PatientsPanel() {
       {!crnBlocked && limitReached && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
           <Crown className="h-5 w-5 flex-shrink-0 text-amber-500" />
-          <p className="min-w-0 flex-1">{t.care.errors.patient_limit}</p>
+          <p className="min-w-0 flex-1">{t.care.errors.patient_limit.replace('{max}', String(freePatientLimit))}</p>
           <Link to="/mentoria-ia" className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-amber-950 hover:bg-amber-400">
             {t.clientPremium.seePremium}
           </Link>

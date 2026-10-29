@@ -61,7 +61,7 @@ async function localReply(message: string, context?: AIUserContext): Promise<AIR
       id: recipe.id,
       title: recipe.title,
       description: recipe.description.slice(0, 160),
-      author: recipe.author || 'NutriChefe',
+      author: recipe.author || 'NutriChef',
       rating: recipe.rating,
       prepTime: recipe.prepTime,
       image: recipe.image,
@@ -108,14 +108,12 @@ export async function updateAIConfiguration(
 export async function createAIConversation(input: {
   client_id: string;
   nutritionist_id?: string | null;
-  ai_config_id?: string | null;
   title?: string;
   is_active?: boolean;
 }): Promise<AIConversation> {
   const row = {
     client_id: input.client_id,
     nutritionist_id: input.nutritionist_id ?? null,
-    ai_config_id: input.ai_config_id ?? null,
     title: input.title ?? 'Nova conversa com IA',
     is_active: input.is_active ?? true,
   };

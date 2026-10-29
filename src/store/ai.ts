@@ -111,17 +111,11 @@ export const useAIStore = create<AIState>((set, get) => ({
   createConversation: async (clientId: string, nutritionistId?: string) => {
     set({ loading: true, error: null });
     try {
-      // Buscar configuração da IA do nutricionista se fornecido
-      let aiConfigId = null;
-      if (nutritionistId) {
-        const config = await aiService.getAIConfiguration(nutritionistId);
-        aiConfigId = config?.id || null;
-      }
-
+      // A configuração da IA do nutricionista é lida pelo servidor a cada mensagem (ai-chat),
+      // então a conversa não guarda qual era.
       const conversation = await aiService.createAIConversation({
         client_id: clientId,
         nutritionist_id: nutritionistId,
-        ai_config_id: aiConfigId,
         title: 'Nova conversa',
         is_active: true
       });

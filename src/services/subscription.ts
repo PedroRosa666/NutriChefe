@@ -100,9 +100,17 @@ export async function startCheckout({
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
-  if (invokeError && !result) throw new Error(`Checkout failed: ${invokeError.message}`);
+  // Detalhes técnicos (em inglês) vão para o console; a pessoa vê uma frase no idioma dela.
+  if (invokeError && !result) {
+    console.error('Checkout failed:', invokeError.message);
+    throw new Error(feedback().subscription.checkoutNoResponse);
+  }
   if (!result) throw new Error(feedback().subscription.checkoutNoResponse);
-  if (result.error) throw new Error(`Checkout failed: ${result.error}`);
+  if (result.error) {
+    console.error('Checkout failed:', result.error);
+    // Única recusa que a pessoa resolve sozinha: já tem assinatura ativa (mensagem do servidor já em português).
+    throw new Error(/assinatura ativa/.test(String(result.error)) ? String(result.error) : feedback().subscription.checkoutNoResponse);
+  }
   if (!result.url) throw new Error(feedback().subscription.checkoutNoUrl);
 
   redirectTo(result.url as string);

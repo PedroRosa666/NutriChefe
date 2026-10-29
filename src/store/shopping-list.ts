@@ -28,10 +28,13 @@ export const useShoppingListStore = create<ShoppingListState>()((set, get) => {
     const userId = useAuthStore.getState().user?.id;
     if (!userId) throw new Error(feedback().loginRequired.shoppingList);
     const items = await getShoppingList(userId);
+    if (useAuthStore.getState().user?.id !== userId) throw new Error('account_changed');
     set({ items, loaded: true });
   };
 
   const persist = async (items: ShoppingItem[]) => {
+    // Lista salva não carregada (leitura falhou): gravar agora trocaria a lista inteira.
+    if (!get().loaded) throw new Error('shopping_list_not_loaded');
     const previous = get().items;
     set({ items });
     const userId = useAuthStore.getState().user?.id;
@@ -50,10 +53,13 @@ export const useShoppingListStore = create<ShoppingListState>()((set, get) => {
 
     fetch: async (userId) => {
       try {
-        set({ items: await getShoppingList(userId), loaded: true });
+        const items = await getShoppingList(userId);
+        // Resposta de outra conta (troca de usuário no meio do caminho): descarta.
+        if (useAuthStore.getState().user?.id !== userId) return;
+        set({ items, loaded: true });
       } catch (error) {
+        // Continua "não carregada": ensureLoaded tenta de novo antes da próxima gravação.
         console.error('Error fetching shopping list:', error);
-        set({ loaded: true });
       }
     },
 

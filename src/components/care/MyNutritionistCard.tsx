@@ -6,12 +6,16 @@ import { useToastStore } from '../../store/toast';
 import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { useTranslation } from '../../hooks/useTranslation';
 import { CareError, endLink, listMyNutritionists, redeemInvite, type CareLink } from '../../services/care';
+import { usePremiumStore } from '../../store/premium';
 import { Avatar } from './Avatar';
 import { confirmDialog } from '../../store/confirm';
 import { LoadError } from '../common/LoadError';
 import { appLocale } from '../../lib/format';
 
 export function MyNutritionistCard() {
+  // Visitante da demonstração já tem o nutricionista do par e não usa códigos de convite.
+  const isVisitor = usePremiumStore((s) => s.isVisitor);
+  const freePatientLimit = usePremiumStore((s) => s.freePatientLimit);
   const user = useAuthStore((s) => s.user);
   const { showToast } = useToastStore();
   const t = useTranslation();
@@ -70,7 +74,7 @@ export function MyNutritionistCard() {
       await load();
     } catch (error) {
       const key = error instanceof CareError ? error.code : 'unknown';
-      showToast(t.care.errors[key as keyof typeof t.care.errors] ?? t.care.errors.unknown, 'error');
+      showToast((t.care.errors[key as keyof typeof t.care.errors] ?? t.care.errors.unknown).replace('{max}', String(freePatientLimit)), 'error');
     } finally {
       setBusy(false);
     }
@@ -135,7 +139,7 @@ export function MyNutritionistCard() {
         </div>
       ))}
 
-      {(!links.length || inviteFromUrl) && (
+      {(!links.length || inviteFromUrl) && !isVisitor && (
         <div className="space-y-3">
           {inviteFromUrl ? (
             <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">{t.care.inviteFromLink}</p>

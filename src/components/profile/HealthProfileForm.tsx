@@ -166,7 +166,7 @@ export function HealthProfileForm() {
           <div>
             <label className={labelClass} htmlFor="hp-birth">{h.birthDate}</label>
             <input id="hp-birth" type="date" className={inputClass} value={form.birth_date ?? ''}
-              max={new Date().toISOString().slice(0, 10)}
+              max={new Date().toLocaleDateString('sv-SE')}
               onChange={(e) => set('birth_date', e.target.value || null)} />
           </div>
           <div>

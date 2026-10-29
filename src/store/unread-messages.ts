@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { countUnreadMessages } from '../services/messages';
+import { useAuthStore } from './auth';
 
 interface UnreadMessagesState {
   count: number;
@@ -12,7 +13,9 @@ export const useUnreadMessagesStore = create<UnreadMessagesState>((set) => ({
   count: 0,
   refresh: async (userId) => {
     try {
-      set({ count: await countUnreadMessages(userId) });
+      const count = await countUnreadMessages(userId);
+      // Resposta de outra conta (troca de usuário no meio do caminho): descarta.
+      if (useAuthStore.getState().user?.id === userId) set({ count });
     } catch (error) {
       console.error('Error counting unread messages:', error);
     }
