@@ -15,6 +15,7 @@
 # - A política completa de conteúdo começa em Report-Only (só avisa no console) para não
 #   quebrar login, Supabase ou Stripe; depois de conferida, vira Content-Security-Policy.
 /*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()

@@ -10,6 +10,9 @@
   },
   // Domínio próprio (zona na mesma conta da Cloudflare). O "www" abre o app, que leva ao endereço
   // sem "www" (src/main.tsx).
+  // Com domínio próprio o workers.dev desliga sozinho: fica ligado para os links antigos (e-mails,
+  // app instalado), e o app leva quem chega por ele ao domínio próprio.
+  "workers_dev": true,
   "routes": [
     { "pattern": "nutrichef.app.br", "custom_domain": true },
     { "pattern": "www.nutrichef.app.br", "custom_domain": true }
