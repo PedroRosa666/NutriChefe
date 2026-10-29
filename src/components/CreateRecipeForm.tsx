@@ -12,6 +12,7 @@ import { RecipeIngredientsField } from './recipe/RecipeIngredientsField';
 import { RecipeNutritionField } from './recipe/RecipeNutritionField';
 import { emptyIngredient, nutritionDraftFrom, nutritionDraftMessage, readNutritionDraft, type NutritionDraft } from '../lib/recipe-nutrition';
 import { useToastStore } from '../store/toast';
+import { useIngredientCalc } from '../hooks/useIngredientCalc';
 
 type CategoryKey = keyof ReturnType<typeof useTranslation>['categories'];
 
@@ -88,6 +89,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
   const [recipe, setRecipe] = useState<Partial<Recipe>>(INITIAL_RECIPE);
   const [rows, setRows] = useState<RecipeIngredient[]>(() => [emptyIngredient()]);
   const [nutrition, setNutrition] = useState<NutritionDraft>(initialNutrition);
+  const calc = useIngredientCalc(rows);
   // Mesmo envio repetido (rede caiu na resposta): o banco não cria duas receitas.
   const operationId = useRef<string | null>(null);
   const showToast = useToastStore((s) => s.showToast);
@@ -331,7 +333,13 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
 
           {/* Ingredientes */}
           <FormSection title={t.recipe.ingredients}>
-            <RecipeIngredientsField rows={rows} onChange={setRows} inputClass={inputClass} />
+            <RecipeIngredientsField
+              rows={rows}
+              onChange={setRows}
+              inputClass={inputClass}
+              calc={nutrition.source === 'ingredients'}
+              issues={calc.issueByIndex}
+            />
           </FormSection>
 
           {/* Modo de preparo */}
@@ -384,7 +392,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
 
           {/* Rendimento, porção e valores nutricionais */}
           <FormSection title={`${t.recipeForm.yieldTitle} · ${t.recipe.nutritionFacts}`}>
-            <RecipeNutritionField draft={nutrition} onChange={setNutrition} inputClass={inputClass} labelClass={labelClass} />
+            <RecipeNutritionField draft={nutrition} onChange={setNutrition} inputClass={inputClass} labelClass={labelClass} calc={calc} />
           </FormSection>
 
           {/* Botão salvar */}

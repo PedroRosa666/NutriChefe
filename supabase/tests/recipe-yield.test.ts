@@ -268,7 +268,7 @@ describe('app antigo (grava direto na tabela)', () => {
     expect(await errorOf(asUser(db, NUTRI, (tx) => tx.query(`INSERT INTO recipe_ingredients (recipe_id, position, text) VALUES ($1, 9, 'x')`, [id])))).toContain('permission denied');
   });
 
-  it('app_min_client sobe para 4', async () => {
-    expect((await db.query<{ v: number }>(`SELECT app_min_client() AS v`)).rows[0].v).toBe(4);
+  it('app_min_client sobe para 4 ou mais', async () => {
+    expect((await db.query<{ v: number }>(`SELECT app_min_client() AS v`)).rows[0].v).toBeGreaterThanOrEqual(4);
   });
 });

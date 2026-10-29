@@ -5,7 +5,8 @@ import { useFoodsStore } from '../../store/foods';
 import { useToastStore } from '../../store/toast';
 import { useTranslation } from '../../hooks/useTranslation';
 import { searchFoods } from '../../lib/food-math';
-import { RECIPE_LIMITS, emptyIngredient } from '../../lib/recipe-nutrition';
+import { RECIPE_LIMITS, emptyIngredient, parseAmount, suggestGrams, type LineIssue } from '../../lib/recipe-nutrition';
+import { parseIngredient } from '../../lib/ingredients';
 import { cn } from '../../lib/utils';
 import type { Food } from '../../services/foods';
 import type { RecipeIngredient } from '../../types/recipe';
@@ -14,18 +15,52 @@ interface RecipeIngredientsFieldProps {
   rows: RecipeIngredient[];
   onChange: (rows: RecipeIngredient[]) => void;
   inputClass: string;
+  /** Valores calculados pelos ingredientes: mostra o que falta em cada linha. */
+  calc?: boolean;
+  /** Pendência de cada linha no cálculo (pelo índice). */
+  issues?: Map<number, LineIssue>;
 }
 
 /**
  * Ingredientes da receita: cada linha é texto livre (nada impede salvar porque o catálogo não tem o
  * ingrediente), com alimento do catálogo e observação opcionais.
  */
-export function RecipeIngredientsField({ rows, onChange, inputClass }: RecipeIngredientsFieldProps) {
+export function RecipeIngredientsField({ rows, onChange, inputClass, calc, issues }: RecipeIngredientsFieldProps) {
   const t = useTranslation();
   const f = t.recipeForm;
   const [linking, setLinking] = useState<number | null>(null);
+  const { foods, fetch } = useFoodsStore();
+  const foodsById = useMemo(() => new Map(foods.map((food) => [food.id, food])), [foods]);
+  const anyLinked = rows.some((r) => r.foodId);
+
+  // Medidas caseiras e valores dos alimentos ligados vêm do catálogo.
+  useEffect(() => {
+    if (anyLinked || calc) fetch().catch((error) => console.error('Error loading foods:', error));
+  }, [anyLinked, calc, fetch]);
 
   const update = (index: number, patch: Partial<RecipeIngredient>) => onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+
+  // Texto mudou numa linha ligada: refaz os gramas quando dá para ler ("200 g", medida do alimento).
+  const changeText = (index: number, text: string) => {
+    const row = rows[index];
+    const food = row.foodId ? foodsById.get(row.foodId) : undefined;
+    const suggested = food ? suggestGrams(text, food) : null;
+    update(index, suggested ? { text, grams: suggested.grams, measureLabel: suggested.measureLabel } : { text });
+  };
+
+  const changeMeasure = (index: number, label: string) => {
+    const row = rows[index];
+    const food = row.foodId ? foodsById.get(row.foodId) : undefined;
+    const measure = food?.measures.find((m) => m.label === label);
+    if (!measure) return update(index, { measureLabel: null });
+    const qty = parseIngredient(row.text).quantity ?? 1;
+    update(index, { measureLabel: measure.label, grams: Math.round(qty * measure.grams * 10) / 10 });
+  };
+
+  const changeGrams = (index: number, value: string) => {
+    const n = parseAmount(value);
+    update(index, { grams: n !== null && Number.isFinite(n) && n > 0 ? n : null, measureLabel: null });
+  };
   const remove = (index: number) => {
     setLinking(null);
     onChange(rows.filter((_, i) => i !== index));
@@ -45,7 +80,7 @@ export function RecipeIngredientsField({ rows, onChange, inputClass }: RecipeIng
               type="text"
               value={row.text}
               maxLength={RECIPE_LIMITS.ingredientText}
-              onChange={(e) => update(index, { text: e.target.value })}
+              onChange={(e) => changeText(index, e.target.value)}
               className={cn(inputClass, 'flex-1')}
               placeholder={t.recipe.example}
               aria-label={`${t.recipe.ingredients} ${index + 1}`}
@@ -81,10 +116,44 @@ export function RecipeIngredientsField({ rows, onChange, inputClass }: RecipeIng
             {row.foodId && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">
                 {f.linkedFood.replace('{name}', row.foodName ?? '…')}
-                <button type="button" onClick={() => update(index, { foodId: null, foodName: null })} aria-label={f.unlinkFood} className="rounded-full p-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-800/40">
+                <button
+                  type="button"
+                  onClick={() => update(index, { foodId: null, foodName: null, grams: null, measureLabel: null })}
+                  aria-label={f.unlinkFood}
+                  className="rounded-full p-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-800/40"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </span>
+            )}
+            {row.foodId && (
+              <GramsInput
+                key={`${row.foodId}-${row.grams ?? ''}`}
+                grams={row.grams ?? null}
+                label={`${f.grams} ${index + 1}`}
+                onCommit={(value) => changeGrams(index, value)}
+              />
+            )}
+            {row.foodId && (foodsById.get(row.foodId)?.measures.length ?? 0) > 0 && (
+              <select
+                value={row.measureLabel ?? ''}
+                onChange={(e) => changeMeasure(index, e.target.value)}
+                aria-label={`${f.measure} ${index + 1}`}
+                className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="">{f.gramsOnly}</option>
+                {foodsById.get(row.foodId)!.measures.map((m) => (
+                  <option key={m.label} value={m.label}>
+                    {m.label} ({m.grams} g)
+                  </option>
+                ))}
+              </select>
+            )}
+            {calc && (
+              <label className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
+                <input type="checkbox" checked={!!row.excluded} onChange={(e) => update(index, { excluded: e.target.checked })} className="h-3.5 w-3.5 accent-emerald-600" />
+                {f.excluded}
+              </label>
             )}
             <input
               type="text"
@@ -96,12 +165,25 @@ export function RecipeIngredientsField({ rows, onChange, inputClass }: RecipeIng
               className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-xs text-slate-600 outline-none focus:border-slate-200 focus:bg-white dark:text-slate-300 dark:focus:border-slate-700 dark:focus:bg-slate-900"
             />
           </div>
+          {calc && issues?.has(index) && !row.excluded && (
+            <p className="pl-9 text-xs text-amber-700 dark:text-amber-300">
+              {(issues.get(index) === 'no_food' ? f.issueNoFood : f.issueNoGrams).replace('{n}', String(index + 1))}
+            </p>
+          )}
           {linking === index && (
             <FoodLinkPicker
               initialQuery={row.text}
               inputClass={inputClass}
               onPick={(food) => {
-                update(index, { foodId: food.id, foodName: food.name, text: row.text.trim() ? row.text : food.name });
+                const text = row.text.trim() ? row.text : food.name;
+                const suggested = suggestGrams(text, food);
+                update(index, {
+                  foodId: food.id,
+                  foodName: food.name,
+                  text,
+                  grams: suggested?.grams ?? null,
+                  measureLabel: suggested?.measureLabel ?? null,
+                });
                 setLinking(null);
               }}
               onClose={() => setLinking(null)}
@@ -120,6 +202,25 @@ export function RecipeIngredientsField({ rows, onChange, inputClass }: RecipeIng
       </button>
       {rows.length >= RECIPE_LIMITS.ingredients && <p className="text-xs text-amber-700 dark:text-amber-300">{f.tooManyIngredients}</p>}
     </div>
+  );
+}
+
+/** Gramas da linha: aceita "1,5" e "1/2"; grava ao sair do campo. */
+function GramsInput({ grams, label, onCommit }: { grams: number | null; label: string; onCommit: (value: string) => void }) {
+  const [value, setValue] = useState(grams === null ? '' : String(grams).replace('.', ','));
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
+      <input
+        value={value}
+        inputMode="decimal"
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => onCommit(value)}
+        aria-label={label}
+        placeholder="—"
+        className="w-16 rounded-md border border-slate-200 bg-white px-1.5 py-1 text-right text-xs dark:border-slate-700 dark:bg-slate-900"
+      />
+      g
+    </span>
   );
 }
 

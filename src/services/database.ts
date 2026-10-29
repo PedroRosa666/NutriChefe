@@ -1,7 +1,7 @@
 import type { User as AuthUser } from '@supabase/supabase-js';
 import { sqlArg, supabase } from '../lib/supabase';
 import type { Recipe, RecipeIngredient } from '../types/recipe';
-import { NUTRIENT_KEYS, type DeclaredNutrition, type NutritionBasis, type NutritionStatus } from '../lib/recipe-nutrition';
+import { NUTRIENT_KEYS, type DeclaredNutrition, type NutritionBasis, type NutritionSource, type NutritionStatus } from '../lib/recipe-nutrition';
 import { parseIngredient } from '../lib/ingredients';
 import { PUBLIC_PROFILE_COLUMNS } from '../lib/profile-columns';
 import { feedback } from '../lib/i18n/current';
@@ -31,6 +31,8 @@ interface DatabaseRecipe {
   nutrition_declared?: Record<string, unknown> | null;
   nutrition_basis?: NutritionBasis;
   nutrition_status?: NutritionStatus;
+  nutrition_source?: NutritionSource;
+  nutrition_needs_review?: boolean;
   recipe_version?: number;
   recipe_ingredients?: Array<{
     id: string;
@@ -40,6 +42,10 @@ interface DatabaseRecipe {
     quantity: number | string | null;
     unit: string | null;
     note: string | null;
+    grams: number | string | null;
+    measure_label: string | null;
+    excluded: boolean | null;
+    line_nutrients: Record<string, unknown> | null;
     foods: { name: string } | null;
   }>;
   profiles?: {
@@ -64,7 +70,7 @@ interface DatabaseRecipe {
 const RECIPE_SELECT = `
   *,
   profiles!recipes_author_id_fkey(full_name, user_type, avatar_url),
-  recipe_ingredients(id, position, text, food_id, quantity, unit, note, foods(name)),
+  recipe_ingredients(id, position, text, food_id, quantity, unit, note, grams, measure_label, excluded, line_nutrients, foods(name)),
   reviews(
     id,
     rating,
@@ -80,7 +86,7 @@ const RECIPE_SELECT = `
 const CARD_SELECT = `
   id, title, description, image, prep_time, difficulty, rating, review_count, category, ingredients,
   nutrition_facts, author_id, created_at, updated_at, premium_only,
-  yield_servings, serving_label, nutrition_basis, nutrition_status,
+  yield_servings, serving_label, nutrition_basis, nutrition_status, nutrition_source, nutrition_needs_review,
   profiles!recipes_author_id_fkey(full_name, user_type, avatar_url)
 `;
 
@@ -144,6 +150,8 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
     nutritionDeclared: dbRecipe.nutrition_declared ? toDeclared(dbRecipe.nutrition_declared) : undefined,
     nutritionBasis: dbRecipe.nutrition_basis ?? 'legacy_unit',
     nutritionStatus: dbRecipe.nutrition_status ?? 'manual_declared',
+    nutritionSource: dbRecipe.nutrition_source ?? 'legacy',
+    nutritionNeedsReview: dbRecipe.nutrition_needs_review === true,
     yieldServings: numberOrNull(dbRecipe.yield_servings),
     servingLabel: dbRecipe.serving_label ?? '',
     servingWeightG: numberOrNull(dbRecipe.serving_weight_g),
@@ -160,6 +168,10 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
         quantity: numberOrNull(row.quantity),
         unit: row.unit,
         note: row.note ?? '',
+        grams: numberOrNull(row.grams),
+        measureLabel: row.measure_label,
+        excluded: row.excluded === true,
+        lineNutrients: row.line_nutrients ? toDeclared(row.line_nutrients) : null,
       })),
     reviews: reviews
       .slice()
@@ -232,6 +244,9 @@ export async function saveRecipe(recipeId: string | null, recipe: RecipeInput, o
       serving_label: recipe.servingLabel ?? '',
       nutrition_basis: basis,
       nutrition: Object.fromEntries(NUTRIENT_KEYS.map((k) => [k, declared?.[k] ?? null])),
+      // Calculado pelos ingredientes: o banco faz a conta. Cópia de receita antiga: à mão.
+      nutrition_source: recipe.nutritionSource === 'ingredients' ? 'ingredients' : 'manual',
+      confirm_manual: recipe.confirmManual === true,
     },
     p_ingredients: ingredientRowsFor(recipe).map((row) => ({
       id: row.id ?? null,
@@ -240,6 +255,9 @@ export async function saveRecipe(recipeId: string | null, recipe: RecipeInput, o
       quantity: row.quantity,
       unit: row.unit,
       note: row.note,
+      grams: row.grams ?? null,
+      measure_label: row.measureLabel ?? null,
+      excluded: row.excluded === true,
     })),
     p_operation: sqlArg(operationId ?? null),
   });

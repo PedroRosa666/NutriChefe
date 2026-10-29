@@ -1651,8 +1651,12 @@ export type Database = {
       recipe_ingredients: {
         Row: {
           created_at: string
+          excluded: boolean
           food_id: string | null
+          grams: number | null
           id: string
+          line_nutrients: Json | null
+          measure_label: string | null
           note: string
           position: number
           quantity: number | null
@@ -1662,8 +1666,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          excluded?: boolean
           food_id?: string | null
+          grams?: number | null
           id?: string
+          line_nutrients?: Json | null
+          measure_label?: string | null
           note?: string
           position: number
           quantity?: number | null
@@ -1673,8 +1681,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          excluded?: boolean
           food_id?: string | null
+          grams?: number | null
           id?: string
+          line_nutrients?: Json | null
+          measure_label?: string | null
           note?: string
           position?: number
           quantity?: number | null
@@ -1715,6 +1727,7 @@ export type Database = {
           nutrition_basis: string
           nutrition_declared: Json
           nutrition_facts: Json
+          nutrition_needs_review: boolean
           nutrition_reviewed_at: string | null
           nutrition_reviewed_by: string | null
           nutrition_source: string
@@ -1745,6 +1758,7 @@ export type Database = {
           nutrition_basis?: string
           nutrition_declared?: Json
           nutrition_facts: Json
+          nutrition_needs_review?: boolean
           nutrition_reviewed_at?: string | null
           nutrition_reviewed_by?: string | null
           nutrition_source?: string
@@ -1775,6 +1789,7 @@ export type Database = {
           nutrition_basis?: string
           nutrition_declared?: Json
           nutrition_facts?: Json
+          nutrition_needs_review?: boolean
           nutrition_reviewed_at?: string | null
           nutrition_reviewed_by?: string | null
           nutrition_source?: string
@@ -2184,6 +2199,10 @@ export type Database = {
         Args: { p_feature: string; p_user: string }
         Returns: boolean
       }
+      ingredient_nutrients: {
+        Args: { p_food: string; p_grams: number }
+        Returns: Json
+      }
       is_admin: { Args: never; Returns: boolean }
       is_my_nutritionist: { Args: { p_nutritionist: string }; Returns: boolean }
       is_my_patient: { Args: { p_client: string }; Returns: boolean }
@@ -2452,6 +2471,7 @@ export type Database = {
           nutrition_basis: string
           nutrition_declared: Json
           nutrition_facts: Json
+          nutrition_needs_review: boolean
           nutrition_reviewed_at: string | null
           nutrition_reviewed_by: string | null
           nutrition_source: string

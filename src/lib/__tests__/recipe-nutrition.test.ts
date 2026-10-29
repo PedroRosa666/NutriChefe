@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  calcFromIngredients,
   declaredStatus,
   hasUsableNutrition,
   ingredientFactor,
@@ -7,11 +8,13 @@ import {
   parseAmount,
   perServing,
   readNutritionDraft,
+  ingredientSignature,
+  suggestGrams,
 } from '../recipe-nutrition';
 import { buildShoppingItems } from '../ingredients';
 import { generateWeeklyPlanDetailed } from '../meal-plan-generator';
 import { defaultMeals } from '../plan-meals';
-import type { Recipe } from '../../types/recipe';
+import type { Recipe, RecipeIngredient } from '../../types/recipe';
 
 const draft = (extra: Partial<ReturnType<typeof nutritionDraftFrom>> = {}) => ({ ...nutritionDraftFrom({ nutritionDeclared: {} }), ...extra });
 
@@ -92,5 +95,53 @@ describe('ajuste automático', () => {
     const { items } = generateWeeklyPlanDetailed({ recipes, dailyCalories: 2000, allergies: [], preferences: [], meals: defaultMeals(names), seed: 3 });
     expect(items.length).toBeGreaterThan(0);
     expect(new Set(items.map((i) => i.recipe_id))).toEqual(new Set(['ok', 'legacy']));
+  });
+});
+
+describe('REC B: cálculo pelos ingredientes', () => {
+  const flour = { kcal: 360, protein: 10, carbs: 75, fat: 1.4, fiber: 2.3, measures: [{ label: 'xícara (chá)', grams: 120 }] };
+  const milk = { kcal: 60, protein: 3, carbs: 4.5, fat: 3.2, fiber: 0, measures: [] };
+  const foods = new Map([['flour', flour], ['milk', milk]]);
+  const row = (text: string, extra: Partial<RecipeIngredient> = {}): RecipeIngredient => ({ text, foodId: null, quantity: null, unit: null, note: '', ...extra });
+
+  it('mesma conta do banco: 400 g de farinha + 400 g de leite = 1680 kcal; ÷ 4 porções = 420', () => {
+    const calc = calcFromIngredients([row('400 g de farinha', { foodId: 'flour', grams: 400 }), row('leite', { foodId: 'milk', grams: 400 })], foods);
+    expect(calc.status).toBe('complete');
+    expect(calc.total.calories).toBe(1680);
+    expect(perServing(calc.total, 'whole_recipe', 4).calories).toBe(420);
+  });
+
+  it('linha sem alimento ou sem gramas fica pendente; "não entra no cálculo" é decisão explícita', () => {
+    const rows = [row('farinha', { foodId: 'flour', grams: 100 }), row('1 ovo'), row('leite', { foodId: 'milk' }), row('Sal a gosto', { excluded: true })];
+    const calc = calcFromIngredients(rows, foods);
+    expect(calc.status).toBe('partial');
+    expect(calc.issues).toEqual([{ index: 1, issue: 'no_food' }, { index: 2, issue: 'no_grams' }]);
+    expect(calc.total.calories).toBe(360);
+    expect(calcFromIngredients([row('Sal a gosto')], foods)).toMatchObject({ status: 'unknown', total: {} });
+  });
+
+  it('gramas: g e kg direto; medida caseira só pela medida do alimento; ml nunca vira g', () => {
+    expect(suggestGrams('200 g de farinha', flour)).toEqual({ grams: 200, measureLabel: null });
+    expect(suggestGrams('0,5 kg de farinha', flour)).toEqual({ grams: 500, measureLabel: null });
+    expect(suggestGrams('2 xícaras de farinha', flour)).toEqual({ grams: 240, measureLabel: 'xícara (chá)' });
+    expect(suggestGrams('2 xícaras de leite', milk)).toBeNull();
+    expect(suggestGrams('200 ml de leite', milk)).toBeNull();
+    expect(suggestGrams('Sal a gosto', flour)).toBeNull();
+  });
+
+  it('calculado exige rendimento; valores à mão em revisão saem do ajuste automático', () => {
+    expect(readNutritionDraft(draft({ source: 'ingredients' }))).toMatchObject({ ok: false, error: 'calcNeedsYield' });
+    expect(readNutritionDraft(draft({ source: 'ingredients', yieldServings: '4' }))).toMatchObject({
+      ok: true,
+      value: { nutritionSource: 'ingredients', nutritionBasis: 'whole_recipe', nutritionDeclared: {} },
+    });
+    expect(hasUsableNutrition({ nutritionStatus: 'manual_declared', nutritionNeedsReview: true })).toBe(false);
+    expect(hasUsableNutrition({ nutritionStatus: 'complete' })).toBe(true);
+  });
+
+  it('REC 09: mudar ingrediente muda a assinatura; mudar a observação não', () => {
+    const a = [row('200 g de farinha', { foodId: 'flour', grams: 200 })];
+    expect(ingredientSignature(a)).not.toBe(ingredientSignature([{ ...a[0], grams: 250 }]));
+    expect(ingredientSignature(a)).toBe(ingredientSignature([{ ...a[0], note: 'peneirada' }]));
   });
 });

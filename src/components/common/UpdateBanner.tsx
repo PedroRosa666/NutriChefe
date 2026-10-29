@@ -8,8 +8,9 @@ import { useTranslation } from '../../hooks/useTranslation';
  * dos dados (a função app_min_client() do banco devolve a mínima aceita).
  * 3: refeições personalizadas (20261106120000_custom_meals.sql).
  * 4: rendimento, porção e ingredientes das receitas (20261107120000_recipe_yield.sql).
+ * 5: valores calculados pelos ingredientes (20261108120000_recipe_calc.sql).
  */
-export const CLIENT_CONTRACT = 4;
+export const CLIENT_CONTRACT = 5;
 
 // Confere ao abrir e ao voltar para o app, no máximo a cada 10 minutos.
 const CHECK_EVERY_MS = 10 * 60_000;

@@ -7,8 +7,10 @@ export default defineConfig({
   test: {
     // Testes nunca falam com o Supabase de verdade: valores fictícios, mesmo sem .env.
     env: { VITE_SUPABASE_URL: 'http://127.0.0.1:9', VITE_SUPABASE_ANON_KEY: 'test-placeholder' },
-    // Os testes de banco sobem um Postgres em memória por arquivo: com a máquina ocupada, 5 s não bastam.
+    // Os testes de banco sobem um Postgres em memória por arquivo e aplicam todas as migrations no
+    // beforeAll: com a máquina ocupada (arquivos em paralelo), 5 s por teste e 10 s por preparo não bastam.
     testTimeout: 20_000,
+    hookTimeout: 60_000,
   },
   optimizeDeps: {
     exclude: ['lucide-react'],

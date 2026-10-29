@@ -7,6 +7,7 @@ import {
   parseAmount,
   perServing,
   readNutritionDraft,
+  type IngredientCalc,
   type NutritionBasis,
   type NutritionDraft,
 } from '../../lib/recipe-nutrition';
@@ -20,10 +21,14 @@ interface RecipeNutritionFieldProps {
   legacy?: boolean;
   inputClass: string;
   labelClass: string;
+  /** Prévia do cálculo pelos ingredientes (useIngredientCalc). */
+  calc: IngredientCalc;
+  /** Valores à mão que precisam de revisão (ingredientes ou rendimento mudaram). */
+  needsReview?: boolean;
 }
 
 /** Rendimento, porção e valores nutricionais com a base declarada (por porção ou receita inteira). */
-export function RecipeNutritionField({ draft, onChange, legacy, inputClass, labelClass }: RecipeNutritionFieldProps) {
+export function RecipeNutritionField({ draft, onChange, legacy, inputClass, labelClass, calc, needsReview }: RecipeNutritionFieldProps) {
   const t = useTranslation();
   const f = t.recipeForm;
   const fid = useId();
@@ -40,6 +45,12 @@ export function RecipeNutritionField({ draft, onChange, legacy, inputClass, labe
           return v === undefined ? [] : [`${t.profile.nutritionGoalsnames[k]} ${v.toLocaleString('pt-BR')} ${UNITS[k]}`];
         })
       : [];
+
+  const format = (values: Partial<Record<(typeof NUTRIENT_KEYS)[number], number>>) =>
+    NUTRIENT_KEYS.flatMap((k) =>
+      values[k] === undefined ? [] : [`${t.profile.nutritionGoalsnames[k]} ${values[k]!.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} ${UNITS[k]}`]
+    ).join(' · ');
+  const calcPerServing = yieldValue && Number.isFinite(yieldValue) && yieldValue > 0 ? perServing(calc.total, 'whole_recipe', yieldValue) : null;
 
   const bases: NutritionBasis[] = legacy ? ['legacy_unit', 'per_serving', 'whole_recipe'] : ['per_serving', 'whole_recipe'];
   const basisLabel: Record<NutritionBasis, string> = {
@@ -90,54 +101,102 @@ export function RecipeNutritionField({ draft, onChange, legacy, inputClass, labe
       </div>
 
       <fieldset className="space-y-2">
-        <legend className={labelClass}>{f.basisTitle}</legend>
+        <legend className={labelClass}>{f.sourceTitle}</legend>
         <div className="flex flex-wrap gap-2 pt-1">
-          {bases.map((basis) => (
+          {(['manual', 'ingredients'] as const).map((source) => (
             <label
-              key={basis}
+              key={source}
               className={cn(
                 'inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
-                draft.basis === basis
+                draft.source === source
                   ? 'border-emerald-500 bg-emerald-50 font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200'
                   : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
               )}
             >
-              <input type="radio" name={`${fid}-basis`} className="sr-only" checked={draft.basis === basis} onChange={() => set('basis', basis)} />
-              {basisLabel[basis]}
+              <input type="radio" name={`${fid}-source`} className="sr-only" checked={draft.source === source} onChange={() => set('source', source)} />
+              {source === 'manual' ? f.sourceManual : f.sourceIngredients}
             </label>
           ))}
         </div>
-        {draft.basis === 'legacy_unit' && <p className="text-xs text-amber-700 dark:text-amber-300">{f.basisLegacyHint}</p>}
-        {draft.basis === 'whole_recipe' && yieldValue === null && (
-          <p className="text-xs text-red-600 dark:text-red-400">{f.wholeNeedsYield}</p>
-        )}
       </fieldset>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-        {NUTRIENT_KEYS.map((key) => (
-          <div key={key} className="space-y-1.5">
-            <label htmlFor={`${fid}-n-${key}`} className="block text-xs font-medium text-slate-600 dark:text-slate-200 sm:text-sm">
-              {t.profile.nutritionGoalsnames[key]}
-            </label>
-            <div className="relative">
-              <input
-                id={`${fid}-n-${key}`}
-                inputMode="decimal"
-                value={draft.values[key]}
-                onChange={(e) => set('values', { ...draft.values, [key]: e.target.value })}
-                placeholder="—"
-                className={cn(inputClass, 'pr-10')}
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 dark:text-slate-500">{UNITS[key]}</span>
+      {draft.source === 'ingredients' ? (
+        <div className="space-y-2 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3 text-sm dark:border-emerald-900/40 dark:bg-emerald-950/20">
+          <p className="text-xs text-slate-600 dark:text-slate-300">{f.calcHint}</p>
+          {yieldValue === null && <p className="text-xs text-red-600 dark:text-red-400">{f.calcNeedsYield}</p>}
+          <p
+            className={cn(
+              'font-medium',
+              calc.status === 'complete' ? 'text-emerald-800 dark:text-emerald-200' : 'text-amber-800 dark:text-amber-200'
+            )}
+          >
+            {calc.status === 'complete'
+              ? f.calcComplete.replace('{n}', String(calc.counted))
+              : calc.status === 'partial'
+                ? f.calcPartial.replace('{n}', String(calc.issues.length))
+                : f.calcUnknown}
+          </p>
+          {calc.counted > 0 && (
+            <>
+              <p className="text-slate-700 dark:text-slate-200">{f.calcWhole.replace('{values}', format(calc.total))}</p>
+              {calcPerServing && <p className="font-semibold text-slate-900 dark:text-white">{f.calcPerServing.replace('{values}', format(calcPerServing))}</p>}
+            </>
+          )}
+        </div>
+      ) : (
+        <>
+          {needsReview && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">{f.needsReview}</p>}
+          <fieldset className="space-y-2">
+            <legend className={labelClass}>{f.basisTitle}</legend>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {bases.map((basis) => (
+                <label
+                  key={basis}
+                  className={cn(
+                    'inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition',
+                    draft.basis === basis
+                      ? 'border-emerald-500 bg-emerald-50 font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                  )}
+                >
+                  <input type="radio" name={`${fid}-basis`} className="sr-only" checked={draft.basis === basis} onChange={() => set('basis', basis)} />
+                  {basisLabel[basis]}
+                </label>
+              ))}
             </div>
+            {draft.basis === 'legacy_unit' && <p className="text-xs text-amber-700 dark:text-amber-300">{f.basisLegacyHint}</p>}
+            {draft.basis === 'whole_recipe' && yieldValue === null && (
+              <p className="text-xs text-red-600 dark:text-red-400">{f.wholeNeedsYield}</p>
+            )}
+          </fieldset>
+
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+            {NUTRIENT_KEYS.map((key) => (
+              <div key={key} className="space-y-1.5">
+                <label htmlFor={`${fid}-n-${key}`} className="block text-xs font-medium text-slate-600 dark:text-slate-200 sm:text-sm">
+                  {t.profile.nutritionGoalsnames[key]}
+                </label>
+                <div className="relative">
+                  <input
+                    id={`${fid}-n-${key}`}
+                    inputMode="decimal"
+                    value={draft.values[key]}
+                    onChange={(e) => set('values', { ...draft.values, [key]: e.target.value })}
+                    placeholder="—"
+                    className={cn(inputClass, 'pr-10')}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 dark:text-slate-500">{UNITS[key]}</span>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <p className="text-xs text-slate-500 dark:text-slate-400">{f.unknownHint}</p>
-      {preview.length > 0 && (
-        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200">
-          {f.perServingPreview.replace('{values}', preview.join(' · '))}
-        </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{f.unknownHint}</p>
+          {preview.length > 0 && (
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200">
+              {f.perServingPreview.replace('{values}', preview.join(' · '))}
+            </p>
+          )}
+        </>
       )}
     </div>
   );

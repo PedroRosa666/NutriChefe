@@ -1,8 +1,17 @@
 import React, { useRef, useState, useId } from 'react';
 import { X, Plus, Minus, Clock, Image, FileText, UtensilsCrossed, ListOrdered, Activity } from 'lucide-react';
 import { useToastStore } from '../../store/toast';
+import { useIngredientCalc } from '../../hooks/useIngredientCalc';
+import { confirmDialog } from '../../store/confirm';
 import { ingredientRowsFor } from '../../services/database';
-import { emptyIngredient, nutritionDraftFrom, nutritionDraftMessage, readNutritionDraft, type NutritionDraft } from '../../lib/recipe-nutrition';
+import {
+  emptyIngredient,
+  ingredientSignature,
+  nutritionDraftFrom,
+  nutritionDraftMessage,
+  readNutritionDraft,
+  type NutritionDraft,
+} from '../../lib/recipe-nutrition';
 import { RecipeIngredientsField } from './RecipeIngredientsField';
 import { RecipeNutritionField } from './RecipeNutritionField';
 import { useRecipesStore } from '../../store/recipes';
@@ -71,6 +80,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
     return list.length ? list : [emptyIngredient()];
   });
   const [nutrition, setNutrition] = useState<NutritionDraft>(() => nutritionDraftFrom(recipe));
+  const calc = useIngredientCalc(rows);
   const operationId = useRef<string | null>(null);
   const showToast = useToastStore((s) => s.showToast);
 
@@ -84,7 +94,25 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
       return;
     }
     const ingredientRows = rows.filter((r) => r.text.trim());
-    const updated: Recipe = { ...editedRecipe, ...read.value, ingredientRows, ingredients: ingredientRows.map((r) => r.text.trim()) };
+    // Valores à mão e ingredientes ou rendimento mudaram (sem mudar os valores): o autor confirma
+    // se continuam certos; se não, a receita fica "em revisão" (REC 09).
+    const original = nutritionDraftFrom(recipe);
+    const valuesKept = JSON.stringify(nutrition.values) === JSON.stringify(original.values) && nutrition.basis === original.basis;
+    const changed =
+      ingredientSignature(ingredientRows) !== ingredientSignature(ingredientRowsFor(recipe)) ||
+      (read.value.yieldServings ?? null) !== (recipe.yieldServings ?? null) ||
+      !!recipe.nutritionNeedsReview;
+    const confirmManual =
+      read.value.nutritionSource === 'manual' && recipe.nutritionSource !== 'ingredients' && changed && valuesKept
+        ? await confirmDialog(t.recipeForm.confirmManual)
+        : false;
+    const updated: Recipe = {
+      ...editedRecipe,
+      ...read.value,
+      ingredientRows,
+      ingredients: ingredientRows.map((r) => r.text.trim()),
+      confirmManual,
+    };
     if (!(await confirmDietCategory(updated, t))) return;
     setLoading(true);
     try {
@@ -293,7 +321,13 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
             title={t.recipe.ingredients}
             icon={<UtensilsCrossed className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
           >
-            <RecipeIngredientsField rows={rows} onChange={setRows} inputClass={inputClass} />
+            <RecipeIngredientsField
+              rows={rows}
+              onChange={setRows}
+              inputClass={inputClass}
+              calc={nutrition.source === 'ingredients'}
+              issues={calc.issueByIndex}
+            />
           </FormSection>
 
           <FormSection
@@ -350,6 +384,8 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
               draft={nutrition}
               onChange={setNutrition}
               legacy={recipe.nutritionBasis === 'legacy_unit'}
+              calc={calc}
+              needsReview={recipe.nutritionNeedsReview}
               inputClass={inputClass}
               labelClass={labelClass}
             />

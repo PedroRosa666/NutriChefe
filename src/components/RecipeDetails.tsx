@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/auth';
 import { useRecipesStore } from '../store/recipes';
+import { useFoodsStore } from '../store/foods';
+import { listFoods } from '../services/foods';
 import { useNutritionTrackingStore } from '../store/nutrition-tracking';
 import { useToastStore } from '../store/toast';
 import { EditRecipeForm } from './recipe/EditRecipeForm';
@@ -168,6 +170,11 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
     if (!user || duplicating) return;
     setDuplicating(true);
     try {
+      // Alimento privado de outra pessoa não pode ser ligado na cópia (o banco recusa): a linha fica
+      // só com o texto e, se a receita é calculada, aparece como pendente para a pessoa ligar outro.
+      await useFoodsStore.getState().fetch();
+      const catalog = useFoodsStore.getState().loaded ? useFoodsStore.getState().foods : await listFoods();
+      const usable = new Set(catalog.filter((food) => food.owner_id === null || food.owner_id === user.id).map((food) => food.id));
       const copy = await createRecipeInDb({
         title: `${recipe.title} ${t.stats.copySuffix}`.slice(0, 200),
         description: recipe.description,
@@ -177,7 +184,12 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
         category: recipe.category,
         ingredients: recipe.ingredients,
         // A cópia leva as linhas e o alimento ligado, sem os ids (o banco cria novos).
-        ingredientRows: recipe.ingredientRows?.map((row) => ({ ...row, id: undefined })),
+        ingredientRows: recipe.ingredientRows?.map((row) =>
+          row.foodId && !usable.has(row.foodId)
+            ? { ...row, id: undefined, foodId: null, foodName: null, grams: null, measureLabel: null }
+            : { ...row, id: undefined }
+        ),
+        nutritionSource: recipe.nutritionSource,
         instructions: recipe.instructions,
         nutritionFacts: recipe.nutritionFacts,
         nutritionDeclared: recipe.nutritionDeclared,
@@ -293,16 +305,23 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
   const ingredientLines = recipe.ingredientRows?.length
     ? recipe.ingredientRows.map((row) => (row.note ? `${row.text} (${row.note})` : row.text))
     : recipe.ingredients;
-  const nutritionNote =
+  const perServingNote = recipe.servingLabel ? t.recipeInfo.perServingOf.replace('{label}', recipe.servingLabel) : t.recipeInfo.perServing;
+  const nutritionNote = [
     recipe.nutritionStatus === 'unknown'
       ? t.recipeInfo.noValues
-      : recipe.nutritionStatus === 'partial'
-        ? t.recipeInfo.partial
-        : recipe.nutritionBasis === 'legacy_unit'
-          ? t.recipeInfo.legacyBasis
-          : recipe.servingLabel
-            ? t.recipeInfo.perServingOf.replace('{label}', recipe.servingLabel)
-            : t.recipeInfo.perServing;
+      : recipe.nutritionSource === 'ingredients'
+        ? recipe.nutritionStatus === 'partial'
+          ? t.recipeInfo.calcPartial
+          : `${perServingNote} · ${t.recipeInfo.calculated}`
+        : recipe.nutritionStatus === 'partial'
+          ? t.recipeInfo.partial
+          : recipe.nutritionBasis === 'legacy_unit'
+            ? t.recipeInfo.legacyBasis
+            : perServingNote,
+    recipe.nutritionNeedsReview ? t.recipeInfo.needsReview : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const yieldText = recipe.yieldServings
     ? recipe.yieldServings === 1
       ? t.recipeInfo.yieldsOne

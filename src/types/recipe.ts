@@ -1,4 +1,4 @@
-import type { DeclaredNutrition, NutrientKey, NutritionBasis, NutritionStatus } from '../lib/recipe-nutrition';
+import type { DeclaredNutrition, NutrientKey, NutritionBasis, NutritionSource, NutritionStatus } from '../lib/recipe-nutrition';
 
 /** Linha de ingrediente (recipe_ingredients): texto do autor e, se houver, o alimento do catálogo. */
 export interface RecipeIngredient {
@@ -10,6 +10,14 @@ export interface RecipeIngredient {
   quantity: number | null;
   unit: string | null;
   note: string;
+  /** Gramas equivalentes (para o cálculo); null = não informado. */
+  grams?: number | null;
+  /** Medida caseira do alimento usada para chegar aos gramas. */
+  measureLabel?: string | null;
+  /** O autor decidiu que a linha não entra no cálculo ("sal a gosto"). */
+  excluded?: boolean;
+  /** O que a linha somou no último cálculo salvo. */
+  lineNutrients?: DeclaredNutrition | null;
 }
 
 export interface Recipe {
@@ -44,6 +52,12 @@ export interface Recipe {
   nutritionDeclared?: DeclaredNutrition;
   nutritionBasis?: NutritionBasis;
   nutritionStatus?: NutritionStatus;
+  /** De onde vêm os valores: à mão, calculados pelos ingredientes ou receita antiga. */
+  nutritionSource?: NutritionSource;
+  /** Valores à mão e ingredientes ou rendimento mudaram depois: o autor precisa revisar. */
+  nutritionNeedsReview?: boolean;
+  /** Só na gravação: o autor confirmou que os valores à mão continuam certos. */
+  confirmManual?: boolean;
   /** Quantas porções o preparo rende; null = não informado. */
   yieldServings?: number | null;
   /** O que é uma porção ("1 fatia"). */
