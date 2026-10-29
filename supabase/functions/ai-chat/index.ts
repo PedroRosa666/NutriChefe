@@ -767,6 +767,18 @@ async function consumeQuota(supabase: any, userId: string, kind: QuotaKind): Pro
   return data === true;
 }
 
+const DEMO_AI_LIMIT = 5;
+
+/** null: não é visitante da demonstração (vale o limite normal). false: o par já usou tudo. */
+async function consumeDemoQuota(supabase: any, userId: string): Promise<boolean | null> {
+  const { data, error } = await supabase.rpc("consume_demo_ai", { p_user: userId, p_limit: DEMO_AI_LIMIT });
+  if (error) {
+    console.error("consume_demo_ai failed", error.message);
+    return null;
+  }
+  return data as boolean | null;
+}
+
 const PLAN_MEALS = ["breakfast", "lunch", "snack", "dinner"] as const;
 const PLAN_MEAL_LABELS: Record<string, string> = {
   breakfast: "café da manhã",
@@ -969,6 +981,15 @@ serve(async (req: Request) => {
     if (!apiKey) return reply({ ok: false, code: "not_configured", limited: true });
 
     const body = await req.json().catch(() => ({}));
+
+    // Demonstração pública (/demo): 5 usos de IA por par, somando todas as ações.
+    if ((await consumeDemoQuota(supabase, user.id)) === false) {
+      return reply({
+        ok: false,
+        code: "rate_limited",
+        error: `Na demonstração a IA responde até ${DEMO_AI_LIMIT} mensagens. Crie uma conta grátis para continuar.`,
+      });
+    }
 
     if (body.action === "photo") {
       if (!(await consumeQuota(supabase, user.id, "photo"))) {

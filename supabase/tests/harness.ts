@@ -35,6 +35,7 @@ const MIGRATIONS = [
   '20261106120000_custom_meals.sql',
   '20261107120000_recipe_yield.sql',
   '20261108120000_recipe_calc.sql',
+  '20261110120000_demo_visitors.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as

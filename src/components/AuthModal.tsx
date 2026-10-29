@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Leaf, Eye, EyeOff } from 'lucide-react';
 import { isEmailNotConfirmedError, useAuthStore } from '../store/auth';
 import { ResendConfirmation } from './auth/ResendConfirmation';
@@ -25,6 +26,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   const [showPassword, setShowPassword] = useState(false);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const t = useTranslation();
+  const navigate = useNavigate();
 
   const { signIn, signUp } = useAuthStore();
 
@@ -316,6 +318,18 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                 {mode === 'signin' ? t.common.signUp : t.common.signIn}
               </button>
             </p>
+
+            <a
+              href="/demo"
+              onClick={(e) => {
+                e.preventDefault();
+                onClose();
+                navigate('/demo');
+              }}
+              className="mt-2 block text-center text-sm font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
+            >
+              {t.demo.authLink}
+            </a>
           </form>
         </div>
       </div>

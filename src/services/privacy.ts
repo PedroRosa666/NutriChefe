@@ -47,6 +47,7 @@ export const NOT_EXPORTED: Record<string, string> = {
   subscription_plans: 'catálogo de preços, sem dados de usuário',
   app_admins: 'controle interno de quem administra o app',
   admin_demo_accounts: 'contas demo do administrador',
+  demo_visitors: 'contas da demonstração pública, apagadas em 24 horas',
   ai_usage: 'contador técnico de uso da IA (limite diário)',
   client_errors: 'registro técnico de erros da tela, apagado em 30 dias',
   push_subscriptions: 'endereço técnico do aparelho para notificações',

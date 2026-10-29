@@ -11,6 +11,7 @@
  */
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.3";
+import { createDemoUser, deleteUser, loginToken, setDemoPremium } from "../_shared/demo-accounts.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -20,49 +21,10 @@ const cors = {
 const reply = (data: Record<string, unknown>) => new Response(JSON.stringify(data), { status: 200, headers: cors });
 
 const demoEmail = (kind: string, adminId: string) => `demo.${kind}.${adminId.slice(0, 8)}@example.com`;
-const randomPassword = () => crypto.randomUUID() + crypto.randomUUID();
-
-async function createDemoUser(supabase: any, email: string, fullName: string, userType: string): Promise<string> {
-  const { data, error } = await supabase.auth.admin.createUser({
-    email,
-    password: randomPassword(),
-    email_confirm: true,
-    user_metadata: { full_name: fullName, user_type: userType },
-  });
-  if (error) throw error;
-  // O perfil é criado pelo gatilho do cadastro; marca como demo logo em seguida.
-  await supabase.from("profiles").update({ is_demo: true }).eq("id", data.user.id);
-  return data.user.id;
-}
-
-async function deleteUser(supabase: any, id: string | null | undefined) {
-  if (!id) return;
-  const { error } = await supabase.auth.admin.deleteUser(id);
-  if (error && !/not.?found/i.test(error.message)) throw error;
-}
 
 async function demoRow(supabase: any, adminId: string) {
   const { data } = await supabase.from("admin_demo_accounts").select("*").eq("admin_id", adminId).maybeSingle();
   return data;
-}
-
-async function planId(supabase: any, feature: string): Promise<string | null> {
-  const { data } = await supabase.from("subscription_plans").select("id, features").eq("is_active", true);
-  const plans = (data ?? []) as { id: string; features: string[] }[];
-  const pick = feature === "nutritionist_pro"
-    ? plans.find((p) => p.features?.includes("nutritionist_pro"))
-    : plans.find((p) => p.features?.includes("ai_mentoring") && !p.features?.includes("nutritionist_pro"));
-  return pick?.id ?? null;
-}
-
-async function setDemoPremium(supabase: any, userId: string, feature: string, on: boolean) {
-  await supabase.from("user_subscriptions").update({ status: "cancelled", updated_at: new Date().toISOString() })
-    .eq("user_id", userId).is("stripe_subscription_id", null).eq("status", "active");
-  if (!on) return;
-  const plan = await planId(supabase, feature);
-  if (!plan) throw new Error("plan_not_found");
-  const { error } = await supabase.from("user_subscriptions").insert({ user_id: userId, plan_id: plan, status: "active", auto_renew: false });
-  if (error) throw error;
 }
 
 async function hasActivePremium(supabase: any, userId: string, feature: string): Promise<boolean> {
@@ -131,12 +93,9 @@ Deno.serve(async (req: Request) => {
         const row = await demoRow(supabase, user.id);
         const id = body.as === "nutritionist" ? row?.nutritionist_id : row?.patient_id;
         if (!id) return reply({ ok: false, error: "no_demo" });
-        const { data: target } = await supabase.auth.admin.getUserById(id);
-        const email = target?.user?.email;
-        if (!email) return reply({ ok: false, error: "no_demo" });
-        const { data, error } = await supabase.auth.admin.generateLink({ type: "magiclink", email });
-        if (error) throw error;
-        return reply({ ok: true, token_hash: data.properties?.hashed_token });
+        const token_hash = await loginToken(supabase, id);
+        if (!token_hash) return reply({ ok: false, error: "no_demo" });
+        return reply({ ok: true, token_hash });
       }
 
       case "demo_toggle": {

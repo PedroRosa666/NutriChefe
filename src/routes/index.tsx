@@ -91,6 +91,10 @@ export const router = createBrowserRouter([
         element: <HomePage />,
       },
       {
+        path: 'demo',
+        element: lazyPage(() => import('../pages/DemoPage'), 'DemoPage'),
+      },
+      {
         path: 'assinatura/sucesso',
         element: lazyPage(() => import('../pages/SubscriptionSuccessPage'), 'SubscriptionSuccessPage'),
       },

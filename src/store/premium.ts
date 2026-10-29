@@ -13,13 +13,15 @@ interface PremiumState {
   activePatients: number;
   freePatientLimit: number;
   isAdmin: boolean;
-  /** Conta de demonstração do Laboratório do administrador. */
+  /** Conta de demonstração (Laboratório do administrador ou demonstração pública). */
   isDemo: boolean;
+  /** Visitante da demonstração pública (/demo). */
+  isVisitor: boolean;
   fetch: (userId: string) => Promise<void>;
   reset: () => void;
 }
 
-const EMPTY = { loaded: false, nutritionistPro: false, aiViaNutritionist: null, activePatients: 0, freePatientLimit: 5, isAdmin: false, isDemo: false };
+const EMPTY = { loaded: false, nutritionistPro: false, aiViaNutritionist: null, activePatients: 0, freePatientLimit: 5, isAdmin: false, isDemo: false, isVisitor: false };
 
 export const usePremiumStore = create<PremiumState>()((set) => ({
   ...EMPTY,
@@ -34,7 +36,7 @@ export const usePremiumStore = create<PremiumState>()((set) => ({
     }
     const p = fromJson<{
       nutritionist_pro?: boolean; ai_via_nutritionist?: string | null; active_patients?: number;
-      free_patient_limit?: number; admin?: boolean; demo?: boolean;
+      free_patient_limit?: number; admin?: boolean; demo?: boolean; visitor?: boolean;
     }>(data);
     set({
       loaded: true,
@@ -44,6 +46,7 @@ export const usePremiumStore = create<PremiumState>()((set) => ({
       freePatientLimit: Number(p.free_patient_limit) || 5,
       isAdmin: p.admin === true,
       isDemo: p.demo === true,
+      isVisitor: p.visitor === true,
     });
   },
   reset: () => set(EMPTY),
