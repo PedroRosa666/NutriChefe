@@ -47,20 +47,6 @@ export async function markMessagesRead(nutritionistId: string, clientId: string)
   if (error) throw error;
 }
 
-/** Mensagens não lidas recebidas pelo nutricionista, por paciente. */
-export async function unreadByPatient(nutritionistId: string): Promise<Map<string, number>> {
-  const { data, error } = await supabase
-    .from('care_messages')
-    .select('client_id')
-    .eq('nutritionist_id', nutritionistId)
-    .neq('sender_id', nutritionistId)
-    .is('read_at', null);
-  if (error) throw error;
-  const counts = new Map<string, number>();
-  for (const row of (data ?? []) as { client_id: string }[]) counts.set(row.client_id, (counts.get(row.client_id) ?? 0) + 1);
-  return counts;
-}
-
 /** Total de mensagens recebidas não lidas, em todas as conversas da pessoa (o RLS limita às dela). */
 export async function countUnreadMessages(userId: string): Promise<number> {
   const { count, error } = await supabase

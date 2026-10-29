@@ -5,9 +5,11 @@ import { useAuthStore } from '../store/auth';
 import { useSubscriptionStore } from '../store/subscription';
 import { usePremiumStore } from '../store/premium';
 import { useRecipesStore } from '../store/recipes';
+import { useTranslation } from '../hooks/useTranslation';
 
 export function SubscriptionSuccessPage() {
   const navigate = useNavigate();
+  const t = useTranslation();
   const userId = useAuthStore((s) => s.user?.id);
 
   // O webhook do Stripe pode levar alguns segundos: busca a assinatura agora e de novo depois.
@@ -42,19 +44,19 @@ export function SubscriptionSuccessPage() {
           </div>
         </div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-          Assinatura Confirmada!
+          {t.pages.paidTitle}
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Sua assinatura foi processada com sucesso. Você agora tem acesso a todos os recursos premium.
+          {t.pages.paidText}
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-500">
-          Redirecionando para seu perfil em 5 segundos...
+          {t.pages.paidRedirect}
         </p>
         <button
           onClick={() => navigate('/perfil')}
           className="mt-6 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
         >
-          Ir para o Perfil Agora
+          {t.pages.paidGoNow}
         </button>
       </div>
     </div>

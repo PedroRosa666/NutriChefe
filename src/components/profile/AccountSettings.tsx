@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { countText } from '../../lib/format';
 import { Link } from 'react-router-dom';
 import { Crown, CreditCard, Download, KeyRound, Loader2, LogOut, ShieldCheck, Trash2, UserCog } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
@@ -258,11 +259,11 @@ export function AccountSettings() {
         {archivedPlans > 0 && (
           <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
             <p className="text-sm font-semibold text-slate-900 dark:text-white">{t.privacy.archivedTitle}</p>
-            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{t.privacy.archivedHint.replace('{n}', String(archivedPlans))}</p>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{countText(t.privacy.archivedHint, archivedPlans)}</p>
             <button
               type="button"
               onClick={async () => {
-                if (!(await confirmDialog(t.privacy.archivedConfirm.replace('{n}', String(archivedPlans))))) return;
+                if (!(await confirmDialog(countText(t.privacy.archivedConfirm, archivedPlans)))) return;
                 try {
                   await deleteArchivedPlans();
                   setArchivedPlans(0);

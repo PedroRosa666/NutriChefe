@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
+import { useTranslation } from '../hooks/useTranslation';
 
 export function SubscriptionCancelledPage() {
   const navigate = useNavigate();
+  const t = useTranslation();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4">
@@ -13,26 +15,26 @@ export function SubscriptionCancelledPage() {
           </div>
         </div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-          Pagamento Cancelado
+          {t.pages.canceledTitle}
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Seu pagamento foi cancelado. Sua assinatura não foi processada.
+          {t.pages.canceledText}
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
-          Você pode tentar novamente a qualquer momento.
+          {t.pages.canceledHint}
         </p>
         <div className="space-y-3">
           <button
             onClick={() => navigate('/mentoria-ia')}
             className="w-full px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
           >
-            Tentar Novamente
+            {t.pages.tryAgain}
           </button>
           <button
             onClick={() => navigate('/')}
             className="w-full px-6 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-700 transition-colors"
           >
-            Voltar ao Início
+            {t.pages.home}
           </button>
         </div>
       </div>

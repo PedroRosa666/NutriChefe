@@ -8,7 +8,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { planDayOf, type MealPlan, type MealPlanItem, type PlanMeal } from '../../services/care';
 import { newOperationId, savePlanDraft } from '../../services/plans';
 import { errorCode, errorText } from '../../lib/app-errors';
-import { appLocale } from '../../lib/format';
+import { appLocale, countText } from '../../lib/format';
 import { toISODate } from '../../store/nutrition-tracking';
 import { generateWeeklyPlanDetailed } from '../../lib/meal-plan-generator';
 import { isItemAvailable, itemsCalories, mealBlocks, nextOptionGroup, scaleItemsToTarget } from '../../lib/plan-items';
@@ -157,7 +157,7 @@ export function MealPlanEditor({
       const gaps = meals.flatMap((m) =>
         m.days.filter((d) => !next.some((i) => i.meal_id === m.id && i.day === d)).map((d) => `${m.name} (${t.plan.days[d]})`)
       );
-      if (result.dropped) showToast(t.plan.aiDropped.replace('{count}', String(result.dropped)), 'warning');
+      if (result.dropped) showToast(countText(t.plan.aiDropped, result.dropped), 'warning');
       else if (gaps.length) showToast(t.plan.aiGaps.replace('{meals}', gaps.slice(0, 6).join(', ') + (gaps.length > 6 ? '…' : '')), 'warning');
       else showToast(t.plan.aiDone, 'success');
     } catch (error) {

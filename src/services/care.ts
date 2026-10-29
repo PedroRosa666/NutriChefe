@@ -124,6 +124,33 @@ export async function listMyNutritionists(clientId: string): Promise<CareLink[]>
   return (data ?? []).map((row) => ({ ...row, person: one(row.person) as PersonSummary })) as CareLink[];
 }
 
+/** Resumo de um paciente para a lista do nutricionista (patients_overview, uma consulta para todos). */
+export interface PatientOverview {
+  clientId: string;
+  lastLog: string | null;
+  lastCheck: string | null;
+  days7: number;
+  kcal7: number;
+  goalKcal: number | null;
+  pendingSwaps: number;
+  unread: number;
+}
+
+export async function patientsOverview(): Promise<PatientOverview[]> {
+  const { data, error } = await supabase.rpc('patients_overview');
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    clientId: r.client_id,
+    lastLog: r.last_log,
+    lastCheck: r.last_check,
+    days7: Number(r.days7) || 0,
+    kcal7: Number(r.kcal7) || 0,
+    goalKcal: r.goal_kcal === null ? null : Number(r.goal_kcal),
+    pendingSwaps: Number(r.pending_swaps) || 0,
+    unread: Number(r.unread_messages) || 0,
+  }));
+}
+
 export async function listMyPatients(nutritionistId: string): Promise<CareLink[]> {
   const { data, error } = await supabase
     .from('nutritionist_clients')

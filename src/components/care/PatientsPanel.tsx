@@ -10,18 +10,16 @@ import {
   CareError,
   createInvite,
   deleteInvite,
-  getPatientData,
   inviteLink,
   listMyPatients,
   listOpenInvites,
+  patientsOverview,
   type CareLink,
   type Invite,
+  type PatientOverview,
 } from '../../services/care';
-import { pendingSwapCounts } from '../../services/swaps';
-import { listChecks, loadAdherence } from '../../services/adherence';
+import { loadAdherence } from '../../services/adherence';
 import { isInactive, lastActivity } from '../../lib/patient-activity';
-import { unreadByPatient } from '../../services/messages';
-import { sumEntries, toISODate } from '../../store/nutrition-tracking';
 import { Avatar } from './Avatar';
 import { PatientDetail } from './PatientDetail';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -37,31 +35,23 @@ interface PatientSummary {
   days7: number;
   avgKcal7: number;
   goalKcal: number | null;
-  /** % de adesão nos últimos 7 dias ao plano deste nutricionista (null sem plano/dados). */
-  adherence: number | null;
 }
 
-/** Resumo dos últimos 7 dias de cada paciente, para a lista. */
-async function summarize(clientId: string, nutritionistId: string): Promise<PatientSummary> {
-  const since = new Date();
-  since.setDate(since.getDate() - 6);
-  const min = toISODate(since);
-  const [data, adherence, checks] = await Promise.all([
-    getPatientData(clientId, 7),
-    loadAdherence(clientId, nutritionistId).catch(() => null),
-    listChecks(clientId, min).catch(() => []),
-  ]);
-  const recent = data.entries.filter((e) => e.date >= min);
-  const days = new Set(recent.map((e) => e.date));
-  const total = sumEntries(recent).calories;
+function toSummary(o: PatientOverview): PatientSummary {
   return {
-    lastLog: data.entries[0]?.date ?? null,
-    lastActive: lastActivity(data.entries[0]?.date, checks[0]?.check_date),
-    days7: days.size,
-    avgKcal7: days.size ? Math.round(total / days.size) : 0,
-    goalKcal: data.goals?.calories ?? null,
-    adherence: adherence && adherence.current.planned >= 6 ? adherence.current.percent : null,
+    lastLog: o.lastLog,
+    lastActive: lastActivity(o.lastLog, o.lastCheck),
+    days7: o.days7,
+    // Média por dia com registro (dias sem registro não puxam a média para baixo).
+    avgKcal7: o.days7 ? Math.round(o.kcal7 / o.days7) : 0,
+    goalKcal: o.goalKcal,
   };
+}
+
+/** % de adesão nos últimos 7 dias ao plano deste nutricionista (null sem plano ou com poucos dados). */
+async function adherenceOf(clientId: string, nutritionistId: string): Promise<number | null> {
+  const result = await loadAdherence(clientId, nutritionistId).catch(() => null);
+  return result && result.current.planned >= 6 ? result.current.percent : null;
 }
 
 export function PatientsPanel() {
@@ -72,6 +62,7 @@ export function PatientsPanel() {
 
   const [patients, setPatients] = useState<CareLink[]>([]);
   const [summaries, setSummaries] = useState<Record<string, PatientSummary>>({});
+  const [adherence, setAdherence] = useState<Record<string, number | null>>({});
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -95,18 +86,14 @@ export function PatientsPanel() {
       setFailed(false);
       setPatients(list);
       setInvites(open);
-      pendingSwapCounts(user.id)
-        .then(setPendingSwaps)
-        .catch((e) => console.error('Error loading swap counts:', e));
-      unreadByPatient(user.id)
-        .then(setUnread)
-        .catch((e) => console.error('Error loading unread messages:', e));
-      // Resumos carregam em paralelo, sem travar a lista.
-      list.forEach((p) =>
-        summarize(p.person.id, user.id)
-          .then((s) => setSummaries((prev) => ({ ...prev, [p.person.id]: s })))
-          .catch((e) => console.error('Error summarizing patient:', e))
-      );
+      // Resumo, trocas pendentes e não lidas de todos os pacientes numa consulta só, sem travar a lista.
+      patientsOverview()
+        .then((rows) => {
+          setSummaries(Object.fromEntries(rows.map((r) => [r.clientId, toSummary(r)])));
+          setPendingSwaps(new Map(rows.map((r) => [r.clientId, r.pendingSwaps])));
+          setUnread(new Map(rows.map((r) => [r.clientId, r.unread])));
+        })
+        .catch((e) => console.error('Error loading patients overview:', e));
     } catch (error) {
       console.error('Error loading patients:', error);
       setFailed(true);
@@ -118,6 +105,22 @@ export function PatientsPanel() {
   useEffect(() => {
     load();
   }, [load, careSignal]);
+
+  // Adesão (regras das versões do plano, no app): só quando a lista de pacientes muda, não a cada
+  // mensagem recebida.
+  const patientIds = patients.map((p) => p.person.id).join(',');
+  useEffect(() => {
+    if (!user || !patientIds) return;
+    let cancelled = false;
+    for (const id of patientIds.split(',')) {
+      adherenceOf(id, user.id).then((value) => {
+        if (!cancelled) setAdherence((prev) => ({ ...prev, [id]: value }));
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [user, patientIds]);
 
   // Paciente que não está (mais) na lista: volta para a lista.
   useEffect(() => {
@@ -416,10 +419,10 @@ export function PatientsPanel() {
                     </p>
                   )}
                   {/* Adesão baixa: só com refeições suficientes para a % fazer sentido. */}
-                  {s && s.adherence !== null && s.adherence < 50 && (
+                  {adherence[p.person.id] != null && adherence[p.person.id]! < 50 && (
                     <p className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">
                       <ClipboardCheck className="h-3 w-3" />
-                      {t.adherence.lowAlert.replace('{percent}', String(s.adherence))}
+                      {t.adherence.lowAlert.replace('{percent}', String(adherence[p.person.id]))}
                     </p>
                   )}
                   {(inactive || overGoal) && (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { countText } from '../../lib/format';
 import { Loader2, Save, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useFoodsStore } from '../../store/foods';
@@ -100,7 +101,7 @@ export function PlanTemplatesPanel({ meals, items, title, notes, onApply }: Plan
               <li key={tpl.id} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 dark:bg-slate-900">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{tpl.title}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{s.itemsCount.replace('{count}', String(tpl.items.length))}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{countText(s.itemsCount, tpl.items.length)}</p>
                 </div>
                 <button
                   type="button"

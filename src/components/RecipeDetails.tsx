@@ -38,7 +38,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { backdrop, modalPanel } from '../lib/motion';
 import { confirmDialog } from '../store/confirm';
 import { getRecipeAuthorStats } from '../services/care';
-import { appLocale } from '../lib/format';
+import { appLocale, countText } from '../lib/format';
 
 interface RecipeDetailsProps {
   recipe: Recipe;
@@ -264,7 +264,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
     const inPlans = await getRecipeAuthorStats()
       .then((rows) => rows.find((r) => r.recipe_id === recipe.id)?.in_plans ?? 0)
       .catch(() => 0);
-    const message = inPlans ? t.recipe.deleteInPlansConfirm.replace('{n}', String(inPlans)) : t.recipe.deleteConfirm;
+    const message = inPlans ? countText(t.recipe.deleteInPlansConfirm, inPlans) : t.recipe.deleteConfirm;
     if (!(await confirmDialog(message))) return;
     setDeleting(true);
     try {

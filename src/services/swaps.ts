@@ -113,19 +113,6 @@ export async function listSwapsForClient(clientId: string): Promise<SwapRequest[
   return ((data ?? []) as unknown as SwapRow[]).map(toSwap);
 }
 
-/** Quantidade de pedidos abertos por paciente, para o nutricionista logado. */
-export async function pendingSwapCounts(nutritionistId: string): Promise<Map<string, number>> {
-  const { data, error } = await supabase
-    .from('food_swap_requests')
-    .select('client_id')
-    .eq('nutritionist_id', nutritionistId)
-    .eq('status', 'pending');
-  if (error) throw error;
-  const counts = new Map<string, number>();
-  for (const row of (data ?? []) as { client_id: string }[]) counts.set(row.client_id, (counts.get(row.client_id) ?? 0) + 1);
-  return counts;
-}
-
 export async function requestSwap(input: {
   planId: string;
   item: MealPlanItem;

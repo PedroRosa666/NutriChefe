@@ -38,6 +38,7 @@ const MIGRATIONS = [
   '20261110120000_demo_visitors.sql',
   '20261111120000_audit_fixes.sql',
   '20261112120000_cleanup_privacy_limit.sql',
+  '20261113120000_patients_overview.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as

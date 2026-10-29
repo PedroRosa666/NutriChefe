@@ -17,3 +17,8 @@ export function firstNameOf(name: string | undefined | null, fallback: string): 
   const first = words.find((w) => !/^(dr|dra|prof|profa|sr|sra)\.?$/i.test(w));
   return first ?? fallback;
 }
+
+/** Frase no singular ou no plural conforme n, com {n} trocado pelo número. */
+export function countText(forms: { one: string; many: string }, n: number): string {
+  return (n === 1 ? forms.one : forms.many).replace('{n}', String(n));
+}

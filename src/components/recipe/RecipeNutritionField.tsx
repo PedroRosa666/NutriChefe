@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { countText } from '../../lib/format';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import {
@@ -133,7 +134,7 @@ export function RecipeNutritionField({ draft, onChange, legacy, inputClass, labe
             {calc.status === 'complete'
               ? f.calcComplete.replace('{n}', String(calc.counted))
               : calc.status === 'partial'
-                ? f.calcPartial.replace('{n}', String(calc.issues.length))
+                ? countText(f.calcPartial, calc.issues.length)
                 : f.calcUnknown}
           </p>
           {calc.counted > 0 && (

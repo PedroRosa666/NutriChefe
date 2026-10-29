@@ -2252,6 +2252,19 @@ export type Database = {
           unread_messages: number
         }[]
       }
+      patients_overview: {
+        Args: never
+        Returns: {
+          client_id: string
+          days7: number
+          goal_kcal: number
+          kcal7: number
+          last_check: string
+          last_log: string
+          pending_swaps: number
+          unread_messages: number
+        }[]
+      }
       plan_day_of: { Args: { p_date: string }; Returns: number }
       plan_snapshot: { Args: { p_plan: string }; Returns: Json }
       plan_version_on: {
