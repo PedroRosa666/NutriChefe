@@ -6,6 +6,10 @@
 /sw.js
   Cache-Control: no-cache
 
+# Contrato do site no ar, lido pelo aviso de atualização: sempre o do último deploy.
+/version.json
+  Cache-Control: no-cache
+
 # Proteções em todas as respostas (auditoria F15).
 # - frame-ancestors/X-Frame-Options: o site não abre dentro de iframe de outro domínio.
 # - A política completa de conteúdo começa em Report-Only (só avisa no console) para não

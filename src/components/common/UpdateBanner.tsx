@@ -2,22 +2,27 @@ import { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../hooks/useTranslation';
-
-/**
- * Versão do contrato com o banco que este app entende. Sobe junto com a migração que muda o formato
- * dos dados (a função app_min_client() do banco devolve a mínima aceita).
- * 3: refeições personalizadas (20261106120000_custom_meals.sql).
- * 4: rendimento, porção e ingredientes das receitas (20261107120000_recipe_yield.sql).
- * 5: valores calculados pelos ingredientes (20261108120000_recipe_calc.sql).
- */
-export const CLIENT_CONTRACT = 5;
+import { CLIENT_CONTRACT, updateCheck } from '../../lib/client-contract';
 
 // Confere ao abrir e ao voltar para o app, no máximo a cada 10 minutos.
 const CHECK_EVERY_MS = 10 * 60_000;
 
+/** Contrato do site no ar (gerado no build); null quando não dá para ler. */
+async function publishedContract(): Promise<number | null> {
+  try {
+    const res = await fetch('/version.json', { cache: 'no-store' });
+    if (!res.ok) return null;
+    const contract = Number((await res.json())?.contract);
+    return Number.isFinite(contract) ? contract : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Aviso de app desatualizado: quem deixou o app aberto desde antes de uma mudança no formato dos
- * dados vê o pedido para atualizar, em vez de uma tela que esconde refeições novas.
+ * dados vê o pedido para atualizar, em vez de uma tela que esconde refeições novas. Só aparece
+ * quando o site no ar já tem a versão que o banco pede, então "Atualizar" sempre resolve.
  */
 export function UpdateBanner() {
   const t = useTranslation();
@@ -29,7 +34,15 @@ export function UpdateBanner() {
       if (document.visibilityState !== 'visible' || Date.now() - last < CHECK_EVERY_MS) return;
       last = Date.now();
       const { data, error } = await supabase.rpc('app_min_client');
-      if (!error && Number(data) > CLIENT_CONTRACT) setOutdated(true);
+      if (error || Number(data) <= CLIENT_CONTRACT) return;
+      const published = await publishedContract();
+      const result = updateCheck(Number(data), published);
+      if (result === 'reload') setOutdated(true);
+      if (result === 'deploy_behind') {
+        console.error(
+          `[NutriChef] O banco pede o contrato ${Number(data)}, mas o site no ar publica ${published ?? 'desconhecido'}: publique o app.`
+        );
+      }
     };
     check();
     document.addEventListener('visibilitychange', check);
