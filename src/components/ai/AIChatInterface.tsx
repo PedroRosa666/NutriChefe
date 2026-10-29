@@ -81,22 +81,36 @@ export function AIChatInterface() {
     }
   }, [sendingMessage]);
 
-  const handleStartConversation = async () => {
-    if (!user) return;
-    try {
-      await createConversation(user.id, usePremiumStore.getState().aiViaNutritionist ?? undefined);
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-    }
+  // Conversa nova só existe na tela até a primeira mensagem: gravar ao abrir deixava
+  // conversas vazias no banco toda vez que alguém abria e saía sem escrever.
+  const [draft, setDraft] = useState(false);
+  const creatingRef = useRef(false);
+
+  useEffect(() => {
+    if (currentConversation) setDraft(false);
+  }, [currentConversation]);
+
+  const handleStartConversation = () => {
+    setCurrentConversation(null);
+    setDraft(true);
   };
 
   const handleSendMessage = async (e?: React.FormEvent, overrideMsg?: string) => {
     e?.preventDefault();
     const msg = (overrideMsg ?? inputMessage).trim();
-    if (!msg || !currentConversation || sendingMessage) return;
+    if (!msg || !user || sendingMessage || creatingRef.current) return;
     setInputMessage('');
     try {
-      await sendMessage(currentConversation.id, msg, buildContext());
+      let conversationId = currentConversation?.id;
+      if (!conversationId) {
+        creatingRef.current = true;
+        try {
+          conversationId = (await createConversation(user.id, usePremiumStore.getState().aiViaNutritionist ?? undefined)).id;
+        } finally {
+          creatingRef.current = false;
+        }
+      }
+      await sendMessage(conversationId, msg, buildContext());
     } catch (error) {
       console.error('Error sending message:', error);
       if (!overrideMsg) setInputMessage(msg);
@@ -110,19 +124,7 @@ export function AIChatInterface() {
     }
   };
 
-  const handleQuickPrompt = async (prompt: string) => {
-    if (!currentConversation) {
-      if (!user) return;
-      try {
-        const conversation = await createConversation(user.id, usePremiumStore.getState().aiViaNutritionist ?? undefined);
-        await sendMessage(conversation.id, prompt, buildContext());
-      } catch (error) {
-        console.error('Error starting conversation:', error);
-      }
-      return;
-    }
-    await handleSendMessage(undefined, prompt);
-  };
+  const handleQuickPrompt = (prompt: string) => handleSendMessage(undefined, prompt);
 
   const formatMessageContent = (content: string) => {
     return content.split('\n').map((line, index) => {
@@ -328,7 +330,7 @@ export function AIChatInterface() {
     </aside>
   );
 
-  const main = !currentConversation ? (
+  const main = !currentConversation && !draft ? (
       <div className="flex-1 overflow-y-auto flex flex-col items-center px-4 py-6 sm:py-10">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -424,7 +426,7 @@ export function AIChatInterface() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 dark:text-white leading-none mb-0.5">
-            {currentConversation.ai_config?.ai_name || 'NutriBot'}
+            {currentConversation?.ai_config?.ai_name || 'NutriBot'}
           </p>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
@@ -599,7 +601,7 @@ export function AIChatInterface() {
     <div
       className={cn(
         'flex md:h-[640px]',
-        currentConversation && 'h-[calc(100dvh-13rem)] min-h-[440px]'
+        (currentConversation || draft) && 'h-[calc(100dvh-13rem)] min-h-[440px]'
       )}
     >
       {sidebar}
