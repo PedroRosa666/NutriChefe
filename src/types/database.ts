@@ -103,8 +103,6 @@ export type Database = {
       }
       ai_conversations: {
         Row: {
-          ai_config_id: string | null
-          ai_configuration_id: string | null
           client_id: string
           created_at: string | null
           id: string
@@ -115,8 +113,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          ai_config_id?: string | null
-          ai_configuration_id?: string | null
           client_id: string
           created_at?: string | null
           id?: string
@@ -127,8 +123,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          ai_config_id?: string | null
-          ai_configuration_id?: string | null
           client_id?: string
           created_at?: string | null
           id?: string
@@ -139,20 +133,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "ai_conversations_ai_config_id_fkey"
-            columns: ["ai_config_id"]
-            isOneToOne: false
-            referencedRelation: "ai_configurations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_conversations_ai_configuration_id_fkey"
-            columns: ["ai_configuration_id"]
-            isOneToOne: false
-            referencedRelation: "ai_configurations"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "ai_conversations_client_id_fkey"
             columns: ["client_id"]
@@ -1555,7 +1535,6 @@ export type Database = {
           id: string
           instagram: string | null
           is_demo: boolean
-          last_seen: string | null
           phone: string | null
           professional_bio: string | null
           profile_visibility: string | null
@@ -1589,7 +1568,6 @@ export type Database = {
           id: string
           instagram?: string | null
           is_demo?: boolean
-          last_seen?: string | null
           phone?: string | null
           professional_bio?: string | null
           profile_visibility?: string | null
@@ -1623,7 +1601,6 @@ export type Database = {
           id?: string
           instagram?: string | null
           is_demo?: boolean
-          last_seen?: string | null
           phone?: string | null
           professional_bio?: string | null
           profile_visibility?: string | null
@@ -2227,6 +2204,7 @@ export type Database = {
       default_meal_name: { Args: { p_category: string }; Returns: string }
       delete_my_account: { Args: never; Returns: undefined }
       delete_my_archived_plans: { Args: never; Returns: number }
+      free_patient_limit: { Args: never; Returns: number }
       has_feature: {
         Args: { p_feature: string; p_user: string }
         Returns: boolean
