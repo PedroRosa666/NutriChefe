@@ -4,7 +4,7 @@ import { useSettingsStore } from '../store/settings';
 
 // Política de privacidade (LGPD). Texto direto, sem juridiquês; revisar com um advogado
 // antes de grandes mudanças no produto (novos dados coletados, novos parceiros).
-const UPDATED = '23/10/2026';
+const UPDATED = '30/10/2026';
 const CONTACT = 'pehenriqueoliveirarosa@gmail.com';
 
 interface Section {
@@ -54,7 +54,7 @@ const PT: { title: string; intro: string; updated: string; back: string; section
       title: '5. Com quem compartilhamos',
       body: [
         'Seu nutricionista: só depois que você aceita o convite e só enquanto o acompanhamento estiver ativo. Ele vê diário, metas, perfil de saúde, peso, planos e pedidos de troca. Você pode encerrar a qualquer momento, e o acesso acaba na hora.',
-        'Fornecedores que operam o serviço: Supabase (banco de dados e login), Cloudflare (hospedagem do site), Stripe (pagamentos), Google (envio dos e-mails da conta e o modelo de IA do NutriBot). Eles tratam os dados só para prestar esse serviço. Alguns ficam fora do Brasil; a transferência segue o art. 33 da LGPD.',
+        'Fornecedores que operam o serviço: Supabase (banco de dados e login), Cloudflare (hospedagem do site), Stripe (pagamentos), Resend (envio dos e-mails da conta), Google (o modelo de IA do NutriBot). Eles tratam os dados só para prestar esse serviço. Alguns ficam fora do Brasil; a transferência segue o art. 33 da LGPD.',
       ],
     },
     {
@@ -115,7 +115,7 @@ const EN: typeof PT = {
       title: '5. Who we share it with',
       body: [
         'Your nutritionist: only after you accept the invite and only while the follow-up is active. You can end it anytime and access stops immediately.',
-        'Providers that run the service: Supabase (database and login), Cloudflare (hosting), Stripe (payments), Google (account e-mails and the NutriBot AI model). Some are outside Brazil; transfers follow LGPD art. 33.',
+        'Providers that run the service: Supabase (database and login), Cloudflare (hosting), Stripe (payments), Resend (account e-mails), Google (the NutriBot AI model). Some are outside Brazil; transfers follow LGPD art. 33.',
       ],
     },
     { title: '6. Retention', body: ['While your account exists. Read notifications are deleted after 60 days. When you delete your account, your data is deleted immediately, except what the law requires us to keep (e.g. payment records at Stripe).'] },
