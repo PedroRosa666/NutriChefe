@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { blockedTerms } from '../../../supabase/functions/_shared/recipe-search';
-import { ArrowLeft, Crown, FileText, HeartPulse, Loader2, Save, Sparkles, Target, UserMinus, Utensils, CalendarRange, CalendarClock, MessageCircle, LayoutDashboard, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Crown, FileText, HeartPulse, Loader2, Save, Sparkles, Target, UserMinus, Utensils, CalendarRange, CalendarClock, MessageCircle, LayoutDashboard, MoreVertical, X } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
 import { useDialog } from '../../hooks/useDialog';
@@ -132,6 +132,33 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
       fiber: avg(totals.fiber),
     };
   }, [data]);
+
+  const dayLabel = (iso: string) =>
+    new Date(`${iso}T12:00:00`).toLocaleDateString(appLocale(), { weekday: 'long', day: '2-digit', month: '2-digit' });
+  // Resumo: um dia escolhido no gráfico troca as médias da semana pelo total daquele dia e filtra
+  // os registros. Tocar fora do bloco, no botão ou em Esc volta para os 7 dias.
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const intakeRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!selectedDay) return;
+    const onPointer = (e: PointerEvent) => {
+      if (intakeRef.current && !intakeRef.current.contains(e.target as Node)) setSelectedDay(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedDay(null);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [selectedDay]);
+  const dayView = useMemo(() => {
+    if (!data || !selectedDay) return null;
+    const entries = data.entries.filter((e) => e.date === selectedDay);
+    return { entries, totals: sumEntries(entries) };
+  }, [data, selectedDay]);
 
   if (failed && !data) {
     return (
@@ -304,21 +331,34 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
 
       {tab === 'summary' && (
         <div className="space-y-6">
-          <section className={card}>
-            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <section ref={intakeRef} className={card}>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
                 <Utensils className="h-5 w-5 text-amber-500" />
-                {t.care.intake7}
+                {dayView && selectedDay ? dayLabel(selectedDay) : t.care.intake7}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {t.care.daysLogged7.replace('{n}', String(week.days))}
-              </p>
+              {dayView ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDay(null)}
+                  className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                  {t.care.showWeek}
+                </button>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {t.care.daysLogged7.replace('{n}', String(week.days))}
+                </p>
+              )}
             </div>
-            <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t.care.avgPerDay}</p>
+            <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400" aria-live="polite">
+              {dayView ? t.care.dayTotal : t.care.avgPerDay}
+            </p>
             <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
               {GOAL_KEYS.map((key) => {
                 const goal = data.goals?.[key] ?? 0;
-                const value = week[key];
+                const value = dayView ? dayView.totals[key] : week[key];
                 const pct = goal ? Math.round((value / goal) * 100) : null;
                 return (
                   <div key={key} className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
@@ -329,21 +369,30 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
                     </p>
                     {pct !== null && (
                       <p className={`text-xs font-semibold ${pct > 110 ? 'text-rose-600 dark:text-rose-400' : pct >= 85 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                        {pct}% {t.report.vsGoal}
+                        {t.care.pctOfGoal.replace('{pct}', String(pct)).replace('{goal}', `${fmt(goal)} ${key === 'calories' ? 'kcal' : 'g'}`)}
                       </p>
                     )}
                   </div>
                 );
               })}
             </div>
-            <WeeklyCaloriesChart entries={data.entries} goal={data.goals?.calories ?? DEFAULT_GOALS.calories} />
+            <WeeklyCaloriesChart
+              entries={data.entries}
+              goal={data.goals?.calories ?? DEFAULT_GOALS.calories}
+              selectedDate={selectedDay ?? undefined}
+              // Tocar de novo no mesmo dia volta para a semana.
+              onSelectDate={(d) => setSelectedDay((cur) => (cur === d ? null : d))}
+            />
+            {!dayView && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t.care.tapBarHint}</p>}
 
-            <h4 className="mb-2 mt-6 text-sm font-semibold text-slate-900 dark:text-white">{t.care.recentEntries}</h4>
-            {!data.entries.length ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t.care.noEntries}</p>
+            <h4 className="mb-2 mt-6 text-sm font-semibold text-slate-900 dark:text-white">
+              {dayView && selectedDay ? t.care.dayEntries.replace('{day}', dayLabel(selectedDay)) : t.care.recentEntries}
+            </h4>
+            {!(dayView ? dayView.entries : data.entries).length ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">{dayView ? t.care.noEntriesDay : t.care.noEntries}</p>
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                {data.entries.slice(0, 12).map((e) => (
+                {(dayView ? dayView.entries : data.entries.slice(0, 12)).map((e) => (
                   <li key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                     <span className="min-w-0 truncate text-slate-800 dark:text-slate-100">
                       <span className="mr-2 text-xs text-slate-400">{new Date(`${e.date}T12:00:00`).toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit' })}</span>

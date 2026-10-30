@@ -76,6 +76,7 @@ export function WeeklyCaloriesChart({ entries, goal, selectedDate, onSelectDate 
                 className="group relative flex h-full flex-1 flex-col items-center justify-end"
                 title={`${d.calories.toFixed(0)} kcal`}
                 aria-label={`${d.label}: ${d.calories.toFixed(0)} kcal`}
+                aria-pressed={onSelectDate ? isSelected : undefined}
               >
                 <div
                   className={cn(
