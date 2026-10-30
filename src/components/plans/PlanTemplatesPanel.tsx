@@ -116,7 +116,7 @@ export function PlanTemplatesPanel({ meals, items, title, notes, onApply }: Plan
                   type="button"
                   onClick={() => remove(tpl)}
                   disabled={busyId === tpl.id}
-                  className="flex-shrink-0 rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
+                  className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
                   aria-label={s.delete}
                   title={s.delete}
                 >

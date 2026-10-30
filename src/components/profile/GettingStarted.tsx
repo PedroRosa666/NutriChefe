@@ -50,7 +50,7 @@ export function GettingStarted({ userId, steps, onHide }: { userId: string; step
         <button
           type="button"
           onClick={hide}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+          className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
           aria-label={u.hideGettingStarted}
           title={u.hideGettingStarted}
         >

@@ -425,7 +425,7 @@ export function MealPlanEditor({
       <button
         type="button"
         onClick={() => removeItem(item)}
-        className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
+        className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
         aria-label={t.profile.remove}
       >
         <Trash2 className="h-4 w-4" />
@@ -729,7 +729,7 @@ export function MealPlanEditor({
                       <button
                         type="button"
                         onClick={() => removeGroup(mealId, block.group)}
-                        className="rounded-md p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
+                        className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
                         aria-label={t.plan.removeGroup}
                         title={t.plan.removeGroup}
                       >

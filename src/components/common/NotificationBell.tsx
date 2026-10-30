@@ -144,7 +144,7 @@ export function NotificationBell({ floating = false }: NotificationBellProps) {
                       <button
                         type="button"
                         onClick={() => remove(n.id)}
-                        className="flex-shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+                        className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
                         aria-label={t.notifications.remove}
                         title={t.notifications.remove}
                       >

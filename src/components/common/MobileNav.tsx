@@ -35,7 +35,8 @@ export function MobileNav() {
                   </span>
                 )}
               </span>
-              {label}
+              {/* Com a fonte do Android aumentada, o nome corta em vez de invadir o vizinho. */}
+              <span className="max-w-full truncate px-1">{label}</span>
             </Link>
           </li>
         ))}

@@ -350,7 +350,7 @@ export function PatientsPanel() {
               <button
                 type="button"
                 onClick={() => cancelInvite(invite.code)}
-                className="absolute right-2 top-2 rounded-lg p-1.5 text-slate-400 sm:top-1/2 sm:-translate-y-1/2 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
+                className="absolute right-1 top-1 inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 sm:top-1/2 sm:-translate-y-1/2 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
                 aria-label={t.care.cancelInvite}
                 title={t.care.cancelInvite}
               >

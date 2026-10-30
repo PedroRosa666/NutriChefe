@@ -56,7 +56,7 @@ export function MealCheckBar({ items, check, busy, itemName, onSave, onClear }: 
       disabled={busy}
       aria-pressed={check?.status === status}
       className={cn(
-        'inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-1.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 sm:flex-none sm:gap-1.5 sm:px-2.5',
+        'inline-flex min-h-[40px] flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-1.5 py-2 text-xs font-semibold transition-colors disabled:opacity-60 sm:flex-none sm:gap-1.5 sm:px-2.5',
         check?.status === status
           ? STYLE[status]
           : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800'
@@ -73,7 +73,7 @@ export function MealCheckBar({ items, check, busy, itemName, onSave, onClear }: 
         <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{a.howWasIt}</p>
         {busy && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />}
         {check && !busy && (
-          <button type="button" onClick={onClear} className="text-xs font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <button type="button" onClick={onClear} className="-my-2 rounded-md px-2 py-2 text-xs font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
             {a.clear}
           </button>
         )}
