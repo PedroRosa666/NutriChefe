@@ -761,7 +761,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                       className={cn(
                         'rounded-xl p-4 space-y-3',
                         'bg-emerald-50/80 shadow-sm ring-1 ring-emerald-100',
-                        'dark:bg-gray-900/50 dark:ring-0 dark:border-l-4 dark:border-emerald-500/80',
+                        'dark:bg-gray-900/50 dark:ring-emerald-500/30',
                       )}
                     >
                       <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">

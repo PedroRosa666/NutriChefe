@@ -47,7 +47,7 @@ export function NutritionistPremium() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 p-6 text-white shadow-lg sm:p-8">
+      <section className="rounded-2xl bg-gradient-to-br from-emerald-700 to-teal-700 p-6 text-white shadow-lg sm:p-8">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
           <Crown className="h-3.5 w-3.5" />
           {n.badge}

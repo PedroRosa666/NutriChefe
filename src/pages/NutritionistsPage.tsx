@@ -167,10 +167,10 @@ export function NutritionistsPage() {
         </div>
 
         {/* Apresentação */}
-        <section className="relative mt-2 overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-600 px-5 py-7 text-white shadow-lg shadow-emerald-900/10 sm:px-8 sm:py-10">
+        <section className="relative mt-2 overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-700 via-emerald-700 to-teal-700 px-5 py-7 text-white shadow-lg shadow-emerald-900/10 sm:px-8 sm:py-10">
           <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
           <div className="pointer-events-none absolute -bottom-16 right-16 h-32 w-32 rounded-full bg-white/10" />
-          <span className="relative inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+          <span className="relative inline-flex items-center gap-1.5 rounded-full bg-emerald-950/30 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
             <ShieldCheck className="h-3.5 w-3.5" />
             {n.listBadge}
           </span>
@@ -183,7 +183,7 @@ export function NutritionistsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={n.searchPlaceholder}
-              className="w-full rounded-xl border-0 bg-white py-3 pl-10 pr-10 text-sm text-slate-900 shadow-sm outline-none ring-emerald-300 placeholder:text-slate-400 focus:ring-2 dark:bg-slate-900 dark:text-white"
+              className="w-full rounded-xl border-0 bg-white py-3 pl-10 pr-10 text-sm text-slate-900 shadow-sm outline-none ring-emerald-300 focus:ring-2 dark:bg-slate-900 dark:text-white"
             />
             {query && (
               <button
@@ -265,7 +265,7 @@ export function NutritionistsPage() {
                   >
                     <div className="flex items-start gap-3">
                       <div className="relative flex-shrink-0">
-                        <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-lg font-bold text-white">
+                        <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-700 to-teal-700 text-lg font-bold text-white">
                           {initials(p.full_name) || <User className="h-7 w-7" />}
                           {/* A foto cobre as iniciais; se não carregar, some e as iniciais aparecem. */}
                           {p.avatar_url && (
@@ -291,7 +291,7 @@ export function NutritionistsPage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
-                          <h3 className="line-clamp-2 font-semibold leading-snug text-slate-900 dark:text-white">{p.full_name}</h3>
+                          <h2 className="line-clamp-2 text-[length:clamp(18px,3vw,28px)] font-semibold leading-snug text-slate-900 dark:text-white">{p.full_name}</h2>
                           {p.featured && (
                             <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-amber-950">
                               <Star className="h-3 w-3 fill-current" />

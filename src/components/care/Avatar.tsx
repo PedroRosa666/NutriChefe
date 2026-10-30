@@ -20,7 +20,7 @@ export function Avatar({ name, url, className }: AvatarProps) {
   return (
     <div
       className={cn(
-        'flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 text-sm font-bold text-white',
+        'flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-emerald-700 to-teal-700 text-sm font-bold text-white',
         className
       )}
     >

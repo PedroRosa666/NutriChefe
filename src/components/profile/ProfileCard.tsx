@@ -134,7 +134,7 @@ export function ProfileStrip() {
 
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 text-sm font-bold text-white">
+      <div className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-emerald-700 to-teal-700 text-sm font-bold text-white">
         {initials(name) || <UserIcon className="h-5 w-5" />}
         {user.avatar_url && (
           <img

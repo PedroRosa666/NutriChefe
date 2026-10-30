@@ -44,7 +44,7 @@ const IngredientItem = memo(function IngredientItem({
         <span
           className={
             isChecked
-              ? 'flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-xs font-semibold border bg-emerald-500 border-emerald-500 text-white'
+              ? 'flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-xs font-semibold border bg-emerald-600 border-emerald-600 text-white'
               : 'flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-xs font-semibold border bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-600 dark:text-emerald-400'
           }
         >

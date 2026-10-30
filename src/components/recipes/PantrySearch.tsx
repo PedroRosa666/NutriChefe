@@ -90,7 +90,7 @@ export function PantrySearch() {
               if (e.key === 'Backspace' && !draft && items.length) setItems((prev) => prev.slice(0, -1));
             }}
             placeholder={items.length ? '' : t.pantry.placeholder}
-            className="min-w-[140px] flex-1 bg-transparent px-1 py-1 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
+            className="min-w-[140px] flex-1 bg-transparent px-1 py-1 text-sm text-slate-900 outline-none dark:text-white"
             aria-label={t.pantry.title}
           />
           {draft.trim() ? (

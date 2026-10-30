@@ -231,7 +231,7 @@ export function HealthProfileForm() {
                   className={cn(
                     'rounded-full border px-3 py-1 text-xs font-medium transition',
                     active
-                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
                       : 'border-slate-200 text-slate-600 hover:border-emerald-400 dark:border-slate-700 dark:text-slate-300'
                   )}>
                   {h.diets[d]}

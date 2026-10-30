@@ -397,7 +397,7 @@ export function NutritionistProfilePage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex items-end gap-4">
                 <div className="relative -mt-12 flex-shrink-0 sm:-mt-14">
-                  <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-gradient-to-br from-emerald-400 to-teal-600 text-2xl font-bold text-white shadow-md dark:border-slate-900 sm:h-28 sm:w-28">
+                  <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-gradient-to-br from-emerald-700 to-teal-700 text-2xl font-bold text-white shadow-md dark:border-slate-900 sm:h-28 sm:w-28">
                     {initials(profile.full_name) || <User className="h-10 w-10" />}
                     {profile.avatar_url && (
                       <img

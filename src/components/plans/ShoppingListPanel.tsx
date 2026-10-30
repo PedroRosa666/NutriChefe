@@ -85,7 +85,7 @@ export function ShoppingListPanel() {
       <span
         className={cn(
           'flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border transition-colors',
-          item.checked ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 group-hover:border-emerald-400 dark:border-slate-600'
+          item.checked ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300 group-hover:border-emerald-400 dark:border-slate-600'
         )}
       >
         {item.checked && <Check className="h-4 w-4" />}

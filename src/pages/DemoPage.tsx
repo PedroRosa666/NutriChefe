@@ -78,7 +78,7 @@ export function DemoPage() {
 
       {error && <p role="alert" className="mt-4 text-center text-sm font-medium text-red-600 dark:text-red-400">{error}</p>}
 
-      <p className="mx-auto mt-6 max-w-2xl text-center text-sm leading-relaxed text-gray-500 dark:text-gray-400">{d.notes}</p>
+      <p className="mx-auto mt-6 max-w-prose text-center text-sm leading-relaxed text-gray-500 dark:text-gray-400">{d.notes}</p>
 
       <div className="mt-10 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/60">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{d.techTitle}</h2>

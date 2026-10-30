@@ -401,7 +401,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
               type="submit"
               disabled={loading}
               className={cn(
-                'inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600 px-4 py-3 text-base font-semibold text-white shadow-md transition ' +
+                'inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-emerald-700 via-emerald-600 to-emerald-700 px-4 py-3 text-base font-semibold text-white shadow-md transition ' +
                   'hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ' +
                   'disabled:cursor-not-allowed disabled:opacity-80 dark:focus-visible:ring-offset-slate-900',
                 loading && 'opacity-80'

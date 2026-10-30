@@ -15,8 +15,25 @@ export default {
       // Tons de fundo e borda do modo claro mais suaves que o branco puro (menos brilho
       // na tela). Só fundos e bordas mudam: texto branco em botões continua branco.
       // Os valores ficam em src/index.css (--nc-*).
+      // Contraste mínimo de 4,5:1 (WCAG AA) no fundo creme. Texto branco sobre o verde dos
+      // botões pedia um tom mais escuro: o 600 vira o antigo 700, e o hover (700) escurece junto.
+      // Os textos verde e cinza escurecem só no modo claro (valores em src/index.css, --nc-text-*).
+      // As outras cores de destaque (kcal, alertas, favoritos) seguem a mesma regra: no claro,
+      // o texto 600 usa o tom 700.
+      textColor: {
+        emerald: { 600: 'rgb(var(--nc-text-emerald) / <alpha-value>)' },
+        gray: { 500: 'rgb(var(--nc-text-gray) / <alpha-value>)' },
+        slate: { 500: 'rgb(var(--nc-text-slate) / <alpha-value>)' },
+        ...Object.fromEntries(
+          ['orange', 'red', 'amber', 'rose', 'sky', 'blue', 'lime', 'pink'].map((c) => [
+            c,
+            { 600: `rgb(var(--nc-text-${c}) / <alpha-value>)` },
+          ])
+        ),
+      },
       backgroundColor: {
         white: 'rgb(var(--nc-surface) / <alpha-value>)',
+        emerald: { 600: '#047857', 700: '#065f46' },
         // Modo escuro "azul-noite": azul profundo e mais claro que preto, para as fotos
         // das receitas se destacarem sem cansar a vista. gray = página; slate = cartões.
         gray: {

@@ -262,7 +262,7 @@ export function AvatarUpload({
               }}
               disabled={isUploading}
               className={cn(
-                'absolute bottom-0 right-0 bg-emerald-500 text-white rounded-full shadow-lg',
+                'absolute bottom-0 right-0 bg-emerald-600 text-white rounded-full shadow-lg',
                 'hover:bg-emerald-600 hover:scale-110 transition-all duration-200',
                 'ring-2 ring-white dark:ring-slate-900',
                 'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100',

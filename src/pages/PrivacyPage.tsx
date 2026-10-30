@@ -147,13 +147,13 @@ export function PrivacyPage() {
             {c.title}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">{c.updated}</p>
-          <p className="text-sm text-slate-700 dark:text-slate-300">{c.intro}</p>
+          <p className="max-w-prose text-sm text-slate-700 dark:text-slate-300">{c.intro}</p>
         </header>
         {c.sections.map((section) => (
           <section key={section.title} className="space-y-2">
             <h2 className="text-base font-semibold text-slate-900 dark:text-white">{section.title}</h2>
             {section.body.map((p) => (
-              <p key={p} className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+              <p key={p} className="max-w-prose text-sm leading-relaxed text-slate-700 dark:text-slate-300">
                 {p}
               </p>
             ))}

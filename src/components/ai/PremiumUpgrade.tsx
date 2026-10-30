@@ -266,7 +266,7 @@ export function PremiumUpgrade() {
       {/* Chamada final */}
       <motion.section
         {...reveal}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-600 px-6 py-10 text-center text-white shadow-xl shadow-emerald-600/20 sm:px-10"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-700 to-teal-700 px-6 py-10 text-center text-white shadow-xl shadow-emerald-600/20 sm:px-10"
       >
         <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-amber-300/20 blur-2xl" />

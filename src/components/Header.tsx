@@ -453,7 +453,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                   {/* Quem está logado, com atalho para o perfil */}
                   <button
                     onClick={() => closeMenuAnd(onProfileClick)}
-                    className="flex w-full items-center gap-3 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 p-3 text-left text-white shadow-sm"
+                    className="flex w-full items-center gap-3 rounded-2xl bg-gradient-to-br from-emerald-700 to-teal-700 p-3 text-left text-white shadow-sm"
                   >
                     <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/20 text-sm font-bold">
                       {user?.avatar_url ? (

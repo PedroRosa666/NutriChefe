@@ -17,6 +17,18 @@
     --nc-bottom: 225 220 209;
     --nc-glow: 16 185 129;
     --nc-glow-alpha: 0.09;
+    /* Textos secundários com contraste de 4,5:1 sobre o creme (tailwind.config.js, textColor). */
+    --nc-text-emerald: 4 120 87;
+    --nc-text-gray: 95 102 115;
+    --nc-text-slate: 86 98 117;
+    --nc-text-orange: 194 65 12;
+    --nc-text-red: 185 28 28;
+    --nc-text-amber: 180 83 9;
+    --nc-text-rose: 190 18 60;
+    --nc-text-sky: 3 105 161;
+    --nc-text-blue: 29 78 216;
+    --nc-text-lime: 77 124 15;
+    --nc-text-pink: 190 24 93;
     color-scheme: light;
   }
 
@@ -25,6 +37,18 @@
     --nc-page: 31 38 58;
     --nc-bottom: 19 24 38;
     --nc-glow-alpha: 0.13;
+    /* No escuro ficam os tons originais do Tailwind. */
+    --nc-text-emerald: 5 150 105;
+    --nc-text-gray: 107 114 128;
+    --nc-text-slate: 100 116 139;
+    --nc-text-orange: 234 88 12;
+    --nc-text-red: 220 38 38;
+    --nc-text-amber: 217 119 6;
+    --nc-text-rose: 225 29 72;
+    --nc-text-sky: 2 132 199;
+    --nc-text-blue: 37 99 235;
+    --nc-text-lime: 101 163 13;
+    --nc-text-pink: 219 39 119;
     color-scheme: dark;
   }
 
@@ -57,6 +81,26 @@
     /* 16px também no celular: abaixo disso o texto corrido fica difícil de ler. */
     font-size: 16px;
     line-height: 1.6;
+  }
+
+  /* Títulos sem uma palavra sozinha na última linha; parágrafos evitam a palavra órfã. */
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+
+  p, li {
+    text-wrap: pretty;
+  }
+
+  /* Texto de exemplo dos campos legível (o padrão do Tailwind, gray-400, fica em 2,4:1). */
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(var(--nc-text-gray));
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: rgb(156 163 175);
   }
 
   h1 {

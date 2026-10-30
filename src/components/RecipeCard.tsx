@@ -245,7 +245,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         {/* Author info */}
         {recipe.authorName && (
           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-700 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-emerald-700 to-teal-700 flex items-center justify-center text-white text-xs font-bold shadow-sm">
               {recipe.authorAvatarUrl ? (
                 <img
                   src={recipe.authorAvatarUrl}

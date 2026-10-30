@@ -58,7 +58,7 @@ export function DashboardHero({
   const u = useTranslation().profileUi;
   return (
     <section className="space-y-3">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-600 p-5 text-white shadow-lg shadow-emerald-900/10 sm:p-6">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-700 via-emerald-700 to-teal-700 p-5 text-white shadow-lg shadow-emerald-900/10 sm:p-6">
         <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10" />
         <div className="pointer-events-none absolute -bottom-16 right-24 h-32 w-32 rounded-full bg-white/10" />
         <div className="relative flex items-center gap-4">
