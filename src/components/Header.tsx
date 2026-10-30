@@ -234,10 +234,10 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
           através do campo (antes, translúcido, parecia que cartão e busca estavam encavalados). */}
       <header
         className={cn(
-          'sticky top-0 z-50 backdrop-blur-md backdrop-saturate-150 transition-[background-color,box-shadow] duration-200',
+          'sticky top-0 z-50 md:backdrop-blur-md md:backdrop-saturate-150 transition-[background-color,box-shadow] duration-200',
           isSearchOpen
             ? 'bg-[rgb(var(--nc-top)/0.97)] shadow-lg shadow-slate-900/10 md:bg-[rgb(var(--nc-top)/0.72)] md:shadow-none dark:shadow-black/30'
-            : 'bg-[rgb(var(--nc-top)/0.72)]'
+            : 'bg-[rgb(var(--nc-top)/0.97)] md:bg-[rgb(var(--nc-top)/0.72)]'
         )}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -378,7 +378,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
                   setIsMobileMenuOpen(!isMobileMenuOpen);
                 }}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                aria-label="Menu"
+                aria-label={t.common.mainNav}
                 aria-expanded={isMobileMenuOpen}
               >
                 {isMobileMenuOpen ? (

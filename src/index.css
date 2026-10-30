@@ -17,19 +17,20 @@
     --nc-bottom: 225 220 209;
     --nc-glow: 16 185 129;
     --nc-glow-alpha: 0.09;
-    /* Textos secundários com contraste de 4,5:1 sobre o creme (tailwind.config.js, textColor). */
-    --nc-text-emerald: 4 120 87;
-    --nc-text-gray: 95 102 115;
-    --nc-text-slate: 86 98 117;
-    --nc-text-gray-soft: 98 104 114;
-    --nc-text-slate-soft: 94 106 126;
-    --nc-text-orange: 194 65 12;
+    /* Textos secundários com contraste de 4,5:1 sobre o creme, inclusive nos fundos mais escuros
+       (--nc-muted e o fim do degradê, --nc-bottom). Valores usados em tailwind.config.js, textColor. */
+    --nc-text-emerald: 4 108 78;
+    --nc-text-gray: 80 87 99;
+    --nc-text-slate: 74 85 104;
+    --nc-text-gray-soft: 88 94 104;
+    --nc-text-slate-soft: 82 94 113;
+    --nc-text-orange: 170 55 10;
     --nc-text-red: 185 28 28;
-    --nc-text-amber: 165 74 8;
+    --nc-text-amber: 146 64 7;
     --nc-text-rose: 190 18 60;
     --nc-text-sky: 3 105 161;
     --nc-text-blue: 29 78 216;
-    --nc-text-lime: 77 124 15;
+    --nc-text-lime: 63 104 12;
     --nc-text-pink: 190 24 93;
     color-scheme: light;
   }
@@ -39,20 +40,20 @@
     --nc-page: 31 38 58;
     --nc-bottom: 19 24 38;
     --nc-glow-alpha: 0.13;
-    /* No escuro ficam os tons originais do Tailwind. */
-    --nc-text-emerald: 5 150 105;
-    --nc-text-gray: 107 114 128;
-    --nc-text-slate: 100 116 139;
+    /* No escuro, os tons 400 do Tailwind: 4,5:1 sobre o azul-noite (os 600 ficavam em 2,4–3,3:1). */
+    --nc-text-emerald: 52 211 153;
+    --nc-text-gray: 156 163 175;
+    --nc-text-slate: 148 163 184;
     --nc-text-gray-soft: 156 163 175;
     --nc-text-slate-soft: 148 163 184;
-    --nc-text-orange: 234 88 12;
-    --nc-text-red: 220 38 38;
-    --nc-text-amber: 217 119 6;
-    --nc-text-rose: 225 29 72;
-    --nc-text-sky: 2 132 199;
-    --nc-text-blue: 37 99 235;
-    --nc-text-lime: 101 163 13;
-    --nc-text-pink: 219 39 119;
+    --nc-text-orange: 251 146 60;
+    --nc-text-red: 248 113 113;
+    --nc-text-amber: 251 191 36;
+    --nc-text-rose: 251 113 133;
+    --nc-text-sky: 56 189 248;
+    --nc-text-blue: 96 165 250;
+    --nc-text-lime: 163 230 53;
+    --nc-text-pink: 244 114 182;
     color-scheme: dark;
   }
 

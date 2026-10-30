@@ -161,6 +161,8 @@ export const en: Translations = {
     close: 'Close',
     skipToContent: 'Skip to content',
     mainNav: 'Main navigation',
+    zoom: 'Photo zoom',
+    rotate: 'Rotate photo',
     showPassword: 'Show password',
     hidePassword: 'Hide password',
     continue: 'Continue',

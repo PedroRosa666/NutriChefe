@@ -144,6 +144,8 @@ export const pt = {
     close: 'Fechar',
     skipToContent: 'Pular para o conteúdo',
     mainNav: 'Navegação principal',
+    zoom: 'Zoom da foto',
+    rotate: 'Girar a foto',
     showPassword: 'Mostrar senha',
     hidePassword: 'Ocultar senha',
     remove: 'Remover',

@@ -201,7 +201,7 @@ export function AccountSettings() {
           </button>
         ) : (
           <Link to="/mentoria-ia"
-            className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-300">
             <Crown className="h-4 w-4" /> {t.profile.upgradePremium}
           </Link>
         )}

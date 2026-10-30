@@ -571,6 +571,7 @@ export function AIChatInterface() {
           <motion.button
             type="submit"
             disabled={!inputMessage.trim() || sendingMessage}
+            aria-label={t.messages.send}
             className={cn(
               'w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all',
               inputMessage.trim() && !sendingMessage

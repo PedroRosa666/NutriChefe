@@ -8,7 +8,8 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { feedback } from '../../lib/i18n/current';
 
 export function ResetPasswordPage() {
-  const rp = useTranslation().feedback.resetPassword;
+  const t = useTranslation();
+  const rp = t.feedback.resetPassword;
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -252,6 +253,8 @@ export function ResetPasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? t.common.hidePassword : t.common.showPassword}
+                aria-pressed={showPassword}
                 className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 disabled={loading}
               >
@@ -297,6 +300,8 @@ export function ResetPasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? t.common.hidePassword : t.common.showPassword}
+                aria-pressed={showConfirmPassword}
                 className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 disabled={loading}
               >

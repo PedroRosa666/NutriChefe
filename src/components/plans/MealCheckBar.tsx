@@ -19,8 +19,8 @@ interface MealCheckBarProps {
 
 const STYLE: Record<CheckStatus, string> = {
   ate: 'border-emerald-500 bg-emerald-600 text-white',
-  other: 'border-amber-400 bg-amber-500 text-white',
-  skipped: 'border-rose-400 bg-rose-500 text-white',
+  other: 'border-amber-500 bg-amber-400 text-amber-950',
+  skipped: 'border-rose-500 bg-rose-600 text-white',
 };
 
 /** "Como foi?" de uma refeição: comeu o do plano, comeu outra coisa ou pulou. */

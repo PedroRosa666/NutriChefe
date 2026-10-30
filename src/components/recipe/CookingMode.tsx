@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, ListChecks, Pause, Play, RotateCcw, Timer, X, PartyPopper } from 'lucide-react';
+import { useDialog } from '../../hooks/useDialog';
 import { useTranslation } from '../../hooks/useTranslation';
 import { findStepMinutes } from '../../lib/ingredients';
 import { SMOOTH } from '../../lib/motion';
@@ -38,6 +39,8 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, 
 
 export function CookingMode({ title, steps, ingredients, onClose }: CookingModeProps) {
   const t = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef);
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [showIngredients, setShowIngredients] = useState(false);
@@ -118,6 +121,7 @@ export function CookingMode({ title, steps, ingredients, onClose }: CookingModeP
 
   return createPortal(
     <motion.div
+      ref={dialogRef}
       className="fixed inset-0 z-[70] flex flex-col bg-slate-950 text-white"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

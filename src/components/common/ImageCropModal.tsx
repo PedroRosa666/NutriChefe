@@ -88,6 +88,8 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
                 max={3}
                 step={0.1}
                 value={zoom}
+                aria-label={t.common.zoom}
+                aria-valuetext={`${Math.round(zoom * 100)}%`}
                 onChange={(e) => setZoom(Number(e.target.value))}
                 className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-600 dark:bg-slate-700"
               />
@@ -100,6 +102,8 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
                 type="range"
                 min={0}
                 max={360}
+                aria-label={t.common.rotate}
+                aria-valuetext={`${rotation}°`}
                 step={1}
                 value={rotation}
                 onChange={(e) => setRotation(Number(e.target.value))}

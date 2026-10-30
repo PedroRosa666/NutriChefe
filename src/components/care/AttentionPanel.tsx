@@ -93,7 +93,7 @@ export function AttentionPanel({ flagged, failed, onRetry, hasPatients }: { flag
       <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-100">
         <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
         <p className="min-w-0 flex-1">{a.loadFailed}</p>
-        <button type="button" onClick={onRetry} className="min-h-[40px] rounded-lg bg-amber-600 px-3 text-sm font-semibold text-white hover:bg-amber-700">
+        <button type="button" onClick={onRetry} className="min-h-[40px] rounded-lg bg-amber-700 px-3 text-sm font-semibold text-white hover:bg-amber-800">
           {t.common.retry}
         </button>
       </section>

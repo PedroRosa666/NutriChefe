@@ -844,7 +844,8 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                         <button
                           type="button"
                           onClick={() => setEditingReview(null)}
-                          className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                          aria-label={t.common.close}
+                          className="-m-2 inline-flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                         >
                           <X className="w-4 h-4" />
                         </button>

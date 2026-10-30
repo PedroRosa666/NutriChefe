@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, X, Star, Clock, ChefHat } from 'lucide-react';
+import { useDialog } from '../../hooks/useDialog';
 import { useFiltersStore } from '../../store/filters';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
@@ -78,19 +79,8 @@ export function AdvancedFilters() {
     }
   }, [isOpen]);
 
-  // Fechar dropdown ao pressionar ESC
-  useEffect(() => {
-    function handleEscapeKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscapeKey);
-      return () => document.removeEventListener('keydown', handleEscapeKey);
-    }
-  }, [isOpen]);
+  // Esc fecha, o Tab fica dentro dos filtros e o foco volta ao botão que abriu.
+  useDialog(dropdownRef, { onClose: () => setIsOpen(false), active: isOpen });
 
   return (
     <div className="relative">
@@ -148,6 +138,7 @@ export function AdvancedFilters() {
             transition={{ duration: 0.18 }}
             role="dialog"
             aria-modal="true"
+            aria-labelledby="filters-dialog-title"
             className={cn(
               "bg-white dark:bg-slate-900 shadow-lg border border-slate-200 dark:border-slate-700 p-5 overflow-y-auto overscroll-contain",
               "fixed inset-x-0 bottom-0 z-[61] max-h-[85dvh] rounded-t-2xl pb-[calc(1.25rem+env(safe-area-inset-bottom))]",
@@ -157,12 +148,14 @@ export function AdvancedFilters() {
             )}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
+              <h3 id="filters-dialog-title" className="font-semibold text-slate-800 dark:text-slate-100 text-sm">
                 {t.filters.advanced}
               </h3>
               <motion.button
+                type="button"
                 onClick={() => setIsOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                aria-label={t.common.close}
+                className="inline-flex h-10 w-10 items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
