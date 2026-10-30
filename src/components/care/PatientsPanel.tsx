@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Copy, Loader2, MessageCircle, UserPlus, Users, X, ChevronRight, AlertTriangle, ArrowLeftRight, ClipboardCheck, Search, ShieldAlert, Share2, Crown } from 'lucide-react';
+import { Copy, Loader2, MessageCircle, UserPlus, Users, X, ChevronRight, Search, ShieldAlert, Share2, Crown } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { usePremiumStore } from '../../store/premium';
 import { useToastStore } from '../../store/toast';
@@ -27,6 +27,8 @@ import { LoadError } from '../common/LoadError';
 import { appLocale } from '../../lib/format';
 import { getMyCrnStatus, type CrnStatus } from '../../services/verification';
 import { matchesSearch } from '../../lib/search';
+import { StatusChip } from './AttentionPanel';
+import { cn } from '../../lib/utils';
 
 interface PatientSummary {
   lastLog: string | null;
@@ -75,8 +77,10 @@ export function PatientsPanel() {
   const selected = requestedPatient ? patients.find((p) => p.person.id === requestedPatient) ?? null : null;
   const openChat = searchParams.get('chat') === '1';
   const [query, setQuery] = useState('');
+  const [filterChoice, setFilter] = useState<'attention' | 'all' | null>(searchParams.get('filtro') === 'atencao' ? 'attention' : null);
   const [crnStatus, setCrnStatus] = useState<CrnStatus | null>(null);
   const [unread, setUnread] = useState<Map<string, number>>(new Map());
+  const [overviewFailed, setOverviewFailed] = useState(false);
   const careSignal = useNotificationSignal((n) => n.kind === 'swap_requested' || n.kind === 'patient_joined' || n.kind === 'link_ended' || n.kind === 'message');
 
   const load = useCallback(async () => {
@@ -92,8 +96,12 @@ export function PatientsPanel() {
           setSummaries(Object.fromEntries(rows.map((r) => [r.clientId, toSummary(r)])));
           setPendingSwaps(new Map(rows.map((r) => [r.clientId, r.pendingSwaps])));
           setUnread(new Map(rows.map((r) => [r.clientId, r.unread])));
+          setOverviewFailed(false);
         })
-        .catch((e) => console.error('Error loading patients overview:', e));
+        .catch((e) => {
+          console.error('Error loading patients overview:', e);
+          setOverviewFailed(true);
+        });
     } catch (error) {
       console.error('Error loading patients:', error);
       setFailed(true);
@@ -112,11 +120,15 @@ export function PatientsPanel() {
   useEffect(() => {
     if (!user || !patientIds) return;
     let cancelled = false;
-    for (const id of patientIds.split(',')) {
-      adherenceOf(id, user.id).then((value) => {
+    // Até 4 de cada vez: com 30+ pacientes, não dispara dezenas de consultas juntas.
+    const queue = patientIds.split(',');
+    const worker = async () => {
+      for (let id = queue.shift(); id && !cancelled; id = queue.shift()) {
+        const value = await adherenceOf(id, user.id);
         if (!cancelled) setAdherence((prev) => ({ ...prev, [id]: value }));
-      });
-    }
+      }
+    };
+    for (let i = 0; i < 4; i++) worker();
     return () => {
       cancelled = true;
     };
@@ -138,6 +150,28 @@ export function PatientsPanel() {
     else next.delete('paciente');
     setSearchParams(next);
   };
+
+  // Ordem por necessidade: mensagens e trocas primeiro, depois quem parou de registrar e quem
+  // está com adesão baixa. O filtro começa em "Precisam de atenção" quando há alguém nela
+  // (?filtro=atencao vem do "Ver todos" do Painel).
+  const rows = patients
+    .filter((p) => matchesSearch(query, p.person.full_name))
+    .map((link) => {
+      const id = link.person.id;
+      const s = summaries[id];
+      const a = adherence[id];
+      const unreadCount = unread.get(id) ?? 0;
+      const swapCount = pendingSwaps.get(id) ?? 0;
+      const lowAdherence = a != null && a < 50 ? a : null;
+      const inactive = !!s && isInactive(s.lastActive);
+      const overGoal = !!s && !!s.goalKcal && s.avgKcal7 > s.goalKcal * 1.1;
+      const score = (unreadCount + swapCount) * 100 + (inactive ? 10 : 0) + (lowAdherence !== null ? 5 : 0) + (overGoal ? 1 : 0);
+      return { link, s, unreadCount, swapCount, lowAdherence, inactive, overGoal, score };
+    })
+    .sort((x, y) => y.score - x.score || (x.link.person.full_name ?? '').localeCompare(y.link.person.full_name ?? '', appLocale()));
+  const needCount = rows.filter((r) => r.score > 0).length;
+  const filter = filterChoice ?? (needCount > 0 ? 'attention' : 'all');
+  const shown = filter === 'attention' ? rows.filter((r) => r.score > 0) : rows;
 
   // Antes de tocar em "Convidar": o que impede o convite aparece já, com o caminho para resolver.
   useEffect(() => {
@@ -263,12 +297,15 @@ export function PatientsPanel() {
             {t.care.patientsTitle}
           </h2>
           <p className="mt-1 max-w-xl text-sm text-slate-500 dark:text-slate-400">{t.care.patientsSubtitle}</p>
+          {/* Um convite ao Premium por tela: com o limite atingido, fica só o aviso abaixo. */}
           {premiumLoaded && !nutritionistPro && (
             <p className="mt-2 text-xs font-medium text-slate-600 dark:text-slate-300">
               {t.care.freeLimit.replace('{n}', String(patients.length)).replace('{max}', String(freePatientLimit))}{' '}
-              <Link to="/mentoria-ia" className="font-semibold text-emerald-700 underline dark:text-emerald-300">
-                {t.care.unlimitedWithPremium}
-              </Link>
+              {!limitReached && (
+                <Link to="/mentoria-ia" className="font-semibold text-emerald-700 underline dark:text-emerald-300">
+                  {t.care.unlimitedWithPremium}
+                </Link>
+              )}
             </p>
           )}
         </div>
@@ -362,81 +399,110 @@ export function PatientsPanel() {
       )}
 
       {!patients.length ? (
-        <p className="rounded-2xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-          {t.care.noPatients}
-        </p>
+        <div className="rounded-2xl border border-dashed border-slate-200 px-6 py-10 text-center dark:border-slate-700">
+          <Users className="mx-auto mb-3 h-10 w-10 text-slate-300 dark:text-slate-600" aria-hidden="true" />
+          <p className="mx-auto max-w-sm text-sm text-slate-600 dark:text-slate-300">{t.care.noPatients}</p>
+          {canInvite && !invites.length && (
+            <button
+              type="button"
+              onClick={newInvite}
+              disabled={creating}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+              {t.care.invitePatient}
+            </button>
+          )}
+        </div>
       ) : (
         <div className="space-y-3">
-        {/* Busca só quando a lista já é grande o bastante para precisar. */}
-        {patients.length > 6 && (
-          <div className="relative max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input aria-label={t.care.searchPatients}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t.care.searchPatients}
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-            />
-          </div>
-        )}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {patients
-            .filter((p) => matchesSearch(query, p.person.full_name))
-            .map((p) => {
-            const s = summaries[p.person.id];
-            const inactive = s && isInactive(s.lastActive);
-            const overGoal = s && s.goalKcal && s.avgKcal7 > s.goalKcal * 1.1;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => openPatient(p)}
-                className="glass-card flex items-center gap-3 rounded-2xl border p-4 text-left transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-lg"
-              >
-                <Avatar name={p.person.full_name} url={p.person.avatar_url} className="h-12 w-12" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-slate-900 dark:text-white">{p.person.full_name}</p>
-                  {s ? (
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {t.care.lastLog}: {s.lastLog ? new Date(`${s.lastLog}T12:00:00`).toLocaleDateString(appLocale()) : t.care.never}
-                      {' • '}
-                      {s.days7} {t.care.daysLogged7}
-                      {s.avgKcal7 > 0 && ` • ${s.avgKcal7} kcal`}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-slate-400">…</p>
-                  )}
-                  {(unread.get(p.person.id) ?? 0) > 0 && (
-                    <p className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
-                      <MessageCircle className="h-3 w-3" />
-                      {t.messages.unreadCount.replace('{count}', String(unread.get(p.person.id)))}
-                    </p>
-                  )}
-                  {(pendingSwaps.get(p.person.id) ?? 0) > 0 && (
-                    <p className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">
-                      <ArrowLeftRight className="h-3 w-3" />
-                      {t.swaps.pendingCount.replace('{count}', String(pendingSwaps.get(p.person.id)))}
-                    </p>
-                  )}
-                  {/* Adesão baixa: só com refeições suficientes para a % fazer sentido. */}
-                  {adherence[p.person.id] != null && adherence[p.person.id]! < 50 && (
-                    <p className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-800 dark:bg-rose-900/30 dark:text-rose-300">
-                      <ClipboardCheck className="h-3 w-3" />
-                      {t.adherence.lowAlert.replace('{percent}', String(adherence[p.person.id]))}
-                    </p>
-                  )}
-                  {(inactive || overGoal) && (
-                    <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                      <AlertTriangle className="h-3 w-3" />
-                      {inactive ? t.care.inactiveAlert : t.care.overGoalAlert}
-                    </p>
-                  )}
+          {patients.length > 1 && (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex gap-1 rounded-xl bg-slate-200/70 p-1 dark:bg-slate-800" role="group" aria-label={t.care.filterLabel}>
+                {(['attention', 'all'] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={filter === key}
+                    onClick={() => setFilter(key)}
+                    className={cn(
+                      'min-h-[40px] rounded-lg px-3 text-sm font-medium transition-colors',
+                      filter === key ? 'bg-white text-emerald-700 shadow-sm dark:bg-slate-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300'
+                    )}
+                  >
+                    {key === 'attention' ? t.care.filterAttention.replace('{n}', String(needCount)) : t.care.filterAll.replace('{n}', String(patients.length))}
+                  </button>
+                ))}
+              </div>
+              {/* Busca só quando a lista já é grande o bastante para precisar. */}
+              {patients.length > 6 && (
+                <div className="relative w-full max-w-sm sm:w-auto sm:flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                  <input
+                    type="search"
+                    aria-label={t.care.searchPatients}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={t.care.searchPatients}
+                    className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                  />
                 </div>
-                <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400" />
-              </button>
-            );
-          })}
-        </div>
+              )}
+            </div>
+          )}
+          {!shown.length ? (
+            <p className="rounded-2xl border border-dashed border-slate-200 px-6 py-8 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+              {query.trim() ? t.care.noSearchResults.replace('{q}', query.trim()) : t.attention.allGood}
+            </p>
+          ) : (
+            <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {shown.map(({ link: p, s, unreadCount, swapCount, lowAdherence, inactive, overGoal }) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => openPatient(p)}
+                    className="glass-card flex h-full w-full items-center gap-3 rounded-2xl border p-4 text-left transition-shadow duration-200 hover:shadow-lg"
+                  >
+                    <Avatar name={p.person.full_name} url={p.person.avatar_url} className="h-12 w-12" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-slate-900 dark:text-white">{p.person.full_name}</p>
+                      {s ? (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {t.care.lastLog}: {s.lastLog ? new Date(`${s.lastLog}T12:00:00`).toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit' }) : t.care.never}
+                          {' • '}
+                          {t.care.daysLogged7.replace('{n}', String(s.days7))}
+                          {s.avgKcal7 > 0 && ` • ${s.avgKcal7}${s.goalKcal ? ` / ${s.goalKcal}` : ''} kcal`}
+                        </p>
+                      ) : (
+                        !overviewFailed && <p className="h-4 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
+                      )}
+                      {(unreadCount > 0 || swapCount > 0 || lowAdherence !== null || inactive || overGoal) && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {unreadCount > 0 && (
+                            <StatusChip kind="messages">
+                              {(unreadCount === 1 ? t.attention.messagesOne : t.attention.messagesMany).replace('{n}', String(unreadCount))}
+                            </StatusChip>
+                          )}
+                          {swapCount > 0 && (
+                            <StatusChip kind="swaps">
+                              {(swapCount === 1 ? t.attention.swapsOne : t.attention.swapsMany).replace('{n}', String(swapCount))}
+                            </StatusChip>
+                          )}
+                          {inactive && <StatusChip kind="inactive">{t.care.inactiveAlert}</StatusChip>}
+                          {/* Adesão baixa: só com refeições suficientes para a % fazer sentido. */}
+                          {lowAdherence !== null && (
+                            <StatusChip kind="adherence">{t.adherence.lowAlert.replace('{percent}', String(lowAdherence))}</StatusChip>
+                          )}
+                          {overGoal && !inactive && <StatusChip kind="kcal">{t.care.overGoalAlert}</StatusChip>}
+                        </div>
+                      )}
+                    </div>
+                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>

@@ -312,7 +312,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
                 {t.care.intake7}
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {week.days} {t.care.daysLogged7}
+                {t.care.daysLogged7.replace('{n}', String(week.days))}
               </p>
             </div>
             <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t.care.avgPerDay}</p>

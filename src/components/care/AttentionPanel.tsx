@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowLeftRight, CheckCircle2, ChevronRight, Crown, MessageCircle, MoonStar } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, CheckCircle2, ChevronRight, Crown, Flame, MessageCircle, MoonStar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../hooks/useTranslation';
 import { usePremiumStore } from '../../store/premium';
@@ -141,11 +141,12 @@ const CHIP = {
   swaps: { icon: ArrowLeftRight, className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' },
   inactive: { icon: MoonStar, className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' },
   adherence: { icon: AlertTriangle, className: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200' },
+  kcal: { icon: Flame, className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200' },
 } as const;
 
 /**
  * Selo de situação do paciente, com a mesma cor e ícone em todas as telas (Painel, lista de
- * pacientes): mensagens = azul, trocas = âmbar, sem registrar = cinza, adesão baixa = rosa.
+ * pacientes): mensagens = azul, trocas = âmbar, sem registrar = cinza, adesão baixa = rosa, acima da meta = laranja.
  */
 export function StatusChip({ kind, children }: { kind: keyof typeof CHIP; children: ReactNode }) {
   const { icon: Icon, className } = CHIP[kind];
