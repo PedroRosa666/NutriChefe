@@ -3,7 +3,7 @@ import { Check, ClipboardCheck, Repeat, TrendingDown, TrendingUp, X } from 'luci
 import { useAuthStore } from '../../store/auth';
 import { useTranslation } from '../../hooks/useTranslation';
 import { loadAdherence, type AdherenceResult } from '../../services/adherence';
-import type { SlotStatus } from '../../lib/adherence';
+import { MIN_PLANNED_FOR_PERCENT, type SlotStatus } from '../../lib/adherence';
 import { cn } from '../../lib/utils';
 
 // Cor e forma juntas: quem não distingue vermelho de verde lê pelo símbolo (WCAG 1.4.1).
@@ -66,15 +66,20 @@ export function AdherencePanel({ clientId, reloadKey = 0 }: { clientId: string; 
   const previousMarked = previous.ate + previous.other + previous.skipped > 0;
   const delta = previous.percent === null || !previousMarked ? null : current.percent - previous.percent;
   const weekday = (date: string) => t.plan.days[(new Date(`${date}T12:00:00`).getDay() + 6) % 7];
+  const fewData = current.planned < MIN_PLANNED_FOR_PERCENT;
   const offPlan = current.byMeal.filter((m) => m.off > 0).sort((x, y) => y.off / y.planned - x.off / x.planned);
 
   return card(
     <>
       <div className="flex flex-wrap items-end gap-x-4 gap-y-1">
-        <p className="text-3xl font-bold text-slate-900 dark:text-white">
-          {current.percent}%<span className="ml-1.5 text-sm font-medium text-slate-500 dark:text-slate-400">{a.followed}</span>
-        </p>
-        {delta !== null && delta !== 0 && (
+        {fewData ? (
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{a.fewData.replace('{n}', String(current.planned))}</p>
+        ) : (
+          <p className="text-3xl font-bold text-slate-900 dark:text-white">
+            {current.percent}%<span className="ml-1.5 text-sm font-medium text-slate-500 dark:text-slate-400">{a.followed}</span>
+          </p>
+        )}
+        {!fewData && delta !== null && delta !== 0 && (
           <p className={cn('inline-flex items-center gap-1 text-xs font-semibold', delta > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400')}>
             {delta > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
             {a.vsPrevious.replace('{delta}', `${delta > 0 ? '+' : ''}${delta}`)}

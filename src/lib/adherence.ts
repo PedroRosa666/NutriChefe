@@ -5,6 +5,9 @@ import { planDayOf } from '../services/care';
 import { mealItems, mealsOnDay } from './plan-meals';
 import { toISODate } from '../store/nutrition-tracking';
 
+/** Abaixo disso a % de adesão não diz nada (ex.: 0% no primeiro dia do plano): mostra "poucos dados". */
+export const MIN_PLANNED_FOR_PERCENT = 6;
+
 export type CheckStatus = 'ate' | 'other' | 'skipped';
 export type SlotStatus = CheckStatus | 'none';
 

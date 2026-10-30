@@ -690,6 +690,7 @@ export const translations = {
 
     care: {
       detailTabsLabel: 'Patient file sections',
+      moreActions: 'More actions',
       pendingCount: 'New items: {n}',
       myNutritionist: 'My nutritionist',
       connectedSince: 'Following you since',
@@ -1188,6 +1189,7 @@ export const translations = {
       offPlan: 'Meals that most go off plan',
       offPlanCount: '{off} of {planned}',
       noData: 'No meals planned in the last 7 days.',
+      fewData: 'Not enough data yet: {n} planned meals so far. The percentage shows up from 6.',
       noPlan: 'Create a meal plan to follow adherence.',
       lowAlert: 'Low adherence ({percent}%)',
     },
@@ -2589,6 +2591,7 @@ export const translations = {
 
     care: {
       detailTabsLabel: 'Seções da ficha do paciente',
+      moreActions: 'Mais ações',
       pendingCount: 'Itens novos: {n}',
       myNutritionist: 'Meu nutricionista',
       connectedSince: 'Acompanhando você desde',
@@ -3087,6 +3090,7 @@ export const translations = {
       offPlan: 'Refeições que mais saem do plano',
       offPlanCount: '{off} de {planned}',
       noData: 'Nenhuma refeição prevista nos últimos 7 dias.',
+      fewData: 'Poucos dados ainda: {n} refeições previstas até agora. A porcentagem aparece a partir de 6.',
       noPlan: 'Crie um plano alimentar para acompanhar a adesão.',
       lowAlert: 'Adesão baixa ({percent}%)',
     },

@@ -20,6 +20,7 @@ import {
 } from '../../services/care';
 import { loadAdherence } from '../../services/adherence';
 import { isInactive, lastActivity } from '../../lib/patient-activity';
+import { MIN_PLANNED_FOR_PERCENT } from '../../lib/adherence';
 import { Avatar } from './Avatar';
 import { PatientDetail } from './PatientDetail';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -53,7 +54,7 @@ function toSummary(o: PatientOverview): PatientSummary {
 /** % de adesão nos últimos 7 dias ao plano deste nutricionista (null sem plano ou com poucos dados). */
 async function adherenceOf(clientId: string, nutritionistId: string): Promise<number | null> {
   const result = await loadAdherence(clientId, nutritionistId).catch(() => null);
-  return result && result.current.planned >= 6 ? result.current.percent : null;
+  return result && result.current.planned >= MIN_PLANNED_FOR_PERCENT ? result.current.percent : null;
 }
 
 export function PatientsPanel() {
