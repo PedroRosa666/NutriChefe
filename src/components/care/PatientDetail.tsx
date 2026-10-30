@@ -157,7 +157,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
   const dayView = useMemo(() => {
     if (!data || !selectedDay) return null;
     const entries = data.entries.filter((e) => e.date === selectedDay);
-    return { entries, totals: sumEntries(entries) };
+    return { date: selectedDay, entries, totals: sumEntries(entries) };
   }, [data, selectedDay]);
 
   if (failed && !data) {
@@ -187,6 +187,8 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
       ? { sex: h.sex, age, heightCm: h.height_cm, weightKg: h.weight_kg, activityLevel: h.activity_level, goal: h.goal }
       : null;
   const goalLabels = t.profile.nutritionGoalsnames;
+  // Registros do resumo: os do dia escolhido ou os 12 mais recentes da semana.
+  const shownEntries = dayView ? dayView.entries : data.entries.slice(0, 12);
 
   const end = async () => {
     if (!(await confirmDialog(t.care.endLinkConfirmNutritionist))) return;
@@ -335,7 +337,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
                 <Utensils className="h-5 w-5 text-amber-500" />
-                {dayView && selectedDay ? dayLabel(selectedDay) : t.care.intake7}
+                {dayView ? dayLabel(dayView.date) : t.care.intake7}
               </h3>
               {dayView ? (
                 <button
@@ -386,13 +388,13 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
             {!dayView && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t.care.tapBarHint}</p>}
 
             <h4 className="mb-2 mt-6 text-sm font-semibold text-slate-900 dark:text-white">
-              {dayView && selectedDay ? t.care.dayEntries.replace('{day}', dayLabel(selectedDay)) : t.care.recentEntries}
+              {dayView ? t.care.dayEntries.replace('{day}', dayLabel(dayView.date)) : t.care.recentEntries}
             </h4>
-            {!(dayView ? dayView.entries : data.entries).length ? (
+            {!shownEntries.length ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">{dayView ? t.care.noEntriesDay : t.care.noEntries}</p>
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                {(dayView ? dayView.entries : data.entries.slice(0, 12)).map((e) => (
+                {shownEntries.map((e) => (
                   <li key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                     <span className="min-w-0 truncate text-slate-800 dark:text-slate-100">
                       <span className="mr-2 text-xs text-slate-400">{new Date(`${e.date}T12:00:00`).toLocaleDateString(appLocale(), { day: '2-digit', month: '2-digit' })}</span>

@@ -40,11 +40,25 @@ export function newExcesses(before: NutritionTotals, after: NutritionTotals, goa
 
 // Peso de cada nutriente na distância: calorias primeiro, depois os macros.
 const WEIGHT: Record<GoalKey, number> = { calories: 3, protein: 1.2, carbs: 1, fat: 1, fiber: 0.6 };
-// Faltar proteína pesa mais que faltar fibra; passar da meta pesa mais que faltar.
-const DEFICIT: Record<GoalKey, number> = { calories: 1, protein: 1.2, carbs: 0.8, fat: 0.8, fiber: 0.5 };
+// Faltar proteína pesa mais que faltar fibra; passar da meta pesa mais que faltar. Carboidrato pesa
+// quase como proteína: com catálogo rico em gordura, um peso baixo deixava os dias com ~60% da meta.
+const DEFICIT: Record<GoalKey, number> = { calories: 1, protein: 1.2, carbs: 1.3, fat: 0.8, fiber: 0.5 };
 const EXCESS = 1.5;
 // Além da folga, cada ponto percentual a mais custa bem mais: o gerador foge de estourar.
 const BEYOND_TOLERANCE = 6;
+
+/**
+ * Piso: calorias, proteína e carboidrato abaixo de 80% da meta são um dia mal montado, não só
+ * "um pouco abaixo". Abaixo do piso, cada ponto a menos custa mais (espelho da folga de cima).
+ */
+export const FLOOR = 0.2;
+const FLOOR_KEYS: GoalKey[] = ['calories', 'protein', 'carbs'];
+const BELOW_FLOOR = 3;
+
+/** Nutrientes do dia abaixo do piso (metas zeradas ficam de fora). */
+export function belowFloor(totals: NutritionTotals, goals: Partial<NutritionGoals>): GoalKey[] {
+  return FLOOR_KEYS.filter((key) => (goals[key] ?? 0) > 0 && totals[key] < (goals[key] ?? 0) * (1 - FLOOR));
+}
 
 /**
  * Distância entre os nutrientes e um alvo, em fração da escala de cada nutriente (`scale`,
@@ -59,7 +73,8 @@ export function goalDistance(totals: NutritionTotals, target: Partial<NutritionG
     if (rel > 0) {
       cost += WEIGHT[key] * (rel * EXCESS + Math.max(0, rel - OVER_TOLERANCE[key]) * BEYOND_TOLERANCE);
     } else {
-      cost += WEIGHT[key] * -rel * DEFICIT[key];
+      const below = FLOOR_KEYS.includes(key) ? Math.max(0, -rel - FLOOR) * BELOW_FLOOR : 0;
+      cost += WEIGHT[key] * (-rel * DEFICIT[key] + below);
     }
   }
   return cost;

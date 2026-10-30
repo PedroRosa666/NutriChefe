@@ -67,6 +67,17 @@ const emptyItem = (day: number, mealId: string, group: number | null): Omit<Meal
   note: '',
 });
 
+const itemsOnDay = (list: MealPlanItem[], day: number) => list.filter((i) => i.day === day);
+
+const goalUnit = (key: GoalKey) => (key === 'calories' ? 'kcal' : 'g');
+
+/** Cor da barra de uma meta: acima da folga, perto da meta (90% ou mais) ou ainda longe. */
+function goalBarColor(over: boolean, pct: number): string {
+  if (over) return 'bg-amber-500';
+  if (pct >= 0.9) return 'bg-emerald-500';
+  return 'bg-slate-400 dark:bg-slate-500';
+}
+
 export function MealPlanEditor({
   clientId,
   recipes,
@@ -86,11 +97,21 @@ export function MealPlanEditor({
 
   // Plano novo começa com as quatro refeições de sempre; o profissional adiciona, renomeia e remove.
   const [meals, setMeals] = useState<PlanMeal[]>(() => plan?.meals ?? defaultMeals(t.plan.meals));
-  const generate = () => generateWeeklyPlanDetailed({ recipes, dailyCalories, goals, allergies, preferences, meals });
+  // Acompanhamentos (arroz, feijão, pão, fruta) vêm do catálogo de alimentos, quando carregado.
+  const generate = () =>
+    generateWeeklyPlanDetailed({ recipes, dailyCalories, goals, allergies, preferences, meals, foods: useFoodsStore.getState().foods });
+  // Itens que o gerador acrescentou como acompanhamento: "Gerar de novo" troca estes, mas mantém os
+  // alimentos que o profissional pôs à mão (editar um item cria outro objeto e ele deixa de contar aqui).
+  const autoSides = useRef(new Set<MealPlanItem>());
+  const generateTracked = () => {
+    const result = generate();
+    autoSides.current = new Set(result.items.filter((i) => i.food_id));
+    return result;
+  };
 
   const [title, setTitle] = useState(plan?.title ?? '');
   const [notes, setNotes] = useState(plan?.notes ?? '');
-  const [items, setItems] = useState<MealPlanItem[]>(() => plan?.items ?? (startGenerated ? generate().items : []));
+  const [items, setItems] = useState<MealPlanItem[]>(() => plan?.items ?? (startGenerated ? generateTracked().items : []));
   const [day, setDay] = useState(() => planDayOf(new Date()));
   const [adder, setAdder] = useState<Adder | null>(null);
   const [saving, setSaving] = useState(false);
@@ -161,9 +182,10 @@ export function MealPlanEditor({
       const gaps = meals.flatMap((m) =>
         m.days.filter((d) => !next.some((i) => i.meal_id === m.id && i.day === d)).map((d) => `${m.name} (${t.plan.days[d]})`)
       );
+      const overText = overDaysText(next);
       if (result.dropped) showToast(countText(t.plan.aiDropped, result.dropped), 'warning');
       else if (gaps.length) showToast(t.plan.aiGaps.replace('{meals}', gaps.slice(0, 6).join(', ') + (gaps.length > 6 ? '…' : '')), 'warning');
-      else if (overDaysText(next)) showToast(t.plan.aiOverGoals.replace('{list}', overDaysText(next)), 'warning');
+      else if (overText) showToast(t.plan.aiOverGoals.replace('{list}', overText), 'warning');
       else showToast(t.plan.aiDone, 'success');
     } catch (error) {
       showToast(error instanceof Error && error.message && !error.message.includes('_') ? error.message : t.plan.aiError, 'error');
@@ -184,29 +206,31 @@ export function MealPlanEditor({
     return list.slice(0, 30);
   }, [recipeQuery, sortedRecipes, user?.id]);
 
-  const dayCalories = (d: number) => itemsCalories(items.filter((i) => i.day === d), byId);
+  const dayCalories = (d: number) => itemsCalories(itemsOnDay(items, d), byId);
 
   // ------------------------------------------------------------ metas do dia
   const goalNames = t.profile.nutritionGoalsnames;
-  const amount = (key: GoalKey, value: number) => `${Math.round(value)} ${key === 'calories' ? 'kcal' : 'g'}`;
+  const goalName = (key: GoalKey) => goalNames[key].toLowerCase();
+  /** Só os nomes dos nutrientes acima da meta: "fibra, gordura". */
+  const goalList = (list: GoalExcess[]) => list.map((e) => goalName(e.key)).join(', ');
+  const amount = (key: GoalKey, value: number) => `${Math.round(value)} ${goalUnit(key)}`;
   const excessText = (list: GoalExcess[]) =>
     list
-      .map((e) => t.plan.excessItem.replace('{name}', goalNames[e.key].toLowerCase()).replace('{total}', amount(e.key, e.total)).replace('{goal}', amount(e.key, e.goal)))
+      .map((e) => t.plan.excessItem.replace('{name}', goalName(e.key)).replace('{total}', amount(e.key, e.total)).replace('{goal}', amount(e.key, e.goal)))
       .join(', ');
-  const dayExcesses = (list: MealPlanItem[], d: number) => goalExcesses(itemsTotals(list.filter((i) => i.day === d), byId), goals);
+  const dayExcesses = (list: MealPlanItem[], d: number) => goalExcesses(itemsTotals(itemsOnDay(list, d), byId), goals);
   /** Dias com nutriente acima da meta, para o aviso depois de gerar: "Seg: fibra, gordura; Ter: fibra". */
   const overDaysText = (list: MealPlanItem[]) =>
-    [0, 1, 2, 3, 4, 5, 6]
-      .map((d) => ({ d, over: dayExcesses(list, d) }))
+    ALL_DAYS.map((d) => ({ d, over: dayExcesses(list, d) }))
       .filter((x) => x.over.length)
-      .map((x) => `${t.plan.days[x.d]}: ${x.over.map((e) => goalNames[e.key].toLowerCase()).join(', ')}`)
+      .map((x) => `${t.plan.days[x.d]}: ${goalList(x.over)}`)
       .join('; ');
   /**
    * Metas que o item novo faria o dia passar. Num grupo de opções conta só a 1ª opção, mas a
    * pessoa pode comer qualquer uma: a nova é comparada como se fosse a escolhida.
    */
   const excessesIfAdded = (item: MealPlanItem) => {
-    const dayItems = items.filter((i) => i.day === item.day);
+    const dayItems = itemsOnDay(items, item.day);
     const others = item.option_group === null ? dayItems : dayItems.filter((i) => !(i.meal_id === item.meal_id && i.option_group === item.option_group));
     return newExcesses(itemsTotals(dayItems, byId), itemsTotals([...others, { ...item, option_group: null }], byId), goals);
   };
@@ -215,6 +239,10 @@ export function MealPlanEditor({
     const over = excessesIfAdded(item);
     return !over.length || confirmDialog(t.plan.overGoalConfirm.replace('{day}', t.plan.daysLong[item.day]).replace('{list}', excessText(over)));
   };
+  // Painel "Metas do dia": só aparece com o dia já montado e alguma meta definida.
+  const dayTotals = itemsTotals(itemsOnDay(items, day), byId);
+  const dayGoalKeys = PLAN_GOAL_KEYS.filter((k) => goals[k] > 0);
+  const showDayGoals = !!dayTotals.calories && dayGoalKeys.length > 0;
   const dayMeals = mealsOnDay(meals, day);
   // Sugestão de % por refeição (mostrada quando o bloco não tem a sua) e a soma das % definidas.
   const { shares: suggestedShares } = dayShares(meals.map((m) => ({ ...m, kcalShare: null })), day);
@@ -234,19 +262,23 @@ export function MealPlanEditor({
   const regenerate = async () => {
     // Gerar de novo troca todas as receitas: com o plano já montado, confirma antes.
     if (items.some((i) => i.recipe_id && i.option_group === null) && !(await confirmDialog(t.plan.regenerateConfirm))) return;
-    const { items: next, relaxed, suggestedShares: suggested, offTarget, overGoals } = generate();
+    await useFoodsStore.getState().fetch();
+    const previousSides = autoSides.current;
+    const { items: next, relaxed, suggestedShares: suggested, offTarget, overGoals } = generateTracked();
     if (!next.length) {
       showToast(t.plan.generateEmpty, 'warning');
       return;
     }
-    // O gerador só monta receitas; alimentos e grupos de opções do dia ficam como estavam.
-    setItems((prev) => [...prev.filter((i) => i.food_id || i.option_group !== null), ...next]);
+    // Receitas e acompanhamentos gerados antes são trocados; alimentos postos à mão e grupos de
+    // opções ficam como estavam.
+    const keep = (i: MealPlanItem) => (i.food_id && !previousSides.has(i)) || i.option_group !== null;
+    setItems((prev) => [...prev.filter(keep), ...next]);
     // Preferência deixada de lado ou meta que não fechou: avisa em vez de ignorar calado.
     if (relaxed.length) {
       const names = relaxed.map((p) => t.health.diets[p as keyof typeof t.health.diets] ?? p).join(', ');
       showToast(t.plan.generatedRelaxed.replace('{prefs}', names), 'warning');
     } else if (overGoals.length) {
-      const kept = [...items.filter((i) => i.food_id || i.option_group !== null), ...next];
+      const kept = [...items.filter(keep), ...next];
       showToast(t.plan.generatedOverGoals.replace('{list}', overDaysText(kept)), 'warning');
     } else if (offTarget.length) {
       showToast(
@@ -287,9 +319,11 @@ export function MealPlanEditor({
     setShowTemplates(false);
   };
 
+  const recipeItem = (target: Adder, recipeId: string): MealPlanItem => ({ ...emptyItem(day, target.mealId, target.group), recipe_id: recipeId, food_id: null });
+
   const addRecipe = async (target: Adder, recipeId: string) => {
     if (!recipeId) return;
-    const item: MealPlanItem = { ...emptyItem(day, target.mealId, target.group), recipe_id: recipeId, food_id: null };
+    const item = recipeItem(target, recipeId);
     if (!(await confirmGoals(item))) return;
     setItems((prev) => [...prev, item]);
     // Fora de um grupo, fecha; dentro, fica aberto para a próxima opção.
@@ -507,34 +541,32 @@ export function MealPlanEditor({
             />
           </div>
           <ul className="max-h-56 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
-            {matchingRecipes.map((r) => (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    addRecipe(target, r.id);
-                    setRecipeQuery('');
-                  }}
-                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-slate-800 dark:text-slate-100">{r.title}</span>
-                    {!hasUsableNutrition(r) && <span className="block text-xs text-amber-700 dark:text-amber-300">{t.recipeInfo.notAutomatic}</span>}
-                    {(() => {
-                      const over = excessesIfAdded({ ...emptyItem(day, target.mealId, target.group), recipe_id: r.id, food_id: null });
-                      return over.length ? (
-                        <span className="block text-xs text-amber-700 dark:text-amber-300">
-                          {t.plan.wouldExceed.replace('{list}', over.map((e) => goalNames[e.key].toLowerCase()).join(', '))}
-                        </span>
-                      ) : null;
-                    })()}
-                  </span>
-                  <span className="flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">
-                    {r.unknownNutrients?.includes('calories') ? '—' : Math.round(r.nutritionFacts.calories)} kcal
-                  </span>
-                </button>
-              </li>
-            ))}
+            {matchingRecipes.map((r) => {
+              const wouldExceed = excessesIfAdded(recipeItem(target, r.id));
+              return (
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      addRecipe(target, r.id);
+                      setRecipeQuery('');
+                    }}
+                    className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-slate-800 dark:text-slate-100">{r.title}</span>
+                      {!hasUsableNutrition(r) && <span className="block text-xs text-amber-700 dark:text-amber-300">{t.recipeInfo.notAutomatic}</span>}
+                      {wouldExceed.length > 0 && (
+                        <span className="block text-xs text-amber-700 dark:text-amber-300">{t.plan.wouldExceed.replace('{list}', goalList(wouldExceed))}</span>
+                      )}
+                    </span>
+                    <span className="flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                      {r.unknownNutrients?.includes('calories') ? '—' : Math.round(r.nutritionFacts.calories)} kcal
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
             {!matchingRecipes.length && <li className="px-3 py-3 text-sm text-slate-500 dark:text-slate-400">{t.plan.noRecipeFound}</li>}
           </ul>
         </div>
@@ -734,37 +766,28 @@ export function MealPlanEditor({
         })}
       </div>
 
-      {(() => {
-        const totals = itemsTotals(items.filter((i) => i.day === day), byId);
-        const keys = PLAN_GOAL_KEYS.filter((k) => goals[k] > 0);
-        if (!totals.calories || !keys.length) return null;
-        return (
-          <section aria-label={t.plan.dayGoalsLabel} className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {keys.map((k) => {
-              const pct = totals[k] / goals[k];
-              const over = pct > 1 + OVER_TOLERANCE[k];
-              return (
-                <div key={k} className={cn('rounded-lg border px-2.5 py-2', over ? 'border-amber-300 bg-amber-50 dark:border-amber-700/50 dark:bg-amber-900/15' : 'border-slate-100 dark:border-slate-800')}>
-                  <div className="flex items-baseline justify-between gap-2 text-xs">
-                    <span className="font-medium text-slate-600 dark:text-slate-300">{goalNames[k]}</span>
-                    <span className={cn('tabular-nums', over ? 'font-semibold text-amber-800 dark:text-amber-200' : 'text-slate-500 dark:text-slate-400')}>
-                      {Math.round(totals[k])}/{Math.round(goals[k])}
-                      {k === 'calories' ? ' kcal' : ' g'}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-                    <div
-                      className={cn('h-full rounded-full', over ? 'bg-amber-500' : pct >= 0.9 ? 'bg-emerald-500' : 'bg-slate-400 dark:bg-slate-500')}
-                      style={{ width: `${Math.min(100, pct * 100)}%` }}
-                    />
-                  </div>
-                  {over && <span className="sr-only">{t.plan.aboveGoal}</span>}
+      {showDayGoals && (
+        <section aria-label={t.plan.dayGoalsLabel} className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {dayGoalKeys.map((k) => {
+            const pct = dayTotals[k] / goals[k];
+            const over = pct > 1 + OVER_TOLERANCE[k];
+            return (
+              <div key={k} className={cn('rounded-lg border px-2.5 py-2', over ? 'border-amber-300 bg-amber-50 dark:border-amber-700/50 dark:bg-amber-900/15' : 'border-slate-100 dark:border-slate-800')}>
+                <div className="flex items-baseline justify-between gap-2 text-xs">
+                  <span className="font-medium text-slate-600 dark:text-slate-300">{goalNames[k]}</span>
+                  <span className={cn('tabular-nums', over ? 'font-semibold text-amber-800 dark:text-amber-200' : 'text-slate-500 dark:text-slate-400')}>
+                    {Math.round(dayTotals[k])}/{Math.round(goals[k])} {goalUnit(k)}
+                  </span>
                 </div>
-              );
-            })}
-          </section>
-        );
-      })()}
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                  <div className={cn('h-full rounded-full', goalBarColor(over, pct))} style={{ width: `${Math.min(100, pct * 100)}%` }} />
+                </div>
+                {over && <span className="sr-only">{t.plan.aboveGoal}</span>}
+              </div>
+            );
+          })}
+        </section>
+      )}
 
       {(shareOff || repeatedName) && (
         <div className="space-y-1 text-xs text-amber-700 dark:text-amber-300">

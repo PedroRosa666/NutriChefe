@@ -11,3 +11,8 @@ dist/
 supabase/.temp/
 .wrangler/
 .vscode/
+
+# Testes de tela (Playwright)
+e2e-results/
+e2e-report/
+e2e/.auth/

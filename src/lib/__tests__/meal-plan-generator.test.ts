@@ -134,3 +134,42 @@ describe('newExcesses', () => {
     expect(newExcesses(after, { ...after, fiber: 40 }, goals)).toEqual([]);
   });
 });
+
+describe('acompanhamentos da TACO', () => {
+  const food = (taco_id: number, name: string, kcal: number, carbs: number, protein: number, fat: number, fiber: number, measure?: { label: string; grams: number }) => ({
+    id: `f${taco_id}`, taco_id, owner_id: null, name, category: '', kcal, protein, carbs, fat, fiber, sodium: null, nutrients: {}, measures: measure ? [measure] : [],
+  });
+  const foods = [
+    food(3, 'Arroz, tipo 1, cozido', 128, 28.1, 2.5, 0.2, 1.6, { label: '1 colher de sopa', grams: 25 }),
+    food(561, 'Feijão, carioca, cozido', 76, 13.6, 4.8, 0.5, 8.5, { label: '1 concha', grams: 140 }),
+    food(53, 'Pão, trigo, francês', 300, 58.6, 8, 3.1, 2.3, { label: '1 unidade', grams: 50 }),
+    food(182, 'Banana, prata, crua', 98, 26, 1.3, 0.1, 2, { label: '1 unidade', grams: 70 }),
+  ];
+  // Catálogo só com pratos ricos em proteína e gordura: sem acompanhamento, o carboidrato não fecha.
+  const fatty = Array.from({ length: 8 }, (_, i) => ({
+    ...recipe(`p${i}`, `Frango com legumes ${i}`, ['frango'], 380),
+    nutritionFacts: { calories: 380, protein: 32, carbs: 12, fat: 22, fiber: 4 },
+  }));
+  const goals = { protein: 110, carbs: 220, fat: 60, fiber: 25 };
+  const carbsOf = (items: ReturnType<typeof generateWeeklyPlan>, day: number) =>
+    items.filter((i) => i.day === day).reduce((sum, i) => {
+      if (i.food && i.grams) return sum + (i.food.carbs * i.grams) / 100;
+      const r = fatty.find((x) => x.id === i.recipe_id);
+      return sum + (r ? r.nutritionFacts.carbs * i.servings : 0);
+    }, 0);
+
+  it('completa o carboidrato com arroz, feijão, pão ou fruta', () => {
+    const without = generateWeeklyPlanDetailed({ recipes: fatty, dailyCalories: 2000, goals, allergies: [], preferences: [], seed: 4 });
+    const withSides = generateWeeklyPlanDetailed({ recipes: fatty, dailyCalories: 2000, goals, allergies: [], preferences: [], seed: 4, foods });
+    expect(withSides.items.some((i) => i.food_id)).toBe(true);
+    expect(carbsOf(withSides.items, 0)).toBeGreaterThan(carbsOf(without.items, 0) + 40);
+    // No máximo dois acompanhamentos por dia, com a medida caseira no texto.
+    for (let d = 0; d < 7; d++) expect(withSides.items.filter((i) => i.day === d && i.food_id).length).toBeLessThanOrEqual(2);
+    expect(withSides.items.find((i) => i.food_id)?.measure_label).toMatch(/colher|concha|unidade/);
+  });
+
+  it('respeita restrições: sem glúten não oferece pão', () => {
+    const { items } = generateWeeklyPlanDetailed({ recipes: fatty, dailyCalories: 2000, goals, allergies: [], preferences: ['glutenFree'], seed: 4, foods });
+    expect(items.some((i) => i.food?.name.startsWith('Pão'))).toBe(false);
+  });
+});

@@ -115,8 +115,9 @@ export function AccountSettings() {
   };
 
   const status = userSubscription?.status;
+  const subscriptionLabel = status ? a.status[status] : a.status.none;
   // Premium sem assinatura no Stripe não tem linha de status própria: aparece como ativo.
-  const statusLabel = premium && !paid ? a.status.active : status ? a.status[status] : a.status.none;
+  const statusLabel = premium && !paid ? a.status.active : subscriptionLabel;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
