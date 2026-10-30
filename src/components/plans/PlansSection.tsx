@@ -36,6 +36,7 @@ import { listSwapsForClient, pendingFor, type SwapRequest } from '../../services
 import { SwapRequestDialog } from '../swaps/SwapRequestDialog';
 import { SwapRequestsList } from '../swaps/SwapRequestsList';
 import { MealPlanEditor } from './MealPlanEditor';
+import type { NutritionGoals } from '../../store/nutrition-goals';
 import { PlanPrintView } from './PlanPrintView';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { cn } from '../../lib/utils';
@@ -48,7 +49,8 @@ interface PlansSectionProps {
   clientId: string;
   /** 'client': o próprio cliente; 'nutritionist': visto pelo nutricionista do paciente. */
   mode: 'client' | 'nutritionist';
-  dailyCalories: number;
+  /** Metas diárias do paciente (o plano mira nelas e o editor avisa quando passam). */
+  goals: NutritionGoals;
   allergies: string[];
   preferences: string[];
   /** Muda para recarregar os planos (ex.: depois de o nutricionista responder uma troca). */
@@ -57,7 +59,7 @@ interface PlansSectionProps {
   patientName?: string;
 }
 
-export function PlansSection({ clientId, mode, dailyCalories, allergies, preferences, reloadKey = 0, patientName }: PlansSectionProps) {
+export function PlansSection({ clientId, mode, goals, allergies, preferences, reloadKey = 0, patientName }: PlansSectionProps) {
   const user = useAuthStore((s) => s.user);
   const { recipes } = useRecipeIndex();
   const { showToast } = useToastStore();
@@ -214,7 +216,7 @@ export function PlansSection({ clientId, mode, dailyCalories, allergies, prefere
         clientId={clientId}
         recipes={recipes}
         plan={editing.plan}
-        dailyCalories={dailyCalories}
+        goals={goals}
         allergies={allergies}
         preferences={preferences}
         startGenerated={editing.generated}

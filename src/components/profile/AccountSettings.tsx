@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { countText } from '../../lib/format';
 import { Link } from 'react-router-dom';
-import { Crown, CreditCard, Download, KeyRound, Loader2, LogOut, ShieldCheck, Trash2, UserCog } from 'lucide-react';
+import { Bot, Check, Crown, CreditCard, Download, KeyRound, Loader2, LogOut, ShieldCheck, Trash2, UserCog } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useSubscriptionStore } from '../../store/subscription';
 import { useToastStore } from '../../store/toast';
@@ -14,6 +14,7 @@ import { confirmDialog } from '../../store/confirm';
 import { AppDeviceCard } from './AppDeviceCard';
 import { AppearanceSettings } from '../common/ThemeSwitch';
 import { isAdmin } from '../../services/verification';
+import { useOwnPremium, usePremiumStore } from '../../store/premium';
 
 const inputClass =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100';
@@ -21,7 +22,10 @@ const cardClass = 'space-y-4 rounded-2xl border border-slate-100 bg-white p-5 sh
 
 export function AccountSettings() {
   const { user, updateName, signOut } = useAuthStore();
-  const { userSubscription, isPremium } = useSubscriptionStore();
+  const { userSubscription } = useSubscriptionStore();
+  // Premium pago (Stripe) ou liberado pelo servidor (demonstração, cortesia): os dois contam.
+  const ownPremium = useOwnPremium();
+  const nutritionistPro = usePremiumStore((s) => s.nutritionistPro);
   const { showToast } = useToastStore();
   const { language } = useSettingsStore();
   const t = useTranslation();
@@ -53,7 +57,8 @@ export function AccountSettings() {
   if (!user) return null;
 
   const isNutritionist = user.type === 'Nutritionist';
-  const premium = isPremium();
+  const premium = isNutritionist ? nutritionistPro : ownPremium;
+  const paid = Boolean(userSubscription?.stripe_subscription_id);
   const locale = language === 'pt' ? 'pt-BR' : 'en-US';
   const formatDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString(locale) : '—');
 
@@ -110,7 +115,8 @@ export function AccountSettings() {
   };
 
   const status = userSubscription?.status;
-  const statusLabel = status ? a.status[status] : a.status.none;
+  // Premium sem assinatura no Stripe não tem linha de status própria: aparece como ativo.
+  const statusLabel = premium && !paid ? a.status.active : status ? a.status[status] : a.status.none;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -168,7 +174,7 @@ export function AccountSettings() {
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-xs text-slate-500 dark:text-slate-400">{a.plan}</dt>
-            <dd className="font-semibold text-slate-900 dark:text-white">{userSubscription?.plan?.name ?? a.freePlan}</dd>
+            <dd className="font-semibold text-slate-900 dark:text-white">{userSubscription?.plan?.name ?? (premium ? a.premiumPlanName : a.freePlan)}</dd>
           </div>
           <div>
             <dt className="text-xs text-slate-500 dark:text-slate-400">{a.statusLabel}</dt>
@@ -193,19 +199,42 @@ export function AccountSettings() {
         </dl>
         {status === 'pending' && <p className="text-xs text-amber-600">{a.pendingHint}</p>}
 
-        {userSubscription?.stripe_subscription_id ? (
+        {paid ? (
           <button type="button" onClick={handlePortal} disabled={openingPortal}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
             {openingPortal ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
             {a.manageSubscription}
           </button>
+        ) : premium ? (
+          // Já é Premium sem cobrança: mostra o que está liberado em vez de convidar a assinar.
+          <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-800/40 dark:bg-amber-900/15">
+            <p className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
+              <Crown className="h-4 w-4 text-amber-600 dark:text-amber-400" /> {a.premiumActive}
+            </p>
+            <div>
+              <p className="text-xs font-medium text-amber-900/80 dark:text-amber-200/80">{a.premiumIncludes}</p>
+              <ul className="mt-1.5 space-y-1">
+                {(isNutritionist ? a.perksNutritionist : a.perksClient).map((perk) => (
+                  <li key={perk} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+                    <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                    {perk}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <Link to="/mentoria-ia"
+              className="inline-flex min-h-[40px] items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700">
+              <Bot className="h-4 w-4" /> {a.openNutriBot}
+            </Link>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{a.premiumGranted}</p>
+          </div>
         ) : (
           <Link to="/mentoria-ia"
             className="inline-flex items-center gap-2 rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-300">
             <Crown className="h-4 w-4" /> {t.profile.upgradePremium}
           </Link>
         )}
-        <p className="text-xs text-slate-500 dark:text-slate-400">{a.portalHint}</p>
+        {paid && <p className="text-xs text-slate-500 dark:text-slate-400">{a.portalHint}</p>}
       </section>
       )}
 

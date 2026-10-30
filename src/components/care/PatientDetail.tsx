@@ -417,7 +417,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
             <PlansSection
               clientId={patientId}
               mode="nutritionist"
-              dailyCalories={data.goals?.calories ?? goalsForm.calories}
+              goals={data.goals ?? goalsForm}
               allergies={h?.allergies ?? []}
               preferences={h?.dietary_preferences ?? []}
               reloadKey={plansKey}

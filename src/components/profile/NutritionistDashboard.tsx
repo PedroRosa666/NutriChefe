@@ -83,8 +83,15 @@ export function NutritionistDashboard() {
         actions={isVisitor ? [] : [{ to: '/perfil?tab=patients&convidar=1', label: t.profileUi.invitePatient, icon: UserPlus }]}
       />
       <CrnVerificationCard />
-      <AttentionPanel flagged={flagged} failed={attentionFailed} onRetry={retryAttention} hasPatients={activePatients > 0} />
-      <UpcomingAppointments />
+      {/* Em tela larga, fila e consultas lado a lado: uma lista só na largura toda ficava esticada. */}
+      {activePatients > 0 ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+          <AttentionPanel flagged={flagged} failed={attentionFailed} onRetry={retryAttention} hasPatients />
+          <UpcomingAppointments />
+        </div>
+      ) : (
+        <UpcomingAppointments />
+      )}
       {crnStatus !== null && !isVisitor && (
         <GettingStarted
           userId={user.id}

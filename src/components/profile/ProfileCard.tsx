@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
 import { Mail, ChefHat, Crown, CalendarDays, ExternalLink, User as UserIcon, BadgeCheck, Settings, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
-import { useSubscriptionStore } from '../../store/subscription';
 import { useSettingsStore } from '../../store/settings';
 import { useTranslation } from '../../hooks/useTranslation';
 import { AvatarUpload } from '../common/AvatarUpload';
-import { usePremiumStore } from '../../store/premium';
+import { useOwnPremium, usePremiumStore } from '../../store/premium';
+import { useFocusField } from '../../hooks/useFocusField';
 import { cn } from '../../lib/utils';
 
 const initials = (name: string) =>
@@ -19,12 +19,13 @@ const initials = (name: string) =>
 /** Tipo de conta e plano, igual no cartão e na faixa compacta. */
 function useAccountBadge() {
   const user = useAuthStore((s) => s.user);
-  const { isPremium } = useSubscriptionStore();
+  // Premium concedido pelo servidor (ex.: conta de demonstração) conta igual à assinatura paga.
+  const ownPremium = useOwnPremium();
   const nutritionistPro = usePremiumStore((s) => s.nutritionistPro);
   const isAdmin = usePremiumStore((s) => s.isAdmin);
   const t = useTranslation();
   const isNutritionist = user?.type === 'Nutritionist';
-  const premium = isNutritionist ? nutritionistPro : isPremium();
+  const premium = isNutritionist ? nutritionistPro : ownPremium;
 
   // Conta de administrador (cadastrada como paciente): o selo diz o que ela é de fato.
   const badge = isAdmin && !isNutritionist ? (
@@ -59,6 +60,8 @@ export function ProfileCard() {
   const { language } = useSettingsStore();
   const t = useTranslation();
   const { badge, premium, isNutritionist, isAdmin } = useAccountBadge();
+  // "Adicionar foto" da Força do perfil chega aqui com ?campo=photo.
+  useFocusField();
 
   if (!user) return null;
 
@@ -76,7 +79,7 @@ export function ProfileCard() {
         <div className="pointer-events-none absolute -bottom-14 left-1/3 h-28 w-28 rounded-full bg-white/10" />
       </div>
       <div className="flex flex-col gap-4 px-4 pb-5 sm:flex-row sm:items-end sm:px-6 sm:pb-6">
-        <div className="-mt-12 flex-shrink-0 self-start sm:-mt-14">
+        <div data-field="photo" className="-mt-12 flex-shrink-0 self-start rounded-full sm:-mt-14">
           <AvatarUpload currentAvatarUrl={user.avatar_url} size="xl" editable={!isVisitor} />
         </div>
 

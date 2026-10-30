@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { MotionConfig, motion } from 'framer-motion';
 import { pageFade } from '../lib/motion';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
@@ -77,6 +77,19 @@ export function RootLayout() {
 
   // Mensagens não lidas (contador da navegação): reconta ao trocar de tela e a cada minuto.
   const { search } = useLocation();
+
+  // Tela nova começa do topo. As abas do perfil (/perfil?tab=...) são telas diferentes na mesma
+  // rota, então a aba conta como troca; filtros e a ficha aberta (outros parâmetros) não. A receita
+  // aberta por cima da home (/receita/:id) é da mesma seção e não mexe na rolagem.
+  // Voltar/avançar do navegador (POP) mantém onde a pessoa estava.
+  const navigationType = useNavigationType();
+  const screen = `${section}?${new URLSearchParams(search).get('tab') ?? ''}`;
+  const lastScreen = useRef(screen);
+  useEffect(() => {
+    if (lastScreen.current === screen) return;
+    lastScreen.current = screen;
+    if (navigationType !== 'POP') window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [screen, navigationType]);
   useEffect(() => {
     if (userId) useUnreadMessagesStore.getState().refresh(userId);
   }, [userId, pathname, search]);

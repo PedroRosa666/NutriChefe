@@ -66,9 +66,9 @@ export function ProfileStrengthCard() {
             {item.done ? (
               <span className="text-slate-500 line-through dark:text-slate-500">{t.profile.checklist[item.key]}</span>
             ) : (
-              // Item pendente leva direto para onde se resolve (a foto fica na aba Conta).
+              // Item pendente leva direto ao campo que falta (a foto fica na aba Conta).
               <Link
-                to={item.key === 'photo' ? '/perfil?tab=account' : '/perfil?tab=professional'}
+                to={item.key === 'photo' ? '/perfil?tab=account&campo=photo' : `/perfil?tab=professional&campo=${item.key}`}
                 className="text-slate-700 underline-offset-2 hover:text-emerald-700 hover:underline dark:text-slate-200 dark:hover:text-emerald-400"
               >
                 {t.profile.checklist[item.key]}

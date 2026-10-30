@@ -60,7 +60,7 @@ export function ProfileTabs() {
   const { user } = useAuthStore();
   const userRecipes = useRecipesStore((s) => s.mine);
   const { recipes: userFavorites } = useFavoriteRecipes();
-  const dailyCalories = useNutritionGoalsStore((s) => s.goals.calories);
+  const nutritionGoals = useNutritionGoalsStore((s) => s.goals);
   const health = useHealthProfileStore((s) => s.profile);
   const t = useTranslation();
   // A aba fica na URL (?tab=...): links do painel e o botão voltar funcionam.
@@ -246,7 +246,7 @@ export function ProfileTabs() {
           <PlansSection
             clientId={user.id}
             mode="client"
-            dailyCalories={dailyCalories}
+            goals={nutritionGoals}
             allergies={health.allergies}
             preferences={health.dietary_preferences}
           />

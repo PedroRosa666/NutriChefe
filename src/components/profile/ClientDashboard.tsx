@@ -7,9 +7,9 @@ import { useNutritionGoalsStore } from '../../store/nutrition-goals';
 import { toISODate, sumEntries, useNutritionTrackingStore } from '../../store/nutrition-tracking';
 import { useToday } from '../../hooks/useToday';
 import { useHealthProfileStore } from '../../store/health-profile';
-import { useSubscriptionStore } from '../../store/subscription';
 import { useTranslation } from '../../hooks/useTranslation';
 import { bmi } from '../../lib/nutrition-calculator';
+import { useOwnPremium } from '../../store/premium';
 import { DashboardHero, ProgressRing } from './DashboardHero';
 import { useGreeting } from '../../hooks/useGreeting';
 import { firstNameOf } from '../../lib/format';
@@ -28,9 +28,10 @@ export function ClientDashboard() {
   const { goals, activeGoals, setBy } = useNutritionGoalsStore();
   const { entries } = useNutritionTrackingStore();
   const { profile: health } = useHealthProfileStore();
-  const { isPremium } = useSubscriptionStore();
   const t = useTranslation();
   const greeting = useGreeting();
+  // Premium pago ou liberado pelo servidor (ex.: demonstração): nos dois casos, sem convite a assinar.
+  const isPremiumUser = useOwnPremium();
   // Para os primeiros passos: já tem nutricionista? (null enquanto carrega)
   const [hasNutritionist, setHasNutritionist] = useState<boolean | null>(null);
   const [guideHidden, setGuideHidden] = useState(() => !!user && isGettingStartedHidden(user.id));
@@ -52,7 +53,6 @@ export function ClientDashboard() {
 
   if (!user || user.type !== 'Client') return null;
 
-  const isPremiumUser = isPremium();
   const currentBmi = health.height_cm && health.weight_kg ? bmi(health.height_cm, health.weight_kg) : null;
   const healthIncomplete = !health.height_cm || !health.weight_kg || !health.goal || !health.activity_level;
   const goalLabels = t.profile.nutritionGoalsnames;

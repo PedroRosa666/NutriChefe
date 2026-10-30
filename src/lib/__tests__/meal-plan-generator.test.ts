@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateWeeklyPlan } from '../meal-plan-generator';
+import { generateWeeklyPlan, generateWeeklyPlanDetailed } from '../meal-plan-generator';
 import type { Recipe } from '../../types/recipe';
 
 const recipe = (id: string, title: string, ingredients: string[], calories: number, category = 'vegetarian'): Recipe => ({
@@ -93,5 +93,44 @@ describe('dietas e preferências', () => {
     expect(ids(items).has('4')).toBe(false);
     expect(ids(items).has('6')).toBe(false);
     expect(relaxed).toEqual(['lowCarb']);
+  });
+});
+
+describe('metas além das calorias', () => {
+  const withMacros = (id: string, title: string, calories: number, macros: { protein: number; carbs: number; fat: number; fiber: number }): Recipe => ({
+    ...recipe(id, title, ['arroz'], calories),
+    nutritionFacts: { calories, ...macros },
+  });
+  // Mesmas calorias; metade do catálogo tem fibra e gordura muito altas.
+  const mixed = [
+    ...Array.from({ length: 6 }, (_, i) => withMacros(`ok${i}`, `Prato leve ${i}`, 500, { protein: 30, carbs: 60, fat: 15, fiber: 6 })),
+    ...Array.from({ length: 6 }, (_, i) => withMacros(`hi${i}`, `Prato pesado ${i}`, 500, { protein: 10, carbs: 30, fat: 35, fiber: 25 })),
+  ];
+  const goals = { protein: 120, carbs: 240, fat: 60, fiber: 25 };
+
+  it('com metas de macros, evita as receitas que estouram fibra e gordura', () => {
+    const { items, overGoals } = generateWeeklyPlanDetailed({ recipes: mixed, dailyCalories: 2000, goals, allergies: [], preferences: [], seed: 11 });
+    const heavy = items.filter((i) => i.recipe_id!.startsWith('hi')).length;
+    expect(heavy).toBeLessThan(items.length / 4);
+    expect(overGoals).toEqual([]);
+  });
+
+  it('sem receitas que caibam, avisa o que passou da meta em vez de esconder', () => {
+    const onlyHeavy = mixed.filter((r) => r.id.startsWith('hi'));
+    const { overGoals } = generateWeeklyPlanDetailed({ recipes: onlyHeavy, dailyCalories: 2000, goals, allergies: [], preferences: [], seed: 2 });
+    expect(overGoals.some((o) => o.key === 'fiber')).toBe(true);
+    expect(overGoals.some((o) => o.key === 'fat')).toBe(true);
+  });
+});
+
+describe('newExcesses', () => {
+  it('aponta só a meta que passa a estourar com o item novo', async () => {
+    const { newExcesses } = await import('../plan-goals');
+    const goals = { calories: 2000, protein: 100, carbs: 250, fat: 70, fiber: 25 };
+    const before = { calories: 1500, protein: 80, carbs: 180, fat: 50, fiber: 22 };
+    const after = { calories: 1800, protein: 90, carbs: 200, fat: 60, fiber: 36 };
+    expect(newExcesses(before, after, goals).map((e) => e.key)).toEqual(['fiber']);
+    // Fibra já acima antes: não repete o aviso.
+    expect(newExcesses(after, { ...after, fiber: 40 }, goals)).toEqual([]);
   });
 });

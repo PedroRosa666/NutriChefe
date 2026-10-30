@@ -58,15 +58,27 @@ export function DashboardHero({
   actions: QuickAction[];
 }) {
   const u = useTranslation().profileUi;
+  // Um atalho só vira botão dentro do topo: um cartão sozinho na largura toda fica esticado em tela grande.
+  const single = actions.length === 1 ? actions[0] : null;
+  const SingleIcon = single?.icon;
   return (
     <section className="space-y-3">
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-700 via-emerald-700 to-teal-700 p-5 text-white shadow-lg shadow-emerald-900/10 sm:p-6">
-        <div className="relative flex items-center gap-4">
-          <div className="min-w-0 flex-1">
+        <div className="relative flex flex-wrap items-center gap-x-4 gap-y-3">
+          <div className="min-w-[12rem] flex-1">
             <h2 className="text-xl font-bold leading-tight sm:text-2xl">{title}</h2>
             <p className="mt-1 text-sm text-emerald-50">{subtitle}</p>
           </div>
           {aside}
+          {single && SingleIcon && (
+            <Link
+              to={single.to}
+              className="inline-flex min-h-[40px] flex-shrink-0 items-center gap-2 self-start rounded-xl bg-white px-3.5 text-sm font-semibold text-emerald-800 shadow-sm transition-colors hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <SingleIcon className="h-4 w-4" aria-hidden="true" />
+              {single.label}
+            </Link>
+          )}
         </div>
         {stats && stats.length > 0 && (
           <div className="relative mt-4 grid grid-cols-3 gap-2">
@@ -93,21 +105,22 @@ export function DashboardHero({
         )}
       </div>
 
-      {/* Uma coluna por atalho: com 3 atalhos não sobra meia linha vazia. */}
-      {actions.length > 0 && (
-      <nav aria-label={u.quickActions} className={cn('grid gap-2', COLS[actions.length] ?? 'grid-cols-4')}>
+      {/* No celular, uma coluna por atalho (com 3 não sobra meia linha vazia). Em tela larga, viram
+          uma fileira de botões do tamanho do texto em vez de cartões esticados. */}
+      {actions.length > 1 && (
+      <nav aria-label={u.quickActions} className={cn('grid gap-2 lg:flex lg:flex-wrap', COLS[actions.length] ?? 'grid-cols-4')}>
         {actions.map(({ to, label, icon: Icon, badge }) => (
           <Link
             key={to + label}
             to={to}
-            className="group relative flex flex-col items-center gap-1.5 rounded-2xl border border-slate-100 bg-white px-1 py-3 text-center shadow-sm transition-colors hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-500/40"
+            className="group relative flex flex-col items-center gap-1.5 rounded-2xl border border-slate-100 bg-white px-1 py-3 text-center shadow-sm transition-colors hover:border-emerald-300 lg:flex-row lg:gap-2.5 lg:py-2 lg:pl-2 lg:pr-4 lg:text-left dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-500/40"
           >
             <span className="inline-flex rounded-xl bg-emerald-50 p-2 text-emerald-600 transition-colors group-hover:bg-emerald-600 group-hover:text-white dark:bg-emerald-500/10 dark:text-emerald-400">
               <Icon className="h-5 w-5" />
             </span>
             <span className="text-[11px] font-semibold leading-tight text-slate-700 dark:text-slate-200 sm:text-xs">{label}</span>
             {!!badge && (
-              <span className="absolute right-2 top-2 min-w-[18px] rounded-full bg-rose-600 px-1 text-center text-[11px] font-bold leading-[18px] text-white">
+              <span className="absolute right-2 top-2 min-w-[18px] lg:static lg:ml-0.5 rounded-full bg-rose-600 px-1 text-center text-[11px] font-bold leading-[18px] text-white">
                 {badge > 9 ? '9+' : badge}
               </span>
             )}

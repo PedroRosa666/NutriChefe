@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useId } from 'react';
+import { useFocusField } from '../../hooks/useFocusField';
 import { Link } from 'react-router-dom';
 import { Save, ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -67,6 +68,8 @@ export function EditProfessionalProfile() {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
+  // Item pendente da "Força do perfil" abre aqui, já no campo (?campo=bio).
+  useFocusField(!initialLoading);
   const [formData, setFormData] = useState({
     professional_bio: '',
     specializations: [] as string[],
@@ -230,7 +233,7 @@ export function EditProfessionalProfile() {
         </div>
 
         <div className="space-y-4">
-          <div>
+          <div data-field="bio">
             <label htmlFor={`${fid}-1`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.bio}
             </label>
@@ -243,7 +246,7 @@ export function EditProfessionalProfile() {
             />
           </div>
 
-          <div>
+          <div data-field="specializations">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.specializations}
             </label>
@@ -271,7 +274,7 @@ export function EditProfessionalProfile() {
             </div>
           </div>
 
-          <div>
+          <div data-field="education">
             <label htmlFor={`${fid}-2`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.education}
             </label>
@@ -297,7 +300,7 @@ export function EditProfessionalProfile() {
             />
           </div>
 
-          <div>
+          <div data-field="experience">
             <label htmlFor={`${fid}-4`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.yearsOfExperience}
             </label>
@@ -332,7 +335,7 @@ export function EditProfessionalProfile() {
 
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div data-field="price">
               <label htmlFor={`${fid}-6`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {t.nutritionists.editProfile.fields.consultationPrice}
               </label>
@@ -409,7 +412,7 @@ export function EditProfessionalProfile() {
             />
           </div>
 
-          <div>
+          <div data-field="contact">
             <label htmlFor={`${fid}-10`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.whatsapp}
             </label>
@@ -446,7 +449,7 @@ export function EditProfessionalProfile() {
             />
           </div>
 
-          <div className="md:col-span-2">
+          <div data-field="address" className="md:col-span-2">
             <label htmlFor={`${fid}-13`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {t.nutritionists.editProfile.fields.address}
             </label>
