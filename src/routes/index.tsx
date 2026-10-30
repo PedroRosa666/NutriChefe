@@ -45,7 +45,8 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: null },
           {
-            path: 'receita/:id',
+            // O nome no fim é opcional (src/lib/recipe-url.ts).
+            path: 'receita/:id/:slug?',
             element: lazyPage(loadRecipePage, 'RecipePage', true),
           },
         ],

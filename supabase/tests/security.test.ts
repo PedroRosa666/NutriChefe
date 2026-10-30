@@ -10,6 +10,7 @@ const PATIENT = '00000000-0000-4000-8000-00000000001c';
 const STRANGER = '00000000-0000-4000-8000-00000000001d';
 const REVIEWER = '00000000-0000-4000-8000-00000000001e';
 const RECIPE = '00000000-0000-4000-8000-0000000001a1';
+const PRIVATE_RECIPE = '00000000-0000-4000-8000-0000000001a2';
 
 let db: PGlite;
 
@@ -31,15 +32,34 @@ beforeAll(async () => {
       ('${PATIENT}', 'Carla', 'Client', 'public'),
       ('${STRANGER}', 'Diego', 'Client', 'public'),
       ('${REVIEWER}', 'Elisa', 'Client', 'public');
-    INSERT INTO recipes (id, title, author_id) VALUES ('${RECIPE}', 'Omelete', '${NUTRI}');
+    INSERT INTO recipes (id, title, author_id) VALUES ('${RECIPE}', 'Omelete', '${NUTRI}'), ('${PRIVATE_RECIPE}', 'Sopa', '${PRIVATE_NUTRI}');
     INSERT INTO reviews (recipe_id, user_id, rating) VALUES ('${RECIPE}', '${REVIEWER}', 4);
     INSERT INTO nutritionist_clients (nutritionist_id, client_id, status) VALUES ('${PRIVATE_NUTRI}', '${PATIENT}', 'active');
   `);
 });
 
 describe('perfis (RLS)', () => {
-  it('visitante vê só nutricionistas públicos e autores de receitas/avaliações, não a lista de pacientes', async () => {
-    expect(await asAnon(visibleIds)).toEqual([NUTRI, REVIEWER]);
+  it('visitante lê direto só o perfil de nutricionista público (autor privado e quem avaliou, não)', async () => {
+    expect(await asAnon(visibleIds)).toEqual([NUTRI]);
+  });
+
+  it('de autor e de quem avaliou, o visitante vê só nome, tipo e foto, inclusive de nutricionista privado', async () => {
+    const authors = await asAnon(async (tx) =>
+      (await tx.query<Record<string, unknown>>('SELECT c.* FROM recipes r, author_card(r) c ORDER BY c.full_name')).rows
+    );
+    expect(authors.map((a) => a.full_name)).toEqual(['Dr. Bruno', 'Dra. Ana']);
+    expect(Object.keys(authors[0]).sort()).toEqual(['avatar_url', 'full_name', 'id', 'user_type']);
+    const reviewers = await asAnon(async (tx) =>
+      (await tx.query<{ full_name: string }>('SELECT c.full_name FROM reviews v, reviewer_card(v) c')).rows
+    );
+    expect(reviewers.map((r) => r.full_name)).toEqual(['Elisa']);
+  });
+
+  it('uma receita inventada não revela o perfil de outra pessoa', async () => {
+    const rows = await asAnon(async (tx) =>
+      (await tx.query(`SELECT c.* FROM author_card(jsonb_populate_record(NULL::recipes, '{"id": "${RECIPE}", "author_id": "${PATIENT}"}')) c`)).rows
+    );
+    expect(rows).toEqual([]);
   });
 
   it('paciente vê o próprio perfil e o do seu nutricionista (mesmo privado), não outros pacientes', async () => {

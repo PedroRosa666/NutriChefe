@@ -141,8 +141,17 @@ export class DeleteAccountError extends Error {
   }
 }
 
-/** Apaga a conta e todos os dados (função delete_my_account no banco). */
+/**
+ * Apaga a conta e todos os dados. A Edge Function delete-account chama delete_my_account e depois
+ * apaga os arquivos no Storage; se ela não responder, apaga pelo banco direto (os dados saem do
+ * mesmo jeito, só as fotos ficam).
+ */
 export async function deleteMyAccount(): Promise<void> {
+  const { data, error: invokeError } = await supabase.functions.invoke<{ ok: boolean; error?: string }>('delete-account');
+  if (!invokeError && data) {
+    if (data.ok) return;
+    throw new DeleteAccountError(data.error === 'active_subscription' ? 'active_subscription' : 'unknown');
+  }
   const { error } = await supabase.rpc('delete_my_account');
   if (error) throw new DeleteAccountError(error.message.includes('active_subscription') ? 'active_subscription' : 'unknown');
 }

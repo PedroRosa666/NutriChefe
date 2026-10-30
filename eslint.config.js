@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   // Edge Functions rodam em Deno e têm lint próprio (deno lint).
-  { ignores: ['dist', 'supabase/functions'] },
+  { ignores: ['dist', 'supabase/functions', 'worker/worker-configuration.d.ts'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Clock, ChefHat, Crown, Star, Heart, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useRecipesStore } from '../store/recipes';
@@ -9,6 +9,7 @@ import type { Recipe } from '../types/recipe';
 
 export { RECIPE_PLACEHOLDER } from '../lib/recipe-image';
 import { RECIPE_PLACEHOLDER } from '../lib/recipe-image';
+import { recipePath } from '../lib/recipe-url';
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -85,7 +86,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
 
   return (
     <div
-      onClick={() => navigate(`/receita/${recipe.id}`)}
+      onClick={() => navigate(recipePath(recipe))}
       className="
         group relative flex h-full cursor-pointer flex-col overflow-hidden
         glass-card rounded-xl border transition-[transform,box-shadow,border-color] duration-200
@@ -157,7 +158,10 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
       {/* Conteúdo principal */}
       <div className="flex flex-grow flex-col p-5">
         <h3 className="mb-2 line-clamp-2 text-lg font-semibold leading-snug text-gray-900 dark:text-white">
-          {recipe.title}
+          {/* Link de verdade (buscadores e "abrir em nova aba"); o clique no cartão todo continua valendo. */}
+          <Link to={recipePath(recipe)} onClick={(e) => e.stopPropagation()} className="focus-visible:underline focus-visible:outline-none">
+            {recipe.title}
+          </Link>
         </h3>
 
         <p className="mb-4 flex-grow line-clamp-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">

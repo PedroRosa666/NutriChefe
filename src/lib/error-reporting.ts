@@ -17,7 +17,8 @@ export function reportError(error: unknown, context = ''): void {
     .insert({
       message,
       stack: (err.stack ?? '').slice(0, 4000),
-      url: window.location.href.slice(0, 500),
+      // Sem query nem fragmento: links de e-mail (redefinir senha, confirmar conta) levam o token ali.
+      url: (window.location.origin + window.location.pathname).slice(0, 500),
       user_agent: navigator.userAgent.slice(0, 300),
     })
     .then(({ error: insertError }) => {

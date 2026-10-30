@@ -118,7 +118,10 @@ export function RootLayout() {
       window.setTimeout(() => {
         const h1 = document.querySelector<HTMLElement>('#conteudo h1');
         const text = h1?.textContent?.trim();
-        document.title = text && text !== 'NutriChef' ? `${text} · NutriChef` : 'NutriChef';
+        // Com uma janela aberta (a receita por cima da home), o título é dela (RecipeDetails).
+        if (!document.querySelector('[role="dialog"]')) {
+          document.title = text && text !== 'NutriChef' ? `${text} · NutriChef` : 'NutriChef';
+        }
         if (sectionChanged && ms === 300 && h1 && !document.querySelector('[role="dialog"]')) {
           h1.setAttribute('tabindex', '-1');
           h1.focus({ preventScroll: true });

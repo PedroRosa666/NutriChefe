@@ -39,6 +39,8 @@ const MIGRATIONS = [
   '20261111120000_audit_fixes.sql',
   '20261112120000_cleanup_privacy_limit.sql',
   '20261113120000_patients_overview.sql',
+  '20261115120000_author_cards.sql',
+  '20261115130000_private_profiles_stay_private.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -69,7 +71,7 @@ const BASE = `
   CREATE TABLE profiles (
     id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE, full_name text, user_type text,
     profile_visibility text DEFAULT 'public', last_seen timestamptz DEFAULT now(), created_at timestamptz DEFAULT now(),
-    phone text, whatsapp text, instagram text, website text, clinic_address text
+    phone text, whatsapp text, instagram text, website text, clinic_address text, avatar_url text
   );
   ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
   CREATE TABLE subscription_plans (
@@ -141,7 +143,7 @@ const BASE = `
   GRANT SELECT ON recipes TO anon, authenticated;
   -- Como em produção (20261021140000): leitura de perfis só por coluna.
   REVOKE ALL ON profiles FROM anon, authenticated;
-  GRANT SELECT (id, full_name, user_type, profile_visibility, last_seen) ON profiles TO anon, authenticated;
+  GRANT SELECT (id, full_name, user_type, avatar_url, profile_visibility, last_seen) ON profiles TO anon, authenticated;
 `;
 
 /** Aplica uma migration (pelo nome do arquivo) num banco de teste. */

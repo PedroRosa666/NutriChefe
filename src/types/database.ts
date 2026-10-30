@@ -41,6 +41,13 @@ export type Database = {
             foreignKeyName: "admin_demo_accounts_admin_id_fkey"
             columns: ["admin_id"]
             isOneToOne: true
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_demo_accounts_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -48,7 +55,21 @@ export type Database = {
             foreignKeyName: "admin_demo_accounts_nutritionist_id_fkey"
             columns: ["nutritionist_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_demo_accounts_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_demo_accounts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -96,6 +117,13 @@ export type Database = {
             foreignKeyName: "ai_configurations_nutritionist_id_fkey"
             columns: ["nutritionist_id"]
             isOneToOne: true
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_configurations_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -137,7 +165,21 @@ export type Database = {
             foreignKeyName: "ai_conversations_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversations_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -208,6 +250,13 @@ export type Database = {
             foreignKeyName: "ai_usage_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_usage_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -227,6 +276,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "app_admins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "app_admins_user_id_fkey"
             columns: ["user_id"]
@@ -317,6 +373,13 @@ export type Database = {
             foreignKeyName: "appointments_canceled_by_fkey"
             columns: ["canceled_by"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_canceled_by_fkey"
+            columns: ["canceled_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -324,7 +387,21 @@ export type Database = {
             foreignKeyName: "appointments_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -378,6 +455,13 @@ export type Database = {
             foreignKeyName: "care_events_actor_id_fkey"
             columns: ["actor_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -385,7 +469,21 @@ export type Database = {
             foreignKeyName: "care_events_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_events_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -430,6 +528,13 @@ export type Database = {
             foreignKeyName: "care_messages_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -437,7 +542,21 @@ export type Database = {
             foreignKeyName: "care_messages_nutritionist_id_fkey"
             columns: ["nutritionist_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_messages_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -478,6 +597,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "client_errors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_errors_user_id_fkey"
             columns: ["user_id"]
@@ -535,6 +661,13 @@ export type Database = {
             foreignKeyName: "client_health_profiles_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_health_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -557,6 +690,13 @@ export type Database = {
           selected_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "client_plan_selection_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_plan_selection_client_id_fkey"
             columns: ["client_id"]
@@ -625,6 +765,13 @@ export type Database = {
             columns: ["recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -741,6 +888,13 @@ export type Database = {
             foreignKeyName: "food_swap_requests_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_swap_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -756,6 +910,13 @@ export type Database = {
             columns: ["counter_recipe_id"]
             isOneToOne: false
             referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_swap_requests_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -852,6 +1013,13 @@ export type Database = {
             foreignKeyName: "foods_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "foods_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -904,6 +1072,13 @@ export type Database = {
           version_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "meal_plan_checks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meal_plan_checks_client_id_fkey"
             columns: ["client_id"]
@@ -1093,6 +1268,13 @@ export type Database = {
             foreignKeyName: "meal_plan_templates_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plan_templates_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1140,6 +1322,13 @@ export type Database = {
             foreignKeyName: "meal_plan_versions_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plan_versions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1148,6 +1337,13 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plan_versions_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -1198,7 +1394,21 @@ export type Database = {
             foreignKeyName: "meal_plans_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -1242,6 +1452,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
@@ -1292,6 +1509,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "nutrition_goals_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "nutrition_goals_set_by_fkey"
             columns: ["set_by"]
@@ -1363,6 +1587,13 @@ export type Database = {
             foreignKeyName: "nutrition_log_entries_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutrition_log_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1401,7 +1632,21 @@ export type Database = {
             foreignKeyName: "nutritionist_clients_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutritionist_clients_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutritionist_clients_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -1443,7 +1688,21 @@ export type Database = {
             foreignKeyName: "nutritionist_invites_nutritionist_id_fkey"
             columns: ["nutritionist_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutritionist_invites_nutritionist_id_fkey"
+            columns: ["nutritionist_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutritionist_invites_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -1500,7 +1759,21 @@ export type Database = {
             foreignKeyName: "nutritionist_verifications_reviewed_by_fkey"
             columns: ["reviewed_by"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutritionist_verifications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nutritionist_verifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profile_cards"
             referencedColumns: ["id"]
           },
           {
@@ -1643,6 +1916,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "push_subscriptions_user_id_fkey"
             columns: ["user_id"]
@@ -1817,6 +2097,13 @@ export type Database = {
             foreignKeyName: "recipes_author_id_fkey"
             columns: ["author_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1862,6 +2149,13 @@ export type Database = {
             foreignKeyName: "reviews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1884,6 +2178,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "shopping_lists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shopping_lists_user_id_fkey"
             columns: ["user_id"]
@@ -1990,6 +2291,13 @@ export type Database = {
             foreignKeyName: "user_subscriptions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2022,6 +2330,13 @@ export type Database = {
             foreignKeyName: "weight_logs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weight_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2029,7 +2344,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profile_cards: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string | null
+          user_type: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          user_type?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          user_type?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_broadcast: {
@@ -2148,6 +2483,21 @@ export type Database = {
         Returns: Json
       }
       assert_admin: { Args: never; Returns: undefined }
+      author_card: {
+        Args: { r: Database["public"]["Tables"]["recipes"]["Row"] }
+        Returns: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string | null
+          user_type: string | null
+        }
+        SetofOptions: {
+          from: "recipes"
+          to: "profile_cards"
+          isOneToOne: true
+          isSetofReturn: true
+        }
+      }
       can_edit_meal_plan: { Args: { p_plan: string }; Returns: boolean }
       can_start_ai: { Args: { p_nutritionist: string }; Returns: boolean }
       can_view_meal_plan: { Args: { p_plan: string }; Returns: boolean }
@@ -2383,6 +2733,21 @@ export type Database = {
       review_crn_verification: {
         Args: { p_approve: boolean; p_reason: string; p_user: string }
         Returns: undefined
+      }
+      reviewer_card: {
+        Args: { v: Database["public"]["Tables"]["reviews"]["Row"] }
+        Returns: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string | null
+          user_type: string | null
+        }
+        SetofOptions: {
+          from: "reviews"
+          to: "profile_cards"
+          isOneToOne: true
+          isSetofReturn: true
+        }
       }
       save_appointment: {
         Args: {

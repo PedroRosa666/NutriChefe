@@ -2,9 +2,13 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "app",
   "compatibility_date": "2026-10-01",
-  // Só arquivos estáticos: o backend fica no Supabase (banco, auth e Edge Functions).
+  // Worker só nas rotas de run_worker_first (receitas, home, sitemap, robots): ver worker/index.ts.
+  "main": "worker/index.ts",
+  // Arquivos estáticos do app; o backend fica no Supabase (banco, auth e Edge Functions).
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/", "/receita/*", "/sitemap.xml", "/robots.txt"],
     // Rotas do React Router (/perfil, /reset-password...) devolvem o index.html ao recarregar.
     "not_found_handling": "single-page-application"
   },
@@ -17,6 +21,11 @@
     { "pattern": "nutrichef.app.br", "custom_domain": true },
     { "pattern": "www.nutrichef.app.br", "custom_domain": true }
   ],
+  // Chave pública (anon) do Supabase: a mesma que já vai no app; o acesso é limitado pelo RLS.
+  "vars": {
+    "SUPABASE_URL": "https://ptmfcodrlfufrzkxrtxg.supabase.co",
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0bWZjb2RybGZ1ZnJ6a3hydHhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NjQwNzIsImV4cCI6MjA2NTQ0MDA3Mn0.puJpZamN2bL2hVf3jfsFxAgKifzWnlkMSNnUtVtvAfI"
+  },
   "observability": {
     "enabled": true
   }

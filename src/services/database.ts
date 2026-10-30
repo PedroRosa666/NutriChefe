@@ -71,7 +71,7 @@ interface DatabaseRecipe {
 // estruturados e avaliações.
 const RECIPE_SELECT = `
   *,
-  profiles!recipes_author_id_fkey(full_name, user_type, avatar_url),
+  profiles:author_card(full_name, user_type, avatar_url),
   recipe_ingredients(id, position, text, food_id, quantity, unit, note, grams, measure_label, excluded, line_nutrients, foods(name)),
   reviews(
     id,
@@ -79,7 +79,7 @@ const RECIPE_SELECT = `
     comment,
     created_at,
     user_id,
-    profiles!reviews_user_id_fkey(full_name)
+    profiles:reviewer_card(full_name)
   )
 `;
 
@@ -89,7 +89,7 @@ const CARD_SELECT = `
   id, title, description, image, prep_time, difficulty, rating, review_count, category, meal_types, ingredients,
   nutrition_facts, author_id, created_at, updated_at, premium_only,
   yield_servings, serving_label, nutrition_basis, nutrition_status, nutrition_source, nutrition_needs_review,
-  profiles!recipes_author_id_fkey(full_name, user_type, avatar_url)
+  profiles:author_card(full_name, user_type, avatar_url)
 `;
 
 export const RECIPES_PAGE_SIZE = 24;
@@ -377,7 +377,7 @@ export async function addReview(recipeId: string, review: {
     }])
     .select(`
       *,
-      profiles!reviews_user_id_fkey(full_name)
+      profiles:reviewer_card(full_name)
     `)
     .single();
 
@@ -398,7 +398,7 @@ export async function updateReview(reviewId: string, updates: {
     .eq('id', reviewId)
     .select(`
       *,
-      profiles!reviews_user_id_fkey(full_name)
+      profiles:reviewer_card(full_name)
     `)
     .single();
 
