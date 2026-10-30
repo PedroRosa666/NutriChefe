@@ -136,7 +136,7 @@ export function MealCheckBar({ items, check, busy, itemName, onSave, onClear }: 
             setPanel(null);
           }}
         >
-          <input
+          <input aria-label={a.otherPlaceholder}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={300}

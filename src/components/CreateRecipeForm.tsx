@@ -1,4 +1,5 @@
 import React, { useRef, useState, useId } from 'react';
+import { useDialog } from '../hooks/useDialog';
 import { X, Plus, Minus } from 'lucide-react';
 import { useRecipesStore } from '../store/recipes';
 import { confirmDialog } from '../store/confirm';
@@ -101,6 +102,9 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
     operationId.current = null;
   };
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, { onClose: () => close(), active: isOpen && !!user });
+
   if (!isOpen || !user) return null;
 
   // Fechar com a receita pela metade: confirma antes de jogar fora.
@@ -185,11 +189,12 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm sm:p-4">
-      <div className="relative h-[100dvh] w-full max-w-3xl overflow-y-auto sm:h-auto sm:max-h-[90vh] sm:rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-emerald-50/40 shadow-2xl dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="create-recipe-title" className="relative h-[100dvh] w-full max-w-3xl overflow-y-auto sm:h-auto sm:max-h-[90vh] sm:rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-emerald-50/40 shadow-2xl dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
         {/* Botão fechar */}
         <button
+          type="button"
           onClick={close}
-          className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm transition hover:scale-105 hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-400 dark:hover:bg-slate-900"
+          className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm transition hover:scale-105 hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-400 dark:hover:bg-slate-900"
         >
           <X className="h-5 w-5" />
           <span className="sr-only">{t.common.close}</span>
@@ -201,7 +206,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
             <p className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
               {t.recipe.CreateRecipe}
             </p>
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 sm:text-2xl">
+            <h2 id="create-recipe-title" className="text-xl font-semibold text-slate-900 dark:text-slate-50 sm:text-2xl">
               {t.recipe.CreateNewRecipe}
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 sm:text-base">

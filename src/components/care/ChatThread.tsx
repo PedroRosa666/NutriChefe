@@ -151,7 +151,7 @@ export function ChatThread({ nutritionistId, clientId, otherName, tall = false, 
           send();
         }}
       >
-        <textarea
+        <textarea aria-label={m.placeholder}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {

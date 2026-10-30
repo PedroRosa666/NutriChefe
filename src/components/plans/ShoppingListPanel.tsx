@@ -161,7 +161,7 @@ export function ShoppingListPanel() {
           run(() => addCustom(name));
         }}
       >
-        <input
+        <input aria-label={t.shopping.addPlaceholder}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={t.shopping.addPlaceholder}

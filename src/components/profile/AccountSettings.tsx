@@ -147,9 +147,9 @@ export function AccountSettings() {
         <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
           <KeyRound className="h-4 w-4 text-emerald-500" /> {a.changePassword}
         </h3>
-        <input type="password" className={inputClass} placeholder={a.newPassword} value={password}
+        <input aria-label={a.newPassword} type="password" className={inputClass} placeholder={a.newPassword} value={password}
           onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
-        <input type="password" className={inputClass} placeholder={a.confirmPassword} value={confirm}
+        <input aria-label={a.confirmPassword} type="password" className={inputClass} placeholder={a.confirmPassword} value={confirm}
           onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
         <p className="text-xs text-slate-500 dark:text-slate-400">{a.passwordHint}</p>
         <button type="submit" disabled={savingPassword || !password}

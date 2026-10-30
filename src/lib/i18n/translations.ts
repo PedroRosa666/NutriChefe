@@ -156,6 +156,9 @@ export const translations = {
         system: 'System',
       },
       close: 'Close',
+      skipToContent: 'Skip to content',
+      showPassword: 'Show password',
+      hidePassword: 'Hide password',
       continue: 'Continue',
     },
 
@@ -686,6 +689,8 @@ export const translations = {
     },
 
     care: {
+      detailTabsLabel: 'Patient file sections',
+      pendingCount: 'New items: {n}',
       myNutritionist: 'My nutritionist',
       connectedSince: 'Following you since',
       viewProfile: 'View profile',
@@ -1152,6 +1157,7 @@ export const translations = {
       pushError: 'Could not change notifications. Try again.',
     },
     adherence: {
+      mealColumn: 'Meal',
       howWasIt: 'How did this meal go?',
       ate: 'Ate it',
       other: 'Something else',
@@ -2027,6 +2033,9 @@ export const translations = {
       save: 'Salvar',
       cancel: 'Cancelar',
       close: 'Fechar',
+      skipToContent: 'Pular para o conteúdo',
+      showPassword: 'Mostrar senha',
+      hidePassword: 'Ocultar senha',
       remove: 'Remover',
       add: 'Adicionar',
       retry: 'Tentar de novo',
@@ -2572,6 +2581,8 @@ export const translations = {
     },
 
     care: {
+      detailTabsLabel: 'Seções da ficha do paciente',
+      pendingCount: 'Itens novos: {n}',
       myNutritionist: 'Meu nutricionista',
       connectedSince: 'Acompanhando você desde',
       viewProfile: 'Ver perfil',
@@ -3038,6 +3049,7 @@ export const translations = {
       pushError: 'Não foi possível mudar as notificações. Tente de novo.',
     },
     adherence: {
+      mealColumn: 'Refeição',
       howWasIt: 'Como foi esta refeição?',
       ate: 'Comi',
       other: 'Outra coisa',

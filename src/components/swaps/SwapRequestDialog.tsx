@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useDialog } from '../../hooks/useDialog';
 import { blockedTerms } from '../../../supabase/functions/_shared/recipe-search';
 import { ArrowLeftRight, Loader2, X } from 'lucide-react';
 import { useToastStore } from '../../store/toast';
@@ -22,6 +23,8 @@ interface SwapRequestDialogProps {
 /** Paciente pede a troca de um item do plano: escolhe o que gostaria (opcional) e explica o motivo. */
 export function SwapRequestDialog({ planId, item, itemLabel, onClose, onSent }: SwapRequestDialogProps) {
   const t = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, { onClose });
   const s = t.swaps;
   const { showToast } = useToastStore();
   const [requested, setRequested] = useState<SwapChoice | null>(null);
@@ -59,17 +62,17 @@ export function SwapRequestDialog({ planId, item, itemLabel, onClose, onSent }: 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-4" role="dialog" aria-modal="true">
-      <div className="max-h-[92dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-2xl bg-white p-4 shadow-xl sm:rounded-2xl sm:p-5 dark:bg-slate-900">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="swap-dialog-title">
+      <div ref={dialogRef} className="max-h-[92dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-2xl bg-white p-4 shadow-xl sm:rounded-2xl sm:p-5 dark:bg-slate-900">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
+            <h3 id="swap-dialog-title" className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
               <ArrowLeftRight className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               {s.dialogTitle}
             </h3>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{s.dialogIntro}</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t.common.close}>
+          <button type="button" onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t.common.close}>
             <X className="h-5 w-5" />
           </button>
         </div>

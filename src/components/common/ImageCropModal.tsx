@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import Cropper from 'react-easy-crop';
 import { X, ZoomIn, ZoomOut, RotateCw, Check } from 'lucide-react';
 import { getCroppedImg, type Area } from '../../lib/image-utils';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
+import { useDialog } from '../../hooks/useDialog';
 
 interface ImageCropModalProps {
   imageSrc: string;
@@ -18,6 +19,8 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const t = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, { onClose: onCancel });
 
   const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -39,14 +42,21 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="crop-dialog-title"
+        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+          <h3 id="crop-dialog-title" className="text-lg font-semibold text-slate-900 dark:text-white">
             {t.profile.editProfilePhoto}
           </h3>
           <button
+            type="button"
             onClick={onCancel}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            aria-label={t.common.close}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <X className="h-5 w-5" />
           </button>

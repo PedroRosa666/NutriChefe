@@ -131,9 +131,12 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
         {/* Botão de favorito */}
         {isAuthenticated && (
           <button
+            type="button"
             onClick={handleFavoriteClick}
+            aria-label={isFavorite ? t.profileUi.unfavorite : t.profileUi.favorite}
+            aria-pressed={isFavorite}
             className={cn(
-              'absolute top-3 right-3 inline-flex h-8 w-8 items-center justify-center rounded-lg shadow-md transition-all duration-200 backdrop-blur-sm',
+              'absolute top-2 right-2 inline-flex h-10 w-10 items-center justify-center rounded-lg shadow-md transition-all duration-200 backdrop-blur-sm',
               'bg-white/90 dark:bg-slate-900/90',
               isFavorite
                 ? 'text-rose-500'

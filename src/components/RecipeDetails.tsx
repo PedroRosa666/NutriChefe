@@ -34,6 +34,7 @@ import { createRecipe as createRecipeInDb } from '../services/database';
 import { useNavigate } from 'react-router-dom';
 import type { Recipe } from '../types/recipe';
 import { cn } from '../lib/utils';
+import { useDialog } from '../hooks/useDialog';
 import { useTranslation } from '../hooks/useTranslation';
 import { backdrop, modalPanel } from '../lib/motion';
 import { confirmDialog } from '../store/confirm';
@@ -89,6 +90,11 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
   }, [recipe.title]);
 
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  // A receita tem o próprio Esc (efeito acima); o hook prende o foco e o devolve ao fechar.
+  const recipeDialogRef = useRef<HTMLDivElement>(null);
+  useDialog(recipeDialogRef);
+  const logDialogRef = useRef<HTMLDivElement>(null);
+  useDialog(logDialogRef, { onClose: () => setIsLogModalOpen(false), active: isLogModalOpen });
   // Texto livre para permitir "0,5" sem o campo pular para 1 durante a digitação.
   const [logServings, setLogServings] = useState('1');
   const [submittingReview, setSubmittingReview] = useState(false);
@@ -370,7 +376,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
         exit="exit"
         aria-hidden="true"
       />
-      <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain" role="dialog" aria-modal="true">
+      <div ref={recipeDialogRef} className="fixed inset-0 z-50 overflow-y-auto overscroll-contain" role="dialog" aria-modal="true" aria-labelledby="recipe-dialog-title">
         <div
           className="min-h-[100dvh] flex justify-center sm:items-center sm:p-4 sm:py-8"
           onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -484,7 +490,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                     {/* Título + ações */}
                     <div className="order-first flex justify-between items-start gap-3 md:order-none">
                       <div>
-                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-tight mb-3">
+                        <h2 id="recipe-dialog-title" className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white leading-tight mb-3">
                           {recipe.title}
                         </h2>
                         <div className="flex flex-wrap gap-2 items-center">
@@ -1000,10 +1006,10 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
 
       {isLogModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-900">
+          <div ref={logDialogRef} role="dialog" aria-modal="true" aria-labelledby="log-dialog-title" className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl dark:bg-gray-900">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h3 id="log-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-white">
                   {t.profile.addToDiary}
                 </h3>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">

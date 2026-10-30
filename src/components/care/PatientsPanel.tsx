@@ -371,7 +371,7 @@ export function PatientsPanel() {
         {patients.length > 6 && (
           <div className="relative max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input
+            <input aria-label={t.care.searchPatients}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.care.searchPatients}

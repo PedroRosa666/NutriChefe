@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, ChevronDown } from 'lucide-react';
 import { useSettingsStore } from '../../store/settings';
@@ -9,6 +9,14 @@ export function LanguageSwitch() {
   const { language, setLanguage } = useSettingsStore();
   const [isOpen, setIsOpen] = useState(false);
   const t = useTranslation();
+
+  // Esc fecha a lista de idiomas.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setIsOpen(false);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen]);
 
   // string traduzida
   const selectedLabel = t.common?.selected || 'Selecionado';
@@ -33,7 +41,11 @@ export function LanguageSwitch() {
   return (
     <div className="relative">
       <motion.button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+        aria-label={currentLanguage.label}
         className="flex items-center gap-1.5 px-2 py-2 sm:gap-2 sm:px-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 shadow-sm"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}

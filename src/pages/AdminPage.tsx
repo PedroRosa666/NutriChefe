@@ -228,7 +228,7 @@ export function AdminPage() {
   }, [user?.id]);
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
       <Link to="/" className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-emerald-700 dark:text-slate-300">
         <ArrowLeft className="h-4 w-4" />
         {a.back}
@@ -273,6 +273,6 @@ export function AdminPage() {
           </div>
         </>
       )}
-    </main>
+    </div>
   );
 }

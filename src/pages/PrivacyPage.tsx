@@ -135,7 +135,7 @@ export function PrivacyPage() {
   const language = useSettingsStore((s) => s.language);
   const c = language === 'pt' ? PT : EN;
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
       <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
         <ArrowLeft className="h-4 w-4" />
         {c.back}
@@ -160,6 +160,6 @@ export function PrivacyPage() {
           </section>
         ))}
       </article>
-    </main>
+    </div>
   );
 }

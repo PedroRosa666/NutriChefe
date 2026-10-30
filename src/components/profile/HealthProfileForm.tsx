@@ -328,7 +328,7 @@ export function HealthProfileForm() {
           </h3>
           <WeightChart logs={weightLogs} target={form.target_weight_kg} />
           <div className="flex gap-2">
-            <input ref={weightRef} type="number" inputMode="decimal" step="0.1" className={inputClass} placeholder={`${h.weight} (kg)`}
+            <input aria-label={`${h.weight} (kg)`} ref={weightRef} type="number" inputMode="decimal" step="0.1" className={inputClass} placeholder={`${h.weight} (kg)`}
               value={newWeight} onChange={(e) => setNewWeight(e.target.value)} />
             <button type="button" onClick={handleLogWeight}
               className="whitespace-nowrap rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-700">

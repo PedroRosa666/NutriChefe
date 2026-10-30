@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDialog } from '../../hooks/useDialog';
 import { Link } from 'react-router-dom';
 import { Crown, Lock } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -87,17 +88,19 @@ export function ExclusiveShelf() {
 /** Tela da receita exclusiva aberta por quem não tem Premium (link direto ou vitrine). */
 export function LockedRecipe({ teaser, onClose }: { teaser: RecipeTeaser; onClose: () => void }) {
   const t = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, { onClose });
   const c = t.clientPremium;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-[3px]" onClick={onClose}>
-      <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white text-center shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="locked-recipe-title" className="w-full max-w-sm overflow-hidden rounded-2xl bg-white text-center shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
         <img src={teaser.image || RECIPE_PLACEHOLDER} alt="" className="h-40 w-full object-cover" />
         <div className="space-y-3 p-6">
           <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
             <Crown className="h-3.5 w-3.5" />
             {c.lockedTitle}
           </span>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{teaser.title}</h2>
+          <h2 id="locked-recipe-title" className="text-lg font-bold text-slate-900 dark:text-white">{teaser.title}</h2>
           <p className="text-sm text-slate-600 dark:text-slate-300">{c.lockedText}</p>
           <div className="flex justify-center gap-2 pt-1">
             <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-200">

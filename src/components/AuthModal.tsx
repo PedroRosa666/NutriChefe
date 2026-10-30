@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Leaf, Eye, EyeOff } from 'lucide-react';
 import { isEmailNotConfirmedError, useAuthStore } from '../store/auth';
@@ -6,6 +6,7 @@ import { ResendConfirmation } from './auth/ResendConfirmation';
 import { cn } from '../lib/utils';
 import type { UserType } from '../types/user';
 import { useTranslation } from '../hooks/useTranslation';
+import { useDialog } from '../hooks/useDialog';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -54,6 +55,9 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   }, [mode]);
 
   const isSignup = mode === 'signup';
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  useDialog(dialogRef, { onClose, active: isOpen, initialFocus: emailRef });
 
   if (!isOpen) return null;
 
@@ -84,11 +88,17 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="relative w-full max-w-md rounded-2xl bg-white/95 shadow-2xl dark:bg-slate-900/95 border border-slate-100/70 dark:border-slate-800">
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="auth-dialog-title"
+          className="relative w-full max-w-md rounded-2xl bg-white/95 shadow-2xl dark:bg-slate-900/95 border border-slate-100/70 dark:border-slate-800">
           {/* Botão fechar */}
           <button
+            type="button"
             onClick={onClose}
-            className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+            className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
           >
             <X className="h-5 w-5" />
             <span className="sr-only">{t.common.close}</span>
@@ -104,7 +114,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               <span className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">
                 NutriChef
               </span>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+              <h2 id="auth-dialog-title" className="text-lg font-semibold text-slate-900 dark:text-slate-50">
                 {isSignup ? t.common.createaccount : t.common.signIn}
               </h2>
             </div>
@@ -116,6 +126,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               <button
                 type="button"
                 onClick={() => setMode('signin')}
+                aria-pressed={mode === 'signin'}
                 className={cn(
                   'flex-1 rounded-full px-3 py-1.5 font-medium transition-all',
                   mode === 'signin'
@@ -128,6 +139,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               <button
                 type="button"
                 onClick={() => setMode('signup')}
+                aria-pressed={mode === 'signup'}
                 className={cn(
                   'flex-1 rounded-full px-3 py-1.5 font-medium transition-all',
                   mode === 'signup'
@@ -169,14 +181,16 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
 
                 {/* Tipo de usuário - layout igual Entrar/Cadastrar */}
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-100">
+                  <p id="auth-account-type" className="block text-sm font-medium text-slate-700 dark:text-slate-100">
                     {t.profile.accountType}
-                  </label>
+                  </p>
 
-                  <div className="flex rounded-full bg-slate-100 p-1.5 text-sm dark:bg-slate-800">
+                  <div role="radiogroup" aria-labelledby="auth-account-type" className="flex rounded-full bg-slate-100 p-1.5 text-sm dark:bg-slate-800">
                     <button
                       type="button"
                       onClick={() => setUserType('Client')}
+                      role="radio"
+                      aria-checked={userType === 'Client'}
                       className={cn(
                         'flex-1 rounded-full px-3 py-1.5 font-medium transition-all',
                         userType === 'Client'
@@ -190,6 +204,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                     <button
                       type="button"
                       onClick={() => setUserType('Nutritionist')}
+                      role="radio"
+                      aria-checked={userType === 'Nutritionist'}
                       className={cn(
                         'flex-1 rounded-full px-3 py-1.5 font-medium transition-all',
                         userType === 'Nutritionist'
@@ -213,6 +229,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                 {t.profile.email}
               </label>
               <input
+                ref={emailRef}
                 type="email"
                 id="email"
                 name="email"
@@ -246,8 +263,9 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                  tabIndex={-1}
+                  aria-label={showPassword ? t.common.hidePassword : t.common.showPassword}
+                  aria-pressed={showPassword}
+                  className="absolute right-1 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

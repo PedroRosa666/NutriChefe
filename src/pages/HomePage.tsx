@@ -112,7 +112,7 @@ export function HomePage() {
           onAIMentoringClick={() => navigate('/mentoria-ia')}
         />
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {!isAuthenticated && <LandingHero />}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div className="flex-1">
@@ -206,7 +206,7 @@ export function HomePage() {
               </button>
             </div>
           )}
-        </main>
+        </div>
 
         <CreateRecipeForm
           isOpen={isCreateModalOpen}

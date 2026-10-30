@@ -169,7 +169,7 @@ export function MyNutritionistCard() {
               connect();
             }}
           >
-            <input
+            <input aria-label={t.care.codePlaceholder}
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder={t.care.codePlaceholder}

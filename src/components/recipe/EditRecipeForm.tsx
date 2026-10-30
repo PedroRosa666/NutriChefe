@@ -1,4 +1,5 @@
 import React, { useRef, useState, useId } from 'react';
+import { useDialog } from '../../hooks/useDialog';
 import { X, Plus, Minus, Clock, Image, FileText, UtensilsCrossed, ListOrdered, Activity } from 'lucide-react';
 import { useToastStore } from '../../store/toast';
 import { useIngredientCalc } from '../../hooks/useIngredientCalc';
@@ -84,6 +85,9 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
   const operationId = useRef<string | null>(null);
   const showToast = useToastStore((s) => s.showToast);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, { onClose, active: isOpen });
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -164,10 +168,12 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm sm:p-4">
-      <div className="relative h-[100dvh] w-full max-w-3xl overflow-y-auto sm:h-auto sm:max-h-[90vh] sm:rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-emerald-50/40 shadow-2xl dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="edit-recipe-title" className="relative h-[100dvh] w-full max-w-3xl overflow-y-auto sm:h-auto sm:max-h-[90vh] sm:rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-white to-emerald-50/40 shadow-2xl dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
         <button
+          type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm transition hover:scale-105 hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-400 dark:hover:bg-slate-900"
+          aria-label={t.common.close}
+          className="absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm transition hover:scale-105 hover:bg-white hover:text-slate-700 dark:bg-slate-900/80 dark:text-slate-400 dark:hover:bg-slate-900"
         >
           <X className="h-5 w-5" />
           <span className="sr-only">{t.common.close}</span>
@@ -178,7 +184,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
             <p className="inline-flex w-fit items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
               {t.recipe.edit || 'Editar Receita'}
             </p>
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 sm:text-2xl">
+            <h2 id="edit-recipe-title" className="text-xl font-semibold text-slate-900 dark:text-slate-50 sm:text-2xl">
               {editedRecipe.title || t.recipe.edit}
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 sm:text-base">

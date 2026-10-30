@@ -103,7 +103,7 @@ export function ProfileTabs() {
   }, [updateEdges, section.key]);
   // A aba aberta (por link ou pelo botão voltar) sempre fica à vista.
   useEffect(() => {
-    const el = stripRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    const el = stripRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
     el?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   }, [activeTab]);
 
@@ -126,15 +126,16 @@ export function ProfileTabs() {
       {section.items.length > 1 ? (
         <div className="-mx-4 sm:mx-0">
           <div ref={stripRef} onScroll={updateEdges} className="scroll-fade-x overflow-x-auto px-4 sm:px-0">
-            <div role="tablist" className="inline-flex min-w-max gap-1 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
+            {/* As abas trocam o endereço (?tab=): são navegação, não um widget de abas. */}
+            <nav aria-label={t.profile.tabs[activeTab]} className="inline-flex min-w-max gap-1 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
               {section.items.map((item) => {
                 const Icon = item.key === 'content' ? Library : ICONS[item.tabs[0]];
                 const active = item === activeItem;
                 return (
                   <button
                     key={item.key}
-                    role="tab"
-                    aria-selected={active}
+                    type="button"
+                    aria-current={active ? 'page' : undefined}
                     onClick={() => selectTab(item.tabs[0])}
                     className={cn(
                       'relative inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors duration-200',
@@ -156,7 +157,7 @@ export function ProfileTabs() {
                   </button>
                 );
               })}
-            </div>
+            </nav>
           </div>
         </div>
       ) : (
@@ -166,16 +167,20 @@ export function ProfileTabs() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.profile.tabs[activeTab]}</h1>
         )
       )}
+      {/* Título da tela para leitores de tela quando não há um h1 visível. */}
+      {(section.items.length > 1 || activeTab === 'overview' || activeTab === 'patients') && (
+        <h1 className="sr-only">{t.profile.tabs[activeTab]}</h1>
+      )}
 
       {/* Conteúdo do nutricionista: receitas, alimentos e favoritos num seletor só. */}
       {activeItem.tabs.length > 1 && (
         <div className="flex flex-wrap items-center gap-2">
-          <div role="tablist" className="inline-flex gap-1 rounded-xl bg-slate-200/70 p-1 dark:bg-slate-800">
+          <div className="inline-flex gap-1 rounded-xl bg-slate-200/70 p-1 dark:bg-slate-800">
             {activeItem.tabs.map((tab) => (
               <button
                 key={tab}
-                role="tab"
-                aria-selected={tab === activeTab}
+                type="button"
+                aria-current={tab === activeTab ? 'page' : undefined}
                 onClick={() => selectTab(tab)}
                 className={cn(
                   'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
@@ -205,7 +210,6 @@ export function ProfileTabs() {
       <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={activeTab}
-        role="tabpanel"
         variants={tabContent}
         initial="initial"
         animate="animate"

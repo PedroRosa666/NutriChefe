@@ -147,7 +147,7 @@ export function CookingMode({ title, steps, ingredients, onClose }: CookingModeP
       </div>
 
       <div className="relative flex flex-1 overflow-hidden">
-        <main className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-8 sm:px-16">
+        <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-8 sm:px-16">
           <AnimatePresence mode="wait" initial={false} custom={direction}>
             <motion.div
               key={index}
@@ -206,7 +206,7 @@ export function CookingMode({ title, steps, ingredients, onClose }: CookingModeP
               )}
             </div>
           )}
-        </main>
+        </div>
 
         <AnimatePresence>
           {showIngredients && (

@@ -1,17 +1,28 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ClipboardCheck, TrendingDown, TrendingUp } from 'lucide-react';
+import { Check, ClipboardCheck, Repeat, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useTranslation } from '../../hooks/useTranslation';
 import { loadAdherence, type AdherenceResult } from '../../services/adherence';
 import type { SlotStatus } from '../../lib/adherence';
 import { cn } from '../../lib/utils';
 
+// Cor e forma juntas: quem não distingue vermelho de verde lê pelo símbolo (WCAG 1.4.1).
 const DOT: Record<SlotStatus, string> = {
-  ate: 'bg-emerald-500',
-  other: 'bg-amber-400',
-  skipped: 'bg-rose-500',
+  ate: 'bg-emerald-600 text-white',
+  other: 'bg-amber-300 text-amber-950',
+  skipped: 'bg-rose-600 text-white',
   none: 'bg-slate-200 dark:bg-slate-700',
 };
+const GLYPH: Partial<Record<SlotStatus, typeof Check>> = { ate: Check, other: Repeat, skipped: X };
+
+function Dot({ status, size }: { status: SlotStatus; size: 'sm' | 'md' }) {
+  const Icon = GLYPH[status];
+  return (
+    <span aria-hidden="true" className={cn('inline-flex items-center justify-center rounded', size === 'md' ? 'h-5 w-5' : 'h-4 w-4', DOT[status])}>
+      {Icon && <Icon className={size === 'md' ? 'h-3.5 w-3.5' : 'h-3 w-3'} strokeWidth={3} />}
+    </span>
+  );
+}
 
 export function AdherencePanel({ clientId, reloadKey = 0 }: { clientId: string; reloadKey?: number }) {
   const user = useAuthStore((s) => s.user);
@@ -83,7 +94,7 @@ export function AdherencePanel({ clientId, reloadKey = 0 }: { clientId: string; 
         <table className="text-xs">
           <thead>
             <tr>
-              <th />
+              <th scope="col"><span className="sr-only">{a.mealColumn}</span></th>
               {current.grid.map((g) => (
                 <th key={g.date} className="px-1.5 pb-1 font-medium text-slate-500 dark:text-slate-400">
                   {weekday(g.date)}
@@ -100,7 +111,10 @@ export function AdherencePanel({ clientId, reloadKey = 0 }: { clientId: string; 
                   return (
                     <td key={g.date} className="px-1.5 py-1 text-center">
                       {slot ? (
-                        <span className={cn('inline-block h-4 w-4 rounded', DOT[slot.status])} title={legend(slot.status)} />
+                        <span title={legend(slot.status)} className="inline-flex">
+                          <Dot status={slot.status} size="md" />
+                          <span className="sr-only">{legend(slot.status)}</span>
+                        </span>
                       ) : (
                         <span className="text-slate-300 dark:text-slate-600">·</span>
                       )}
@@ -115,7 +129,7 @@ export function AdherencePanel({ clientId, reloadKey = 0 }: { clientId: string; 
       <div className="flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400">
         {(['ate', 'other', 'skipped', 'none'] as SlotStatus[]).map((st) => (
           <span key={st} className="inline-flex items-center gap-1.5">
-            <span className={cn('h-3 w-3 rounded', DOT[st])} />
+            <Dot status={st} size="sm" />
             {legend(st)}
           </span>
         ))}

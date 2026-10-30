@@ -22,6 +22,8 @@ import { usePremiumStore } from '../store/premium';
 import { useUnreadMessagesStore } from '../store/unread-messages';
 import { DemoBanner } from '../components/admin/DemoBanner';
 import { UpdateBanner } from '../components/common/UpdateBanner';
+import { useTranslation } from '../hooks/useTranslation';
+import { cn } from '../lib/utils';
 
 export function RootLayout() {
   const { message, type, hideToast } = useToastStore();
@@ -31,6 +33,7 @@ export function RootLayout() {
   const { pathname } = useLocation();
   const section = pathname.startsWith('/receita/') ? '/' : `/${pathname.split('/')[1] ?? ''}`;
   useLiveNotifications();
+  const t = useTranslation();
 
   // Sessão: carrega uma vez e acompanha login/logout/expiração em qualquer rota.
   useEffect(() => {
@@ -82,6 +85,29 @@ export function RootLayout() {
     return () => window.clearInterval(id);
   }, [userId]);
 
+  // Cada tela tem um título próprio na aba do navegador (o h1 da página) e, ao trocar de seção,
+  // o foco vai para esse h1: quem usa leitor de tela ouve onde chegou (WCAG 2.4.2 e 2.4.3).
+  const firstRoute = useRef(true);
+  const lastSection = useRef(section);
+  useEffect(() => {
+    const sectionChanged = lastSection.current !== section && !firstRoute.current;
+    lastSection.current = section;
+    firstRoute.current = false;
+    // As páginas carregam sob demanda: espera o conteúdo montar.
+    const timers = [300, 1200].map((ms) =>
+      window.setTimeout(() => {
+        const h1 = document.querySelector<HTMLElement>('#conteudo h1');
+        const text = h1?.textContent?.trim();
+        document.title = text && text !== 'NutriChef' ? `${text} · NutriChef` : 'NutriChef';
+        if (sectionChanged && ms === 300 && h1 && !document.querySelector('[role="dialog"]')) {
+          h1.setAttribute('tabindex', '-1');
+          h1.focus({ preventScroll: true });
+        }
+      }, ms)
+    );
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, [section, pathname, search]);
+
   // Dados que dependem do usuário logado.
   const accountSeen = useRef<string | null | undefined>(undefined);
   useEffect(() => {
@@ -117,32 +143,40 @@ export function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <UpdateBanner />
-      <DemoBanner />
       {/* reducedMotion="user": quem pediu menos movimento no sistema não vê as animações. */}
       <MotionConfig reducedMotion="user">
+      <a
+        href="#conteudo"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[80] focus:rounded-lg focus:bg-emerald-700 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
+      >
+        {t.common.skipToContent}
+      </a>
+      <UpdateBanner />
+      <DemoBanner />
         {/* A home tem o próprio cabeçalho (com a busca); as outras páginas logadas usam este. */}
         {userId && section !== '/' && section !== '/login' && <AppHeader />}
         {/* No celular, logado, sobra espaço para a barra de navegação inferior. */}
-        <motion.div
+        <motion.main
+          id="conteudo"
+          tabIndex={-1}
           key={`${section}:${userId ?? 'anon'}`}
           variants={pageFade}
           initial="initial"
           animate="animate"
-          className={userId ? 'pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))] md:pb-0' : undefined}
+          className={cn('outline-none', userId && 'pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))] md:pb-0')}
         >
           <Outlet />
-        </motion.div>
+        </motion.main>
         <MobileNav />
         <ConfirmDialog />
+        {message && (
+          <Toast
+            message={message}
+            type={type}
+            onClose={hideToast}
+          />
+        )}
       </MotionConfig>
-      {message && (
-        <Toast
-          message={message}
-          type={type}
-          onClose={hideToast}
-        />
-      )}
     </ErrorBoundary>
   );
 }

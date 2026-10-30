@@ -132,7 +132,7 @@ export function PlanTemplatesPanel({ meals, items, title, notes, onApply }: Plan
       <div className="space-y-2 border-t border-sky-200 pt-3 dark:border-sky-900/40">
         <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{s.saveTitle}</p>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <input
+          <input aria-label={s.namePlaceholder}
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={120}

@@ -214,6 +214,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
           onClick={openReport}
           disabled={preparingReport || !data}
           title={t.patientReport.button}
+          aria-label={t.patientReport.button}
           className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
         >
           {preparingReport ? <Loader2 className="h-4 w-4 animate-spin" /> : nutritionistPro ? <FileText className="h-4 w-4" /> : <Crown className="h-4 w-4" />}
@@ -221,9 +222,10 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
         </button>
       </div>
 
-      {/* Atalhos da ficha: o que o nutricionista faz com mais frequência fica a um toque. */}
-      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <div role="tablist" className="inline-flex min-w-max gap-1 rounded-xl bg-slate-200/70 p-1 dark:bg-slate-800">
+      {/* Atalhos da ficha: o que o nutricionista faz com mais frequência fica a um toque.
+          No celular as 5 cabem na tela (ícone sobre o nome), sem esconder a aba com aviso. */}
+      <div>
+        <nav aria-label={t.care.detailTabsLabel} className="grid grid-cols-5 gap-1 rounded-xl bg-slate-200/70 p-1 dark:bg-slate-800 sm:inline-flex sm:min-w-max">
           {DETAIL_TABS.map((key) => {
             const Icon = { summary: LayoutDashboard, plan: CalendarRange, goals: Target, appointments: CalendarClock, messages: MessageCircle }[key];
             const count = key === 'plan' ? pendingSwaps : key === 'messages' ? unread : 0;
@@ -231,23 +233,25 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
               <button
                 key={key}
                 type="button"
-                role="tab"
-                aria-selected={tab === key}
+                aria-current={tab === key ? 'page' : undefined}
                 onClick={() => selectTab(key)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                  'relative flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-xs font-medium transition-colors sm:min-h-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm',
                   tab === key ? 'bg-white text-emerald-700 shadow-sm dark:bg-slate-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300'
                 )}
               >
                 <Icon className="h-4 w-4" />
-                {t.care.detailTabs[key]}
+                <span className="max-w-full truncate">{t.care.detailTabs[key]}</span>
                 {count > 0 && (
-                  <span className="min-w-[18px] rounded-full bg-rose-600 px-1 text-center text-[11px] font-bold leading-[18px] text-white">{count > 9 ? '9+' : count}</span>
+                  <span className="absolute right-0.5 top-0.5 min-w-[18px] rounded-full bg-rose-600 px-1 text-center text-[11px] font-bold leading-[18px] text-white sm:static">
+                    <span aria-hidden="true">{count > 9 ? '9+' : count}</span>
+                    <span className="sr-only">{t.care.pendingCount.replace('{n}', String(count))}</span>
+                  </span>
                 )}
               </button>
             );
           })}
-        </div>
+        </nav>
       </div>
 
       {report && data && user && (

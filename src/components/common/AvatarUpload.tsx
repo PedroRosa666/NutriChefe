@@ -269,6 +269,7 @@ export function AvatarUpload({
                 uploadBtnClasses[size]
               )}
               title={t.profile.changePhoto || 'Alterar foto'}
+              aria-label={t.profile.changePhoto || 'Alterar foto'}
             >
               <Upload className={uploadIconClasses[size]} />
             </button>
@@ -288,6 +289,7 @@ export function AvatarUpload({
                   removeBtnClasses[size]
                 )}
                 title={t.profile.removePhoto || 'Remover foto'}
+                aria-label={t.profile.removePhoto || 'Remover foto'}
               >
                 <X className={removeIconClasses[size]} />
               </button>
