@@ -7,6 +7,7 @@ import { recipesWithIngredients, type SearchableRecipe } from '../../../supabase
 import { QUICK } from '../../lib/motion';
 import type { Recipe } from '../../types/recipe';
 import { useRecipesStore } from '../../store/recipes';
+import { recipeImageFallback } from '../../lib/recipe-image';
 
 const toSearchable = (r: Recipe): SearchableRecipe & { source: Recipe } => ({
   id: r.id,
@@ -126,7 +127,7 @@ export function PantrySearch() {
                         to={`/receita/${recipe.id}`}
                         className="flex items-center gap-3 rounded-xl bg-white/70 p-2 transition hover:bg-white dark:bg-slate-900/50 dark:hover:bg-slate-900"
                       >
-                        <img src={recipe.source.image} alt="" className="h-14 w-14 flex-shrink-0 rounded-lg bg-slate-100 object-cover dark:bg-slate-800" loading="lazy" />
+                        <img src={recipe.source.image} alt="" onError={recipeImageFallback} className="h-14 w-14 flex-shrink-0 rounded-lg bg-slate-100 object-cover dark:bg-slate-800" loading="lazy" />
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{recipe.title}</p>
                           <p className="truncate text-xs text-emerald-700 dark:text-emerald-300">

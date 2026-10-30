@@ -7,7 +7,8 @@ import { useAuthStore } from '../store/auth';
 import { useTranslation } from '../hooks/useTranslation';
 import type { Recipe } from '../types/recipe';
 
-export const RECIPE_PLACEHOLDER = '/recipe-placeholder.svg';
+export { RECIPE_PLACEHOLDER } from '../lib/recipe-image';
+import { RECIPE_PLACEHOLDER } from '../lib/recipe-image';
 
 interface RecipeCardProps {
   recipe: Recipe;

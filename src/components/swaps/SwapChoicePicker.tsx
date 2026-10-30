@@ -11,6 +11,7 @@ import { FoodQuantityPicker } from '../foods/FoodQuantityPicker';
 import { EquivalentFoods } from '../foods/EquivalentFoods';
 import { cn } from '../../lib/utils';
 import { fmtNum } from '../../lib/format';
+import { recipeImageFallback } from '../../lib/recipe-image';
 
 interface SwapChoicePickerProps {
   /** Calorias do item atual: as receitas sugeridas vêm com as porções para chegar perto delas. */
@@ -114,7 +115,7 @@ export function SwapChoicePicker({ targetKcal, baseFood, allergies, confirmLabel
                 const servings = servingsFor(r, targetKcal);
                 return (
                   <li key={r.id} className="flex items-center gap-3 rounded-lg border border-slate-100 bg-white p-2 dark:border-slate-800 dark:bg-slate-900">
-                    <img src={r.image} alt="" loading="lazy" className="h-10 w-10 flex-shrink-0 rounded-md bg-slate-100 object-cover dark:bg-slate-800" />
+                    <img src={r.image} alt="" loading="lazy" onError={recipeImageFallback} className="h-10 w-10 flex-shrink-0 rounded-md bg-slate-100 object-cover dark:bg-slate-800" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{r.title}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">

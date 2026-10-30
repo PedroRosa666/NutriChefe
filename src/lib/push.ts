@@ -3,7 +3,8 @@
 import { create } from 'zustand';
 import { supabase } from './supabase';
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+// trim(): mesma proteção do supabase.ts contra quebra de linha colada no painel do deploy.
+const VAPID_PUBLIC_KEY = (import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined)?.trim() || undefined;
 
 export type PushState = 'unsupported' | 'needs-install' | 'denied' | 'off' | 'on';
 

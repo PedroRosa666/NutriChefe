@@ -6,6 +6,7 @@ import { itemNutrition } from '../../lib/plan-items';
 import type { MealPlanItem } from '../../services/care';
 import type { Recipe } from '../../types/recipe';
 import { fmtNum } from '../../lib/format';
+import { RECIPE_PLACEHOLDER, recipeImageFallback } from '../../lib/recipe-image';
 
 interface PlanItemRowProps {
   item: MealPlanItem;
@@ -44,7 +45,7 @@ export function PlanItemRow({ item, recipesById, compact, actions }: PlanItemRow
   if (!recipe) return null;
   const content = (
     <>
-      <img src={recipe.image} alt="" className={`${size} flex-shrink-0 rounded-lg bg-slate-100 object-cover dark:bg-slate-800`} loading="lazy" />
+      <img src={recipe.image || RECIPE_PLACEHOLDER} alt="" onError={recipeImageFallback} className={`${size} flex-shrink-0 rounded-lg bg-slate-100 object-cover dark:bg-slate-800`} loading="lazy" />
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{recipe.title}</p>
         <p className="text-xs text-slate-500 dark:text-slate-400">

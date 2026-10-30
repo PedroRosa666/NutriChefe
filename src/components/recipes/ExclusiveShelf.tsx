@@ -7,6 +7,7 @@ import { usePremiumContent, usePremiumStore } from '../../store/premium';
 import { useAuthStore } from '../../store/auth';
 import { getPremiumTeasers, type RecipeTeaser } from '../../services/progress';
 import { RECIPE_PLACEHOLDER } from '../RecipeCard';
+import { recipeImageFallback } from '../../lib/recipe-image';
 
 /**
  * Vitrine das receitas exclusivas para quem ainda não tem Premium: foto, título e calorias,
@@ -94,7 +95,7 @@ export function LockedRecipe({ teaser, onClose }: { teaser: RecipeTeaser; onClos
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/25 p-4 backdrop-blur-[3px]" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="locked-recipe-title" className="w-full max-w-sm overflow-hidden rounded-2xl bg-white text-center shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
-        <img src={teaser.image || RECIPE_PLACEHOLDER} alt="" className="h-40 w-full object-cover" />
+        <img src={teaser.image || RECIPE_PLACEHOLDER} alt="" onError={recipeImageFallback} className="h-40 w-full object-cover" />
         <div className="space-y-3 p-6">
           <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
             <Crown className="h-3.5 w-3.5" />

@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database, Json } from '../types/database';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// trim(): um valor colado com quebra de linha no painel do deploy vira %0A na conexão em tempo real
+// (WebSocket), que recusa a chave; as consultas normais funcionam e o erro passa despercebido.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 if (!supabaseUrl) {
   throw new Error('Missing environment variable: VITE_SUPABASE_URL');
