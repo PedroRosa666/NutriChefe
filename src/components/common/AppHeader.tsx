@@ -33,7 +33,7 @@ export function AppHeader() {
           NutriChef
         </Link>
 
-        <nav aria-label="Menu" className="ml-4 hidden items-center gap-1 md:flex">
+        <nav aria-label={t.common.mainNav} className="ml-4 hidden items-center gap-1 md:flex">
           {items.map(({ key, to, label, icon: Icon, active, badge }) => (
             <Link
               key={key}

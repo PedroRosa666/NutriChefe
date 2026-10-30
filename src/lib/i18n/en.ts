@@ -160,6 +160,7 @@ export const en: Translations = {
     },
     close: 'Close',
     skipToContent: 'Skip to content',
+    mainNav: 'Main navigation',
     showPassword: 'Show password',
     hidePassword: 'Hide password',
     continue: 'Continue',

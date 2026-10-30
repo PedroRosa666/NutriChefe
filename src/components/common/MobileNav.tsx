@@ -3,16 +3,18 @@ import { motion } from 'framer-motion';
 import { useAppNav } from '../../hooks/useAppNav';
 import { SMOOTH } from '../../lib/motion';
 import { cn } from '../../lib/utils';
+import { useTranslation } from '../../hooks/useTranslation';
 
 /** Barra fixa embaixo no celular (só logado): atalhos para o que se usa todo dia. */
 export function MobileNav() {
   const items = useAppNav();
+  const t = useTranslation();
   if (!items.length) return null;
 
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-white/40 bg-[rgb(var(--nc-top)/0.97)] pb-[env(safe-area-inset-bottom)] md:hidden dark:border-white/10"
-      aria-label="Menu"
+      aria-label={t.common.mainNav}
     >
       <ul className="flex">
         {items.map(({ key, to, label, icon: Icon, active, badge }) => (

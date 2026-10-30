@@ -87,30 +87,28 @@ export function ProfileStrengthCard() {
               ? t.profileUi.publicAfterCrn
               : t.nutritionists.editProfile.public}
         </span>
-        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${profile?.accepting_new_clients !== false ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>
+        {/* "Aceitando pacientes" só faz sentido com o perfil visível. */}
+        {isPublic && <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${profile?.accepting_new_clients !== false ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'}`}>
           {profile?.accepting_new_clients !== false ? <UserCheck className="h-3.5 w-3.5" /> : <UserX className="h-3.5 w-3.5" />}
           {profile?.accepting_new_clients !== false ? t.nutritionists.acceptingClients : t.nutritionists.notAcceptingClients}
-        </span>
+        </span>}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Link
-          to="/perfil?tab=professional"
-          className="inline-flex flex-1 items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-        >
-          {t.profile.editProfessionalProfile}
-        </Link>
+      {/* O formulário de edição está logo abaixo, nesta mesma aba. Perfil privado: o motivo
+          aparece escrito, em vez de um botão apagado. */}
+      {isPublic ? (
         <button
           type="button"
           onClick={copyLink}
-          disabled={!isPublic}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-          title={isPublic ? publicUrl : t.profile.privateProfileHint}
+          title={publicUrl}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
         >
           <Link2 className="h-4 w-4" />
           {copied ? t.profile.linkCopiedShort : t.profile.copyLink}
         </button>
-      </div>
+      ) : (
+        <p className="text-sm text-slate-600 dark:text-slate-300">{t.profile.privateProfileHint}</p>
+      )}
     </section>
   );
 }

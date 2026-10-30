@@ -143,6 +143,7 @@ export const pt = {
     cancel: 'Cancelar',
     close: 'Fechar',
     skipToContent: 'Pular para o conteúdo',
+    mainNav: 'Navegação principal',
     showPassword: 'Mostrar senha',
     hidePassword: 'Ocultar senha',
     remove: 'Remover',
