@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
+const COLS: Record<number, string> = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' };
 
 export interface QuickAction {
   to: string;
@@ -59,8 +60,6 @@ export function DashboardHero({
   return (
     <section className="space-y-3">
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-700 via-emerald-700 to-teal-700 p-5 text-white shadow-lg shadow-emerald-900/10 sm:p-6">
-        <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10" />
-        <div className="pointer-events-none absolute -bottom-16 right-24 h-32 w-32 rounded-full bg-white/10" />
         <div className="relative flex items-center gap-4">
           <div className="min-w-0 flex-1">
             <h2 className="text-xl font-bold leading-tight sm:text-2xl">{title}</h2>
@@ -81,7 +80,8 @@ export function DashboardHero({
         )}
       </div>
 
-      <nav aria-label={u.quickActions} className="grid grid-cols-4 gap-2">
+      {/* Uma coluna por atalho: com 3 atalhos não sobra meia linha vazia. */}
+      <nav aria-label={u.quickActions} className={cn('grid gap-2', COLS[actions.length] ?? 'grid-cols-4')}>
         {actions.map(({ to, label, icon: Icon, badge }) => (
           <Link
             key={to + label}

@@ -26,6 +26,8 @@ const EditProfessionalProfile = lazyNamed(() => import('./EditProfessionalProfil
 const AIAssistantSettings = lazyNamed(() => import('./AIAssistantSettings'), 'AIAssistantSettings');
 const ClientDashboard = lazyNamed(() => import('./ClientDashboard'), 'ClientDashboard');
 const NutritionistDashboard = lazyNamed(() => import('./NutritionistDashboard'), 'NutritionistDashboard');
+const ProfileStrengthCard = lazyNamed(() => import('./NutritionistInsights'), 'ProfileStrengthCard');
+const RecipeFeedback = lazyNamed(() => import('./NutritionistInsights'), 'RecipeFeedback');
 const HealthProfileForm = lazyNamed(() => import('./HealthProfileForm'), 'HealthProfileForm');
 const AccountSettings = lazyNamed(() => import('./AccountSettings'), 'AccountSettings');
 const PatientsPanel = lazyNamed(() => import('../care/PatientsPanel'), 'PatientsPanel');
@@ -281,6 +283,17 @@ export function ProfileTabs() {
           </div>
         )}
 
+        {activeTab === 'recipes' && isNutritionist && (
+          <div className="mt-8">
+            <RecipeFeedback />
+          </div>
+        )}
+
+        {activeTab === 'professional' && (
+          <div className="mb-6 max-w-4xl">
+            <ProfileStrengthCard />
+          </div>
+        )}
         {activeTab === 'professional' && (
           <div className="max-w-4xl rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-6">
