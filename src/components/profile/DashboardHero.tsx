@@ -53,7 +53,8 @@ export function DashboardHero({
   title: string;
   subtitle: string;
   aside?: ReactNode;
-  stats?: { label: string; value: string; hint?: string }[];
+  /** Com `to`, o número leva à tela onde se age sobre ele. */
+  stats?: { label: string; value: string; hint?: string; to?: string }[];
   actions: QuickAction[];
 }) {
   const u = useTranslation().profileUi;
@@ -69,18 +70,31 @@ export function DashboardHero({
         </div>
         {stats && stats.length > 0 && (
           <div className="relative mt-4 grid grid-cols-3 gap-2">
-            {stats.map((s) => (
-              <div key={s.label} className="rounded-xl bg-emerald-950/25 px-2.5 py-2">
-                <p className="line-clamp-2 text-xs font-medium leading-tight text-white/90">{s.label}</p>
-                <p className="mt-0.5 text-lg font-bold leading-tight">{s.value}</p>
-                {s.hint && <p className="line-clamp-2 text-xs leading-tight text-emerald-50">{s.hint}</p>}
-              </div>
-            ))}
+            {stats.map((s) => {
+              const body = (
+                <>
+                  <p className="line-clamp-2 text-xs font-medium leading-tight text-white/90">{s.label}</p>
+                  <p className="mt-0.5 text-lg font-bold leading-tight">{s.value}</p>
+                  {s.hint && <p className="line-clamp-2 text-xs leading-tight text-emerald-50">{s.hint}</p>}
+                </>
+              );
+              const tile = 'rounded-xl bg-emerald-950/25 px-2.5 py-2';
+              return s.to ? (
+                <Link key={s.label} to={s.to} className={cn(tile, 'transition-colors hover:bg-emerald-950/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white')}>
+                  {body}
+                </Link>
+              ) : (
+                <div key={s.label} className={tile}>
+                  {body}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* Uma coluna por atalho: com 3 atalhos não sobra meia linha vazia. */}
+      {actions.length > 0 && (
       <nav aria-label={u.quickActions} className={cn('grid gap-2', COLS[actions.length] ?? 'grid-cols-4')}>
         {actions.map(({ to, label, icon: Icon, badge }) => (
           <Link
@@ -100,6 +114,7 @@ export function DashboardHero({
           </Link>
         ))}
       </nav>
+      )}
     </section>
   );
 }

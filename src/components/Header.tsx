@@ -52,7 +52,7 @@ export function UserDropdown({ user, onProfileClick, onSignOut, t }: UserDropdow
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
       >
-        <div className="h-8 w-8 rounded-lg overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-sm">
+        <div className="h-8 w-8 rounded-lg overflow-hidden bg-gradient-to-br from-emerald-700 to-teal-700 flex items-center justify-center shadow-sm">
           {user?.avatar_url ? (
             <img
               src={user.avatar_url}

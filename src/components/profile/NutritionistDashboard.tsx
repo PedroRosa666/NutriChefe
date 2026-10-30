@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MessageCircle, UserPlus, Users } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useRecipesStore } from '../../store/recipes';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -34,7 +34,7 @@ export function NutritionistDashboard() {
       .catch((e) => console.error('Error loading CRN status:', e));
   }, [userId]);
 
-  const flagged = usePatientsAttention();
+  const { flagged, failed: attentionFailed, retry: retryAttention } = usePatientsAttention();
   const unread = useUnreadMessagesStore((s) => s.count);
   const greeting = useGreeting();
   const { nutritionistPro, activePatients, freePatientLimit, isVisitor } = usePremiumStore();
@@ -64,11 +64,13 @@ export function NutritionistDashboard() {
         stats={[
           {
             label: t.profileUi.needAttention,
-            value: String(flagged.length),
-            hint: activePatients > 0 && flagged.length === 0 ? t.profileUi.allCaughtUp : undefined,
+            value: attentionFailed ? '—' : String(flagged.length),
+            hint: !attentionFailed && activePatients > 0 && flagged.length === 0 ? t.profileUi.allCaughtUp : undefined,
+            to: '/perfil?tab=patients&filtro=atencao',
           },
-          { label: t.profileUi.unreadMessages, value: String(unread) },
+          { label: t.profileUi.unreadMessages, value: String(unread), to: '/perfil?tab=messages' },
           {
+            to: '/perfil?tab=patients',
             label: t.profileUi.activePatients,
             value: String(activePatients),
             hint: nutritionistPro
@@ -76,15 +78,12 @@ export function NutritionistDashboard() {
               : t.profileUi.patientsOfLimit.replace('{n}', String(activePatients)).replace('{max}', String(freePatientLimit)),
           },
         ]}
-        actions={[
-          { to: '/perfil?tab=patients', label: t.profile.tabs.patients, icon: Users },
-          { to: '/perfil?tab=messages', label: t.profile.tabs.messages, icon: MessageCircle, badge: unread },
-          // Visitante da demonstração não convida.
-          ...(isVisitor ? [] : [{ to: '/perfil?tab=patients&convidar=1', label: t.profileUi.invitePatient, icon: UserPlus }]),
-        ]}
+        // Pacientes e Mensagens já estão na navegação e nos números acima; fica só o convite.
+        // Visitante da demonstração não convida.
+        actions={isVisitor ? [] : [{ to: '/perfil?tab=patients&convidar=1', label: t.profileUi.invitePatient, icon: UserPlus }]}
       />
       <CrnVerificationCard />
-      <AttentionPanel flagged={flagged} hasPatients={activePatients > 0} />
+      <AttentionPanel flagged={flagged} failed={attentionFailed} onRetry={retryAttention} hasPatients={activePatients > 0} />
       <UpcomingAppointments />
       {crnStatus !== null && !isVisitor && (
         <GettingStarted

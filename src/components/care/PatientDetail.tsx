@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { blockedTerms } from '../../../supabase/functions/_shared/recipe-search';
 import { ArrowLeft, Crown, FileText, HeartPulse, Loader2, Save, Sparkles, Target, UserMinus, Utensils, CalendarRange, CalendarClock, MessageCircle, LayoutDashboard, MoreVertical } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import { useToastStore } from '../../store/toast';
+import { useDialog } from '../../hooks/useDialog';
 import { useTranslation } from '../../hooks/useTranslation';
 import { endLink, getPatientData, setPatientGoals, type CareLink, type PatientData } from '../../services/care';
 import { sumEntries, toISODate } from '../../store/nutrition-tracking';
@@ -65,12 +66,9 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
   const [report, setReport] = useState<{ adherence: AdherenceResult | null; crn: string | null } | null>(null);
   const [preparingReport, setPreparingReport] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [menuOpen]);
+  // Menu ⋯: Esc fecha e o foco volta ao botão (mesmo comportamento das janelas).
+  const menuRef = useRef<HTMLDivElement>(null);
+  useDialog(menuRef, { onClose: () => setMenuOpen(false), active: menuOpen });
   const closeReport = useCallback(() => setReport(null), []);
 
   const openReport = async () => {
@@ -241,11 +239,10 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} aria-hidden="true" />
-              <div role="menu" className="absolute right-0 z-40 mt-2 w-60 rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+              <div ref={menuRef} role="menu" className="absolute right-0 z-40 mt-2 w-60 rounded-xl border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
                 <button
                   type="button"
                   role="menuitem"
-                  autoFocus
                   onClick={() => {
                     setMenuOpen(false);
                     end();
@@ -275,7 +272,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
                 aria-current={tab === key ? 'page' : undefined}
                 onClick={() => selectTab(key)}
                 className={cn(
-                  'relative flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-xs font-medium transition-colors sm:min-h-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm',
+                  'relative flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-0 py-1.5 text-xs font-medium transition-colors sm:min-h-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm',
                   tab === key ? 'bg-white text-emerald-700 shadow-sm dark:bg-slate-700 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300'
                 )}
               >
@@ -379,7 +376,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
                     {info(t.health.height, h.height_cm ? `${h.height_cm} cm` : null)}
                     {info(t.health.currentWeight, h.weight_kg ? `${h.weight_kg} kg` : null)}
                     {info(t.health.targetWeight, h.target_weight_kg ? `${h.target_weight_kg} kg` : null)}
-                    {info(t.health.bmi, currentBmi)}
+                    {info(t.health.bmi, currentBmi === null ? null : fmt(currentBmi, 1))}
                     {info(t.health.goal, h.goal ? t.health.goals[h.goal] : null)}
                     {info(t.health.activityLevel, h.activity_level ? t.health.activity[h.activity_level] : null)}
                   </div>

@@ -101,7 +101,7 @@ export function AdherencePanel({ clientId, reloadKey = 0 }: { clientId: string; 
             <tr>
               <th scope="col"><span className="sr-only">{a.mealColumn}</span></th>
               {current.grid.map((g) => (
-                <th key={g.date} className="px-1.5 pb-1 font-medium text-slate-500 dark:text-slate-400">
+                <th key={g.date} scope="col" className="px-1.5 pb-1 font-medium text-slate-500 dark:text-slate-400">
                   {weekday(g.date)}
                 </th>
               ))}
@@ -110,7 +110,7 @@ export function AdherencePanel({ clientId, reloadKey = 0 }: { clientId: string; 
           <tbody>
             {current.byMeal.map(({ mealId, name }) => (
               <tr key={mealId}>
-                <td className="max-w-[9rem] truncate whitespace-nowrap pr-2 text-slate-600 dark:text-slate-300">{name}</td>
+                <th scope="row" className="max-w-[9rem] truncate whitespace-nowrap pr-2 text-left font-normal text-slate-600 dark:text-slate-300">{name}</th>
                 {current.grid.map((g) => {
                   const slot = g.slots.find((sl) => sl.mealId === mealId);
                   return (

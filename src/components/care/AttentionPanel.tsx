@@ -27,46 +27,78 @@ const MAX_VISIBLE = 5;
 
 /**
  * Pacientes com trocas pendentes, mensagens não lidas ou sem registrar há dias, do mais urgente
- * ao menos. `null` enquanto carrega; em erro, lista vazia (o Painel não trava).
+ * ao menos. `flagged` é null enquanto carrega. Em erro, `failed`: a tela avisa em vez de
+ * mostrar "tudo em dia" (um falso "ninguém precisa de você" é o pior estado desta fila).
  */
 export function usePatientsAttention() {
   const [flagged, setFlagged] = useState<FlaggedPatient[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     supabase.rpc('patients_attention').then(({ data, error }) => {
       if (cancelled) return;
-      if (error) console.error('patients_attention failed', error);
+      if (error) {
+        console.error('patients_attention failed', error);
+        setFailed(true);
+        setFlagged([]);
+        return;
+      }
+      setFailed(false);
       const rows = ((data ?? []) as AttentionRow[])
         .map((r) => {
           const last = lastActivity(r.last_log, r.last_check);
           return { ...r, idle: daysSince(last), inactive: isInactive(last) };
         })
-        .filter((r) => r.pending_swaps > 0 || r.unread_messages > 0 || r.inactive)
+        .filter((r) => needsAttention(r.unread_messages, r.pending_swaps, r.inactive))
         .sort((x, y) => y.pending_swaps + y.unread_messages - (x.pending_swaps + x.unread_messages) || (y.idle ?? 99) - (x.idle ?? 99));
       setFlagged(rows);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
-  return flagged;
+  return { flagged, failed, retry: () => setAttempt((n) => n + 1) };
 }
 
-/** Abre a ficha já na aba onde o motivo se resolve: conversa, pedido de troca ou resumo. */
+/**
+ * Quem entra em "Precisa de atenção" — a mesma regra no Painel e no filtro da lista de
+ * pacientes, para os números baterem: mensagem não lida, troca pendente ou sem registrar há dias.
+ */
+export function needsAttention(unread: number, swaps: number, inactive: boolean) {
+  return unread > 0 || swaps > 0 || inactive;
+}
+
+/** Aba da ficha onde o motivo se resolve: conversa, pedido de troca ou (sem motivo) resumo. */
+export function reasonTab(unread: number, swaps: number): 'messages' | 'plan' | null {
+  return unread > 0 ? 'messages' : swaps > 0 ? 'plan' : null;
+}
+
 function patientLink(r: FlaggedPatient) {
-  const tab = r.unread_messages > 0 ? '&ver=messages' : r.pending_swaps > 0 ? '&ver=plan' : '';
-  return `/perfil?tab=patients&paciente=${r.client_id}${tab}`;
+  const tab = reasonTab(r.unread_messages, r.pending_swaps);
+  return `/perfil?tab=patients&paciente=${r.client_id}${tab ? `&ver=${tab}` : ''}`;
 }
 
 /** "Precisa de atenção": a fila do dia do nutricionista. */
-export function AttentionPanel({ flagged, hasPatients }: { flagged: FlaggedPatient[] | null; hasPatients: boolean }) {
+export function AttentionPanel({ flagged, failed, onRetry, hasPatients }: { flagged: FlaggedPatient[] | null; failed: boolean; onRetry: () => void; hasPatients: boolean }) {
   const t = useTranslation();
   const a = t.attention;
   const nutritionistPro = usePremiumStore((s) => s.nutritionistPro);
 
   if (!flagged || !hasPatients) return null;
+  if (failed) {
+    return (
+      <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-100">
+        <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+        <p className="min-w-0 flex-1">{a.loadFailed}</p>
+        <button type="button" onClick={onRetry} className="min-h-[40px] rounded-lg bg-amber-600 px-3 text-sm font-semibold text-white hover:bg-amber-700">
+          {t.common.retry}
+        </button>
+      </section>
+    );
+  }
 
   const limit = nutritionistPro ? MAX_VISIBLE : FREE_VISIBLE;
   const visible = flagged.slice(0, limit);

@@ -28,7 +28,7 @@ import { LoadError } from '../common/LoadError';
 import { appLocale } from '../../lib/format';
 import { getMyCrnStatus, type CrnStatus } from '../../services/verification';
 import { matchesSearch } from '../../lib/search';
-import { StatusChip } from './AttentionPanel';
+import { StatusChip, needsAttention, reasonTab } from './AttentionPanel';
 import { cn } from '../../lib/utils';
 
 interface PatientSummary {
@@ -144,11 +144,13 @@ export function PatientsPanel() {
     setSearchParams(next, { replace: true });
   }, [requestedPatient, loading, selected, searchParams, setSearchParams]);
 
-  const openPatient = (link: CareLink | null) => {
+  const openPatient = (link: CareLink | null, tab: 'messages' | 'plan' | null = null) => {
     const next = new URLSearchParams(searchParams);
     next.delete('chat');
+    next.delete('ver');
     if (link) next.set('paciente', link.person.id);
     else next.delete('paciente');
+    if (link && tab) next.set('ver', tab);
     setSearchParams(next);
   };
 
@@ -166,13 +168,16 @@ export function PatientsPanel() {
       const lowAdherence = a != null && a < 50 ? a : null;
       const inactive = !!s && isInactive(s.lastActive);
       const overGoal = !!s && !!s.goalKcal && s.avgKcal7 > s.goalKcal * 1.1;
-      const score = (unreadCount + swapCount) * 100 + (inactive ? 10 : 0) + (lowAdherence !== null ? 5 : 0) + (overGoal ? 1 : 0);
-      return { link, s, unreadCount, swapCount, lowAdherence, inactive, overGoal, score };
+      // A ordem usa só o resumo (não a adesão, que chega aos poucos): a lista não pula sob o dedo.
+      const score = (unreadCount + swapCount) * 100 + (inactive ? 10 : 0) + (overGoal ? 1 : 0);
+      const needs = needsAttention(unreadCount, swapCount, inactive);
+      return { link, s, unreadCount, swapCount, lowAdherence, inactive, overGoal, score, needs };
     })
     .sort((x, y) => y.score - x.score || (x.link.person.full_name ?? '').localeCompare(y.link.person.full_name ?? '', appLocale()));
-  const needCount = rows.filter((r) => r.score > 0).length;
+  const needCount = rows.filter((r) => r.needs).length;
   const filter = filterChoice ?? (needCount > 0 ? 'attention' : 'all');
-  const shown = filter === 'attention' ? rows.filter((r) => r.score > 0) : rows;
+  // Com algo digitado na busca, procura em todos (o filtro não esconde quem a pessoa procurou).
+  const shown = filter === 'attention' && !query.trim() ? rows.filter((r) => r.needs) : rows;
 
   // Antes de tocar em "Convidar": o que impede o convite aparece já, com o caminho para resolver.
   useEffect(() => {
@@ -461,7 +466,7 @@ export function PatientsPanel() {
                 <li key={p.id}>
                   <button
                     type="button"
-                    onClick={() => openPatient(p)}
+                    onClick={() => openPatient(p, reasonTab(unreadCount, swapCount))}
                     className="glass-card flex h-full w-full items-center gap-3 rounded-2xl border p-4 text-left transition-shadow duration-200 hover:shadow-lg"
                   >
                     <Avatar name={p.person.full_name} url={p.person.avatar_url} className="h-12 w-12" />
