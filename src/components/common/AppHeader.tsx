@@ -27,7 +27,7 @@ export function AppHeader() {
   if (!user) return null;
 
   return (
-    <header className="sticky top-0 z-40 bg-[rgb(var(--nc-top)/0.72)] backdrop-blur-md backdrop-saturate-150">
+    <header className="sticky top-0 z-40 bg-[rgb(var(--nc-top)/0.97)] md:bg-[rgb(var(--nc-top)/0.72)] md:backdrop-blur-md md:backdrop-saturate-150">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 md:h-16 lg:px-8">
         <Link to="/" className="text-xl font-bold text-emerald-600 md:text-2xl dark:text-emerald-400">
           NutriChef

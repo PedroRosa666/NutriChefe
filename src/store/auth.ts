@@ -7,7 +7,7 @@ import type { User, UserType } from '../types/user';
 import { cleanupDeviceOnLogout } from '../lib/push';
 import { forgetSavedAdminSession } from '../services/admin';
 import { feedback } from '../lib/i18n/current';
-import { translations } from '../lib/i18n/translations';
+import { loadedTranslations } from '../lib/i18n/translations';
 
 interface AuthState {
   user: User | null;
@@ -54,7 +54,7 @@ export function takeAfterConfirm(): string {
 
 // O AuthModal usa isto para oferecer o reenvio da confirmação (vale nos dois idiomas).
 export const isEmailNotConfirmedError = (message: string | null) =>
-  !!message && Object.values(translations).some((tr) => tr.feedback.auth.emailNotConfirmed === message);
+  !!message && loadedTranslations().some((tr) => tr.feedback.auth.emailNotConfirmed === message);
 
 export const useAuthStore = create<AuthState>()(
   persist(

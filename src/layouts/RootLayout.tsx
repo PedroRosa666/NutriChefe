@@ -18,6 +18,7 @@ import { useSubscriptionStore } from '../store/subscription';
 import { useShoppingListStore } from '../store/shopping-list';
 import { useFoodsStore } from '../store/foods';
 import { useToastStore } from '../store/toast';
+import { useSettingsStore } from '../store/settings';
 import { usePremiumStore } from '../store/premium';
 import { useUnreadMessagesStore } from '../store/unread-messages';
 import { DemoBanner } from '../components/admin/DemoBanner';
@@ -84,6 +85,12 @@ export function RootLayout() {
     const id = window.setInterval(() => useUnreadMessagesStore.getState().refresh(userId), 60_000);
     return () => window.clearInterval(id);
   }, [userId]);
+
+  // Idioma da página para o leitor de tela pronunciar certo (WCAG 3.1.1).
+  const language = useSettingsStore((st) => st.language);
+  useEffect(() => {
+    document.documentElement.lang = language === 'pt' ? 'pt-BR' : 'en';
+  }, [language]);
 
   // Cada tela tem um título próprio na aba do navegador (o h1 da página) e, ao trocar de seção,
   // o foco vai para esse h1: quem usa leitor de tela ouve onde chegou (WCAG 2.4.2 e 2.4.3).

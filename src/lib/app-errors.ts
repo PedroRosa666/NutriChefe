@@ -1,7 +1,7 @@
 // Erros com código estável. As funções do banco levantam o código como mensagem
 // (RAISE EXCEPTION 'version_conflict'); a tela traduz pelo código, nunca procurando palavras
 // soltas no texto da exceção.
-import { translations } from './i18n/translations';
+import type { Translations } from './i18n/translations';
 
 const APP_ERROR_CODES = [
   'not_authenticated',
@@ -45,7 +45,7 @@ export function errorCode(error: unknown): AppErrorCode {
   return 'unknown';
 }
 
-type AppErrorTexts = (typeof translations)['pt']['appErrors'];
+type AppErrorTexts = Translations['appErrors'];
 
 /** Frase para a pessoa, no idioma atual. */
 export function errorText(error: unknown, texts: AppErrorTexts): string {

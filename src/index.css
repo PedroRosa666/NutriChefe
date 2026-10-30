@@ -58,7 +58,6 @@
 
   html {
     min-height: 100%;
-    scroll-behavior: smooth;
     /* Mesma cor do fim do degradê: ao puxar a página além do limite no celular,
        aparece o fundo do site em vez de uma faixa preta. */
     background-color: rgb(var(--nc-bottom));
@@ -85,6 +84,13 @@
     /* 16px também no celular: abaixo disso o texto corrido fica difícil de ler. */
     font-size: 16px;
     line-height: 1.6;
+  }
+
+  /* Rolagem suave só para quem não pediu menos movimento no sistema. */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 
   /* Títulos sem uma palavra sozinha na última linha; parágrafos evitam a palavra órfã. */

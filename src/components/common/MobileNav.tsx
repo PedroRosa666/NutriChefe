@@ -11,7 +11,7 @@ export function MobileNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/40 bg-[rgb(var(--nc-top)/0.85)] pb-[env(safe-area-inset-bottom)] backdrop-blur-md backdrop-saturate-150 md:hidden dark:border-white/10"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/40 bg-[rgb(var(--nc-top)/0.97)] pb-[env(safe-area-inset-bottom)] md:hidden dark:border-white/10"
       aria-label="Menu"
     >
       <ul className="flex">

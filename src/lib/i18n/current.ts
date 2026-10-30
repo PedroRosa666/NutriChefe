@@ -1,9 +1,9 @@
 import { useSettingsStore } from '../../store/settings';
-import { translations } from './translations';
+import { translationsFor } from './translations';
 
 // Textos do idioma atual, para código fora do React (stores e services).
 function currentTranslations() {
-  return translations[useSettingsStore.getState().language];
+  return translationsFor(useSettingsStore.getState().language);
 }
 
 // Atalho para o bloco de avisos (toasts e erros mostrados ao usuário).

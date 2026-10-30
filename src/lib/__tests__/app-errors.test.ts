@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { errorCode, errorText } from '../app-errors';
-import { translations } from '../i18n/translations';
+import { en } from '../i18n/en';
+import { pt } from '../i18n/pt';
+
+const translations = { en, pt };
 
 describe('errorCode', () => {
   it('usa o código levantado pelo banco, exatamente', () => {

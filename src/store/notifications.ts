@@ -4,7 +4,7 @@ import { useAuthStore } from './auth';
 import { useSettingsStore } from './settings';
 import { useToastStore } from './toast';
 import { useUnreadMessagesStore } from './unread-messages';
-import { translations } from '../lib/i18n/translations';
+import { translationsFor } from '../lib/i18n/translations';
 import type { Translations } from '../hooks/useTranslation';
 import {
   deleteNotification,
@@ -160,7 +160,7 @@ export function useLiveNotifications() {
       // Mensagem nova: o contador da navegação sobe na hora.
       if (n.kind === 'message') useUnreadMessagesStore.getState().refresh(userId);
       const language = useSettingsStore.getState().language;
-      showToast(notificationText(n, translations[language]), 'info');
+      showToast(notificationText(n, translationsFor(language)), 'info');
     });
   }, [userId, start, stop, showToast]);
 }

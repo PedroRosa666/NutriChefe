@@ -24,7 +24,7 @@ export function Avatar({ name, url, className }: AvatarProps) {
         className
       )}
     >
-      {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : initials}
+      {url ? <img src={url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : initials}
     </div>
   );
 }
