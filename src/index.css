@@ -21,6 +21,8 @@
     --nc-text-emerald: 4 120 87;
     --nc-text-gray: 95 102 115;
     --nc-text-slate: 86 98 117;
+    --nc-text-gray-soft: 98 104 114;
+    --nc-text-slate-soft: 94 106 126;
     --nc-text-orange: 194 65 12;
     --nc-text-red: 185 28 28;
     --nc-text-amber: 180 83 9;
@@ -41,6 +43,8 @@
     --nc-text-emerald: 5 150 105;
     --nc-text-gray: 107 114 128;
     --nc-text-slate: 100 116 139;
+    --nc-text-gray-soft: 156 163 175;
+    --nc-text-slate-soft: 148 163 184;
     --nc-text-orange: 234 88 12;
     --nc-text-red: 220 38 38;
     --nc-text-amber: 217 119 6;

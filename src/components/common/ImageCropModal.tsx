@@ -71,7 +71,7 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
         <div className="space-y-4 border-t border-slate-100 p-5 dark:border-slate-800">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <ZoomOut className="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500" />
+              <ZoomOut className="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-400" />
               <input
                 type="range"
                 min={1}
@@ -81,11 +81,11 @@ export function ImageCropModal({ imageSrc, onComplete, onCancel }: ImageCropModa
                 onChange={(e) => setZoom(Number(e.target.value))}
                 className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-600 dark:bg-slate-700"
               />
-              <ZoomIn className="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500" />
+              <ZoomIn className="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-400" />
             </div>
 
             <div className="flex items-center gap-3">
-              <RotateCw className="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500" />
+              <RotateCw className="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-400" />
               <input
                 type="range"
                 min={0}

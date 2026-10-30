@@ -49,7 +49,7 @@ export function SubscriptionSuccessPage() {
         <p className="text-gray-600 dark:text-gray-400 mb-6">
           {t.pages.paidText}
         </p>
-        <p className="text-sm text-gray-500 dark:text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           {t.pages.paidRedirect}
         </p>
         <button

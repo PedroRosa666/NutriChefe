@@ -137,7 +137,7 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
               'bg-white/90 dark:bg-slate-900/90',
               isFavorite
                 ? 'text-rose-500'
-                : 'text-gray-400 dark:text-gray-500 hover:text-rose-500',
+                : 'text-gray-400 dark:text-gray-400 hover:text-rose-500',
             )}
           >
             <Heart

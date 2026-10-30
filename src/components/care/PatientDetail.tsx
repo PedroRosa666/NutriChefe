@@ -242,7 +242,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
                 <Icon className="h-4 w-4" />
                 {t.care.detailTabs[key]}
                 {count > 0 && (
-                  <span className="min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-[18px] text-white">{count > 9 ? '9+' : count}</span>
+                  <span className="min-w-[18px] rounded-full bg-rose-600 px-1 text-center text-[11px] font-bold leading-[18px] text-white">{count > 9 ? '9+' : count}</span>
                 )}
               </button>
             );
@@ -325,7 +325,7 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
                       <span className="ml-1 text-xs font-medium text-slate-500">{key === 'calories' ? 'kcal' : 'g'}</span>
                     </p>
                     {pct !== null && (
-                      <p className={`text-xs font-semibold ${pct > 110 ? 'text-rose-500' : pct >= 85 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      <p className={`text-xs font-semibold ${pct > 110 ? 'text-rose-600 dark:text-rose-400' : pct >= 85 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                         {pct}% {t.report.vsGoal}
                       </p>
                     )}

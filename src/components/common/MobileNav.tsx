@@ -30,7 +30,7 @@ export function MobileNav() {
               <span className="relative">
                 <Icon className="h-5 w-5" />
                 {!!badge && (
-                  <span className="absolute -right-2.5 -top-1.5 min-w-[16px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-4 text-white">
+                  <span className="absolute -right-2.5 -top-1.5 min-w-[16px] rounded-full bg-rose-600 px-1 text-center text-[11px] font-bold leading-4 text-white">
                     {badge > 9 ? '9+' : badge}
                   </span>
                 )}

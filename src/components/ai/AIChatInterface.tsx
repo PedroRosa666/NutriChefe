@@ -222,7 +222,7 @@ export function AIChatInterface() {
               )}
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 dark:text-gray-500">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 dark:text-gray-400">
             {recipe.author && (
               <span className="flex items-center gap-1">
                 <User className="w-3 h-3" />
@@ -587,7 +587,7 @@ export function AIChatInterface() {
             )}
           </motion.button>
         </form>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
+        <p className="text-xs text-gray-400 dark:text-gray-400 mt-2 text-center">
           {t.aiChat.disclaimer}
           {!geminiConfigured && t.aiChat.limitedModeSuffix}
         </p>

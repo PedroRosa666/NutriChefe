@@ -749,7 +749,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                       {t.recipe.reviews} ({recipe.reviews.length})
                     </h3>
 
-                    <span className="text-sm text-gray-500 dark:text-gray-500">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       {displayRating()}
                     </span>
                   </div>
@@ -982,7 +982,7 @@ export function RecipeDetails({ recipe, onClose: requestClose }: RecipeDetailsPr
                               </div>
                             </div>
 
-                            <span className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                            <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                               {review.date}
                             </span>
                           </div>

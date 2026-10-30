@@ -96,7 +96,7 @@ export function ShoppingListPanel() {
           {item.quantity && <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">{item.quantity}</span>}
         </span>
         {item.recipes.length > 0 && !item.checked && (
-          <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
+          <span className="block truncate text-xs text-slate-400 dark:text-slate-400">
             {t.shopping.from}: {item.recipes.join(', ')}
           </span>
         )}
@@ -106,7 +106,7 @@ export function ShoppingListPanel() {
       <button
         type="button"
         onClick={() => run(() => remove(item.id))}
-        className="rounded-md p-1.5 text-slate-400 transition-opacity hover:text-rose-500 focus:opacity-100 dark:text-slate-500 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
+        className="rounded-md p-1.5 text-slate-400 transition-opacity hover:text-rose-500 focus:opacity-100 dark:text-slate-400 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
         aria-label={t.profile.remove}
       >
         <X className="h-4 w-4" />

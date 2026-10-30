@@ -187,7 +187,7 @@ export function Header({ onProfileClick, onAIMentoringClick }: HeaderProps) {
         <Icon className="h-4 w-4" />
       </span>
       <span className="flex-1">{label}</span>
-      <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-500" />
+      <ChevronRight className="h-4 w-4 text-slate-300 dark:text-slate-400" />
     </button>
   );
 

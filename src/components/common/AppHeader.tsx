@@ -49,7 +49,7 @@ export function AppHeader() {
               <Icon className="h-4 w-4" />
               <span className="hidden lg:inline">{label}</span>
               {!!badge && (
-                <span className="min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-[18px] text-white">
+                <span className="min-w-[18px] rounded-full bg-rose-600 px-1 text-center text-[11px] font-bold leading-[18px] text-white">
                   {badge > 9 ? '9+' : badge}
                 </span>
               )}

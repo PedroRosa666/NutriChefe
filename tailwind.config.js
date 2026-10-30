@@ -22,8 +22,15 @@ export default {
       // o texto 600 usa o tom 700.
       textColor: {
         emerald: { 600: 'rgb(var(--nc-text-emerald) / <alpha-value>)' },
-        gray: { 500: 'rgb(var(--nc-text-gray) / <alpha-value>)' },
-        slate: { 500: 'rgb(var(--nc-text-slate) / <alpha-value>)' },
+        // 400 é o texto terciário (datas, horários) e os ícones de ação: no claro, 4,5:1 também.
+        gray: {
+          400: 'rgb(var(--nc-text-gray-soft) / <alpha-value>)',
+          500: 'rgb(var(--nc-text-gray) / <alpha-value>)',
+        },
+        slate: {
+          400: 'rgb(var(--nc-text-slate-soft) / <alpha-value>)',
+          500: 'rgb(var(--nc-text-slate) / <alpha-value>)',
+        },
         ...Object.fromEntries(
           ['orange', 'red', 'amber', 'rose', 'sky', 'blue', 'lime', 'pink'].map((c) => [
             c,

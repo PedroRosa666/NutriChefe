@@ -186,7 +186,7 @@ export function RecipeNutritionField({ draft, onChange, legacy, inputClass, labe
                     placeholder="—"
                     className={cn(inputClass, 'pr-10')}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 dark:text-slate-500">{UNITS[key]}</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 dark:text-slate-400">{UNITS[key]}</span>
                 </div>
               </div>
             ))}

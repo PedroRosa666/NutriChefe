@@ -20,7 +20,7 @@ export function SubscriptionCancelledPage() {
         <p className="text-gray-600 dark:text-gray-400 mb-6">
           {t.pages.canceledText}
         </p>
-        <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
           {t.pages.canceledHint}
         </p>
         <div className="space-y-3">

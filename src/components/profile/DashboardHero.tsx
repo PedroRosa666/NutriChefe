@@ -71,10 +71,10 @@ export function DashboardHero({
         {stats && stats.length > 0 && (
           <div className="relative mt-4 grid grid-cols-3 gap-2">
             {stats.map((s) => (
-              <div key={s.label} className="rounded-xl bg-white/15 px-2.5 py-2 backdrop-blur-sm">
-                <p className="line-clamp-2 text-[11px] font-medium leading-tight text-emerald-50/90">{s.label}</p>
+              <div key={s.label} className="rounded-xl bg-emerald-950/25 px-2.5 py-2">
+                <p className="line-clamp-2 text-xs font-medium leading-tight text-white/90">{s.label}</p>
                 <p className="mt-0.5 text-lg font-bold leading-tight">{s.value}</p>
-                {s.hint && <p className="line-clamp-2 text-[11px] leading-tight text-emerald-50/80">{s.hint}</p>}
+                {s.hint && <p className="line-clamp-2 text-xs leading-tight text-emerald-50">{s.hint}</p>}
               </div>
             ))}
           </div>
@@ -93,7 +93,7 @@ export function DashboardHero({
             </span>
             <span className="text-[11px] font-semibold leading-tight text-slate-700 dark:text-slate-200 sm:text-xs">{label}</span>
             {!!badge && (
-              <span className="absolute right-2 top-2 min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-[18px] text-white">
+              <span className="absolute right-2 top-2 min-w-[18px] rounded-full bg-rose-600 px-1 text-center text-[11px] font-bold leading-[18px] text-white">
                 {badge > 9 ? '9+' : badge}
               </span>
             )}
