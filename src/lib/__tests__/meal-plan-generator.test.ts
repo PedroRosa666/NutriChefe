@@ -163,13 +163,85 @@ describe('acompanhamentos da TACO', () => {
     const withSides = generateWeeklyPlanDetailed({ recipes: fatty, dailyCalories: 2000, goals, allergies: [], preferences: [], seed: 4, foods });
     expect(withSides.items.some((i) => i.food_id)).toBe(true);
     expect(carbsOf(withSides.items, 0)).toBeGreaterThan(carbsOf(without.items, 0) + 40);
-    // No máximo dois acompanhamentos por dia, com a medida caseira no texto.
-    for (let d = 0; d < 7; d++) expect(withSides.items.filter((i) => i.day === d && i.food_id).length).toBeLessThanOrEqual(2);
+    // No máximo quatro acompanhamentos por dia, com a medida caseira no texto.
+    for (let d = 0; d < 7; d++) expect(withSides.items.filter((i) => i.day === d && i.food_id).length).toBeLessThanOrEqual(4);
     expect(withSides.items.find((i) => i.food_id)?.measure_label).toMatch(/colher|concha|unidade/);
   });
 
   it('respeita restrições: sem glúten não oferece pão', () => {
     const { items } = generateWeeklyPlanDetailed({ recipes: fatty, dailyCalories: 2000, goals, allergies: [], preferences: ['glutenFree'], seed: 4, foods });
     expect(items.some((i) => i.food?.name.startsWith('Pão'))).toBe(false);
+  });
+});
+
+describe('pratos com cara de prato', () => {
+  const food = (taco_id: number, name: string, kcal: number, protein: number, carbs: number, fat: number, fiber: number, measure?: { label: string; grams: number }) => ({
+    id: `f${taco_id}`, taco_id, owner_id: null, name, category: '', kcal, protein, carbs, fat, fiber, sodium: null, nutrients: {}, measures: measure ? [measure] : [],
+  });
+  const foods = [
+    food(3, 'Arroz, tipo 1, cozido', 128, 2.5, 28.1, 0.2, 1.6, { label: '1 colher de sopa', grams: 25 }),
+    food(561, 'Feijão, carioca, cozido', 76, 4.8, 13.6, 0.5, 8.5, { label: '1 concha', grams: 140 }),
+    food(410, 'Frango, peito, sem pele, grelhado', 159, 32, 0, 2.5, 0, { label: '1 filé médio', grams: 100 }),
+    food(488, 'Ovo, de galinha, inteiro, cozido/10minutos', 146, 13.3, 0.6, 9.5, 0, { label: '1 unidade', grams: 50 }),
+    food(100, 'Brócolis, cozido', 25, 2.1, 4.4, 0.5, 3.4),
+    food(182, 'Banana, prata, crua', 98, 1.3, 26, 0.1, 2, { label: '1 unidade', grams: 70 }),
+    food(448, 'Iogurte, natural', 51, 4.1, 1.9, 3, 0, { label: '1 pote', grams: 170 }),
+  ];
+  const dish = (id: string, title: string, category: string, n: { calories: number; protein: number; carbs: number; fat: number; fiber: number }) => ({ ...recipe(id, title, [], n.calories, category), nutritionFacts: n });
+  const catalog = [
+    dish('risoto', 'Risoto de cogumelos', 'vegetarian', { calories: 420, protein: 9, carbs: 60, fat: 14, fiber: 3 }),
+    dish('lasanha', 'Lasanha vegana de lentilha', 'vegan', { calories: 300, protein: 12, carbs: 28, fat: 12, fiber: 8 }),
+    dish('strog', 'Strogonoff de frango', 'highProtein', { calories: 330, protein: 30, carbs: 8, fat: 16, fiber: 1 }),
+    dish('feijoada', 'Feijoada light', 'highProtein', { calories: 330, protein: 25, carbs: 24, fat: 14, fiber: 15 }),
+    dish('panq', 'Panqueca de aveia', 'vegetarian', { calories: 300, protein: 12, carbs: 40, fat: 9, fiber: 5 }),
+    dish('bolo', 'Bolo de cenoura', 'vegetarian', { calories: 280, protein: 4, carbs: 40, fat: 11, fiber: 2 }),
+  ];
+  const goals = { protein: 120, carbs: 230, fat: 60, fiber: 30 };
+  const run = (extra: Partial<Parameters<typeof generateWeeklyPlanDetailed>[0]> = {}) =>
+    generateWeeklyPlanDetailed({ recipes: catalog, dailyCalories: 2000, goals, allergies: [], preferences: [], seed: 9, foods, ...extra });
+
+  it('não combina coisas estranhas no mesmo prato', () => {
+    const { items } = run();
+    for (let d = 0; d < 7; d++) {
+      for (const meal of ['breakfast', 'lunch', 'snack', 'dinner']) {
+        const here = items.filter((i) => i.day === d && i.meal_id === meal);
+        const dishes = here.filter((i) => i.recipe_id).map((i) => i.recipe_id);
+        const sides = here.filter((i) => i.food).map((i) => i.food!.name);
+        if (dishes.includes('risoto')) expect(sides.some((n) => n.startsWith('Arroz'))).toBe(false);
+        if (dishes.includes('lasanha')) expect(sides.some((n) => /Frango|Ovo|Iogurte/.test(n))).toBe(false);
+        if (dishes.includes('feijoada')) expect(sides.some((n) => n.startsWith('Feijão'))).toBe(false);
+        if (dishes.includes('strog')) expect(sides.some((n) => n.startsWith('Frango'))).toBe(false);
+        if (dishes.includes('bolo')) expect(sides.every((n) => /Banana|Iogurte/.test(n))).toBe(true);
+        // Um de cada tipo por refeição.
+        expect(new Set(sides).size).toBe(sides.length);
+      }
+    }
+  });
+
+  it('porção de prato vai até 2 e cada acompanhamento diz por que entrou', () => {
+    const { items } = run();
+    for (const i of items.filter((x) => x.recipe_id)) expect(i.servings).toBeLessThanOrEqual(2);
+    const sides = items.filter((i) => i.food_id);
+    expect(sides.length).toBeGreaterThan(0);
+    for (const sd of sides) expect(sd.reason?.length).toBeGreaterThan(0);
+  });
+
+  it('vegetariano não recebe carne nem frango como acompanhamento', () => {
+    const { items } = run({ preferences: ['vegetarian'] });
+    expect(items.some((i) => i.food?.name.startsWith('Frango'))).toBe(false);
+  });
+
+  it('receita que o paciente pediu para trocar sai do cardápio', () => {
+    const many = [...catalog, ...Array.from({ length: 6 }, (_, i) => dish(`x${i}`, `Frango grelhado com legumes ${i}`, 'highProtein', { calories: 380, protein: 35, carbs: 25, fat: 12, fiber: 5 }))];
+    const { items } = generateWeeklyPlanDetailed({ recipes: many, dailyCalories: 2000, goals, allergies: [], preferences: [], seed: 9, foods, avoidRecipeIds: ['strog'] });
+    expect(items.some((i) => i.recipe_id === 'strog')).toBe(false);
+  });
+
+  it('com opções, almoço e jantar podem trazer "escolha 1" com duas receitas', () => {
+    const many = [...catalog, ...Array.from({ length: 6 }, (_, i) => dish(`x${i}`, `Frango grelhado com legumes ${i}`, 'highProtein', { calories: 380, protein: 35, carbs: 25, fat: 12, fiber: 5 }))];
+    const { items } = generateWeeklyPlanDetailed({ recipes: many, dailyCalories: 2000, goals, allergies: [], preferences: [], seed: 9, foods, alternatives: true });
+    const grouped = items.filter((i) => i.option_group !== null);
+    expect(grouped.length).toBeGreaterThan(0);
+    for (const i of grouped) expect(['lunch', 'dinner']).toContain(i.meal_id);
   });
 });

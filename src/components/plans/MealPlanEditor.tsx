@@ -11,6 +11,7 @@ import { errorCode, errorText } from '../../lib/app-errors';
 import { appLocale, countText } from '../../lib/format';
 import { toISODate } from '../../store/nutrition-tracking';
 import { generateWeeklyPlanDetailed } from '../../lib/meal-plan-generator';
+import { recipeSignals } from '../../services/adherence';
 import { isItemAvailable, itemsCalories, itemsTotals, mealBlocks, nextOptionGroup, scaleItemsToTarget } from '../../lib/plan-items';
 import { OVER_TOLERANCE, PLAN_GOAL_KEYS, goalExcesses, newExcesses, type GoalExcess } from '../../lib/plan-goals';
 import type { GoalKey, NutritionGoals } from '../../store/nutrition-goals';
@@ -97,15 +98,30 @@ export function MealPlanEditor({
 
   // Plano novo começa com as quatro refeições de sempre; o profissional adiciona, renomeia e remove.
   const [meals, setMeals] = useState<PlanMeal[]>(() => plan?.meals ?? defaultMeals(t.plan.meals));
-  // Acompanhamentos (arroz, feijão, pão, fruta) vêm do catálogo de alimentos, quando carregado.
+  // Histórico do paciente (trocas pedidas e refeições puladas): o gerador evita o que ele recusou.
+  const signals = useRef<{ avoid: string[]; skipped: Record<string, number> }>({ avoid: [], skipped: {} });
+  useEffect(() => {
+    recipeSignals(clientId)
+      .then((r) => (signals.current = r))
+      .catch((e) => console.error('Error loading recipe signals:', e));
+  }, [clientId]);
+  // Acompanhamentos (arroz, feijão, salada, fruta...) vêm do catálogo de alimentos, quando carregado.
   const generate = () =>
-    generateWeeklyPlanDetailed({ recipes, dailyCalories, goals, allergies, preferences, meals, foods: useFoodsStore.getState().foods });
-  // Itens que o gerador acrescentou como acompanhamento: "Gerar de novo" troca estes, mas mantém os
-  // alimentos que o profissional pôs à mão (editar um item cria outro objeto e ele deixa de contar aqui).
-  const autoSides = useRef(new Set<MealPlanItem>());
+    generateWeeklyPlanDetailed({
+      recipes, dailyCalories, goals, allergies, preferences, meals,
+      foods: useFoodsStore.getState().foods,
+      avoidRecipeIds: signals.current.avoid,
+      skippedRecipeIds: signals.current.skipped,
+      alternatives: true,
+    });
+  // Itens que o gerador acrescentou além das receitas (acompanhamentos e opções "escolha 1"): "Gerar
+  // de novo" troca estes, mas mantém o que o profissional pôs à mão (editar um item cria outro
+  // objeto e ele deixa de contar aqui).
+  const generatedExtras = useRef(new Set<MealPlanItem>());
+  const isExtra = (i: MealPlanItem) => Boolean(i.food_id) || i.option_group !== null;
   const generateTracked = () => {
     const result = generate();
-    autoSides.current = new Set(result.items.filter((i) => i.food_id));
+    generatedExtras.current = new Set(result.items.filter(isExtra));
     return result;
   };
 
@@ -263,7 +279,7 @@ export function MealPlanEditor({
     // Gerar de novo troca todas as receitas: com o plano já montado, confirma antes.
     if (items.some((i) => i.recipe_id && i.option_group === null) && !(await confirmDialog(t.plan.regenerateConfirm))) return;
     await useFoodsStore.getState().fetch();
-    const previousSides = autoSides.current;
+    const previousExtras = generatedExtras.current;
     const { items: next, relaxed, suggestedShares: suggested, offTarget, overGoals } = generateTracked();
     if (!next.length) {
       showToast(t.plan.generateEmpty, 'warning');
@@ -271,14 +287,16 @@ export function MealPlanEditor({
     }
     // Receitas e acompanhamentos gerados antes são trocados; alimentos postos à mão e grupos de
     // opções ficam como estavam.
-    const keep = (i: MealPlanItem) => (i.food_id && !previousSides.has(i)) || i.option_group !== null;
-    setItems((prev) => [...prev.filter(keep), ...next]);
+    const keptItems = items.filter((i) => isExtra(i) && !previousExtras.has(i));
+    const merged = renumberGroups(next, keptItems);
+    generatedExtras.current = new Set(merged.filter(isExtra));
+    setItems([...keptItems, ...merged]);
     // Preferência deixada de lado ou meta que não fechou: avisa em vez de ignorar calado.
     if (relaxed.length) {
       const names = relaxed.map((p) => t.health.diets[p as keyof typeof t.health.diets] ?? p).join(', ');
       showToast(t.plan.generatedRelaxed.replace('{prefs}', names), 'warning');
     } else if (overGoals.length) {
-      const kept = [...items.filter(keep), ...next];
+      const kept = [...keptItems, ...merged];
       showToast(t.plan.generatedOverGoals.replace('{list}', overDaysText(kept)), 'warning');
     } else if (offTarget.length) {
       showToast(
@@ -345,7 +363,7 @@ export function MealPlanEditor({
   };
 
   const updateItem = (target: MealPlanItem, patch: Partial<MealPlanItem>) =>
-    setItems((prev) => prev.map((i) => (i === target ? { ...i, ...patch } : i)));
+    setItems((prev) => prev.map((i) => (i === target ? { ...i, ...patch, reason: undefined } : i)));
 
   const removeItem = (target: MealPlanItem) => setItems((prev) => prev.filter((i) => i !== target));
 
@@ -825,6 +843,12 @@ export function MealPlanEditor({
                 block.kind === 'single' ? (
                   <div key={items.indexOf(block.item)} className="rounded-lg bg-white p-2 dark:bg-slate-900">
                     <PlanItemRow item={block.item} recipesById={byId} compact actions={itemActions(block.item)} />
+                    {!!block.item.reason?.length && (
+                      <p className="mt-1 flex items-center gap-1.5 pl-1 text-xs text-emerald-700 dark:text-emerald-300">
+                        <Sparkles className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                        {t.plan.sideReason.replace('{list}', block.item.reason.map((k) => t.plan.reasonNames[k]).join(t.plan.reasonJoin))}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div key={`g${block.group}`} className="space-y-2 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-2 dark:border-amber-700/50 dark:bg-amber-900/10">
@@ -959,4 +983,16 @@ export function MealPlanEditor({
       </div>
     </div>
   );
+}
+
+/**
+ * Grupos "escolha 1" que o gerador criou (sempre o número 1) não podem cair no mesmo número de um
+ * grupo que o profissional já tinha na refeição: viram o próximo número livre dela.
+ */
+function renumberGroups(generated: MealPlanItem[], kept: MealPlanItem[]): MealPlanItem[] {
+  return generated.map((i) => {
+    if (i.option_group === null) return i;
+    const taken = kept.filter((k) => k.day === i.day && k.meal_id === i.meal_id && k.option_group !== null);
+    return taken.length ? { ...i, option_group: nextOptionGroup(taken) + i.option_group - 1 } : i;
+  });
 }

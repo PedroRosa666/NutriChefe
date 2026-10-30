@@ -77,6 +77,11 @@ export interface MealPlanItem {
   /** Itens da mesma refeição com o mesmo número são opções equivalentes ("escolha 1"). */
   option_group: number | null;
   note: string;
+  /**
+   * Só no editor, logo depois de gerar: metas que este acompanhamento completou no dia. Não é
+   * gravado (o plano salvo não guarda por que o item entrou).
+   */
+  reason?: GoalKey[];
 }
 
 export interface MealPlan {

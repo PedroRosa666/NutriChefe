@@ -21,6 +21,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { cn } from '../../lib/utils';
 import { confirmDietCategory } from '../../lib/recipe-diet';
 import type { Recipe, RecipeIngredient } from '../../types/recipe';
+import { MealTypesField } from './MealTypesField';
 
 type CategoryKey = keyof ReturnType<typeof useTranslation>['categories'];
 
@@ -321,6 +322,7 @@ export function EditRecipeForm({ recipe, isOpen, onClose }: EditRecipeFormProps)
                 </select>
               </div>
             </div>
+            <MealTypesField value={editedRecipe.mealTypes ?? []} onChange={(mealTypes) => setEditedRecipe((prev) => ({ ...prev, mealTypes }))} />
           </FormSection>
 
           <FormSection

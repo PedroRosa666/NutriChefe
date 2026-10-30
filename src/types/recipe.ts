@@ -1,3 +1,4 @@
+import type { MealSlot } from '../services/care';
 import type { DeclaredNutrition, NutrientKey, NutritionBasis, NutritionSource, NutritionStatus } from '../lib/recipe-nutrition';
 
 /** Linha de ingrediente (recipe_ingredients): texto do autor e, se houver, o alimento do catálogo. */
@@ -36,6 +37,8 @@ export interface Recipe {
    */
   full?: boolean;
   category: string;
+  /** Refeições em que a receita serve, marcadas pelo autor (vazio = não informado). */
+  mealTypes?: MealSlot[];
   ingredients: string[];
   instructions: string[];
   /** Valores de UMA porção (já convertidos pelo banco). Desconhecido aparece como 0 aqui e em `unknownNutrients`. */

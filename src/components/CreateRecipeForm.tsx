@@ -14,6 +14,7 @@ import { RecipeNutritionField } from './recipe/RecipeNutritionField';
 import { emptyIngredient, nutritionDraftFrom, nutritionDraftMessage, readNutritionDraft, type NutritionDraft } from '../lib/recipe-nutrition';
 import { useToastStore } from '../store/toast';
 import { useIngredientCalc } from '../hooks/useIngredientCalc';
+import { MealTypesField } from './recipe/MealTypesField';
 
 type CategoryKey = keyof ReturnType<typeof useTranslation>['categories'];
 
@@ -30,6 +31,7 @@ const INITIAL_RECIPE: Partial<Recipe> = {
   difficulty: 'medium',
   // Sem categoria marcada: o autor escolhe (antes vinha "Vegana" e muita receita ficou com o rótulo errado).
   category: '',
+  mealTypes: [],
   ingredients: [],
   instructions: [''],
   nutritionFacts: {
@@ -334,6 +336,7 @@ export function CreateRecipeForm({ isOpen, onClose }: CreateRecipeFormProps) {
                 </select>
               </div>
             </div>
+            <MealTypesField value={recipe.mealTypes ?? []} onChange={(mealTypes) => setRecipe((prev) => ({ ...prev, mealTypes }))} />
           </FormSection>
 
           {/* Ingredientes */}

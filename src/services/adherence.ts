@@ -3,6 +3,8 @@ import { supabase, toJson } from '../lib/supabase';
 import { dateRange, summarizeAdherence, type AdherenceSummary, type CheckStatus, type MealCheck } from '../lib/adherence';
 import { toISODate } from '../store/nutrition-tracking';
 import { listPlanVersions, listPlanViews, versionOn } from './plans';
+import { listSwapsForClient } from './swaps';
+import { planDayOf } from './care';
 
 const COLUMNS = 'id, plan_id, check_date, meal_id, meal_name, meal, status, chosen, note';
 
@@ -90,4 +92,31 @@ export async function loadAdherence(clientId: string, authorId: string): Promise
     current: summarizeAdherence(schedule, relevant, dateRange(daysAgo(6), daysAgo(0))),
     previous: summarizeAdherence(schedule, relevant, dateRange(daysAgo(13), daysAgo(7))),
   };
+}
+
+/**
+ * O que o histórico do paciente diz sobre as receitas, para o gerador de plano: as que ele pediu
+ * para trocar (evitar) e quantas vezes pulou cada uma nos últimos 45 dias (escolher menos).
+ */
+export async function recipeSignals(clientId: string): Promise<{ avoid: string[]; skipped: Record<string, number> }> {
+  const [swaps, checks] = await Promise.all([
+    listSwapsForClient(clientId).catch(() => []),
+    listChecks(clientId, daysAgo(45)).catch(() => []),
+  ]);
+  const avoid = [...new Set(swaps.filter((s) => s.status !== 'canceled' && s.original_recipe_id).map((s) => s.original_recipe_id!))];
+
+  const skipped: Record<string, number> = {};
+  const skips = checks.filter((c) => c.status === 'skipped');
+  const versionsByPlan = new Map<string, Awaited<ReturnType<typeof listPlanVersions>>>();
+  for (const planId of new Set(skips.map((c) => c.plan_id))) {
+    versionsByPlan.set(planId, await listPlanVersions(planId).catch(() => []));
+  }
+  for (const c of skips) {
+    const version = versionOn(versionsByPlan.get(c.plan_id) ?? [], c.check_date);
+    const day = planDayOf(new Date(`${c.check_date}T12:00:00`));
+    for (const item of version?.items ?? []) {
+      if (item.recipe_id && item.meal_id === c.meal_id && item.day === day) skipped[item.recipe_id] = (skipped[item.recipe_id] ?? 0) + 1;
+    }
+  }
+  return { avoid, skipped };
 }

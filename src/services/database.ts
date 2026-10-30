@@ -1,6 +1,7 @@
 import type { User as AuthUser } from '@supabase/supabase-js';
 import { sqlArg, supabase } from '../lib/supabase';
 import type { Recipe, RecipeIngredient } from '../types/recipe';
+import { MEAL_SLOTS, type MealSlot } from './care';
 import { NUTRIENT_KEYS, type DeclaredNutrition, type NutritionBasis, type NutritionSource, type NutritionStatus } from '../lib/recipe-nutrition';
 import { parseIngredient } from '../lib/ingredients';
 import { PUBLIC_PROFILE_COLUMNS } from '../lib/profile-columns';
@@ -17,6 +18,7 @@ interface DatabaseRecipe {
   rating: number;
   review_count?: number;
   category: string;
+  meal_types?: string[] | null;
   ingredients: string[] | null;
   instructions: string[] | null;
   nutrition_facts: Partial<Recipe['nutritionFacts']> | null;
@@ -84,7 +86,7 @@ const RECIPE_SELECT = `
 // Cartão / índice: o necessário para a grade, os filtros, o gerador de plano e as trocas.
 // Sem modo de preparo nem avaliações (a nota e a contagem vêm prontas do banco).
 const CARD_SELECT = `
-  id, title, description, image, prep_time, difficulty, rating, review_count, category, ingredients,
+  id, title, description, image, prep_time, difficulty, rating, review_count, category, meal_types, ingredients,
   nutrition_facts, author_id, created_at, updated_at, premium_only,
   yield_servings, serving_label, nutrition_basis, nutrition_status, nutrition_source, nutrition_needs_review,
   profiles!recipes_author_id_fkey(full_name, user_type, avatar_url)
@@ -143,6 +145,8 @@ function convertDatabaseRecipeToAppRecipe(dbRecipe: DatabaseRecipe): Recipe {
     reviewCount: full ? reviews.length : Number(dbRecipe.review_count) || 0,
     full,
     category: dbRecipe.category,
+    // Sem a coluna na consulta (listas que não a pedem): indefinido, para salvar não apagar a marcação.
+    mealTypes: dbRecipe.meal_types === undefined ? undefined : (dbRecipe.meal_types ?? []).filter((m): m is MealSlot => (MEAL_SLOTS as string[]).includes(m)),
     ingredients: dbRecipe.ingredients ?? [],
     instructions: dbRecipe.instructions ?? [],
     nutritionFacts: toNutritionFacts(dbRecipe.nutrition_facts),
@@ -238,6 +242,8 @@ async function saveRecipe(recipeId: string | null, recipe: RecipeInput, operatio
       prep_time: recipe.prepTime,
       difficulty: recipe.difficulty,
       category: recipe.category,
+      // Só quando a receita foi carregada com o campo: sem a chave, o banco mantém o que estava.
+      ...(recipe.mealTypes ? { meal_types: recipe.mealTypes } : {}),
       instructions: recipe.instructions.map((s) => s.trim()).filter(Boolean),
       yield_servings: recipe.yieldServings ?? null,
       final_weight_g: recipe.finalWeightG ?? null,

@@ -1728,6 +1728,7 @@ export type Database = {
           image: string
           ingredients: Json
           instructions: Json
+          meal_types: string[]
           nutrition_basis: string
           nutrition_declared: Json
           nutrition_facts: Json
@@ -1759,6 +1760,7 @@ export type Database = {
           image: string
           ingredients: Json
           instructions: Json
+          meal_types?: string[]
           nutrition_basis?: string
           nutrition_declared?: Json
           nutrition_facts: Json
@@ -1790,6 +1792,7 @@ export type Database = {
           image?: string
           ingredients?: Json
           instructions?: Json
+          meal_types?: string[]
           nutrition_basis?: string
           nutrition_declared?: Json
           nutrition_facts?: Json
@@ -2492,6 +2495,7 @@ export type Database = {
           image: string
           ingredients: Json
           instructions: Json
+          meal_types: string[]
           nutrition_basis: string
           nutrition_declared: Json
           nutrition_facts: Json
