@@ -6,9 +6,9 @@
  * mais (404/410) são apagadas.
  *
  * Segredos: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY e VAPID_SUBJECT (ex.: mailto:contato@...).
- * PUSH_WEBHOOK_SECRET (opcional): quando definido, só aceita chamadas com o mesmo valor no cabeçalho
- * x-push-secret. O banco manda o valor guardado no Vault com o nome push_webhook_secret
- * (gravar no Vault ANTES de definir aqui, senão os avisos param de chegar).
+ * Segredo do disparo: fica só no Vault do banco (nome push_webhook_secret). O gatilho manda o valor
+ * no cabeçalho x-push-secret e esta função lê o mesmo valor pelo banco (push_webhook_secret(), só
+ * service_role). Sem o segredo gravado, aceita qualquer chamada, como antes.
  * Publicar com: supabase functions deploy send-push --no-verify-jwt
  */
 // deno-lint-ignore-file no-explicit-any
@@ -111,20 +111,41 @@ function message(kind: string, d: Data, recipient: string): { title: string; bod
 const PUSH_ENDPOINT =
   /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]+\.notify\.windows\.com|web\.push\.apple\.com|[a-z0-9.-]+\.push\.apple\.com)\//;
 
-// Sem segredo configurado, aceita (como antes). Comparação sem atalho, para o tempo não revelar o valor.
-function sameSecret(given: string | null, expected: string | undefined): boolean {
-  if (!expected) return true;
+// Comparação sem atalho, para o tempo de resposta não revelar o valor.
+function sameSecret(given: string | null, expected: string): boolean {
   if (!given || given.length !== expected.length) return false;
   let diff = 0;
   for (let i = 0; i < expected.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
   return diff === 0;
 }
 
+// Segredo esperado, lido do banco e guardado por 5 minutos (null = nenhum segredo gravado).
+const SECRET_TTL_MS = 5 * 60_000;
+let secretCache: { value: string | null; at: number } | null = null;
+async function expectedSecret(supabase: any, refresh = false): Promise<string | null> {
+  if (!refresh && secretCache && Date.now() - secretCache.at < SECRET_TTL_MS) return secretCache.value;
+  const { data, error } = await supabase.rpc("push_webhook_secret");
+  if (error) throw error;
+  secretCache = { value: typeof data === "string" && data ? data : null, at: Date.now() };
+  return secretCache.value;
+}
+
+// A chamada veio do banco? Sem segredo gravado, aceita (como antes). Se o valor não confere, relê
+// uma vez: o segredo pode ter sido trocado depois da última leitura.
+async function fromDatabase(supabase: any, given: string | null): Promise<boolean> {
+  try {
+    let expected = await expectedSecret(supabase);
+    if (expected && !sameSecret(given, expected)) expected = await expectedSecret(supabase, true);
+    return !expected || sameSecret(given, expected);
+  } catch (error: any) {
+    // Não conseguiu ler o segredo: segue com a proteção de sempre (claim_push) em vez de parar os avisos.
+    console.error("push_webhook_secret failed", error?.message);
+    return true;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (!sameSecret(req.headers.get("x-push-secret"), Deno.env.get("PUSH_WEBHOOK_SECRET"))) {
-    return new Response("Forbidden", { status: 403 });
-  }
 
   let notificationId: string | undefined;
   try {
@@ -135,6 +156,7 @@ Deno.serve(async (req: Request) => {
   if (!notificationId || !/^[0-9a-f-]{36}$/i.test(notificationId)) return new Response("Bad request", { status: 400 });
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  if (!(await fromDatabase(supabase, req.headers.get("x-push-secret")))) return new Response("Forbidden", { status: 403 });
 
   // Só envia uma vez, e só para avisos recentes e não lidos (quem chamar com um id qualquer não consegue nada).
   const { data: claimed, error: claimError } = await supabase.rpc("claim_push", { p_notification: notificationId });

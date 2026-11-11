@@ -1,5 +1,5 @@
-// Restos da auditoria (20261116120000_security_leftovers.sql): CRN revogado encerra vínculos,
-// reserva atômica da demonstração e segredo no disparo das notificações.
+// Restos da auditoria (20261116120000_security_leftovers.sql e 20261117120000_push_secret_reader.sql):
+// CRN revogado encerra vínculos, reserva atômica da demonstração e segredo no disparo das notificações.
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { PGlite } from '@electric-sql/pglite';
 import { asUser, createTestDb } from './harness';
@@ -102,5 +102,14 @@ describe('disparo de notificação com segredo', () => {
     expect(await headers()).toEqual([{ 'Content-Type': 'application/json' }]);
     await db.query(`INSERT INTO vault.decrypted_secrets VALUES ('push_webhook_secret', 's3gredo')`);
     expect(await headers()).toEqual([{ 'Content-Type': 'application/json', 'x-push-secret': 's3gredo' }]);
+  });
+
+  it('a função de envio lê o mesmo segredo; usuário logado não lê', async () => {
+    const read = await db.transaction(async (tx) => {
+      await tx.exec('SET LOCAL ROLE service_role');
+      return (await tx.query<{ s: string | null }>('SELECT push_webhook_secret() AS s')).rows[0].s;
+    });
+    expect(read).toBe('s3gredo');
+    await expect(asUser(db, PATIENT, (tx) => tx.query('SELECT push_webhook_secret()'))).rejects.toThrow(/permission denied/);
   });
 });
