@@ -16,10 +16,12 @@
 #   qualquer https (fotos de receita). O `vite preview` usa estes mesmos cabeçalhos (vite.config.ts),
 #   então os testes de tela (npx playwright test) acusam o que a política bloquear. Ao usar um
 #   serviço novo no navegador (script, fonte, API), inclua o domínio aqui.
+#   cloudflareinsights.com: Web Analytics da Cloudflare, injetado só no site publicado (não aparece
+#   nos testes locais; conferir com npm run test:e2e:prod depois de mexer aqui).
 /*
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'
