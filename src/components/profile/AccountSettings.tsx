@@ -9,6 +9,7 @@ import { useSettingsStore } from '../../store/settings';
 import { useTranslation } from '../../hooks/useTranslation';
 import { openBillingPortal } from '../../services/subscription';
 import { updatePassword } from '../../services/database';
+import { isPasswordLongEnough } from '../../lib/password';
 import { countArchivedPlans, deleteArchivedPlans, DeleteAccountError, deleteMyAccount, downloadMyData } from '../../services/privacy';
 import { confirmDialog } from '../../store/confirm';
 import { AppDeviceCard } from './AppDeviceCard';
@@ -82,7 +83,7 @@ export function AccountSettings() {
 
   const handlePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) {
+    if (!isPasswordLongEnough(password)) {
       showToast(a.passwordTooShort, 'warning');
       return;
     }

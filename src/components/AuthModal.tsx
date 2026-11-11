@@ -4,6 +4,7 @@ import { X, Leaf, Eye, EyeOff } from 'lucide-react';
 import { isEmailNotConfirmedError, useAuthStore } from '../store/auth';
 import { ResendConfirmation } from './auth/ResendConfirmation';
 import { cn } from '../lib/utils';
+import { MIN_PASSWORD_LENGTH } from '../lib/password';
 import type { UserType } from '../types/user';
 import { useTranslation } from '../hooks/useTranslation';
 import { useDialog } from '../hooks/useDialog';
@@ -257,6 +258,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                   autoComplete={isSignup ? 'new-password' : 'current-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  minLength={isSignup ? MIN_PASSWORD_LENGTH : undefined}
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-base text-slate-900 shadow-sm outline-none ring-0 transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
                   required
                 />

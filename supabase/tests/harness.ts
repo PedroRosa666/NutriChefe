@@ -41,6 +41,7 @@ const MIGRATIONS = [
   '20261113120000_patients_overview.sql',
   '20261115120000_author_cards.sql',
   '20261115130000_private_profiles_stay_private.sql',
+  '20261116120000_security_leftovers.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as
@@ -63,9 +64,9 @@ const BASE = `
 
   -- pg_net de mentira: só anota as chamadas HTTP que o banco faria.
   CREATE SCHEMA net;
-  CREATE TABLE net.calls (url text, body jsonb);
+  CREATE TABLE net.calls (url text, body jsonb, headers jsonb);
   CREATE FUNCTION net.http_post(url text, body jsonb, headers jsonb) RETURNS bigint LANGUAGE sql
-    AS $$ INSERT INTO net.calls VALUES (url, body); SELECT 1::bigint $$;
+    AS $$ INSERT INTO net.calls VALUES (url, body, headers); SELECT 1::bigint $$;
 
   CREATE TABLE auth.users (id uuid PRIMARY KEY, email text, last_sign_in_at timestamptz, banned_until timestamptz);
   CREATE TABLE profiles (

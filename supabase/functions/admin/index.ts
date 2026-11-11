@@ -161,6 +161,8 @@ Deno.serve(async (req: Request) => {
     }
   } catch (err: any) {
     console.error("admin error", err);
-    return reply({ ok: false, error: err?.message ?? "error" });
+    // O detalhe fica no log da função; ao painel vão só os códigos que ele sabe traduzir.
+    const code = ["no_demo", "no_plan", "not_allowed", "plan_not_found"].find((k) => String(err?.message ?? "").includes(k));
+    return reply({ ok: false, error: code ?? "error" });
   }
 });

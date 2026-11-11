@@ -213,6 +213,8 @@ function withMeta(page: Response, meta: Meta): Response {
     .on('meta[property="og:description"]', setContent(meta.description))
     .on('meta[property="og:type"]', setContent(meta.type))
     .on('meta[property="og:image"]', setContent(meta.image))
+    // Largura e altura do index.html são da prévia padrão (1200×630): não valem para a foto da receita.
+    .on('meta[property="og:image:width"], meta[property="og:image:height"]', { element: (e) => { if (meta.image) e.remove(); } })
     .on('meta[name="twitter:card"]', setContent(meta.image ? 'summary_large_image' : null))
     .on('head', { element: (e) => { e.append(head.join(''), { html: true }); } })
     // <noscript>: só quem não roda JavaScript lê (buscadores simples, leitores de IA); no navegador

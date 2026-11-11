@@ -6,6 +6,9 @@
  * mais (404/410) são apagadas.
  *
  * Segredos: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY e VAPID_SUBJECT (ex.: mailto:contato@...).
+ * PUSH_WEBHOOK_SECRET (opcional): quando definido, só aceita chamadas com o mesmo valor no cabeçalho
+ * x-push-secret. O banco manda o valor guardado no Vault com o nome push_webhook_secret
+ * (gravar no Vault ANTES de definir aqui, senão os avisos param de chegar).
  * Publicar com: supabase functions deploy send-push --no-verify-jwt
  */
 // deno-lint-ignore-file no-explicit-any
@@ -108,8 +111,20 @@ function message(kind: string, d: Data, recipient: string): { title: string; bod
 const PUSH_ENDPOINT =
   /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]+\.notify\.windows\.com|web\.push\.apple\.com|[a-z0-9.-]+\.push\.apple\.com)\//;
 
+// Sem segredo configurado, aceita (como antes). Comparação sem atalho, para o tempo não revelar o valor.
+function sameSecret(given: string | null, expected: string | undefined): boolean {
+  if (!expected) return true;
+  if (!given || given.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  if (!sameSecret(req.headers.get("x-push-secret"), Deno.env.get("PUSH_WEBHOOK_SECRET"))) {
+    return new Response("Forbidden", { status: 403 });
+  }
 
   let notificationId: string | undefined;
   try {

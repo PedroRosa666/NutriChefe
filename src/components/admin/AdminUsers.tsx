@@ -113,7 +113,11 @@ function UserCard({ u, plans, onChanged }: { u: AdminUser; plans: AdminPlan[]; o
                   key={s}
                   type="button"
                   disabled={busy || u.crn_status === s}
-                  onClick={() => run(() => setCrnStatus(u.id, s), a.saved)}
+                  onClick={async () => {
+                    // Tirar a aprovação encerra os acompanhamentos (regra do banco): pede confirmação.
+                    if (u.crn_status === 'approved' && !(await confirmDialog(a.crnRevokeConfirm.replace('{name}', u.full_name || u.email || '')))) return;
+                    await run(() => setCrnStatus(u.id, s), a.saved);
+                  }}
                   className="rounded-full border border-slate-300 px-3 py-1 text-xs disabled:bg-emerald-600 disabled:text-white dark:border-slate-600 dark:text-slate-200"
                 >
                   {a.crnStatus[s]}

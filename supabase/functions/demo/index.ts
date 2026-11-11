@@ -23,20 +23,25 @@ const reply = (data: Record<string, unknown>) => new Response(JSON.stringify(dat
 const PER_IP_HOUR = 5;
 const PER_DAY = Number(Deno.env.get("DEMO_DAILY_LIMIT") || 100);
 
+// IP de quem chamou. O 1º valor de x-forwarded-for é escrito pelo próprio visitante (dá para trocar a
+// cada pedido e fugir do limite); cf-connecting-ip e x-real-ip são preenchidos pela borda.
+function clientIp(req: Request): { ip: string; source: string } {
+  for (const name of ["cf-connecting-ip", "x-real-ip"]) {
+    const value = (req.headers.get(name) || "").trim();
+    if (value) return { ip: value, source: name };
+  }
+  const forwarded = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim();
+  return forwarded ? { ip: forwarded, source: "x-forwarded-for" } : { ip: "unknown", source: "none" };
+}
+
 async function ipHash(req: Request): Promise<string> {
-  const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "unknown";
+  const { ip, source } = clientIp(req);
+  // Só o nome do cabeçalho vai para o log (nunca o IP): mostra se a borda está mandando o IP confiável.
+  if (source !== "cf-connecting-ip") console.warn("demo: client ip from", source);
   // Com sal secreto: o hash não serve para descobrir o IP.
   const salt = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").slice(-16);
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${salt}:${ip}`));
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function countSince(supabase: any, since: Date, ip?: string): Promise<number> {
-  let query = supabase.from("demo_visitors").select("id", { count: "exact", head: true }).gt("created_at", since.toISOString());
-  if (ip) query = query.eq("ip_hash", ip);
-  const { count, error } = await query;
-  if (error) throw error;
-  return count ?? 0;
 }
 
 async function removePair(supabase: any, row: { id: string; patient_id: string; nutritionist_id: string }) {
@@ -66,12 +71,12 @@ Deno.serve(async (req: Request) => {
     if (body.action === "start") {
       const as = body.as === "nutritionist" ? "nutritionist" : "patient";
       const ip = await ipHash(req);
-      if (await countSince(supabase, new Date(Date.now() - 3600_000), ip) >= PER_IP_HOUR) {
-        return reply({ ok: false, error: "rate_limited" });
-      }
-      if (await countSince(supabase, new Date(Date.now() - 86400_000)) >= PER_DAY) {
-        return reply({ ok: false, error: "rate_limited" });
-      }
+      // Conta e reserva numa transação só: pedidos simultâneos não passam do limite.
+      const { data: allowed, error: claimError } = await supabase.rpc("claim_demo_start", {
+        p_ip_hash: ip, p_per_ip_hour: PER_IP_HOUR, p_per_day: PER_DAY,
+      });
+      if (claimError) throw claimError;
+      if (allowed !== true) return reply({ ok: false, error: "rate_limited" });
       await cleanupExpired(supabase);
 
       const tag = crypto.randomUUID();

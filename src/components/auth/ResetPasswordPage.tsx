@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Shield, Loader2 } from 'lucide-react';
 import { validateRecoveryToken, updatePassword } from '../../services/database';
 import { cn } from '../../lib/utils';
+import { isPasswordLongEnough } from '../../lib/password';
 import { useTranslation } from '../../hooks/useTranslation';
 import { feedback } from '../../lib/i18n/current';
 
@@ -58,7 +59,7 @@ export function ResetPasswordPage() {
 
   const validatePassword = (pwd: string) => {
     const errors: string[] = [];
-    if (pwd.length < 6) errors.push(rp.tooShort);
+    if (!isPasswordLongEnough(pwd)) errors.push(rp.tooShort);
     return errors;
   };
 
@@ -99,7 +100,7 @@ export function ResetPasswordPage() {
 
   const getPasswordStrength = (pwd: string) => {
     let strength = 0;
-    if (pwd.length >= 6) strength++;
+    if (isPasswordLongEnough(pwd)) strength++;
     if (pwd.match(/[a-z]/)) strength++;
     if (pwd.match(/[A-Z]/)) strength++;
     if (pwd.match(/[0-9]/)) strength++;
@@ -324,10 +325,10 @@ export function ResetPasswordPage() {
 
           <button
             type="submit"
-            disabled={loading || password !== confirmPassword || password.length < 6}
+            disabled={loading || password !== confirmPassword || !isPasswordLongEnough(password)}
             className={cn(
               "w-full py-2.5 rounded-lg text-white font-medium transition-colors flex items-center justify-center gap-2",
-              loading || password !== confirmPassword || password.length < 6
+              loading || password !== confirmPassword || !isPasswordLongEnough(password)
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-emerald-600 hover:bg-emerald-700"
             )}

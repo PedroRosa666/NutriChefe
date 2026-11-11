@@ -606,7 +606,8 @@ async function assist(apiKey: string, supabase: any, body: any) {
     content = await writeAnswer(apiKey, body, brief);
   } catch (e) {
     console.warn("answer fallback", e);
-    answerError = e instanceof EmptyAnswerError ? `empty:${e.reason}` : String((e as Error)?.message ?? e).slice(0, 160);
+    // Só a categoria vai ao navegador; o texto do erro do Gemini fica no log da função.
+    answerError = e instanceof EmptyAnswerError ? "empty" : e instanceof QuotaError ? "quota" : "error";
     content = result ? composeLocalReply(plan.query, result) : "A IA está indisponível no momento. Tente de novo em instantes.";
   }
 

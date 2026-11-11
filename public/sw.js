@@ -10,7 +10,7 @@
 //   recebe, offline, o que foi guardado para outra. Sair da conta também apaga tudo.
 //
 // Ao publicar mudanças neste arquivo, aumente VERSION: os caches antigos são descartados.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const APP_CACHE = `nutrichef-app-${VERSION}`;
 const DATA_PREFIX = 'nutrichef-data';
 const DATA_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
@@ -170,7 +170,9 @@ self.addEventListener('push', (event) => {
 // Toque na notificação: foca o app aberto (e navega) ou abre um novo.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = new URL(event.notification.data?.url || '/', self.location.origin).href;
+  // Só abre endereços do próprio app: um link de fora vindo no push cai no início.
+  const wanted = new URL(event.notification.data?.url || '/', self.location.origin);
+  const target = (wanted.origin === self.location.origin ? wanted : new URL('/', self.location.origin)).href;
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
       const open = clients.find((c) => new URL(c.url).origin === self.location.origin);

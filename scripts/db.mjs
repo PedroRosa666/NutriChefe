@@ -24,7 +24,7 @@ if (!password) {
   process.exit(1);
 }
 
-const args = ['-y', 'supabase@latest', 'db', 'push', '--linked', mode === 'status' ? '--dry-run' : '--yes'];
+const args = ['-y', 'supabase@3.1.0', 'db', 'push', '--linked', mode === 'status' ? '--dry-run' : '--yes'];
 const result = spawnSync('npx', args, {
   stdio: 'inherit',
   shell: process.platform === 'win32',
