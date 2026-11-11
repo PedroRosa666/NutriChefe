@@ -1,23 +1,27 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import { readFileSync } from 'node:fs';
 import { CLIENT_CONTRACT } from './src/lib/client-contract.ts';
+import { SECURITY_HEADERS } from './worker/security-headers.ts';
 
-// Cabeçalhos de produção (bloco "/*" de public/_headers) também no "vite preview": os testes de tela
-// rodam com a política de conteúdo valendo, e o que ela bloquear aparece antes do deploy.
-function productionHeaders(): Record<string, string> {
-  const lines = readFileSync(new URL('./public/_headers', import.meta.url), 'utf8')
-    .split('\n')
-    .map((line) => line.trimEnd());
-  const headers: Record<string, string> = {};
-  for (const line of lines.slice(lines.indexOf('/*') + 1)) {
-    // O bloco acaba na primeira linha sem recuo.
-    if (!line.startsWith('  ')) break;
-    const colon = line.indexOf(':');
-    headers[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
-  }
-  return headers;
-}
+// Arquivo _headers do build (Cloudflare): cache dos arquivos estáticos + as proteções de
+// worker/security-headers.ts em todas as respostas.
+const HEADERS_FILE = `# Gerado no build por vite.config.ts. Não edite em dist: mude lá ou em worker/security-headers.ts.
+
+# Arquivos do build têm hash no nome: podem ficar no cache do navegador por 1 ano.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# O service worker precisa ser conferido a cada visita, senão atualizações do app demoram a chegar.
+/sw.js
+  Cache-Control: no-cache
+
+# Contrato do site no ar, lido pelo aviso de atualização: sempre o do último deploy.
+/version.json
+  Cache-Control: no-cache
+
+/*
+${Object.entries(SECURITY_HEADERS).map(([name, value]) => `  ${name}: ${value}`).join('\n')}
+`;
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -30,6 +34,7 @@ export default defineConfig({
       apply: 'build',
       generateBundle() {
         this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ contract: CLIENT_CONTRACT }) });
+        this.emitFile({ type: 'asset', fileName: '_headers', source: HEADERS_FILE });
       },
     },
   ],
@@ -41,7 +46,8 @@ export default defineConfig({
     testTimeout: 20_000,
     hookTimeout: 60_000,
   },
-  preview: { headers: productionHeaders() },
+  // Os testes de tela locais rodam com a mesma política de conteúdo do site publicado.
+  preview: { headers: SECURITY_HEADERS },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },

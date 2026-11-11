@@ -176,7 +176,7 @@ src/
   hooks/           # hooks compartilhados (tradução, navegação...)
   lib/             # regras puras: busca, dietas, gerador de plano, cálculos, i18n...
   types/           # tipos do app e do banco (database.ts é gerado)
-public/            # ícones, manifesto, service worker (sw.js) e cabeçalhos (_headers)
+public/            # ícones, manifesto e service worker (sw.js)
 supabase/
   migrations/      # esquema do banco e políticas de segurança
   functions/       # Edge Functions (Deno)
@@ -193,7 +193,7 @@ scripts/db.mjs     # migrations pela Supabase CLI
 - Ações de administrador são conferidas no banco (`app_admins`), não só na tela.
 - Chaves do Gemini, do Stripe e do VAPID só existem como segredos das Edge Functions.
 - Dados guardados para uso sem internet ficam separados por conta e são apagados ao sair.
-- Cabeçalhos de segurança no site (`public/_headers`): `nosniff`, proteção contra iframe e política de conteúdo (em modo de observação).
+- Cabeçalhos de segurança no site (`worker/security-headers.ts`, fonte única do Worker, do `_headers` gerado no build e do `vite preview`): `nosniff`, proteção contra iframe e política de conteúdo (CSP) ativa.
 - Texto de usuários e da IA é renderizado sem HTML; links de contato aceitam só `http(s)`.
 
 ## 🚀 Deploy

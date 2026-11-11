@@ -15,22 +15,14 @@ interface Env {
   SUPABASE_ANON_KEY: string;
 }
 
+import { SECURITY_HEADERS } from './security-headers';
+
 const ORIGIN = 'https://nutrichef.app.br';
 const OTHER_HOSTS = ['www.nutrichef.app.br', 'app.nutrichefe.workers.dev'];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Dados do Supabase ficam 5 min no cache da Cloudflare (receita editada aparece em seguida). O HTML
 // não é guardado: ele aponta para os arquivos do build atual, que somem no deploy seguinte.
 const CACHE_SECONDS = 300;
-
-// As proteções de public/_headers não valem para respostas do Worker: repetidas aqui.
-const SECURITY_HEADERS: Record<string, string> = {
-  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-  'X-Content-Type-Options': 'nosniff',
-  'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()',
-  'X-Frame-Options': 'DENY',
-  'Content-Security-Policy': "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
-};
 
 interface RecipeRow {
   id: string;

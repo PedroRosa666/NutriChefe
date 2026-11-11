@@ -7,8 +7,8 @@
 > tarefa por encerrada. Item feito sai de "Próximos passos" e entra em "Últimas entregas".
 > Mantenha curto: detalhe técnico fica no código, nos commits e no README.
 
-Última atualização: 11/11/2026 (commit `8681b5b` no ar; lote de segurança e SEO de 11/11 pronto no
-computador, **ainda sem commit, migration nem deploy**: ver "Aguardando o Pedro" na seção 5).
+Última atualização: 11/11/2026 (lote de segurança e SEO no ar: commits `3cfd7d1`, `f2d88b9` e seguinte,
+migration `20261116120000` aplicada, funções `demo`, `send-push`, `admin` e `ai-chat` publicadas).
 
 ---
 
@@ -34,7 +34,7 @@ O nutricionista é o usuário principal. Tem Premium para os dois e um painel de
 | Edge Functions | `ai-chat`, `admin`, `demo`, `send-push`, `create-checkout-session`, `create-portal-session`, `stripe-webhook`, `delete-account` |
 | IA | Gemini, via `ai-chat` (cota por usuário no servidor) |
 | Pagamento | Stripe (web). Google Play Billing só no lançamento na Play Store |
-| Testes | `npx vitest run` (lógica + banco em PGlite), `npx playwright test` (tela, headless; o servidor local usa os cabeçalhos de `public/_headers`, então o CSP vale nos testes), skill local `testar-nutrichef` |
+| Testes | `npx vitest run` (lógica + banco em PGlite), `npx playwright test` (tela, headless; o servidor local usa os cabeçalhos de `worker/security-headers.ts`, então o CSP vale nos testes), `npm run test:e2e:prod` (os mesmos contra o site no ar), skill local `testar-nutrichef` |
 
 ## 3. O que já existe
 
@@ -73,8 +73,9 @@ planos/preços Stripe, erros do app, moderação, comunicados, Laboratório com 
 (autor de receita aparece só com nome/foto via `author_card`); log de erros sem tokens; páginas de
 receita com título, canonical, JSON-LD `Recipe`, 404 real, sitemap e robots.
 
-**Lote de 11/11 (no computador, não publicado):** senha nova com mínimo de 8 em todas as telas
-(`src/lib/password.ts`); CSP completo ativo; imagem de prévia 1200×630 (`public/og-image.png`);
+**Lote de 11/11 (no ar):** senha nova com mínimo de 8 em todas as telas
+(`src/lib/password.ts`); CSP completo ativo em todas as páginas, com o Web Analytics da Cloudflare
+liberado; imagem de prévia 1200×630 (`public/og-image.png`);
 CRN que perde a aprovação encerra vínculos e convites; limite da demo contado no banco
 (`claim_demo_start`); `send-push` aceita segredo (`PUSH_WEBHOOK_SECRET` + Vault); erros internos do
 Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Actions por SHA.
@@ -83,7 +84,7 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 
 | Data | Commit | O quê |
 |---|---|---|
-| 11/11 | (local, sem commit) | Lote de segurança e SEO: itens 3, 5, 6, 7, 8 e quase todo o 9 da lista antiga |
+| 11/11 | `3cfd7d1`, `f2d88b9` + seguinte | Segurança e SEO: CSP completo (fonte única de cabeçalhos), CRN revogado encerra vínculos, limite atômico da demo, segredo no push, senha mínima 8, imagem de prévia, versões fixadas |
 | 03/11 | (Supabase) | Função `delete-account` publicada: excluir conta apaga também os arquivos |
 | 30/10 | `8681b5b` | Perfil privado protegido, Worker de SEO, links com nome nas receitas, log sem token |
 | 30/10 | `198fcef` | Gerador mira todas as metas, acompanhamentos com motivo, "escolha 1", campo "Serve para" |
@@ -94,18 +95,15 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 
 ## 5. Próximos passos
 
-**Aguardando o Pedro (lote de 11/11, nesta ordem)**
-1. `npm run db:push`: migration `20261116120000_security_leftovers.sql` (só acrescenta: gatilho do CRN,
-   tabela `demo_starts`, `claim_demo_start`, `dispatch_push` com segredo).
-2. Publicar as Edge Functions `demo`, `send-push`, `admin` e `ai-chat` (a `demo` nova depende da migration).
-3. Commit e push (publica o site) e conferir o check "Workers Builds: app".
-4. Segredo do push: gravar `push_webhook_secret` no Vault e **depois** `PUSH_WEBHOOK_SECRET` na função
-   (na ordem inversa os avisos param de chegar).
-5. Depois do deploy da `demo`: olhar o log. Se aparecer "demo: client ip from x-forwarded-for", a borda
-   não está mandando `cf-connecting-ip` e o limite por visitante continua contornável (o limite do
-   dia, agora atômico, segura o abuso).
-6. Aplicar o "Serve para" nas 24 receitas (sugestão entregue em 11/11, esperando revisão). A receita
-   "Cookie" está com 5 kcal por porção: conferir.
+**Pendências do lote de 11/11**
+1. Segredo do push: gravar `push_webhook_secret` no Vault e **depois** `PUSH_WEBHOOK_SECRET` na função
+   `send-push` (na ordem inversa os avisos param de chegar). Até lá o push funciona como antes.
+2. Aplicar o "Serve para" nas 24 receitas (sugestão de 11/11). A receita "Cookie" está com 5 kcal por
+   porção: conferir.
+3. `demo`: nenhum aviso "client ip from" no log até agora (sinal de que `cf-connecting-ip` chega);
+   olhar de novo depois de alguns dias de uso.
+4. `git push` daqui usa a conta `pedrorosa-jpg`, sem permissão no repositório: o push sai com a conta
+   `PedroRosa666` do `gh` (`gh auth switch`), voltando a conta ativa depois.
 
 **Curto prazo**
 7. Google Search Console: cadastrar `https://nutrichef.app.br/sitemap.xml` (conta Google do Pedro).
@@ -146,7 +144,9 @@ Google Play Billing (opção B), `assetlinks.json`, página pública de exclusã
 - Corrigir a causa geral, não só o exemplo citado.
 - Manter o fundo creme e o kicker "NutriChef"; Início = receitas.
 - `PRODUCT.md`, `.impeccable/` e a skill `testar-nutrichef` ficam fora do Git.
-- Serviço novo no navegador (script, fonte, API de outro domínio): incluir no CSP de `public/_headers`.
+- Serviço novo no navegador (script, fonte, API de outro domínio): incluir no CSP de
+  `worker/security-headers.ts` (fonte única: Worker, `_headers` do build e preview). Depois do push,
+  rodar `npm run test:e2e:prod`: o que a Cloudflare injeta (Web Analytics) só existe no site no ar.
 - Regra de senha: só em `src/lib/password.ts` (as frases em `src/lib/i18n` citam o número).
 - Tirar a aprovação de um CRN encerra os vínculos e não tem volta automática (decisão de 11/11: encerrar,
   em vez de bloquear, porque vale para todas as regras de uma vez).
