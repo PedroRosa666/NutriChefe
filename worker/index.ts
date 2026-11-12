@@ -153,7 +153,7 @@ async function sitemap(env: Env): Promise<Response> {
     ),
     supabase<{ id: string; updated_at: string | null }[]>(
       env,
-      'profiles?select=id,updated_at&user_type=eq.Nutritionist&profile_visibility=eq.public&limit=5000'
+      'profiles?select=id,updated_at&user_type=eq.Nutritionist&profile_visibility=eq.public&crn_status=eq.approved&limit=5000'
     ),
   ]);
   const entry = (loc: string, lastmod?: string | null) =>

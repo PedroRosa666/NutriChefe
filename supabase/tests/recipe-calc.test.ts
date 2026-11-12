@@ -69,7 +69,7 @@ beforeAll(async () => {
   db = await createTestDb();
   await db.exec(`
     INSERT INTO auth.users (id) VALUES ('${NUTRI}'), ('${READER}');
-    INSERT INTO profiles (id, full_name, user_type) VALUES ('${NUTRI}', 'Dra. Ana', 'Nutritionist'), ('${READER}', 'Leo', 'Client');
+    INSERT INTO profiles (id, full_name, user_type, crn_status) VALUES ('${NUTRI}', 'Dra. Ana', 'Nutritionist', 'approved'), ('${READER}', 'Leo', 'Client', 'none');
     INSERT INTO foods (id, taco_id, name, kcal, protein, carbs, fat, fiber) VALUES
       ('${FLOUR}', 7001, 'Farinha de trigo', 360, 10, 75, 1.4, 2.3),
       ('${MILK}', 7002, 'Leite integral', 60, 3, 4.5, 3.2, 0);

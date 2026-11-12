@@ -7,8 +7,8 @@
 > tarefa por encerrada. Item feito sai de "Próximos passos" e entra em "Últimas entregas".
 > Mantenha curto: detalhe técnico fica no código, nos commits e no README.
 
-Última atualização: 12/11/2026 (no ar até o commit `65488b2`; 47 receitas no catálogo; migration `20261118120000` aplicada e função
-`ai-chat` publicada: só o servidor grava em `ai_messages`; lote de segurança:
+Última atualização: 12/11/2026 (47 receitas no catálogo; migrations `20261118120000` e `20261119120000` aplicadas e função `ai-chat`
+publicada: só o servidor grava em `ai_messages`, receita e perfil público só com CRN aprovado; lote de segurança:
 migrations `20261116120000` e `20261117120000` aplicadas, funções `demo`, `send-push`, `admin` e
 `ai-chat` publicadas, "Serve para" marcado nas 24 receitas).
 
@@ -90,6 +90,8 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 
 | Data | Commit | O quê |
 |---|---|---|
+| 12/11 | (seguinte ao `31cf149`) | Auditoria `standard`, pontos médios: criar receita exige nutricionista com CRN aprovado ou admin (gatilho em `recipes`); visitante só lê perfil público com CRN aprovado, e o sitemap filtra igual (migration `20261119120000`) |
+| 12/11 | `31cf149` | Auditoria `standard`: a `ai-chat` confere a cota antes de gravar e lê histórico e alergias do banco (não do navegador). Conferido no site |
 | 12/11 | `65488b2` | `ai_messages`: a função `ai-chat` grava a pergunta e a resposta e o app só lê (contrato 6); migration `20261118120000` tirou o INSERT do usuário. Conferido no site: a função grava as duas mensagens e a inserção direta dá 403 |
 | 12/11 | (banco) | 6 lanches veganos (tremoço, torrada com pasta de amendoim, cookie de aveia, patê de tofu, grão-de-bico crocante, smoothie de morango); catálogo com 47, 9 lanches veganos |
 | 12/11 | (banco) | 17 receitas novas com nutrição calculada pelos ingredientes (10 veganas ricas em proteína, 7 de café da manhã, lanche e pratos magros); catálogo com 41. Comando `npm run db:query -- arquivo.sql` |
@@ -127,16 +129,13 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 **Segurança (o que sobrou)**
 10. Auditoria de segurança `standard` de 12/11: nenhum achado grave. Conferido no banco: a view antiga
     `conversation_details` e a tabela `message_attachments` não existem; nenhuma receita é de autor sem
-    CRN aprovado. Já corrigido no código (falta publicar a `ai-chat`): cota conferida antes de gravar a
-    conversa, e histórico e alergias lidos do banco em vez do navegador. Em aberto, do mais sério ao menos:
-    - (médio) Qualquer conta logada publica receita no catálogo: `save_recipe` e a política de INSERT de
-      `recipes` não conferem nutricionista com CRN aprovado (só a tela confere).
-    - (médio) Perfil de nutricionista sem CRN aprovado abre por link e entra no sitemap (a política
-      "Public profile rows" e o `worker/index.ts` não filtram `crn_status`). Há 3 contas assim.
-    - (baixo) Código de convite com 8 caracteres e sem limite de tentativas (`redeem_nutritionist_invite`).
-    - (baixo) Nutricionista aprovado troca o nome e mantém o selo de CRN verificado.
-    - (baixo) Buckets públicos `avatars` e `recipe-images` deixam listar as pastas (ids de usuários).
-    - (baixo) `client_errors`: visitante sem login consegue encher a tabela variando o `user_agent`.
+    CRN aprovado. Os dois achados médios foram corrigidos (ver "Últimas entregas"); há 3 nutricionistas
+    sem CRN aprovado: o perfil deles não abre mais por link e eles veem "Verifique seu CRN" ao tentar
+    publicar receita. Em aberto (baixos):
+    - Código de convite com 8 caracteres e sem limite de tentativas (`redeem_nutritionist_invite`).
+    - Nutricionista aprovado troca o nome e mantém o selo de CRN verificado.
+    - Buckets públicos `avatars` e `recipe-images` deixam listar as pastas (ids de usuários).
+    - `client_errors`: visitante sem login consegue encher a tabela variando o `user_agent`.
 
 **Produto**
 11. Plano de implementação: próximas etapas ANA → EVO → CHECK → DIA e AGEN A → AGEN B, MOD e MET.
@@ -182,7 +181,10 @@ Google Play Billing (opção B), `assetlinks.json`, página pública de exclusã
   `gh` (`gh auth switch`) e voltar a conta ativa depois.
 - Foto de receita: o Unsplash bloqueia navegador automático (403); não contornar. Receita nova sem foto
   usa a imagem padrão e o Pedro troca no app.
-- Só a função `ai-chat` grava em `ai_messages` (o app lê). Fluxo novo de conversa passa por ela.
+- Só a função `ai-chat` grava em `ai_messages` (o app lê). Fluxo novo de conversa passa por ela; o que
+  vira texto gravado (histórico, alergias) é lido do banco, nunca do que o navegador manda.
+- Regra de quem pode gravar fica no banco (política ou gatilho), não só na tela: a auditoria de 12/11
+  achou receita liberada pela API porque só o botão era escondido.
 - O assistente não grava no Vault do Supabase (bloqueado no ambiente): SQL de segredo é o Pedro quem roda.
 - Selos de situação do paciente: só pelo `PatientStatusChips` (`src/components/care/AttentionPanel.tsx`);
   botão pequeno de linha ganha a classe `tap-target` (área de toque de 44 px).

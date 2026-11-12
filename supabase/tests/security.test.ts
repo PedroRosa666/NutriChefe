@@ -39,8 +39,25 @@ beforeAll(async () => {
 });
 
 describe('perfis (RLS)', () => {
-  it('visitante lê direto só o perfil de nutricionista público (autor privado e quem avaliou, não)', async () => {
+  it('visitante lê direto só o perfil de nutricionista público com CRN aprovado (autor privado e quem avaliou, não)', async () => {
+    // Público, mas ainda sem CRN aprovado: não abre para visitante; o dono continua vendo o próprio.
+    expect(await asAnon(visibleIds)).toEqual([]);
+    expect(await asUser(db, NUTRI, visibleIds)).toContain(NUTRI);
+    await db.query(`UPDATE profiles SET crn_status = 'approved' WHERE id = '${NUTRI}'`);
     expect(await asAnon(visibleIds)).toEqual([NUTRI]);
+  });
+
+  it('só nutricionista com CRN aprovado (ou admin) passa pela regra de criar receita', async () => {
+    const create = (uid: string) =>
+      asUser(db, uid, (tx) => tx.query(`INSERT INTO recipes (title, author_id) VALUES ('Receita de teste', $1)`, [uid]));
+    await expect(create(PATIENT)).rejects.toThrow(/crn_not_verified/);
+    await expect(create(PRIVATE_NUTRI)).rejects.toThrow(/crn_not_verified/);
+    // Com CRN aprovado a regra não barra (a criação pela save_recipe está em recipe-calc.test.ts).
+    await expect(create(NUTRI)).rejects.not.toThrow(/crn_not_verified/);
+    // Administrador também passa pela regra, mesmo sem ser nutricionista.
+    await db.query(`INSERT INTO app_admins (user_id) VALUES ('${PATIENT}')`);
+    await expect(create(PATIENT)).rejects.not.toThrow(/crn_not_verified/);
+    await db.query(`DELETE FROM app_admins WHERE user_id = '${PATIENT}'`);
   });
 
   it('de autor e de quem avaliou, o visitante vê só nome, tipo e foto, inclusive de nutricionista privado', async () => {

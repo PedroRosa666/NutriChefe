@@ -16,6 +16,7 @@ const APP_ERROR_CODES = [
   'limit_exceeded',
   'invalid_yield',
   'demo_readonly',
+  'crn_not_verified',
 ] as const;
 
 export type AppErrorCode = (typeof APP_ERROR_CODES)[number] | 'unknown';

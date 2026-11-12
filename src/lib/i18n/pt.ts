@@ -13,6 +13,7 @@ export const pt = {
     limit_exceeded: 'Passou do limite (até 12 refeições por dia, 30 itens por refeição e 100 ingredientes por receita).',
     invalid_yield: 'Rendimento inválido: use um número maior que zero (até 1000 porções).',
     demo_readonly: 'Indisponível na demonstração. Crie uma conta grátis para usar.',
+    crn_not_verified: 'Verifique seu CRN antes (cartão no Painel) para publicar receitas.',
     unknown: 'Algo deu errado. Tente de novo.',
   },
   pages: {

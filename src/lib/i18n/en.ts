@@ -16,6 +16,7 @@ export const en: Translations = {
     limit_exceeded: 'Over the limit (up to 12 meals per day, 30 items per meal and 100 ingredients per recipe).',
     invalid_yield: 'Invalid yield: use a number greater than zero (up to 1000 servings).',
     demo_readonly: 'Not available in the demo. Create a free account to use this.',
+    crn_not_verified: 'Verify your CRN first (card on your dashboard) to publish recipes.',
     unknown: 'Something went wrong. Try again.',
   },
   pages: {

@@ -66,6 +66,8 @@ describe('o visitante não alcança pessoas reais', () => {
     await db.query(`UPDATE profiles SET profile_visibility = 'public' WHERE id = '${V_NUTRI}'`);
     const sees = (viewer: string) =>
       asUser(db, viewer, async (tx) => (await tx.query(`SELECT 1 FROM profiles WHERE id = '${V_NUTRI}'`)).rows.length);
+    // Perfil público de pessoa real só aparece com CRN aprovado (20261119120000).
+    await db.query(`UPDATE profiles SET crn_status = 'approved' WHERE id IN ('${V_NUTRI}', '${REAL_NUTRI}')`);
     expect(await sees(REAL_CLIENT)).toBe(0);
     expect(await sees(V_PATIENT)).toBe(1);
     expect(await sees(V_NUTRI)).toBe(1);
