@@ -88,7 +88,7 @@ export const maxSidesPerMeal = (slot: MealSlot) => (slot === 'lunch' || slot ===
 // O que o prato já tem, pelo nome e descrição: um acompanhamento do mesmo tipo ficaria repetido.
 const HAS: { group: SideGroup[]; words: string[] }[] = [
   { group: ['carb', 'bread', 'cereal'], words: ['arroz', 'risoto', 'macarrao', 'massa', 'espaguete', 'nhoque', 'batata', 'mandioca', 'mandioquinha', 'pure', 'cuscuz', 'quinoa', 'polenta', 'tapioca', 'pao', 'sanduiche', 'wrap', 'panqueca', 'crepioca', 'aveia', 'granola', 'torrada'] },
-  { group: ['legume'], words: ['feijao', 'feijoada', 'lentilha', 'grao de bico', 'ervilha', 'tutu'] },
+  { group: ['legume'], words: ['feijao', 'feijoada', 'lentilha', 'grao de bico', 'ervilha', 'tutu', 'tremoco', 'homus'] },
   { group: ['protein'], words: ['frango', 'carne', 'bovina', 'patinho', 'peixe', 'salmao', 'atum', 'camarao', 'tilapia', 'porco', 'lombo', 'peru', 'bacalhau'] },
   { group: ['egg'], words: ['ovo', 'omelete', 'sufle', 'fritada', 'clara'] },
   { group: ['soy'], words: ['tofu', 'soja'] },

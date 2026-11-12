@@ -7,7 +7,8 @@
 > tarefa por encerrada. Item feito sai de "Próximos passos" e entra em "Últimas entregas".
 > Mantenha curto: detalhe técnico fica no código, nos commits e no README.
 
-Última atualização: 12/11/2026 (no ar até o commit `7b7a331`; 41 receitas no catálogo; lote de segurança:
+Última atualização: 12/11/2026 (no ar até o commit `986968c`; 47 receitas no catálogo; correção do `ai_messages` pronta no código,
+**ainda não publicada**: ver item 9; lote de segurança:
 migrations `20261116120000` e `20261117120000` aplicadas, funções `demo`, `send-push`, `admin` e
 `ai-chat` publicadas, "Serve para" marcado nas 24 receitas).
 
@@ -89,6 +90,8 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 
 | Data | Commit | O quê |
 |---|---|---|
+| 12/11 | (local, sem commit) | `ai_messages`: a função `ai-chat` grava a pergunta e a resposta; o app só lê (contrato 6); migration `20261118120000` tira o INSERT do usuário. Falta publicar, na ordem do item 9 |
+| 12/11 | (banco) | 6 lanches veganos (tremoço, torrada com pasta de amendoim, cookie de aveia, patê de tofu, grão-de-bico crocante, smoothie de morango); catálogo com 47, 9 lanches veganos |
 | 12/11 | (banco) | 17 receitas novas com nutrição calculada pelos ingredientes (10 veganas ricas em proteína, 7 de café da manhã, lanche e pratos magros); catálogo com 41. Comando `npm run db:query -- arquivo.sql` |
 | 12/11 | `7b7a331` | Gerador: proteína (ovo para vegetariano, proteínas magras, jogada combinada, aviso abaixo do piso). Impeccable: selos e alergias no topo da ficha, selo de kcal abaixo da meta, ordenação da lista, avisos em região fixa, alvos de toque |
 | 12/11 | (seguinte ao `fd50fe4`) | Segredo do push gravado e conferido (403 sem cabeçalho); teste de tela do login (CSP); kcal da receita Cookie corrigida (5 → 263) |
@@ -106,6 +109,8 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 **Receitas de 12/11 (conferir)**
 - As 17 receitas estão em nome da conta de nutricionista do Pedro, com fotos do Unsplash por link
   (ilustrativas: a do tofu mexido mostra ovo mexido). Trocar a foto é editar a receita no app.
+- Os 6 lanches veganos de 12/11 estão **sem foto** (aparece a imagem padrão): o Unsplash passou a
+  bloquear navegador automático (403). O Pedro põe as fotos editando cada receita.
 
 **Pendências do lote de 11/11**
 1. Stripe com o CSP: o Pedro clica em assinar numa conta real e confere se a página do Stripe abre (não
@@ -120,18 +125,25 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
    revela se o e-mail já tem conta (era a "enumeração no login").
 
 **Segurança (o que sobrou)**
-9. `ai_messages`: o paciente ainda consegue gravar mensagem com papel "assistant". Correção é em etapas:
-   a `ai-chat` passa a gravar as duas mensagens, o app para de gravar (subir `CLIENT_CONTRACT`), e só
-   depois uma migration tira o INSERT do usuário. O modo limitado (sem Gemini) grava pelo app: tratar junto.
+9. `ai_messages` (o paciente ainda consegue gravar mensagem com papel "assistant"): correção pronta no
+   código, falta publicar **nesta ordem** (cada passo pede o "ok" do Pedro):
+   1. publicar a função `ai-chat` (compatível com o app atual: só grava quando recebe `conversation_id`);
+   2. commit e push (app com `CLIENT_CONTRACT` 6: manda `conversation_id` e não grava mais na tabela);
+   3. `npm run db:push` da migration `20261118120000` (tira o INSERT do usuário e sobe `app_min_client()` para 6);
+   4. conferir no site: mandar uma mensagem na Mentoria IA e recarregar (a conversa continua lá).
+   O modo limitado (sem chave do Gemini) passou a ser respondido e gravado pela função. Se a função
+   estiver fora do ar, a busca local responde só na tela, sem gravar.
 10. Repetir a auditoria de segurança no perfil `standard`.
 
 **Produto**
 11. Plano de implementação: próximas etapas ANA → EVO → CHECK → DIA e AGEN A → AGEN B, MOD e MET.
 12. Planejar mais recursos Premium para o nutricionista (a página Premium ainda fala com o paciente).
-13. Gerador: com as 17 receitas de 12/11, a simulação dá ~88% da meta de proteína para o vegano (era
-    60%), ~89% para o vegetariano e ~101% para o onívoro, sem dias abaixo de 80%. Falta proteína
-    vegetal magra na TACO (grão-de-bico cozido, proteína de soja): cadastrar no catálogo global
-    ajudaria mais. Só há 3 lanches veganos; vale criar mais.
+13. Gerador: com as receitas de 12/11, a simulação antiga (meta de proteína moderada) dá ~88% para o
+    vegano, ~89% para o vegetariano e ~101% para o onívoro. Com meta alta (120 g em 2000 kcal) o vegano
+    fica em ~78%: o que falta é proteína vegetal magra **e com pouca fibra** (o vegano já passa de 130%
+    da fibra; por isso o tremoço como acompanhamento foi testado e não muda nada). Proteína de soja
+    texturizada e grão-de-bico cozido não estão na TACO: o catálogo global só aceita alimento da TACO
+    (`foods.taco_id`), então incluir exige migration e escolher a fonte dos valores (decisão do Pedro).
 14. LazyMotion: decidido não fazer em 12/11. Carregar a animação sob demanda deixaria conteúdo
     invisível se o arquivo extra falhasse (telas começam com opacidade 0); a versão sem esse risco
     economiza só ~10 KB.
@@ -165,9 +177,12 @@ Google Play Billing (opção B), `assetlinks.json`, página pública de exclusã
   em vez de bloquear, porque vale para todas as regras de uma vez).
 - `git push` daqui autentica como `pedrorosa-jpg` (sem permissão): enviar com a conta `PedroRosa666` do
   `gh` (`gh auth switch`) e voltar a conta ativa depois.
+- Foto de receita: o Unsplash bloqueia navegador automático (403); não contornar. Receita nova sem foto
+  usa a imagem padrão e o Pedro troca no app.
+- Só a função `ai-chat` grava em `ai_messages` (o app lê). Fluxo novo de conversa passa por ela.
 - O assistente não grava no Vault do Supabase (bloqueado no ambiente): SQL de segredo é o Pedro quem roda.
 - Selos de situação do paciente: só pelo `PatientStatusChips` (`src/components/care/AttentionPanel.tsx`);
   botão pequeno de linha ganha a classe `tap-target` (área de toque de 44 px).
 - Acompanhamento novo do gerador cujo nome na TACO engana as regras de dieta (ovo é "de galinha"):
   declarar o que ele é no campo `as` de `SIDE_SPECS`.
-- Ao mudar formato de dados: subir `CLIENT_CONTRACT` (`src/lib/client-contract.ts`, hoje 5) junto com `app_min_client()`.
+- Ao mudar formato de dados: subir `CLIENT_CONTRACT` (`src/lib/client-contract.ts`, hoje 6; o banco no ar ainda pede 5 até a migration do item 9) junto com `app_min_client()`.

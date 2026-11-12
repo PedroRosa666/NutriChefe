@@ -1,5 +1,6 @@
 // Mentoria IA e notificações (20261102120000_ai_push_security.sql): os cenários da auditoria
-// de 23/10/2026 (F01-F04) agora são barrados, e o uso normal continua funcionando.
+// de 23/10/2026 (F01-F04) agora são barrados, e o uso normal continua funcionando. Desde
+// 20261118120000_ai_messages_server_only.sql só o servidor (função ai-chat) grava mensagens.
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { PGlite } from '@electric-sql/pglite';
 import { asUser, createTestDb } from './harness';
@@ -61,28 +62,36 @@ describe('participantes fixos e histórico verdadeiro', () => {
       asUser(db, PRO_NUTRI, (tx) =>
         tx.query(`INSERT INTO ai_messages (conversation_id, sender_type, content) VALUES ($1, 'ai', 'resposta falsa')`, [patientConv])
       )
-    ).rejects.toThrow(/row-level security/);
+    ).rejects.toThrow(/permission denied/);
     expect(await countMessages(OTHER, own)).toBe(0);
   });
 
-  it('o titular continua conversando, renomeando e arquivando', async () => {
+  it('o titular lê, renomeia e arquiva; quem grava as mensagens é o servidor', async () => {
     const conv = await createConversation(PATIENT, PRO_NUTRI);
-    await asUser(db, PATIENT, (tx) =>
-      tx.query(`INSERT INTO ai_messages (conversation_id, sender_type, content) VALUES ($1, 'user', 'Oi'), ($1, 'ai', 'Olá!')`, [conv])
-    );
-    await asUser(db, PATIENT, (tx) => tx.query(`UPDATE ai_conversations SET title = 'Jantar leve', is_active = false WHERE id = $1`, [conv]));
-    // Conversa arquivada não recebe mensagens novas.
-    await expect(
-      asUser(db, PATIENT, (tx) => tx.query(`INSERT INTO ai_messages (conversation_id, content) VALUES ($1, 'mais uma')`, [conv]))
-    ).rejects.toThrow(/row-level security/);
+    // A função ai-chat grava com a chave de serviço (aqui, o dono do banco).
+    await db.query(`INSERT INTO ai_messages (conversation_id, sender_type, content) VALUES ($1, 'user', 'Oi'), ($1, 'ai', 'Olá!')`, [conv]);
+    await asUser(db, PATIENT, (tx) => tx.query(`UPDATE ai_conversations SET title = 'Jantar leve' WHERE id = $1`, [conv]));
     expect(await countMessages(PATIENT, conv)).toBe(2);
+    // O titular não escreve no histórico: nem a própria pergunta, nem uma resposta "da IA".
+    for (const sender of ['user', 'ai']) {
+      await expect(
+        asUser(db, PATIENT, (tx) => tx.query(`INSERT INTO ai_messages (conversation_id, sender_type, content) VALUES ($1, $2, 'forjada')`, [conv, sender]))
+      ).rejects.toThrow(/permission denied/);
+    }
+    await asUser(db, PATIENT, (tx) => tx.query(`UPDATE ai_conversations SET is_active = false WHERE id = $1`, [conv]));
+    expect(await countMessages(PATIENT, conv)).toBe(2);
+  });
+
+  it('o app novo é exigido junto (o antigo gravava direto na tabela)', async () => {
+    const { rows } = await db.query<{ v: number }>(`SELECT public.app_min_client() AS v`);
+    expect(rows[0].v).toBe(6);
   });
 });
 
 describe('fim do acompanhamento', () => {
   it('o nutricionista deixa de ler as conversas do paciente com a IA (F03)', async () => {
     const conv = await createConversation(PATIENT, PRO_NUTRI);
-    await asUser(db, PATIENT, (tx) => tx.query(`INSERT INTO ai_messages (conversation_id, content) VALUES ($1, 'Tenho refluxo')`, [conv]));
+    await db.query(`INSERT INTO ai_messages (conversation_id, content) VALUES ($1, 'Tenho refluxo')`, [conv]);
     expect(await countMessages(PRO_NUTRI, conv)).toBe(1);
 
     await db.query(`UPDATE nutritionist_clients SET status = 'ended', ended_at = now() WHERE client_id = $1`, [PATIENT]);

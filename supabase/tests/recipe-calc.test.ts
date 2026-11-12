@@ -182,7 +182,7 @@ describe('cálculo pelos ingredientes', () => {
     expect(seen.food).toHaveLength(0);
   });
 
-  it('app_min_client sobe para 5', async () => {
-    expect((await db.query<{ v: number }>(`SELECT app_min_client() AS v`)).rows[0].v).toBe(5);
+  it('app_min_client sobe para 5 ou mais', async () => {
+    expect((await db.query<{ v: number }>(`SELECT app_min_client() AS v`)).rows[0].v).toBeGreaterThanOrEqual(5);
   });
 });

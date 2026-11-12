@@ -19,10 +19,11 @@ const HISTORY_LENGTH = 10;
 // Fica falso quando o servidor avisa que não há chave configurada (modo limitado).
 let configured = true;
 
+/** `saved`: a pergunta e a resposta já gravadas pelo servidor (ele é quem escreve em ai_messages). */
 export type AssistResult =
-  | { ok: true; response: AIResponse }
-  // limited: sem chave no servidor ou falha de rede, o app usa a busca local.
-  | { ok: false; code: string; message?: string; limited: boolean };
+  | { ok: true; response: AIResponse; saved?: AIMessage[] }
+  // limited: falha de rede ou da função, o app mostra a busca local (sem gravar).
+  | { ok: false; code: string; message?: string; limited: boolean; saved?: AIMessage[] };
 
 interface AssistReply {
   ok: boolean;
@@ -33,6 +34,7 @@ interface AssistReply {
   error?: string;
   code?: string;
   limited?: boolean;
+  messages?: AIMessage[];
 }
 
 // As respostas antigas mostraram receitas em cartões que não fazem parte do texto:
@@ -49,7 +51,8 @@ export async function assistAI(
   message: string,
   history: AIMessage[],
   aiConfig?: AIConfiguration,
-  context?: AIUserContext
+  context?: AIUserContext,
+  conversationId?: string
 ): Promise<AssistResult> {
   try {
     const { data, error } = await supabase.functions.invoke<AssistReply>('ai-chat', {
@@ -61,13 +64,16 @@ export async function assistAI(
           ? { ai_name: aiConfig.ai_name, personality: aiConfig.personality, custom_instructions: aiConfig.custom_instructions }
           : undefined,
         context,
+        conversation_id: conversationId,
       },
     });
     if (error && !data) throw error;
+    const saved = data?.messages?.length ? data.messages : undefined;
     if (data?.ok && data.content) {
-      configured = true;
+      configured = !data.limited;
       return {
         ok: true,
+        saved,
         response: { content: data.content, recipes: data.recipes ?? [], suggestions: data.suggestions ?? [], meta: data.meta },
       };
     }
@@ -76,7 +82,7 @@ export async function assistAI(
     // Só limite, acesso e login são respostas finais; o resto (sem chave, erro, função
     // desatualizada) cai na busca local para a pessoa não ficar sem receitas.
     const final = code === 'rate_limited' || code === 'forbidden' || code === 'unauthenticated';
-    return { ok: false, code, message: data?.error, limited: !final };
+    return { ok: false, code, message: data?.error, limited: !final, saved };
   } catch (error) {
     console.warn('Mentoria IA indisponível, usando a busca local:', error);
     return { ok: false, code: 'network', limited: true };

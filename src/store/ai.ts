@@ -192,53 +192,26 @@ export const useAIStore = create<AIState>((set, get) => ({
     const { currentConversation, sendingMessage } = get();
     if (!currentConversation || sendingMessage) return;
 
-    const isCurrent = () => get().currentConversation?.id === conversationId;
-    set({ sendingMessage: true, error: null });
+    // A pergunta aparece na hora; o servidor grava a pergunta e a resposta e devolve as duas.
+    const text = content.trim();
+    const history = get().messages;
+    const pending = aiService.localAIMessage(conversationId, 'user', text);
+    const dropPending = (list: AIMessage[]) => list.filter(m => m.id !== pending.id);
+    set(state => ({ sendingMessage: true, error: null, messages: [...state.messages, pending] }));
 
     try {
-      const isFirstMessage = get().messages.length === 0;
-      const userMessage = await aiService.createAIMessage({
-        conversation_id: conversationId,
-        sender_type: 'user',
-        content,
-        metadata: {}
-      });
-
-      if (isCurrent()) {
-        set(state => ({ messages: [...state.messages, userMessage] }));
-      }
-
-      let aiResponse;
-      try {
-        aiResponse = await aiService.processAIMessage(
-          content,
-          get().aiConfig || undefined,
-          isCurrent() ? get().messages : [userMessage],
-          context
-        );
-      } catch (processError) {
-        console.warn('Erro ao processar mensagem, usando fallback:', processError);
-        aiResponse = {
-          content: feedback().ai.processError,
-          recipes: [],
-          suggestions: [...feedback().ai.fallbackSuggestions],
-        };
-      }
-
-      const aiMessage = await aiService.createAIMessage({
-        conversation_id: conversationId,
-        sender_type: 'ai',
-        content: aiResponse.content || feedback().ai.emptyReply,
-        metadata: {
-          recipes: aiResponse.recipes || [],
-          suggestions: aiResponse.suggestions || [],
-          ...(aiResponse.meta ? { meta: aiResponse.meta } : {})
-        }
-      });
+      const isFirstMessage = history.length === 0;
+      const { messages: turn } = await aiService.sendAIChatTurn(
+        conversationId,
+        text,
+        history,
+        get().aiConfig || undefined,
+        context
+      );
 
       // A 1ª pergunta vira o título da conversa (aparece no histórico).
       const updates: Partial<AIConversation> = { last_message_at: new Date().toISOString() };
-      if (isFirstMessage) updates.title = content.length > 60 ? `${content.slice(0, 57)}...` : content;
+      if (isFirstMessage) updates.title = text.length > 60 ? `${text.slice(0, 57)}...` : text;
       aiService.updateAIConversation(conversationId, updates).catch(e => console.warn('Conversation update failed:', e));
 
       set(state => ({
@@ -249,12 +222,12 @@ export const useAIStore = create<AIState>((set, get) => ({
         currentConversation: state.currentConversation?.id === conversationId
           ? { ...state.currentConversation, ...updates }
           : state.currentConversation,
-        messages: state.currentConversation?.id === conversationId ? [...state.messages, aiMessage] : state.messages,
+        messages: state.currentConversation?.id === conversationId ? [...dropPending(state.messages), ...turn] : state.messages,
         sendingMessage: false
       }));
     } catch (error) {
       console.error('Erro crítico ao enviar mensagem:', error);
-      set({ sendingMessage: false });
+      set(state => ({ sendingMessage: false, messages: dropPending(state.messages) }));
       const errorMsg = error instanceof Error && error.message
         ? error.message
         : feedback().ai.sendError;

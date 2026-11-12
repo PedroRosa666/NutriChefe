@@ -6,8 +6,11 @@
  * - Limita mensagens por hora por usuário.
  *
  * Ações:
- *   { action: "assist", message, history?, context?, aiConfig? }
- *       -> { ok, content, recipes, suggestions, meta }
+ *   { action: "assist", message, history?, context?, aiConfig?, conversation_id? }
+ *       -> { ok, content, recipes, suggestions, meta, messages? }
+ *      Com `conversation_id` (conversa do próprio usuário), a função grava a pergunta e a resposta
+ *      em ai_messages e devolve as duas linhas em `messages`, inclusive quando a resposta é um
+ *      aviso de limite ou o modo limitado (sem chave do Gemini). O app não escreve nessa tabela.
  *      1. O Gemini lê a conversa e devolve um plano de busca em JSON (intenção,
  *         ingredientes com sinônimos, exclusões, filtros, tipo de prato).
  *      2. A busca roda no catálogo real (_shared/recipe-search.ts).
@@ -569,7 +572,7 @@ async function writeAnswer(
   }
 }
 
-async function assist(apiKey: string, supabase: any, body: any) {
+async function assist(apiKey: string | undefined, supabase: any, body: any) {
   const message = clip(body.message, MAX_PROMPT_CHARS).trim();
   const catalog = await loadCatalog(supabase).catch((e) => {
     console.error("catalog error", e);
@@ -578,7 +581,8 @@ async function assist(apiKey: string, supabase: any, body: any) {
 
   let plan: Plan;
   try {
-    plan = await makePlan(apiKey, message, body.history, catalog, body.context);
+    // Sem chave do Gemini (modo limitado): o plano sai do vocabulário do catálogo.
+    plan = apiKey ? await makePlan(apiKey, message, body.history, catalog, body.context) : localPlan(message, catalog);
   } catch (e) {
     console.warn("plan fallback", e);
     plan = localPlan(message, catalog);
@@ -603,12 +607,17 @@ async function assist(apiKey: string, supabase: any, body: any) {
   let content: string;
   let answerError: string | undefined;
   try {
+    if (!apiKey) throw new Error("not configured");
     content = await writeAnswer(apiKey, body, brief);
   } catch (e) {
-    console.warn("answer fallback", e);
+    if (apiKey) console.warn("answer fallback", e);
     // Só a categoria vai ao navegador; o texto do erro do Gemini fica no log da função.
     answerError = e instanceof EmptyAnswerError ? "empty" : e instanceof QuotaError ? "quota" : "error";
-    content = result ? composeLocalReply(plan.query, result) : "A IA está indisponível no momento. Tente de novo em instantes.";
+    content = result
+      ? composeLocalReply(plan.query, result)
+      : apiKey
+        ? "A IA está indisponível no momento. Tente de novo em instantes."
+        : "No momento só consigo buscar receitas do catálogo. Diga um ingrediente ou um tipo de prato.";
   }
 
   return {
@@ -962,6 +971,65 @@ async function makeMealPlan(apiKey: string, supabase: any, nutritionistId: strin
   return { ok: true, items, summary: clip(raw?.summary, 400) };
 }
 
+// =============================================================================
+// Conversa gravada pelo servidor
+// =============================================================================
+const RATE_LIMITED = "Você atingiu o limite de mensagens. Tente novamente mais tarde.";
+
+/** Resposta de uma mensagem da conversa: limites, modo limitado (sem chave) e o fluxo normal. */
+async function answerTurn(apiKey: string | undefined, supabase: any, userId: string, access: Access, body: any): Promise<Record<string, any>> {
+  // Sem chave não há custo de IA: a busca no catálogo responde, sem gastar cota.
+  if (!apiKey) return { ...(await assist(undefined, supabase, body)), limited: true };
+  if ((await consumeDemoQuota(supabase, userId)) === false) {
+    return {
+      ok: false,
+      code: "rate_limited",
+      error: `Na demonstração a IA responde até ${DEMO_AI_LIMIT} mensagens. Crie uma conta grátis para continuar.`,
+    };
+  }
+  if (!(await consumeQuota(supabase, userId, access.source === "nutritionist" ? "patient_chat" : "chat"))) {
+    return { ok: false, code: "rate_limited", error: RATE_LIMITED };
+  }
+  body.aiConfig = await loadAIConfig(supabase, userId, access).catch(() => null);
+  return await assist(apiKey, supabase, body);
+}
+
+/**
+ * Uma troca da conversa: grava a pergunta, responde e grava a resposta. Devolve as duas linhas em
+ * `messages`. Assim a mensagem com papel "ai" nunca é escrita pelo navegador.
+ */
+async function chatTurn(apiKey: string | undefined, supabase: any, userId: string, access: Access, body: any) {
+  const message = clip(body.message, MAX_PROMPT_CHARS).trim();
+  if (!message) return { ok: false, code: "bad_request", error: "Mensagem vazia." };
+
+  const { data: conversation } = await supabase
+    .from("ai_conversations").select("id")
+    .eq("id", String(body.conversation_id)).eq("client_id", userId).eq("is_active", true)
+    .maybeSingle();
+  if (!conversation) return { ok: false, code: "bad_request", error: "Conversa não encontrada." };
+
+  const save = async (sender_type: "user" | "ai", content: string, metadata: Record<string, unknown>) => {
+    const { data, error } = await supabase
+      .from("ai_messages").insert({ conversation_id: conversation.id, sender_type, content, metadata })
+      .select().single();
+    if (error) throw error;
+    return data;
+  };
+
+  const userRow = await save("user", message, {});
+  let out: Record<string, any>;
+  try {
+    out = await answerTurn(apiKey, supabase, userId, access, body);
+  } catch (e) {
+    console.error("chat turn error", e);
+    out = { ok: false, code: "error", error: "A IA está indisponível no momento." };
+  }
+  const aiRow = out.ok
+    ? await save("ai", out.content, { recipes: out.recipes ?? [], suggestions: out.suggestions ?? [], ...(out.meta ? { meta: out.meta } : {}) })
+    : await save("ai", out.error, { recipes: [], suggestions: [] });
+  return { ...out, messages: [userRow, aiRow] };
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -978,10 +1046,15 @@ serve(async (req: Request) => {
       return reply({ ok: false, code: "forbidden", error: "O NutriBot é exclusivo do plano Premium." });
     }
 
+    const body = await req.json().catch(() => ({}));
+
+    // Conversa da Mentoria: a função grava a pergunta e a resposta (o app não escreve em ai_messages).
+    if (body.action === "assist" && body.conversation_id) {
+      return reply(await chatTurn(apiKey, supabase, user.id, access, body));
+    }
+
     // Sem chave configurada: o app usa o modo limitado (busca local, sem texto gerado).
     if (!apiKey) return reply({ ok: false, code: "not_configured", limited: true });
-
-    const body = await req.json().catch(() => ({}));
 
     // Demonstração pública (/demo): 5 usos de IA por par, somando todas as ações.
     if ((await consumeDemoQuota(supabase, user.id)) === false) {
@@ -1014,11 +1087,7 @@ serve(async (req: Request) => {
     body.aiConfig = await loadAIConfig(supabase, user.id, access).catch(() => null);
 
     if (!(await consumeQuota(supabase, user.id, access.source === "nutritionist" ? "patient_chat" : "chat"))) {
-      return reply({
-        ok: false,
-        code: "rate_limited",
-        error: "Você atingiu o limite de mensagens. Tente novamente mais tarde.",
-      });
+      return reply({ ok: false, code: "rate_limited", error: RATE_LIMITED });
     }
 
     if (body.action === "assist") {

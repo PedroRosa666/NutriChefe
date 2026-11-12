@@ -4,10 +4,11 @@
  * 3: refeições personalizadas (20261106120000_custom_meals.sql).
  * 4: rendimento, porção e ingredientes das receitas (20261107120000_recipe_yield.sql).
  * 5: valores calculados pelos ingredientes (20261108120000_recipe_calc.sql).
+ * 6: mensagens da Mentoria IA gravadas só pelo servidor (20261118120000_ai_messages_server_only.sql).
  *
  * O build publica o mesmo número em /version.json (vite.config.ts): é o que o site no ar entende.
  */
-export const CLIENT_CONTRACT = 5;
+export const CLIENT_CONTRACT = 6;
 
 export type UpdateCheck = 'current' | 'reload' | 'deploy_behind';
 

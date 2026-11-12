@@ -43,6 +43,7 @@ const MIGRATIONS = [
   '20261115130000_private_profiles_stay_private.sql',
   '20261116120000_security_leftovers.sql',
   '20261117120000_push_secret_reader.sql',
+  '20261118120000_ai_messages_server_only.sql',
 ];
 
 // O que o Supabase já traz pronto (papéis, auth.uid, publicação do Realtime) e as

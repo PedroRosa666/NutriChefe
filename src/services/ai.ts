@@ -2,7 +2,7 @@
 // Mentoria IA: conversas no Supabase e orquestração das respostas.
 // O caminho principal é a Edge Function `ai-chat` (Gemini + busca no catálogo).
 // Sem a IA (chave ausente ou rede), a mesma busca roda aqui com um plano local.
-import { supabase, toJson } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import type { AIConfiguration, AIConversation, AIMessage, AIResponse } from '../types/ai';
 import { assistAI, type AIUserContext } from './gemini';
 import {
@@ -184,48 +184,65 @@ export async function getAIMessages(conversationId: string): Promise<AIMessage[]
   return ((data || []) as AIMessage[]).reverse();
 }
 
-export async function createAIMessage(
-  message: Omit<AIMessage, 'id' | 'created_at' | 'updated_at'>
-): Promise<AIMessage> {
-  const { data, error } = await supabase.from('ai_messages').insert([{ ...message, metadata: toJson(message.metadata) }]).select().single();
-  if (error) throw error;
-  return data as unknown as AIMessage;
+/** Mensagem que existe só na tela: a pergunta enquanto o servidor responde, ou a busca local. */
+export function localAIMessage(
+  conversationId: string,
+  senderType: AIMessage['sender_type'],
+  content: string,
+  metadata: AIMessage['metadata'] = {}
+): AIMessage {
+  return {
+    id: `local-${crypto.randomUUID()}`,
+    conversation_id: conversationId,
+    sender_type: senderType,
+    content,
+    metadata,
+    created_at: new Date().toISOString(),
+  };
 }
 
 // =============================================================================
 // Orquestração principal
 // =============================================================================
-export async function processAIMessage(
+/**
+ * Uma troca da conversa. Quem grava a pergunta e a resposta é a função `ai-chat` (o app não escreve
+ * em ai_messages); ela devolve as duas linhas. Se a função não responder (rede, fora do ar), a busca
+ * local responde só na tela, sem gravar (`saved: false`).
+ */
+export async function sendAIChatTurn(
+  conversationId: string,
   userMessage: string,
+  history: AIMessage[] = [],
   aiConfig?: AIConfiguration,
-  conversationHistory: AIMessage[] = [],
   context?: AIUserContext
-): Promise<AIResponse> {
+): Promise<{ messages: AIMessage[]; saved: boolean }> {
   const content = String(userMessage || '').trim();
-  if (!content) {
-    return { content: feedback().ai.notUnderstood, recipes: [], suggestions: defaultSuggestions() };
-  }
+  const result = await assistAI(content, history, aiConfig, context, conversationId);
+  if (result.saved) return { messages: result.saved, saved: true };
 
-  // O store já inclui a mensagem atual no histórico; ela vai separada.
-  const history = conversationHistory.at(-1)?.content === content
-    ? conversationHistory.slice(0, -1)
-    : conversationHistory;
-
-  const result = await assistAI(content, history, aiConfig, context);
-  if (result.ok) return result.response;
-  if (!result.limited) {
-    // Limite por hora, acesso negado etc.: a mensagem do servidor explica o motivo.
-    return { content: result.message ?? feedback().ai.cannotReplyNow, recipes: [], suggestions: [] };
+  let response: AIResponse;
+  if (result.ok) {
+    response = result.response;
+  } else if (!result.limited) {
+    // Acesso negado, conversa encerrada etc.: a mensagem do servidor explica o motivo.
+    response = { content: result.message ?? feedback().ai.cannotReplyNow, recipes: [], suggestions: [] };
+  } else {
+    try {
+      response = await localReply(content, context);
+    } catch (error) {
+      console.error('Erro na busca local:', error);
+      response = { content: feedback().ai.searchError, recipes: [], suggestions: defaultSuggestions() };
+    }
   }
-
-  try {
-    return await localReply(content, context);
-  } catch (error) {
-    console.error('Erro na busca local:', error);
-    return {
-      content: feedback().ai.searchError,
-      recipes: [],
-      suggestions: defaultSuggestions(),
-    };
-  }
+  return {
+    saved: false,
+    messages: [
+      localAIMessage(conversationId, 'user', content),
+      localAIMessage(conversationId, 'ai', response.content || feedback().ai.emptyReply, {
+        recipes: response.recipes || [],
+        suggestions: response.suggestions || [],
+        ...(response.meta ? { meta: response.meta } : {}),
+      }),
+    ],
+  };
 }
