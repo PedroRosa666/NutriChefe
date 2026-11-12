@@ -7,8 +7,8 @@
 > tarefa por encerrada. Item feito sai de "Próximos passos" e entra em "Últimas entregas".
 > Mantenha curto: detalhe técnico fica no código, nos commits e no README.
 
-Última atualização: 12/11/2026 (no ar até o commit `986968c`; 47 receitas no catálogo; correção do `ai_messages` pronta no código,
-**ainda não publicada**: ver item 9; lote de segurança:
+Última atualização: 12/11/2026 (no ar até o commit `65488b2`; 47 receitas no catálogo; migration `20261118120000` aplicada e função
+`ai-chat` publicada: só o servidor grava em `ai_messages`; lote de segurança:
 migrations `20261116120000` e `20261117120000` aplicadas, funções `demo`, `send-push`, `admin` e
 `ai-chat` publicadas, "Serve para" marcado nas 24 receitas).
 
@@ -90,7 +90,7 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 
 | Data | Commit | O quê |
 |---|---|---|
-| 12/11 | (local, sem commit) | `ai_messages`: a função `ai-chat` grava a pergunta e a resposta; o app só lê (contrato 6); migration `20261118120000` tira o INSERT do usuário. Falta publicar, na ordem do item 9 |
+| 12/11 | `65488b2` | `ai_messages`: a função `ai-chat` grava a pergunta e a resposta e o app só lê (contrato 6); migration `20261118120000` tirou o INSERT do usuário. Conferido no site: a função grava as duas mensagens e a inserção direta dá 403 |
 | 12/11 | (banco) | 6 lanches veganos (tremoço, torrada com pasta de amendoim, cookie de aveia, patê de tofu, grão-de-bico crocante, smoothie de morango); catálogo com 47, 9 lanches veganos |
 | 12/11 | (banco) | 17 receitas novas com nutrição calculada pelos ingredientes (10 veganas ricas em proteína, 7 de café da manhã, lanche e pratos magros); catálogo com 41. Comando `npm run db:query -- arquivo.sql` |
 | 12/11 | `7b7a331` | Gerador: proteína (ovo para vegetariano, proteínas magras, jogada combinada, aviso abaixo do piso). Impeccable: selos e alergias no topo da ficha, selo de kcal abaixo da meta, ordenação da lista, avisos em região fixa, alvos de toque |
@@ -125,15 +125,18 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
    revela se o e-mail já tem conta (era a "enumeração no login").
 
 **Segurança (o que sobrou)**
-9. `ai_messages` (o paciente ainda consegue gravar mensagem com papel "assistant"): correção pronta no
-   código, falta publicar **nesta ordem** (cada passo pede o "ok" do Pedro):
-   1. publicar a função `ai-chat` (compatível com o app atual: só grava quando recebe `conversation_id`);
-   2. commit e push (app com `CLIENT_CONTRACT` 6: manda `conversation_id` e não grava mais na tabela);
-   3. `npm run db:push` da migration `20261118120000` (tira o INSERT do usuário e sobe `app_min_client()` para 6);
-   4. conferir no site: mandar uma mensagem na Mentoria IA e recarregar (a conversa continua lá).
-   O modo limitado (sem chave do Gemini) passou a ser respondido e gravado pela função. Se a função
-   estiver fora do ar, a busca local responde só na tela, sem gravar.
-10. Repetir a auditoria de segurança no perfil `standard`.
+10. Auditoria de segurança `standard` de 12/11: nenhum achado grave. Conferido no banco: a view antiga
+    `conversation_details` e a tabela `message_attachments` não existem; nenhuma receita é de autor sem
+    CRN aprovado. Já corrigido no código (falta publicar a `ai-chat`): cota conferida antes de gravar a
+    conversa, e histórico e alergias lidos do banco em vez do navegador. Em aberto, do mais sério ao menos:
+    - (médio) Qualquer conta logada publica receita no catálogo: `save_recipe` e a política de INSERT de
+      `recipes` não conferem nutricionista com CRN aprovado (só a tela confere).
+    - (médio) Perfil de nutricionista sem CRN aprovado abre por link e entra no sitemap (a política
+      "Public profile rows" e o `worker/index.ts` não filtram `crn_status`). Há 3 contas assim.
+    - (baixo) Código de convite com 8 caracteres e sem limite de tentativas (`redeem_nutritionist_invite`).
+    - (baixo) Nutricionista aprovado troca o nome e mantém o selo de CRN verificado.
+    - (baixo) Buckets públicos `avatars` e `recipe-images` deixam listar as pastas (ids de usuários).
+    - (baixo) `client_errors`: visitante sem login consegue encher a tabela variando o `user_agent`.
 
 **Produto**
 11. Plano de implementação: próximas etapas ANA → EVO → CHECK → DIA e AGEN A → AGEN B, MOD e MET.
@@ -185,4 +188,4 @@ Google Play Billing (opção B), `assetlinks.json`, página pública de exclusã
   botão pequeno de linha ganha a classe `tap-target` (área de toque de 44 px).
 - Acompanhamento novo do gerador cujo nome na TACO engana as regras de dieta (ovo é "de galinha"):
   declarar o que ele é no campo `as` de `SIDE_SPECS`.
-- Ao mudar formato de dados: subir `CLIENT_CONTRACT` (`src/lib/client-contract.ts`, hoje 6; o banco no ar ainda pede 5 até a migration do item 9) junto com `app_min_client()`.
+- Ao mudar formato de dados: subir `CLIENT_CONTRACT` (`src/lib/client-contract.ts`, hoje 6) junto com `app_min_client()`.

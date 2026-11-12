@@ -9,8 +9,9 @@
  *   { action: "assist", message, history?, context?, aiConfig?, conversation_id? }
  *       -> { ok, content, recipes, suggestions, meta, messages? }
  *      Com `conversation_id` (conversa do próprio usuário), a função grava a pergunta e a resposta
- *      em ai_messages e devolve as duas linhas em `messages`, inclusive quando a resposta é um
- *      aviso de limite ou o modo limitado (sem chave do Gemini). O app não escreve nessa tabela.
+ *      em ai_messages e devolve as duas linhas em `messages`, também no modo limitado (sem chave
+ *      do Gemini). Nesse caso o histórico e as alergias vêm do banco, não do navegador, e aviso de
+ *      limite não é gravado. O app não escreve nessa tabela.
  *      1. O Gemini lê a conversa e devolve um plano de busca em JSON (intenção,
  *         ingredientes com sinônimos, exclusões, filtros, tipo de prato).
  *      2. A busca roda no catálogo real (_shared/recipe-search.ts).
@@ -976,27 +977,14 @@ async function makeMealPlan(apiKey: string, supabase: any, nutritionistId: strin
 // =============================================================================
 const RATE_LIMITED = "Você atingiu o limite de mensagens. Tente novamente mais tarde.";
 
-/** Resposta de uma mensagem da conversa: limites, modo limitado (sem chave) e o fluxo normal. */
-async function answerTurn(apiKey: string | undefined, supabase: any, userId: string, access: Access, body: any): Promise<Record<string, any>> {
-  // Sem chave não há custo de IA: a busca no catálogo responde, sem gastar cota.
-  if (!apiKey) return { ...(await assist(undefined, supabase, body)), limited: true };
-  if ((await consumeDemoQuota(supabase, userId)) === false) {
-    return {
-      ok: false,
-      code: "rate_limited",
-      error: `Na demonstração a IA responde até ${DEMO_AI_LIMIT} mensagens. Crie uma conta grátis para continuar.`,
-    };
-  }
-  if (!(await consumeQuota(supabase, userId, access.source === "nutritionist" ? "patient_chat" : "chat"))) {
-    return { ok: false, code: "rate_limited", error: RATE_LIMITED };
-  }
-  body.aiConfig = await loadAIConfig(supabase, userId, access).catch(() => null);
-  return await assist(apiKey, supabase, body);
-}
-
 /**
- * Uma troca da conversa: grava a pergunta, responde e grava a resposta. Devolve as duas linhas em
- * `messages`. Assim a mensagem com papel "ai" nunca é escrita pelo navegador.
+ * Uma troca da conversa: confere a cota, grava a pergunta, responde e grava a resposta. Devolve as
+ * duas linhas em `messages`. Assim a mensagem com papel "ai" nunca é escrita pelo navegador.
+ *
+ * O que entra no texto gravado vem do servidor: o histórico é lido de ai_messages e as alergias e
+ * dietas, do perfil de saúde. O que o navegador manda nesses campos é ignorado (um histórico forjado
+ * faria a IA "assinar" um texto escolhido pelo usuário, que o nutricionista lê depois).
+ * Aviso de limite não é gravado: sem cota, nada entra na tabela.
  */
 async function chatTurn(apiKey: string | undefined, supabase: any, userId: string, access: Access, body: any) {
   const message = clip(body.message, MAX_PROMPT_CHARS).trim();
@@ -1007,6 +995,30 @@ async function chatTurn(apiKey: string | undefined, supabase: any, userId: strin
     .eq("id", String(body.conversation_id)).eq("client_id", userId).eq("is_active", true)
     .maybeSingle();
   if (!conversation) return { ok: false, code: "bad_request", error: "Conversa não encontrada." };
+
+  if ((await consumeDemoQuota(supabase, userId)) === false) {
+    return {
+      ok: false,
+      code: "rate_limited",
+      error: `Na demonstração a IA responde até ${DEMO_AI_LIMIT} mensagens. Crie uma conta grátis para continuar.`,
+    };
+  }
+  // A cota vale também no modo limitado (sem chave): é ela que limita o que entra na tabela.
+  if (!(await consumeQuota(supabase, userId, access.source === "nutritionist" ? "patient_chat" : "chat"))) {
+    return { ok: false, code: "rate_limited", error: RATE_LIMITED };
+  }
+
+  const [{ data: past }, { data: health }] = await Promise.all([
+    supabase.from("ai_messages").select("sender_type, content, metadata")
+      .eq("conversation_id", conversation.id).order("created_at", { ascending: false }).limit(MAX_HISTORY),
+    supabase.from("client_health_profiles").select("allergies, dietary_preferences").eq("user_id", userId).maybeSingle(),
+  ]);
+  // Os cartões de receita não fazem parte do texto: os títulos vão junto para a IA entender "a primeira".
+  body.history = (past ?? []).reverse().map((m: any) => {
+    const titles = m.sender_type === "ai" && Array.isArray(m.metadata?.recipes) ? m.metadata.recipes.map((r: any) => r?.title).filter(Boolean) : [];
+    return { sender_type: m.sender_type, content: titles.length ? `${m.content}\n[Receitas mostradas: ${titles.join("; ")}]` : m.content };
+  });
+  body.context = { ...(body.context ?? {}), allergies: health?.allergies ?? [], dietaryPreferences: health?.dietary_preferences ?? [] };
 
   const save = async (sender_type: "user" | "ai", content: string, metadata: Record<string, unknown>) => {
     const { data, error } = await supabase
@@ -1019,7 +1031,8 @@ async function chatTurn(apiKey: string | undefined, supabase: any, userId: strin
   const userRow = await save("user", message, {});
   let out: Record<string, any>;
   try {
-    out = await answerTurn(apiKey, supabase, userId, access, body);
+    if (apiKey) body.aiConfig = await loadAIConfig(supabase, userId, access).catch(() => null);
+    out = { ...(await assist(apiKey, supabase, body)), ...(apiKey ? {} : { limited: true }) };
   } catch (e) {
     console.error("chat turn error", e);
     out = { ok: false, code: "error", error: "A IA está indisponível no momento." };
