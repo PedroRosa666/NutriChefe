@@ -1,13 +1,21 @@
-// Migrations no banco de produção pela Supabase CLI (projeto já ligado em supabase/.temp).
-//   npm run db:status  -> mostra o que falta rodar (não muda nada)
-//   npm run db:push    -> roda as migrations novas
+// Banco de produção pela Supabase CLI (projeto já ligado em supabase/.temp).
+//   npm run db:status               -> mostra as migrations que faltam rodar (não muda nada)
+//   npm run db:push                 -> roda as migrations novas
+//   npm run db:query -- arquivo.sql -> executa um arquivo SQL (carga de dados, conferência). Mudança
+//                                      de estrutura continua sendo migration, nunca por aqui.
 // A senha do banco vem da variável SUPABASE_DB_PASSWORD (no Windows, também a da conta do usuário,
 // para valer sem reabrir o terminal). Ela nunca é impressa.
 import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 
-const mode = process.argv[2];
-if (mode !== 'status' && mode !== 'push') {
-  console.error('Uso: node scripts/db.mjs status|push');
+const CLI = 'supabase@3.1.0';
+const [mode, file] = process.argv.slice(2);
+if (!['status', 'push', 'query'].includes(mode) || (mode === 'query' && !file)) {
+  console.error('Uso: node scripts/db.mjs status|push|query <arquivo.sql>');
+  process.exit(2);
+}
+if (mode === 'query' && !existsSync(file)) {
+  console.error(`Arquivo não encontrado: ${file}`);
   process.exit(2);
 }
 
@@ -24,10 +32,16 @@ if (!password) {
   process.exit(1);
 }
 
-const args = ['-y', 'supabase@3.1.0', 'db', 'push', '--linked', mode === 'status' ? '--dry-run' : '--yes'];
+const windows = process.platform === 'win32';
+// Com shell (Windows), caminho com espaço precisa ir entre aspas.
+const quoted = (value) => (windows ? `"${value}"` : value);
+const args =
+  mode === 'query'
+    ? ['-y', CLI, 'db', 'query', '--remote', '--file', quoted(file), '--yes']
+    : ['-y', CLI, 'db', 'push', '--linked', mode === 'status' ? '--dry-run' : '--yes'];
 const result = spawnSync('npx', args, {
   stdio: 'inherit',
-  shell: process.platform === 'win32',
+  shell: windows,
   env: { ...process.env, SUPABASE_DB_PASSWORD: password },
 });
 process.exit(result.status ?? 1);

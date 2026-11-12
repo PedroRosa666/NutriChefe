@@ -7,7 +7,7 @@
 > tarefa por encerrada. Item feito sai de "Próximos passos" e entra em "Últimas entregas".
 > Mantenha curto: detalhe técnico fica no código, nos commits e no README.
 
-Última atualização: 12/11/2026 (lote de segurança e SEO no ar: commits `3cfd7d1`..`480c886` e seguinte,
+Última atualização: 12/11/2026 (no ar até o commit `7b7a331`; 41 receitas no catálogo; lote de segurança:
 migrations `20261116120000` e `20261117120000` aplicadas, funções `demo`, `send-push`, `admin` e
 `ai-chat` publicadas, "Serve para" marcado nas 24 receitas).
 
@@ -89,7 +89,8 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 
 | Data | Commit | O quê |
 |---|---|---|
-| 12/11 | (local, sem commit) | Gerador: proteína (ovo para vegetariano, proteínas magras, jogada combinada, aviso abaixo do piso). Impeccable: selos e alergias no topo da ficha, selo de kcal abaixo da meta, ordenação da lista, avisos em região fixa, alvos de toque |
+| 12/11 | (banco) | 17 receitas novas com nutrição calculada pelos ingredientes (10 veganas ricas em proteína, 7 de café da manhã, lanche e pratos magros); catálogo com 41. Comando `npm run db:query -- arquivo.sql` |
+| 12/11 | `7b7a331` | Gerador: proteína (ovo para vegetariano, proteínas magras, jogada combinada, aviso abaixo do piso). Impeccable: selos e alergias no topo da ficha, selo de kcal abaixo da meta, ordenação da lista, avisos em região fixa, alvos de toque |
 | 12/11 | (seguinte ao `fd50fe4`) | Segredo do push gravado e conferido (403 sem cabeçalho); teste de tela do login (CSP); kcal da receita Cookie corrigida (5 → 263) |
 | 11/11 | `3cfd7d1`..`fd50fe4` | Segurança e SEO: CSP completo (fonte única de cabeçalhos), CRN revogado encerra vínculos, limite atômico da demo, segredo no push, senha mínima 8, imagem de prévia, versões fixadas, "Serve para" nas 24 receitas |
 | 03/11 | (Supabase) | Função `delete-account` publicada: excluir conta apaga também os arquivos |
@@ -101,6 +102,10 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 | 29/10 | `f057c20` e antes | Etapas 1–5 do plano de implementação (BASE, HIST, REF, REC A, REC B); demo pública; domínio próprio |
 
 ## 5. Próximos passos
+
+**Receitas de 12/11 (conferir)**
+- As 17 receitas estão em nome da conta de nutricionista do Pedro, com fotos do Unsplash por link
+  (ilustrativas: a do tofu mexido mostra ovo mexido). Trocar a foto é editar a receita no app.
 
 **Pendências do lote de 11/11**
 1. Stripe com o CSP: o Pedro clica em assinar numa conta real e confere se a página do Stripe abre (não
@@ -123,11 +128,10 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 **Produto**
 11. Plano de implementação: próximas etapas ANA → EVO → CHECK → DIA e AGEN A → AGEN B, MOD e MET.
 12. Planejar mais recursos Premium para o nutricionista (a página Premium ainda fala com o paciente).
-13. Gerador, o que sobrou: com o catálogo atual, o vegano fica em ~76% da meta de proteína (era 60%) e o
-    vegetariano em ~82% (era 65%); o onívoro, ~90%. O limite agora é o catálogo: a TACO não tem
-    proteína vegetal magra (grão-de-bico cozido, proteína de soja) e as receitas veganas são
-    gordurosas. Caminhos: cadastrar esses alimentos no catálogo global ou criar receitas veganas
-    ricas em proteína. O editor já avisa o profissional nos dias em que a meta não fecha.
+13. Gerador: com as 17 receitas de 12/11, a simulação dá ~88% da meta de proteína para o vegano (era
+    60%), ~89% para o vegetariano e ~101% para o onívoro, sem dias abaixo de 80%. Falta proteína
+    vegetal magra na TACO (grão-de-bico cozido, proteína de soja): cadastrar no catálogo global
+    ajudaria mais. Só há 3 lanches veganos; vale criar mais.
 14. LazyMotion: decidido não fazer em 12/11. Carregar a animação sob demanda deixaria conteúdo
     invisível se o arquivo extra falhasse (telas começam com opacidade 0); a versão sem esse risco
     economiza só ~10 KB.
@@ -141,7 +145,9 @@ Google Play Billing (opção B), `assetlinks.json`, página pública de exclusã
 - Responder em **português do Brasil**.
 - **Commit e push só com autorização do Pedro**; push na `main` publica o site. Depois do push,
   conferir o check "Workers Builds: app" (`gh api repos/PedroRosa666/NutriChefe/commits/<sha>/check-runs`).
-- Migrations: `npm run db:status` (simulação) e `npm run db:push`. **Nunca publicar código que
+- Migrations: `npm run db:status` (simulação) e `npm run db:push`. Carga de dados ou conferência:
+  `npm run db:query -- arquivo.sql` (estrutura nunca por aqui). Receita nova entra pela função
+  `save_recipe` com os ingredientes ligados à TACO, para a nutrição sair calculada. **Nunca publicar código que
   dependa de migration não aplicada.** Mudança que remove acesso: primeiro o app novo no ar, depois
   a migration. Avisar em uma linha o que a migration muda.
 - Publicar Edge Function é deploy em produção: pedir autorização.
