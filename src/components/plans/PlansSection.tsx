@@ -496,7 +496,7 @@ export function PlansSection({ clientId, mode, goals, allergies, preferences, re
       <button
         type="button"
         onClick={() => setSwapping({ item, label: itemLabel(item) })}
-        className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+        className="tap-target inline-flex flex-shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
         aria-label={t.swaps.swapButton}
         title={t.swaps.swapButton}
       >
@@ -596,7 +596,7 @@ export function PlansSection({ clientId, mode, goals, allergies, preferences, re
             <button
               type="button"
               onClick={remove}
-              className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
+              className="tap-target rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20"
               aria-label={t.plan.delete}
               title={t.plan.delete}
             >
@@ -634,7 +634,7 @@ export function PlansSection({ clientId, mode, goals, allergies, preferences, re
             type="button"
             onClick={() => setDay(d)}
             className={cn(
-              'min-w-[56px] rounded-xl border px-3 py-2 text-sm font-semibold transition-colors',
+              'min-h-[44px] min-w-[56px] rounded-xl border px-3 py-2 text-sm font-semibold transition-colors',
               d === day
                 ? 'border-emerald-500 bg-emerald-600 text-white'
                 : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'

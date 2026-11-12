@@ -17,7 +17,31 @@ interface ToastProps {
 // ou o foco no botão de fechar, o tempo para.
 const DURATION: Record<ToastType, number> = { success: 4000, info: 4000, warning: 8000, error: 10000 };
 
-export function Toast({ message, type, onClose, duration }: ToastProps) {
+// No celular fica acima da barra de navegação de baixo. Vazia, a região não ocupa espaço nem pega
+// cliques; o aviso dentro dela volta a ser clicável.
+const REGION =
+  'pointer-events-none fixed left-4 right-4 bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+0.75rem)] z-50 md:left-auto md:bottom-4 md:max-w-md';
+
+/**
+ * Onde os avisos aparecem. As duas regiões ficam sempre na página, vazias: leitores de tela só
+ * anunciam com segurança o texto que entra numa região que já existia (uma região criada junto com
+ * o texto muitas vezes passa calada). Erro interrompe a leitura (alert); o resto espera a vez (status).
+ */
+export function ToastRegion({ message, type, onClose }: { message: string | null; type: ToastType; onClose: () => void }) {
+  const urgent = type === 'error';
+  return (
+    <>
+      <div role="status" aria-live="polite" className={REGION}>
+        <AnimatePresence>{message && !urgent && <Toast key="toast" message={message} type={type} onClose={onClose} />}</AnimatePresence>
+      </div>
+      <div role="alert" aria-live="assertive" className={REGION}>
+        <AnimatePresence>{message && urgent && <Toast key="toast" message={message} type={type} onClose={onClose} />}</AnimatePresence>
+      </div>
+    </>
+  );
+}
+
+function Toast({ message, type, onClose, duration }: ToastProps) {
   const t = useTranslation();
   const [paused, setPaused] = React.useState(false);
 
@@ -35,36 +59,32 @@ export function Toast({ message, type, onClose, duration }: ToastProps) {
   };
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 50 }}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocus={() => setPaused(true)}
-        onBlur={() => setPaused(false)}
-        className={cn(
-          // No celular fica acima da barra de navegação de baixo.
-          "fixed left-4 right-4 bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+0.75rem)] md:left-auto md:bottom-4 md:max-w-md flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg z-50",
-          type === 'success' && "bg-emerald-50 dark:bg-emerald-900 border-2 border-emerald-500 dark:border-emerald-400",
-          type === 'error' && "bg-red-50 dark:bg-red-900 border-2 border-red-500 dark:border-red-400",
-          type === 'info' && "bg-blue-50 dark:bg-blue-900 border-2 border-blue-500 dark:border-blue-400",
-          type === 'warning' && "bg-amber-50 dark:bg-amber-900 border-2 border-amber-500 dark:border-amber-400"
-        )}
-        role={type === 'error' ? 'alert' : 'status'}
+    <motion.div
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 50 }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+      className={cn(
+        'pointer-events-auto flex items-center gap-3 rounded-xl px-4 py-3 shadow-lg',
+        type === 'success' && "bg-emerald-50 dark:bg-emerald-900 border-2 border-emerald-500 dark:border-emerald-400",
+        type === 'error' && "bg-red-50 dark:bg-red-900 border-2 border-red-500 dark:border-red-400",
+        type === 'info' && "bg-blue-50 dark:bg-blue-900 border-2 border-blue-500 dark:border-blue-400",
+        type === 'warning' && "bg-amber-50 dark:bg-amber-900 border-2 border-amber-500 dark:border-amber-400"
+      )}
+    >
+      {icons[type]}
+      <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white">{message}</span>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label={t.common.close}
+        className="-mr-1 inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
       >
-        {icons[type]}
-        <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white">{message}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t.common.close}
-          className="-mr-1 inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-        >
-          <X className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-        </button>
-      </motion.div>
-    </AnimatePresence>
+        <X className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+      </button>
+    </motion.div>
   );
 }

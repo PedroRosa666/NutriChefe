@@ -27,6 +27,7 @@ import { loadAdherence, type AdherenceResult } from '../../services/adherence';
 import { getMyCrnStatus } from '../../services/verification';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
+import { PatientStatusChips, StatusChip, type PatientStatus } from './AttentionPanel';
 
 interface PatientDetailProps {
   link: CareLink;
@@ -34,9 +35,8 @@ interface PatientDetailProps {
   /** Abre já com a conversa aberta (link de um aviso de mensagem). */
   openChat?: boolean;
   onEnded: () => void;
-  /** Contadores nas abas: trocas pendentes e mensagens não lidas deste paciente. */
-  pendingSwaps?: number;
-  unread?: number;
+  /** O que pede atenção neste paciente: contadores nas abas e selos no topo da ficha. */
+  status?: PatientStatus;
 }
 
 type DetailTab = 'summary' | 'plan' | 'goals' | 'appointments' | 'messages';
@@ -45,7 +45,10 @@ const DETAIL_TABS: DetailTab[] = ['summary', 'plan', 'goals', 'appointments', 'm
 const card = 'rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900';
 const fmt = (n: number, digits = 0) => n.toLocaleString(appLocale(), { maximumFractionDigits: digits });
 
-export function PatientDetail({ link, onBack, onEnded, openChat = false, pendingSwaps = 0, unread = 0 }: PatientDetailProps) {
+const NO_STATUS: PatientStatus = { unread: 0, swaps: 0, inactive: false };
+
+export function PatientDetail({ link, onBack, onEnded, openChat = false, status = NO_STATUS }: PatientDetailProps) {
+  const { swaps: pendingSwaps, unread } = status;
   const user = useAuthStore((s) => s.user);
   const { showToast } = useToastStore();
   const t = useTranslation();
@@ -286,6 +289,14 @@ export function PatientDetail({ link, onBack, onEnded, openChat = false, pending
           )}
         </div>
       </div>
+
+      {/* Antes de qualquer aba: por que este paciente pede atenção e o que ele não pode comer. */}
+      {(h?.allergies?.length || unread > 0 || pendingSwaps > 0 || status.inactive || status.lowAdherence != null || status.kcal) && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {!!h?.allergies?.length && <StatusChip kind="allergy">{t.care.allergiesAlert.replace('{list}', h.allergies.join(', '))}</StatusChip>}
+          <PatientStatusChips status={status} onOpen={selectTab} />
+        </div>
+      )}
 
       {/* Atalhos da ficha: o que o nutricionista faz com mais frequência fica a um toque.
           No celular as 5 cabem na tela (ícone sobre o nome), sem esconder a aba com aviso. */}

@@ -19,7 +19,7 @@ import {
   type PatientOverview,
 } from '../../services/care';
 import { loadAdherence } from '../../services/adherence';
-import { isInactive, lastActivity } from '../../lib/patient-activity';
+import { isInactive, kcalStatus, lastActivity } from '../../lib/patient-activity';
 import { MIN_PLANNED_FOR_PERCENT } from '../../lib/adherence';
 import { Avatar } from './Avatar';
 import { PatientDetail } from './PatientDetail';
@@ -28,7 +28,7 @@ import { LoadError } from '../common/LoadError';
 import { appLocale } from '../../lib/format';
 import { getMyCrnStatus, type CrnStatus } from '../../services/verification';
 import { matchesSearch } from '../../lib/search';
-import { StatusChip, needsAttention, reasonTab } from './AttentionPanel';
+import { PatientStatusChips, needsAttention, reasonTab, type PatientStatus } from './AttentionPanel';
 import { cn } from '../../lib/utils';
 
 interface PatientSummary {
@@ -38,6 +38,22 @@ interface PatientSummary {
   days7: number;
   avgKcal7: number;
   goalKcal: number | null;
+}
+
+// Ordens da lista: quem precisa primeiro (padrão), nome, ou quem está há mais tempo sem registrar.
+const PATIENT_SORTS = ['need', 'name', 'idle'] as const;
+type PatientSort = (typeof PATIENT_SORTS)[number];
+type SortRow = { link: CareLink; s?: PatientSummary; score: number };
+
+function comparePatients(sort: PatientSort, x: SortRow, y: SortRow): number {
+  const byName = (x.link.person.full_name ?? '').localeCompare(y.link.person.full_name ?? '', appLocale());
+  if (sort === 'name') return byName;
+  if (sort === 'idle') {
+    // Quem nunca registrou vem primeiro; depois, do registro mais antigo para o mais novo.
+    const last = (r: SortRow) => r.s?.lastActive ?? '';
+    return last(x).localeCompare(last(y)) || byName;
+  }
+  return y.score - x.score || byName;
 }
 
 function toSummary(o: PatientOverview): PatientSummary {
@@ -157,23 +173,30 @@ export function PatientsPanel() {
   // Ordem por necessidade: mensagens e trocas primeiro, depois quem parou de registrar e quem
   // está com adesão baixa. O filtro começa em "Precisam de atenção" quando há alguém nela
   // (?filtro=atencao vem do "Ver todos" do Painel).
+  const [sort, setSort] = useState<PatientSort>('need');
+  /** O que pede atenção no paciente: a mesma conta para a linha da lista e para o topo da ficha. */
+  const statusOf = (link: CareLink): PatientStatus => {
+    const id = link.person.id;
+    const s = summaries[id];
+    const a = adherence[id];
+    return {
+      unread: unread.get(id) ?? 0,
+      swaps: pendingSwaps.get(id) ?? 0,
+      inactive: !!s && isInactive(s.lastActive),
+      lowAdherence: a != null && a < 50 ? a : null,
+      kcal: s ? kcalStatus(s.avgKcal7, s.goalKcal, s.days7) : null,
+    };
+  };
   const rows = patients
     .filter((p) => matchesSearch(query, p.person.full_name))
     .map((link) => {
-      const id = link.person.id;
-      const s = summaries[id];
-      const a = adherence[id];
-      const unreadCount = unread.get(id) ?? 0;
-      const swapCount = pendingSwaps.get(id) ?? 0;
-      const lowAdherence = a != null && a < 50 ? a : null;
-      const inactive = !!s && isInactive(s.lastActive);
-      const overGoal = !!s && !!s.goalKcal && s.avgKcal7 > s.goalKcal * 1.1;
+      const status = statusOf(link);
       // A ordem usa só o resumo (não a adesão, que chega aos poucos): a lista não pula sob o dedo.
-      const score = (unreadCount + swapCount) * 100 + (inactive ? 10 : 0) + (overGoal ? 1 : 0);
-      const needs = needsAttention(unreadCount, swapCount, inactive);
-      return { link, s, unreadCount, swapCount, lowAdherence, inactive, overGoal, score, needs };
+      const score = (status.unread + status.swaps) * 100 + (status.inactive ? 10 : 0) + (status.kcal === 'over' ? 1 : 0);
+      const needs = needsAttention(status.unread, status.swaps, status.inactive);
+      return { link, s: summaries[link.person.id], status, score, needs };
     })
-    .sort((x, y) => y.score - x.score || (x.link.person.full_name ?? '').localeCompare(y.link.person.full_name ?? '', appLocale()));
+    .sort((x, y) => comparePatients(sort, x, y));
   const needCount = rows.filter((r) => r.needs).length;
   const filter = filterChoice ?? (needCount > 0 ? 'attention' : 'all');
   // Com algo digitado na busca, procura em todos (o filtro não esconde quem a pessoa procurou).
@@ -261,8 +284,7 @@ export function PatientsPanel() {
         key={selected.person.id}
         link={selected}
         openChat={openChat}
-        pendingSwaps={pendingSwaps.get(selected.person.id) ?? 0}
-        unread={unread.get(selected.person.id) ?? 0}
+        status={statusOf(selected)}
         onBack={() => {
           openPatient(null);
           load();
@@ -440,7 +462,21 @@ export function PatientsPanel() {
                   </button>
                 ))}
               </div>
-              {/* Busca só quando a lista já é grande o bastante para precisar. */}
+              {/* Ordem e busca só quando a lista já é grande o bastante para precisar. */}
+              {patients.length > 6 && (
+                <select
+                  aria-label={t.care.sortLabel}
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as PatientSort)}
+                  className="min-h-[44px] rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                >
+                  {PATIENT_SORTS.map((key) => (
+                    <option key={key} value={key}>
+                      {t.care.sortOptions[key]}
+                    </option>
+                  ))}
+                </select>
+              )}
               {patients.length > 6 && (
                 <div className="relative w-full max-w-sm sm:w-auto sm:flex-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
@@ -462,11 +498,11 @@ export function PatientsPanel() {
             </p>
           ) : (
             <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {shown.map(({ link: p, s, unreadCount, swapCount, lowAdherence, inactive, overGoal }) => (
+              {shown.map(({ link: p, s, status }) => (
                 <li key={p.id}>
                   <button
                     type="button"
-                    onClick={() => openPatient(p, reasonTab(unreadCount, swapCount))}
+                    onClick={() => openPatient(p, reasonTab(status.unread, status.swaps))}
                     className="glass-card flex h-full w-full items-center gap-3 rounded-2xl border p-4 text-left transition-shadow duration-200 hover:shadow-lg"
                   >
                     <Avatar name={p.person.full_name} url={p.person.avatar_url} className="h-12 w-12" />
@@ -482,26 +518,7 @@ export function PatientsPanel() {
                       ) : (
                         !overviewFailed && <p className="h-4 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
                       )}
-                      {(unreadCount > 0 || swapCount > 0 || lowAdherence !== null || inactive || overGoal) && (
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          {unreadCount > 0 && (
-                            <StatusChip kind="messages">
-                              {(unreadCount === 1 ? t.attention.messagesOne : t.attention.messagesMany).replace('{n}', String(unreadCount))}
-                            </StatusChip>
-                          )}
-                          {swapCount > 0 && (
-                            <StatusChip kind="swaps">
-                              {(swapCount === 1 ? t.attention.swapsOne : t.attention.swapsMany).replace('{n}', String(swapCount))}
-                            </StatusChip>
-                          )}
-                          {inactive && <StatusChip kind="inactive">{t.care.inactiveAlert}</StatusChip>}
-                          {/* Adesão baixa: só com refeições suficientes para a % fazer sentido. */}
-                          {lowAdherence !== null && (
-                            <StatusChip kind="adherence">{t.adherence.lowAlert.replace('{percent}', String(lowAdherence))}</StatusChip>
-                          )}
-                          {overGoal && !inactive && <StatusChip kind="kcal">{t.care.overGoalAlert}</StatusChip>}
-                        </div>
-                      )}
+                      <PatientStatusChips status={status} className="mt-1.5" />
                     </div>
                     <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400" aria-hidden="true" />
                   </button>

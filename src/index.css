@@ -172,6 +172,24 @@
     -webkit-line-clamp: 3;
   }
 
+  /* Alvo de toque de 44 px sem mudar o desenho: em telas de toque, uma área invisível em volta do
+     botão pequeno (ícone de editar, "Trocar", selo) também recebe o toque. Use em botões de linha. */
+  .tap-target {
+    position: relative;
+  }
+
+  @media (pointer: coarse) {
+    .tap-target::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+
   .safe-area-top {
     padding-top: env(safe-area-inset-top);
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daysSince, isInactive, lastActivity } from '../patient-activity';
+import { daysSince, isInactive, kcalStatus, lastActivity } from '../patient-activity';
 
 const today = new Date('2026-10-23T09:00:00');
 
@@ -20,6 +20,18 @@ describe('patient activity', () => {
     expect(isInactive('2026-10-21', today)).toBe(false);
     expect(isInactive('2026-10-20', today)).toBe(true);
     expect(isInactive(null, today)).toBe(true);
+  });
+
+  it('compares the weekly calorie average with the goal', () => {
+    expect(kcalStatus(2300, 2000, 1)).toBe('over');
+    expect(kcalStatus(2200, 2000, 7)).toBeNull();
+    expect(kcalStatus(1500, 2000, 3)).toBe('under');
+    expect(kcalStatus(1600, 2000, 7)).toBeNull();
+    // Um ou dois dias registrados não bastam para dizer que a pessoa come pouco.
+    expect(kcalStatus(900, 2000, 2)).toBeNull();
+    // Sem meta ou sem registro, não há o que comparar.
+    expect(kcalStatus(1500, null, 7)).toBeNull();
+    expect(kcalStatus(0, 2000, 7)).toBeNull();
   });
 });
 

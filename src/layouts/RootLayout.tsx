@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate, useNavigationType } from 'react-route
 import { MotionConfig, motion } from 'framer-motion';
 import { pageFade } from '../lib/motion';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
-import { Toast } from '../components/common/Toast';
+import { ToastRegion } from '../components/common/Toast';
 import { MobileNav } from '../components/common/MobileNav';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { AppHeader } from '../components/common/AppHeader';
@@ -192,13 +192,7 @@ export function RootLayout() {
         </motion.main>
         <MobileNav />
         <ConfirmDialog />
-        {message && (
-          <Toast
-            message={message}
-            type={type}
-            onClose={hideToast}
-          />
-        )}
+        <ToastRegion message={message} type={type} onClose={hideToast} />
       </MotionConfig>
     </ErrorBoundary>
   );

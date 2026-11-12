@@ -20,6 +20,19 @@ export function daysSince(iso: string | null, today = new Date()): number | null
   return Math.max(0, Math.round((now.getTime() - dayStart(iso)) / 86400000));
 }
 
+/** Média de calorias da semana contra a meta: bem acima, bem abaixo ou dentro (null). */
+export type KcalStatus = 'over' | 'under' | null;
+
+// Abaixo da meta só com 3 dias registrados ou mais: com um dia só, a média não diz nada.
+const UNDER_MIN_DAYS = 3;
+
+export function kcalStatus(avgKcal7: number, goalKcal: number | null | undefined, days7: number): KcalStatus {
+  if (!goalKcal || avgKcal7 <= 0) return null;
+  if (avgKcal7 > goalKcal * 1.1) return 'over';
+  if (days7 >= UNDER_MIN_DAYS && avgKcal7 < goalKcal * 0.8) return 'under';
+  return null;
+}
+
 export const isInactive = (iso: string | null, today = new Date()) => {
   const days = daysSince(iso, today);
   return days === null || days >= INACTIVE_DAYS;

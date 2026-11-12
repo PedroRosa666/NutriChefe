@@ -280,7 +280,7 @@ export function MealPlanEditor({
     if (items.some((i) => i.recipe_id && i.option_group === null) && !(await confirmDialog(t.plan.regenerateConfirm))) return;
     await useFoodsStore.getState().fetch();
     const previousExtras = generatedExtras.current;
-    const { items: next, relaxed, suggestedShares: suggested, offTarget, overGoals } = generateTracked();
+    const { items: next, relaxed, suggestedShares: suggested, offTarget, overGoals, underGoals } = generateTracked();
     if (!next.length) {
       showToast(t.plan.generateEmpty, 'warning');
       return;
@@ -298,6 +298,13 @@ export function MealPlanEditor({
     } else if (overGoals.length) {
       const kept = [...keptItems, ...merged];
       showToast(t.plan.generatedOverGoals.replace('{list}', overDaysText(kept)), 'warning');
+    } else if (underGoals.length) {
+      // Por nutriente, os dias em que ele ficou abaixo do piso: "a proteína (segunda, quarta)".
+      const list = PLAN_GOAL_KEYS.flatMap((key) => {
+        const days = underGoals.filter((u) => u.key === key).map((u) => t.plan.days[u.day]);
+        return days.length ? [`${t.plan.reasonNames[key]} (${days.join(', ')})`] : [];
+      }).join('; ');
+      showToast(t.plan.generatedUnderGoals.replace('{list}', list), 'warning');
     } else if (offTarget.length) {
       showToast(
         t.plan.generatedOffTarget

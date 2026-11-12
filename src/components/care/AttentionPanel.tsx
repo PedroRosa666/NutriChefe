@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowLeftRight, CheckCircle2, ChevronRight, Crown, Flame, MessageCircle, MoonStar } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, CheckCircle2, ChevronRight, Crown, Flame, MessageCircle, MoonStar, ShieldAlert } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../hooks/useTranslation';
 import { usePremiumStore } from '../../store/premium';
-import { daysSince, isInactive, lastActivity } from '../../lib/patient-activity';
+import { daysSince, isInactive, lastActivity, type KcalStatus } from '../../lib/patient-activity';
 
 interface AttentionRow {
   client_id: string;
@@ -127,21 +127,11 @@ export function AttentionPanel({ flagged, failed, onRetry, hasPatients }: { flag
                 <Link to={patientLink(r)} className="flex items-center gap-3 py-2.5 hover:text-emerald-700 dark:hover:text-emerald-300">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-slate-900 dark:text-white">{r.full_name || a.noName}</span>
-                    <span className="mt-1 flex flex-wrap gap-1.5">
-                      {r.unread_messages > 0 && (
-                        <StatusChip kind="messages">
-                          {(r.unread_messages === 1 ? a.messagesOne : a.messagesMany).replace('{n}', String(r.unread_messages))}
-                        </StatusChip>
-                      )}
-                      {r.pending_swaps > 0 && (
-                        <StatusChip kind="swaps">
-                          {(r.pending_swaps === 1 ? a.swapsOne : a.swapsMany).replace('{n}', String(r.pending_swaps))}
-                        </StatusChip>
-                      )}
-                      {r.inactive && (
-                        <StatusChip kind="inactive">{r.idle === null ? a.neverLogged : a.idleDays.replace('{n}', String(r.idle))}</StatusChip>
-                      )}
-                    </span>
+                    <PatientStatusChips
+                      className="mt-1"
+                      status={{ unread: r.unread_messages, swaps: r.pending_swaps, inactive: r.inactive }}
+                      inactiveLabel={r.idle === null ? a.neverLogged : a.idleDays.replace('{n}', String(r.idle))}
+                    />
                   </span>
                   <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400" />
                 </Link>
@@ -174,11 +164,13 @@ const CHIP = {
   inactive: { icon: MoonStar, className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' },
   adherence: { icon: AlertTriangle, className: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200' },
   kcal: { icon: Flame, className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200' },
+  allergy: { icon: ShieldAlert, className: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200' },
 } as const;
 
 /**
  * Selo de situação do paciente, com a mesma cor e ícone em todas as telas (Painel, lista de
- * pacientes): mensagens = azul, trocas = âmbar, sem registrar = cinza, adesão baixa = rosa, acima da meta = laranja.
+ * pacientes, ficha): mensagens = azul, trocas = âmbar, sem registrar = cinza, adesão baixa = rosa,
+ * calorias longe da meta = laranja, alergias = vermelho.
  */
 export function StatusChip({ kind, children }: { kind: keyof typeof CHIP; children: ReactNode }) {
   const { icon: Icon, className } = CHIP[kind];
@@ -186,6 +178,59 @@ export function StatusChip({ kind, children }: { kind: keyof typeof CHIP; childr
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>
       <Icon className="h-3 w-3" aria-hidden="true" />
       {children}
+    </span>
+  );
+}
+
+/** O que pede atenção num paciente. Campos ausentes = sem aquele alerta. */
+export interface PatientStatus {
+  unread: number;
+  swaps: number;
+  inactive: boolean;
+  /** Adesão ao plano em %, só quando está baixa. */
+  lowAdherence?: number | null;
+  kcal?: KcalStatus;
+}
+
+/**
+ * Os selos de um paciente, iguais no Painel, na lista e no topo da ficha. Com `onOpen`, os de
+ * mensagem e de troca viram botões que levam à aba onde o assunto se resolve.
+ */
+export function PatientStatusChips({
+  status,
+  inactiveLabel,
+  onOpen,
+  className = '',
+}: {
+  status: PatientStatus;
+  /** Texto do selo de inatividade (o Painel diz há quantos dias). */
+  inactiveLabel?: string;
+  onOpen?: (tab: 'messages' | 'plan') => void;
+  className?: string;
+}) {
+  const t = useTranslation();
+  const { unread, swaps, inactive, lowAdherence = null, kcal = null } = status;
+  // Calorias da semana não dizem nada de quem parou de registrar.
+  const kcalShown = inactive ? null : kcal;
+  if (!unread && !swaps && !inactive && lowAdherence === null && !kcalShown) return null;
+  const link = (tab: 'messages' | 'plan', chip: ReactNode) =>
+    onOpen ? (
+      <button type="button" onClick={() => onOpen(tab)} className="tap-target inline-flex min-h-[24px] items-center rounded-full underline-offset-2 hover:underline">
+        {chip}
+      </button>
+    ) : (
+      chip
+    );
+  return (
+    <span className={`flex flex-wrap gap-1.5 ${className}`}>
+      {unread > 0 &&
+        link('messages', <StatusChip kind="messages">{(unread === 1 ? t.attention.messagesOne : t.attention.messagesMany).replace('{n}', String(unread))}</StatusChip>)}
+      {swaps > 0 &&
+        link('plan', <StatusChip kind="swaps">{(swaps === 1 ? t.attention.swapsOne : t.attention.swapsMany).replace('{n}', String(swaps))}</StatusChip>)}
+      {inactive && <StatusChip kind="inactive">{inactiveLabel ?? t.care.inactiveAlert}</StatusChip>}
+      {/* Adesão baixa: só com refeições suficientes para a % fazer sentido (quem chama decide). */}
+      {lowAdherence !== null && <StatusChip kind="adherence">{t.adherence.lowAlert.replace('{percent}', String(lowAdherence))}</StatusChip>}
+      {kcalShown && <StatusChip kind="kcal">{kcalShown === 'over' ? t.care.overGoalAlert : t.care.underGoalAlert}</StatusChip>}
     </span>
   );
 }

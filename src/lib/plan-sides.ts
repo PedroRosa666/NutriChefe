@@ -11,7 +11,7 @@ import type { NutritionTotals } from '../store/nutrition-tracking';
 import { quantityLabel } from './food-math';
 import { PLAN_GOAL_KEYS } from './plan-goals';
 
-export type SideGroup = 'carb' | 'legume' | 'protein' | 'egg' | 'veg' | 'bread' | 'cereal' | 'fruit' | 'dairy' | 'nuts' | 'fat';
+export type SideGroup = 'carb' | 'legume' | 'protein' | 'egg' | 'soy' | 'veg' | 'bread' | 'cereal' | 'fruit' | 'dairy' | 'nuts' | 'fat';
 
 export interface SideSpec {
   /** Id do alimento na Tabela TACO (o mesmo em qualquer instalação). */
@@ -21,10 +21,17 @@ export interface SideSpec {
   /** Porção mínima e máxima que faz sentido no prato, em gramas. */
   min: number;
   max: number;
+  /**
+   * O que o alimento é, quando o nome da TACO engana as regras de alergia e dieta: o ovo é "Ovo, de
+   * galinha" (galinha é carne) e o tofu é "Soja, queijo" (queijo é laticínio). Com este texto, as
+   * regras olham para ele no lugar do nome.
+   */
+  as?: string;
 }
 
 const MAIN: MealSlot[] = ['lunch', 'dinner'];
 const MORNING: MealSlot[] = ['breakfast', 'snack'];
+const ANY: MealSlot[] = ['breakfast', 'lunch', 'snack', 'dinner'];
 
 export const SIDE_SPECS: SideSpec[] = [
   // Base do prato: arroz e tubérculos.
@@ -34,14 +41,19 @@ export const SIDE_SPECS: SideSpec[] = [
   { taco: 91, group: 'carb', slots: MAIN, min: 75, max: 200 }, // batata inglesa cozida
   { taco: 129, group: 'carb', slots: MAIN, min: 50, max: 150 }, // mandioca cozida
   { taco: 533, group: 'carb', slots: [...MAIN, 'breakfast'], min: 50, max: 150 }, // cuscuz de milho
-  // Leguminosas.
-  { taco: 561, group: 'legume', slots: MAIN, min: 70, max: 140 }, // feijão carioca
-  { taco: 577, group: 'legume', slots: MAIN, min: 70, max: 140 }, // lentilha cozida
+  // Leguminosas: até uma concha e meia (é a proteína de quem não come carne).
+  { taco: 561, group: 'legume', slots: MAIN, min: 70, max: 210 }, // feijão carioca
+  { taco: 577, group: 'legume', slots: MAIN, min: 70, max: 210 }, // lentilha cozida
   // Proteína.
-  { taco: 410, group: 'protein', slots: MAIN, min: 50, max: 120 }, // peito de frango grelhado
-  { taco: 377, group: 'protein', slots: MAIN, min: 50, max: 120 }, // patinho grelhado
-  { taco: 277, group: 'protein', slots: MAIN, min: 40, max: 100 }, // atum
-  { taco: 488, group: 'egg', slots: ['breakfast', 'lunch', 'dinner', 'snack'], min: 50, max: 100 }, // ovo cozido
+  { taco: 410, group: 'protein', slots: MAIN, min: 50, max: 150 }, // peito de frango grelhado (até um filé e meio)
+  { taco: 377, group: 'protein', slots: MAIN, min: 50, max: 150 }, // patinho grelhado
+  { taco: 301, group: 'protein', slots: MAIN, min: 75, max: 150 }, // merluza assada
+  { taco: 277, group: 'protein', slots: MAIN, min: 40, max: 120 }, // atum (até uma lata)
+  { taco: 488, group: 'egg', slots: ANY, min: 50, max: 100, as: 'ovo cozido' },
+  { taco: 486, group: 'egg', slots: ANY, min: 60, max: 150, as: 'clara de ovo cozida' }, // 2 a 5 claras
+  // Proteína vegetal: a que sobra para o prato vegano ou vegetariano.
+  { taco: 584, group: 'soy', slots: MAIN, min: 100, max: 200, as: 'tofu de soja' },
+  { taco: 582, group: 'soy', slots: MORNING, min: 200, max: 300, as: 'bebida de soja' },
   // Salada e legumes.
   { taco: 78, group: 'veg', slots: MAIN, min: 30, max: 80 }, // alface
   { taco: 157, group: 'veg', slots: MAIN, min: 50, max: 120 }, // tomate
@@ -62,6 +74,7 @@ export const SIDE_SPECS: SideSpec[] = [
   { taco: 448, group: 'dairy', slots: MORNING, min: 170, max: 170 }, // iogurte natural
   { taco: 449, group: 'dairy', slots: MORNING, min: 170, max: 170 }, // iogurte natural desnatado
   { taco: 461, group: 'dairy', slots: MORNING, min: 30, max: 60 }, // queijo minas frescal
+  { taco: 469, group: 'dairy', slots: ANY, min: 50, max: 100 }, // ricota (no café ou na salada)
   { taco: 589, group: 'nuts', slots: ['snack'], min: 8, max: 20 }, // castanha-do-pará
   { taco: 557, group: 'nuts', slots: ['snack'], min: 15, max: 30 }, // amendoim
   { taco: 163, group: 'fat', slots: MORNING, min: 30, max: 90 }, // abacate
@@ -77,13 +90,17 @@ const HAS: { group: SideGroup[]; words: string[] }[] = [
   { group: ['carb', 'bread', 'cereal'], words: ['arroz', 'risoto', 'macarrao', 'massa', 'espaguete', 'nhoque', 'batata', 'mandioca', 'mandioquinha', 'pure', 'cuscuz', 'quinoa', 'polenta', 'tapioca', 'pao', 'sanduiche', 'wrap', 'panqueca', 'crepioca', 'aveia', 'granola', 'torrada'] },
   { group: ['legume'], words: ['feijao', 'feijoada', 'lentilha', 'grao de bico', 'ervilha', 'tutu'] },
   { group: ['protein'], words: ['frango', 'carne', 'bovina', 'patinho', 'peixe', 'salmao', 'atum', 'camarao', 'tilapia', 'porco', 'lombo', 'peru', 'bacalhau'] },
-  { group: ['egg'], words: ['ovo', 'omelete', 'sufle', 'fritada'] },
+  { group: ['egg'], words: ['ovo', 'omelete', 'sufle', 'fritada', 'clara'] },
+  { group: ['soy'], words: ['tofu', 'soja'] },
   { group: ['veg'], words: ['salada'] },
   { group: ['dairy'], words: ['iogurte', 'queijo', 'ricota', 'coalhada'] },
 ];
 const DESSERT = ['bolo', 'pudim', 'cookie', 'biscoito', 'brownie', 'mousse', 'doce', 'sobremesa', 'trufa', 'barozzi', 'frutas vermelhas', 'sorvete'];
 // Prato doce só ganha fruta, laticínio ou oleaginosa (bolo com arroz, ovo ou salada não é refeição).
 const DESSERT_OK: SideGroup[] = ['fruit', 'dairy', 'nuts'];
+
+/** Texto que as regras de alergia e dieta leem para saber o que o acompanhamento é. */
+export const sideText = (spec: SideSpec, food: Food) => spec.as ?? food.name;
 
 /** Tipos de acompanhamento que não combinam com esta receita. */
 export function blockedGroupsFor(recipe: Recipe): Set<SideGroup> {
@@ -96,7 +113,7 @@ export function blockedGroupsFor(recipe: Recipe): Set<SideGroup> {
   if (recipe.category === 'vegan' || recipe.category === 'vegetarian') blocked.add('protein');
   if (recipe.category === 'vegan') ['egg', 'dairy'].forEach((g) => blocked.add(g as SideGroup));
   if (DESSERT.some((w) => has(w)) && !has('batata doce')) {
-    for (const g of ['carb', 'legume', 'protein', 'egg', 'veg', 'bread', 'cereal', 'fat'] as SideGroup[]) if (!DESSERT_OK.includes(g)) blocked.add(g);
+    for (const g of ['carb', 'legume', 'protein', 'egg', 'soy', 'veg', 'bread', 'cereal', 'fat'] as SideGroup[]) if (!DESSERT_OK.includes(g)) blocked.add(g);
   }
   return blocked;
 }

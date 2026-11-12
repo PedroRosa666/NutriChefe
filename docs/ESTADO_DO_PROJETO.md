@@ -51,14 +51,17 @@ nutricionista; vínculo por convite com mensagens e consultas; LGPD (baixar dado
 que agora também apaga os arquivos).
 
 **Nutricionista:** verificação do CRN (carteira + selfie, aprovação do admin); Painel com pacientes
-que precisam de atenção; lista de pacientes ordenada por necessidade; ficha com gráfico de 7 dias
+que precisam de atenção; lista de pacientes ordenada por necessidade, nome ou tempo sem registrar,
+com os mesmos selos do topo da ficha (alergias, mensagens, trocas, calorias acima ou abaixo da meta); ficha com gráfico de 7 dias
 clicável; planos (à mão, modelo, gerador automático, IA Premium) com versões publicadas e histórico;
 blocos de refeição próprios; receitas com rendimento e nutrição calculada pelos ingredientes;
 alimentos próprios; perfil profissional público. Grátis: até 5 pacientes ativos.
 
 **Gerador de plano (sem IA):** mira todas as metas (kcal, proteína, carboidrato, gordura, fibra);
 completa com até 4 acompanhamentos TACO por dia com regras de "cara de prato" (`src/lib/plan-sides.ts`)
-e mostra o motivo de cada um; opções "escolha 1" no almoço/jantar; evita receitas que o paciente
+e mostra o motivo de cada um; proteína magra entre os acompanhamentos (clara de ovo, merluza, tofu,
+bebida de soja, ricota) e troca de meia porção do prato por acompanhamento; avisa quando um
+nutriente fica abaixo do piso; opções "escolha 1" no almoço/jantar; evita receitas que o paciente
 pediu para trocar e penaliza as que ele pulou; usa o campo "Serve para" das receitas
 (`recipes.meal_types`) quando marcado.
 
@@ -86,6 +89,7 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 
 | Data | Commit | O quê |
 |---|---|---|
+| 12/11 | (local, sem commit) | Gerador: proteína (ovo para vegetariano, proteínas magras, jogada combinada, aviso abaixo do piso). Impeccable: selos e alergias no topo da ficha, selo de kcal abaixo da meta, ordenação da lista, avisos em região fixa, alvos de toque |
 | 12/11 | (seguinte ao `fd50fe4`) | Segredo do push gravado e conferido (403 sem cabeçalho); teste de tela do login (CSP); kcal da receita Cookie corrigida (5 → 263) |
 | 11/11 | `3cfd7d1`..`fd50fe4` | Segurança e SEO: CSP completo (fonte única de cabeçalhos), CRN revogado encerra vínculos, limite atômico da demo, segredo no push, senha mínima 8, imagem de prévia, versões fixadas, "Serve para" nas 24 receitas |
 | 03/11 | (Supabase) | Função `delete-account` publicada: excluir conta apaga também os arquivos |
@@ -119,9 +123,14 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 **Produto**
 11. Plano de implementação: próximas etapas ANA → EVO → CHECK → DIA e AGEN A → AGEN B, MOD e MET.
 12. Planejar mais recursos Premium para o nutricionista (a página Premium ainda fala com o paciente).
-13. Pendências do Impeccable: alergias e motivo do alerta no topo da ficha, selo de kcal abaixo da
-    meta, filtros/ordenação para 30+ pacientes, LazyMotion, região aria-live fixa, alvos de 44 px.
-14. Gerador: proteína ainda abaixo da meta quando o catálogo é muito vegano/vegetariano.
+13. Gerador, o que sobrou: com o catálogo atual, o vegano fica em ~76% da meta de proteína (era 60%) e o
+    vegetariano em ~82% (era 65%); o onívoro, ~90%. O limite agora é o catálogo: a TACO não tem
+    proteína vegetal magra (grão-de-bico cozido, proteína de soja) e as receitas veganas são
+    gordurosas. Caminhos: cadastrar esses alimentos no catálogo global ou criar receitas veganas
+    ricas em proteína. O editor já avisa o profissional nos dias em que a meta não fecha.
+14. LazyMotion: decidido não fazer em 12/11. Carregar a animação sob demanda deixaria conteúdo
+    invisível se o arquivo extra falhasse (telas começam com opacidade 0); a versão sem esse risco
+    economiza só ~10 KB.
 
 **Quando o Pedro disser que vai lançar na Play Store** (não começar antes): TWA com Bubblewrap,
 Google Play Billing (opção B), `assetlinks.json`, página pública de exclusão de conta, botão
@@ -151,4 +160,8 @@ Google Play Billing (opção B), `assetlinks.json`, página pública de exclusã
 - `git push` daqui autentica como `pedrorosa-jpg` (sem permissão): enviar com a conta `PedroRosa666` do
   `gh` (`gh auth switch`) e voltar a conta ativa depois.
 - O assistente não grava no Vault do Supabase (bloqueado no ambiente): SQL de segredo é o Pedro quem roda.
+- Selos de situação do paciente: só pelo `PatientStatusChips` (`src/components/care/AttentionPanel.tsx`);
+  botão pequeno de linha ganha a classe `tap-target` (área de toque de 44 px).
+- Acompanhamento novo do gerador cujo nome na TACO engana as regras de dieta (ovo é "de galinha"):
+  declarar o que ele é no campo `as` de `SIDE_SPECS`.
 - Ao mudar formato de dados: subir `CLIENT_CONTRACT` (`src/lib/client-contract.ts`, hoje 5) junto com `app_min_client()`.

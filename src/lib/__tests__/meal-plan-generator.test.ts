@@ -231,6 +231,48 @@ describe('pratos com cara de prato', () => {
     expect(items.some((i) => i.food?.name.startsWith('Frango'))).toBe(false);
   });
 
+  // Na TACO o ovo é "Ovo, de galinha" e o tofu é "Soja, queijo": o nome não pode decidir a dieta.
+  const proteinFoods = [
+    ...foods,
+    food(486, 'Ovo, de galinha, clara, cozida/10minutos', 59, 13.4, 0, 0.1, 0),
+    food(584, 'Soja, queijo (tofu)', 64, 6.6, 2.1, 4, 0.8),
+  ];
+  const sideNames = (items: ReturnType<typeof run>['items']) => items.flatMap((i) => (i.food ? [i.food.name] : []));
+
+  it('vegetariano recebe ovo como acompanhamento (ovo não é carne)', () => {
+    const names = sideNames(run({ preferences: ['vegetarian'], foods: proteinFoods }).items);
+    expect(names.some((n) => n.startsWith('Ovo'))).toBe(true);
+    expect(names.some((n) => n.startsWith('Frango'))).toBe(false);
+  });
+
+  it('vegano recebe tofu, e nunca ovo nem iogurte; com alergia a soja, nem tofu', () => {
+    const vegan = sideNames(run({ preferences: ['vegan'], foods: proteinFoods }).items);
+    expect(vegan.some((n) => n.includes('tofu'))).toBe(true);
+    expect(vegan.some((n) => /Ovo|Iogurte|Frango/.test(n))).toBe(false);
+    const allergic = sideNames(run({ preferences: ['vegan'], allergies: ['soja'], foods: proteinFoods }).items);
+    expect(allergic.some((n) => n.includes('tofu'))).toBe(false);
+  });
+
+  it('o único acompanhamento que resolve continua entrando no fim da semana', () => {
+    // Antes, cada uso encarecia o acompanhamento sem teto e o tofu sumia depois do terceiro dia.
+    const { items } = run({ preferences: ['vegan'], foods: proteinFoods });
+    const lastDays = items.filter((i) => i.day >= 4 && i.food?.name.includes('tofu'));
+    expect(lastDays.length).toBeGreaterThan(0);
+  });
+
+  it('avisa os dias em que um nutriente ficou abaixo do piso', () => {
+    // Meta de proteína impossível para este catálogo vegano: o resultado diz onde faltou.
+    const { items, underGoals } = run({ preferences: ['vegan'], goals: { ...goals, protein: 220 }, foods: proteinFoods });
+    expect(underGoals.length).toBeGreaterThan(0);
+    for (const under of underGoals) {
+      expect(under.key).not.toBe('calories');
+      expect(under.total).toBeLessThan(under.goal * 0.8);
+      expect(items.some((i) => i.day === under.day)).toBe(true);
+    }
+    // Com a meta comum, o onívoro não recebe aviso de proteína.
+    expect(run({ foods: proteinFoods }).underGoals.filter((u) => u.key === 'protein')).toEqual([]);
+  });
+
   it('receita que o paciente pediu para trocar sai do cardápio', () => {
     const many = [...catalog, ...Array.from({ length: 6 }, (_, i) => dish(`x${i}`, `Frango grelhado com legumes ${i}`, 'highProtein', { calories: 380, protein: 35, carbs: 25, fat: 12, fiber: 5 }))];
     const { items } = generateWeeklyPlanDetailed({ recipes: many, dailyCalories: 2000, goals, allergies: [], preferences: [], seed: 9, foods, avoidRecipeIds: ['strog'] });

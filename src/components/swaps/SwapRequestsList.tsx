@@ -177,7 +177,7 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
                 type="button"
                 onClick={() => cancel(r)}
                 disabled={busyId === r.id}
-                className="text-xs font-semibold text-slate-500 hover:text-rose-600 disabled:opacity-60 dark:text-slate-400"
+                className="tap-target text-xs font-semibold text-slate-500 hover:text-rose-600 disabled:opacity-60 dark:text-slate-400"
               >
                 {s.cancel}
               </button>
@@ -190,7 +190,7 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
                   onClick={() => approve(r)}
                   disabled={busyId === r.id || !hasRequestedChoice(r)}
                   title={hasRequestedChoice(r) ? undefined : s.approveNeedsFood}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  className="tap-target inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {busyId === r.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                   {s.approve}
@@ -198,7 +198,7 @@ export function SwapRequestsList({ clientId, role, refreshKey = 0, onPlanChanged
                 <button
                   type="button"
                   onClick={() => setDeclining({ id: r.id, note: '', counter: null })}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                  className="tap-target inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   <X className="h-3.5 w-3.5" />
                   {s.decline}

@@ -312,7 +312,7 @@ export function NutritionDiary() {
           <button
             type="button"
             onClick={() => setEditing({ id: e.id, servings: String(e.servings), meal: entryKey(e), fromPlan: Boolean(e.planCheckId) })}
-            className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-900"
+            className="tap-target rounded-lg p-2 text-slate-500 hover:bg-white hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-900"
             aria-label={t.profileUi.editEntry}
           >
             <Pencil className="h-4 w-4" />
@@ -320,7 +320,7 @@ export function NutritionDiary() {
           <button
             type="button"
             onClick={() => handleRemove(e.id)}
-            className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-900"
+            className="tap-target rounded-lg p-2 text-slate-500 hover:bg-white hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-900"
             aria-label={t.profile.remove}
           >
             <Trash2 className="h-4 w-4" />
@@ -372,7 +372,7 @@ export function NutritionDiary() {
             aria-checked={mealKey === o.key}
             onClick={() => setMealChoice(o.key)}
             className={cn(
-              'whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+              'tap-target whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
               mealKey === o.key
                 ? 'border-emerald-500 bg-emerald-600 text-white'
                 : 'border-slate-200 text-slate-600 hover:border-emerald-300 dark:border-slate-700 dark:text-slate-300'
@@ -391,7 +391,7 @@ export function NutritionDiary() {
             aria-selected={mode === m}
             onClick={() => setMode(m)}
             className={cn(
-              'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
+              'tap-target rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
               mode === m
                 ? 'bg-white text-emerald-700 shadow-sm dark:bg-slate-950 dark:text-emerald-300'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
@@ -510,7 +510,7 @@ export function NutritionDiary() {
               <button
                 type="button"
                 onClick={handleClearDay}
-                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-900/20"
+                className="tap-target inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-900/20"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {t.profile.clearDay}

@@ -13,8 +13,8 @@ import { hasUsableNutrition } from './recipe-nutrition';
 import { addTotals, belowFloor, goalDistance, goalExcesses, subTotals, ZERO_TOTALS, type GoalExcess } from './plan-goals';
 import type { Food } from '../services/foods';
 import { nutrientsFor } from './food-math';
-import { MAX_SIDES_PER_DAY, SIDE_SPECS, blockedGroupsFor, sideAmounts, sideFits, sideReason, type SideSpec } from './plan-sides';
-import type { NutritionGoals } from '../store/nutrition-goals';
+import { MAX_SIDES_PER_DAY, SIDE_SPECS, blockedGroupsFor, sideAmounts, sideFits, sideReason, sideText, type SideSpec } from './plan-sides';
+import type { GoalKey, NutritionGoals } from '../store/nutrition-goals';
 import type { NutritionTotals } from '../store/nutrition-tracking';
 
 const SLOT_WORDS: Record<MealSlot, string[]> = {
@@ -114,6 +114,11 @@ export interface GeneratedPlan {
   offTarget: { day: number; kcal: number; target: number }[];
   /** Nutrientes que ainda passaram da meta (além da folga) em algum dia, por falta de opção no catálogo. */
   overGoals: ({ day: number } & GoalExcess)[];
+  /**
+   * Nutrientes (fora as calorias, que já estão em offTarget) que ficaram abaixo do piso em algum dia:
+   * o catálogo e os acompanhamentos não fecharam a meta. O profissional é avisado e decide.
+   */
+  underGoals: { day: number; key: GoalKey; total: number; goal: number }[];
 }
 
 /** As quatro refeições de sempre, para quem chama sem blocos. */
@@ -176,7 +181,7 @@ export function generateWeeklyPlanDetailed({
   const avoid = new Set(avoidRecipeIds);
   const withoutAvoided = pool.filter((r) => !avoid.has(r.id));
   if (withoutAvoided.length >= 6) pool = withoutAvoided;
-  if (!pool.length) return { items: [], relaxed, suggestedShares: false, offTarget: [], overGoals: [] };
+  if (!pool.length) return { items: [], relaxed, suggestedShares: false, offTarget: [], overGoals: [], underGoals: [] };
 
   // Embaralha de forma reproduzível pela semente.
   let s = seed % 2147483647 || 1;
@@ -199,6 +204,7 @@ export function generateWeeklyPlanDetailed({
   let suggestedShares = false;
   const offTarget: GeneratedPlan['offTarget'] = [];
   const overGoals: GeneratedPlan['overGoals'] = [];
+  const underGoals: GeneratedPlan['underGoals'] = [];
   // Candidatas por categoria (bloco livre: como lanche), embaralhadas uma vez.
   const candidatesFor = new Map<MealSlot, Recipe[]>();
   const candidates = (slot: MealSlot) => {
@@ -210,9 +216,11 @@ export function generateWeeklyPlanDetailed({
   const blocked = blockedTerms(allergies, preferences);
   const sideOptions = SIDE_SPECS.flatMap((spec) => {
     const food = foods.find((f) => f.taco_id === spec.taco && f.kcal > 0);
-    return food && !textHasBlocked(food.name, blocked) ? [{ spec, food, amounts: sideAmounts(food, spec) }] : [];
+    return food && !textHasBlocked(sideText(spec, food), blocked) ? [{ spec, food, amounts: sideAmounts(food, spec) }] : [];
   });
   const sideUsed = new Map<string, number>();
+  // Último dia em que cada acompanhamento entrou: o mesmo no dia seguinte custa um pouco mais.
+  const sideLastDay = new Map<string, number>();
 
   /** Quanto custa escolher a receita além da distância às metas: repetição, dias seguidos, pulada pelo paciente. */
   const habitCost = (recipe: Recipe, day: number, sameDay: Recipe[]) => {
@@ -297,21 +305,37 @@ export function generateWeeklyPlanDetailed({
         }
       }
 
-      // 2) Novo acompanhamento.
+      // 2) Novo acompanhamento, sozinho ou no lugar de meia porção do prato da mesma refeição. A
+      // segunda forma é a que abre espaço para proteína magra quando as calorias já fecharam: só
+      // acrescentar estouraria as calorias, e só diminuir o prato deixaria o dia abaixo da meta.
       if (sides.length < MAX_SIDES_PER_DAY) {
         const base = portionCost(picks, sides) + SIDE_COST;
         for (const meal of dayMeals) {
           const slot = meal.category ?? 'snack';
           const here = mealSides(meal).map((x) => x.spec);
+          const smaller = picks.flatMap((p, index) =>
+            p.meal.id === meal.id && p.servings > SERVING_STEPS[0]
+              ? [{
+                  index,
+                  servings: p.servings - 0.5,
+                  totals: subTotals(dayTotals, scaled(p.recipe, 0.5)),
+                  portion: servingCost(p.servings - 0.5) - servingCost(p.servings),
+                }]
+              : []);
+          const variants = [{ index: -1, servings: 0, totals: dayTotals, portion: 0 }, ...smaller];
           for (const { spec, food, amounts } of sideOptions) {
             if (!sideFits(spec, slot, mealRecipes(meal), here)) continue;
-            const habit = REPEAT_COST * 0.5 * (sideUsed.get(food.id) ?? 0);
+            const habit = sideRepeatCost(sideUsed.get(food.id) ?? 0, sideLastDay.get(food.id) === day - 1);
             for (const amount of amounts) {
-              const cost = goalDistance(addTotals(dayTotals, nutrientsFor(food, amount.grams)), dayGoals) + base + habit;
-              consider(cost, () => {
-                sides.push({ meal, food, spec, ...amount });
-                sideUsed.set(food.id, (sideUsed.get(food.id) ?? 0) + 1);
-              });
+              const nutrients = nutrientsFor(food, amount.grams);
+              for (const variant of variants) {
+                const cost = goalDistance(addTotals(variant.totals, nutrients), dayGoals) + base + variant.portion + habit;
+                consider(cost, () => {
+                  if (variant.index >= 0) picks[variant.index] = { ...picks[variant.index], servings: variant.servings };
+                  sides.push({ meal, food, spec, ...amount });
+                  sideUsed.set(food.id, (sideUsed.get(food.id) ?? 0) + 1);
+                });
+              }
             }
           }
         }
@@ -360,6 +384,7 @@ export function generateWeeklyPlanDetailed({
       if (alt) items.push(recipeItem(day, p.meal, alt.id, p.servings, group));
       lastDay.set(p.recipe.id, day);
       for (const sd of sides.filter((x) => x.meal.id === p.meal.id)) {
+        sideLastDay.set(sd.food.id, day);
         items.push({
           day,
           meal_id: sd.meal.id,
@@ -379,9 +404,12 @@ export function generateWeeklyPlanDetailed({
     }
     if (kcalOff(dayTotals.calories, daily)) offTarget.push({ day, kcal: Math.round(dayTotals.calories), target: Math.round(daily) });
     for (const e of goalExcesses(dayTotals, dayGoals)) overGoals.push({ day, ...e, total: Math.round(e.total) });
+    for (const key of belowFloor(dayTotals, dayGoals)) {
+      if (key !== 'calories') underGoals.push({ day, key, total: Math.round(dayTotals[key]), goal: dayGoals[key] });
+    }
   }
 
-  return { items, relaxed, suggestedShares, offTarget, overGoals };
+  return { items, relaxed, suggestedShares, offTarget, overGoals, underGoals };
 }
 
 // Porções de meia em meia, até 2: um prato principal três vezes maior não é um prato.
@@ -397,6 +425,14 @@ const AVOID_COST = 1.5;
 // receita a dobrar o prato, e só põe acompanhamento quando ele de fato aproxima o dia das metas.
 const SERVING_COST = 0.15;
 const SIDE_COST = 0.06;
+// Repetir um acompanhamento custa pouco e tem teto: serve para variar entre equivalentes (banana
+// num dia, mamão no outro), não para tirar do prato o único que resolve (o tofu de quem é vegano;
+// arroz e feijão todo dia são normais). Sem teto, lá pelo terceiro dia o gerador desistia dele.
+const SIDE_REPEAT_COST = 0.02;
+const SIDE_REPEAT_MAX = 4;
+const SIDE_NEXT_DAY_COST = 0.05;
+const sideRepeatCost = (timesUsed: number, usedYesterday: boolean) =>
+  SIDE_REPEAT_COST * Math.min(timesUsed, SIDE_REPEAT_MAX) + (usedYesterday ? SIDE_NEXT_DAY_COST : 0);
 
 const servingCost = (servings: number) => SERVING_COST * Math.abs(servings - 1) * 2;
 const portionCost = (picks: Pick[], sides: Side[]) =>
