@@ -21,4 +21,18 @@ test.describe('sem login', () => {
     await expect(page).toHaveURL(/modo=cadastro.*convite%3De2e/);
     await expect(page.getByRole('dialog')).toContainText('Criar conta');
   });
+
+  // O formulário fala com o Supabase Auth: a política de conteúdo (CSP) não pode barrar a chamada.
+  // Senha errada de propósito: não precisa de conta, e a resposta 400 do servidor é a esperada.
+  test('login com senha errada chega ao servidor e mostra o aviso', async ({ page }) => {
+    const errors = watchConsole(page);
+    await page.goto('/login');
+    const dialog = page.getByRole('dialog');
+    await dialog.locator('#email').fill('e2e-conta-inexistente@example.com');
+    await dialog.locator('#password').fill('senha-errada-de-teste');
+    await dialog.locator('button[type=submit]').click();
+    await expect(page.getByText('E-mail ou senha incorretos.').first()).toBeVisible();
+    expect(errors.filter((e) => /Content Security Policy/i.test(e))).toEqual([]);
+    expect(errors.filter((e) => e.startsWith('pageerror'))).toEqual([]);
+  });
 });

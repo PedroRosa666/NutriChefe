@@ -7,7 +7,7 @@
 > tarefa por encerrada. Item feito sai de "Próximos passos" e entra em "Últimas entregas".
 > Mantenha curto: detalhe técnico fica no código, nos commits e no README.
 
-Última atualização: 11/11/2026 (lote de segurança e SEO no ar: commits `3cfd7d1`..`480c886` e seguinte,
+Última atualização: 12/11/2026 (lote de segurança e SEO no ar: commits `3cfd7d1`..`480c886` e seguinte,
 migrations `20261116120000` e `20261117120000` aplicadas, funções `demo`, `send-push`, `admin` e
 `ai-chat` publicadas, "Serve para" marcado nas 24 receitas).
 
@@ -79,14 +79,15 @@ receita com título, canonical, JSON-LD `Recipe`, 404 real, sitemap e robots.
 liberado; imagem de prévia 1200×630 (`public/og-image.png`);
 CRN que perde a aprovação encerra vínculos e convites; limite da demo contado no banco
 (`claim_demo_start`); `send-push` confere um segredo que fica só no Vault do banco (lido por
-`push_webhook_secret()`; falta gravar o valor); erros internos do
+`push_webhook_secret()`; gravado em 12/11, chamada sem o cabeçalho dá 403); erros internos do
 Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Actions por SHA.
 
 ## 4. Últimas entregas
 
 | Data | Commit | O quê |
 |---|---|---|
-| 11/11 | `3cfd7d1`..`480c886` + seguinte | Segurança e SEO: CSP completo (fonte única de cabeçalhos), CRN revogado encerra vínculos, limite atômico da demo, segredo no push, senha mínima 8, imagem de prévia, versões fixadas, "Serve para" nas 24 receitas |
+| 12/11 | (seguinte ao `fd50fe4`) | Segredo do push gravado e conferido (403 sem cabeçalho); teste de tela do login (CSP); kcal da receita Cookie corrigida (5 → 263) |
+| 11/11 | `3cfd7d1`..`fd50fe4` | Segurança e SEO: CSP completo (fonte única de cabeçalhos), CRN revogado encerra vínculos, limite atômico da demo, segredo no push, senha mínima 8, imagem de prévia, versões fixadas, "Serve para" nas 24 receitas |
 | 03/11 | (Supabase) | Função `delete-account` publicada: excluir conta apaga também os arquivos |
 | 30/10 | `8681b5b` | Perfil privado protegido, Worker de SEO, links com nome nas receitas, log sem token |
 | 30/10 | `198fcef` | Gerador mira todas as metas, acompanhamentos com motivo, "escolha 1", campo "Serve para" |
@@ -98,16 +99,9 @@ Gemini e do painel não vão mais ao navegador; CLI do Supabase em `3.1.0` e Act
 ## 5. Próximos passos
 
 **Pendências do lote de 11/11**
-1. Segredo do push: o Pedro roda no SQL Editor do Supabase (o assistente não grava em cofre de segredos):
-   `select vault.create_secret(encode(extensions.gen_random_bytes(32), 'hex'), 'push_webhook_secret');`
-   Nada mais a configurar: o gatilho e a função `send-push` leem o mesmo valor do Vault. Até lá o push
-   funciona sem segredo, como antes. Depois de gravar, uma chamada sem o cabeçalho deve dar 403.
-2. A receita "Cookie" está com 5 kcal por porção: conferir. Só 4 receitas servem para café da manhã:
-   o gerador ainda repete até o catálogo crescer.
-3. `demo`: nenhum aviso "client ip from" no log até agora (sinal de que `cf-connecting-ip` chega);
-   olhar de novo depois de alguns dias de uso.
-4. `git push` daqui usa a conta `pedrorosa-jpg`, sem permissão no repositório: o push sai com a conta
-   `PedroRosa666` do `gh` (`gh auth switch`), voltando a conta ativa depois.
+1. Stripe com o CSP: o Pedro clica em assinar numa conta real e confere se a página do Stripe abre (não
+   precisa pagar). Pelo código é redirecionamento, que o CSP não restringe.
+2. Só 4 receitas servem para café da manhã: o gerador ainda repete até o catálogo crescer.
 
 **Curto prazo**
 7. Google Search Console: cadastrar `https://nutrichef.app.br/sitemap.xml` (conta Google do Pedro).
@@ -154,4 +148,7 @@ Google Play Billing (opção B), `assetlinks.json`, página pública de exclusã
 - Regra de senha: só em `src/lib/password.ts` (as frases em `src/lib/i18n` citam o número).
 - Tirar a aprovação de um CRN encerra os vínculos e não tem volta automática (decisão de 11/11: encerrar,
   em vez de bloquear, porque vale para todas as regras de uma vez).
+- `git push` daqui autentica como `pedrorosa-jpg` (sem permissão): enviar com a conta `PedroRosa666` do
+  `gh` (`gh auth switch`) e voltar a conta ativa depois.
+- O assistente não grava no Vault do Supabase (bloqueado no ambiente): SQL de segredo é o Pedro quem roda.
 - Ao mudar formato de dados: subir `CLIENT_CONTRACT` (`src/lib/client-contract.ts`, hoje 5) junto com `app_min_client()`.
